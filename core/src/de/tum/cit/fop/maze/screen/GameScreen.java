@@ -1,11 +1,19 @@
-package de.tum.cit.fop.maze;
+package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
+import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.input.PlayerInputHandler;
+import de.tum.cit.fop.maze.maze.MazeRenderer;
+import de.tum.cit.fop.maze.ui.HUD;
+import de.tum.cit.fop.maze.utils.CameraManager;
 
 /**
  * The GameScreen class is responsible for rendering the gameplay screen.
@@ -16,6 +24,16 @@ public class GameScreen implements Screen {
     private final MazeRunnerGame game;
     private final OrthographicCamera camera;
     private final BitmapFont font;
+    // === 新增 ===
+    private GameManager gameManager;
+    private MazeRenderer mazeRenderer;
+    private CameraManager cameraManager;
+    private PlayerInputHandler inputHandler;
+    private HUD hud;
+
+    private SpriteBatch worldBatch;
+    private SpriteBatch uiBatch;
+    private ShapeRenderer shapeRenderer;
 
     private float sinusInput = 0f;
 
