@@ -5,15 +5,27 @@ import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 
 public class Logger {
+    // 确保 DEBUG 级别是启用的
+    private static final boolean DEBUG_ENABLED = true;
+
+    public static void debug(String message) {
+        if (DEBUG_ENABLED) {
+            System.out.println("[DEBUG] " + message);
+        }
+    }
+
+    public static boolean isDebugEnabled() {
+        return DEBUG_ENABLED;
+    }
     private static final String TAG = "MazeGame";
 
     public static void info(String message) {
         Gdx.app.log(TAG, "[INFO] " + message);
     }
 
-    public static void debug(String message) {
-        Gdx.app.debug(TAG, "[DEBUG] " + message);
-    }
+//    public static void debug(String message) {
+//        Gdx.app.debug(TAG, "[DEBUG] " + message);
+//    }
 
     public static void error(String message) {
         Gdx.app.error(TAG, "[ERROR] " + message);
@@ -38,9 +50,9 @@ public class Logger {
         }
     }
 
-    public static boolean isDebugEnabled() {
-        return Gdx.app.getLogLevel() >= Application.LOG_DEBUG;
-    }
+//    public static boolean isDebugEnabled() {
+//        return Gdx.app.getLogLevel() >= Application.LOG_DEBUG;
+//    }
 
     public static void debugFrame(String message) {
         // 只在特定帧数记录调试信息，避免日志过多

@@ -1,6 +1,8 @@
-// Key.java
+// Key.java - 更新版本
 package de.tum.cit.fop.maze.entities;
 
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -8,40 +10,84 @@ import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class Key extends GameObject {
+    private Color color = GameConstants.KEY_COLOR;
+    private Texture keyTexture;
+    private boolean collected = false;
+
+    // 纹理管理
+    private TextureManager textureManager;
+    private boolean needsTextureUpdate = true;
 
     public Key(int x, int y) {
         super(x, y);
-        Logger.gameEvent("Key spawned at " + getPositionString());
+        this.textureManager = TextureManager.getInstance();
+        updateTexture();
+        Logger.debug("Key created at " + getPositionString());
+    }
+
+    /**
+     * 更新纹理
+     */
+    private void updateTexture() {
+        keyTexture = textureManager.getKeyTexture();
+        needsTextureUpdate = false;
+    }
+
+    /**
+     * 响应纹理模式切换
+     */
+    @Override
+    public void onTextureModeChanged() {
+        needsTextureUpdate = true;
     }
 
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
+        if (!active || collected || keyTexture != null) return;
 
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(color);
+        shapeRenderer.circle(
+            x * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2,
+            y * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2,
+            GameConstants.CELL_SIZE / 2 - 4
+        );
+        shapeRenderer.end();
     }
 
     @Override
     public void drawSprite(SpriteBatch batch) {
-        if (!active) return;
+        if (!active || collected || keyTexture == null) return;
 
-        TextureManager textureManager = TextureManager.getInstance();
-        batch.draw(textureManager.getKeyTexture(),
-            x * GameConstants.CELL_SIZE + 15,
-            y * GameConstants.CELL_SIZE + 15,
-            GameConstants.CELL_SIZE - 30,
-            GameConstants.CELL_SIZE - 30
-        );
+        // 如果需要更新纹理
+        if (needsTextureUpdate) {
+            updateTexture();
+        }
+
+        batch.draw(keyTexture,
+            x * GameConstants.CELL_SIZE + 4,
+            y * GameConstants.CELL_SIZE + 4,
+            GameConstants.CELL_SIZE +10,
+            GameConstants.CELL_SIZE +10);
     }
-
-
-
 
     @Override
     public RenderType getRenderType() {
-        return null;
+        // 如果当前模式是COLOR或没有纹理，使用SHAPE
+        if (textureManager.getCurrentMode() == TextureManager.TextureMode.COLOR ||
+            textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
+            keyTexture == null) {
+            return RenderType.SHAPE;
+        }
+        return RenderType.SPRITE;
     }
 
+    /**
+     * 收集钥匙
+     */
     public void collect() {
-        active = false;
-        Logger.gameEvent("Key collected from " + getPositionString());
+        this.collected = true;
+        this.active = false;
+        Logger.gameEvent("Key collected at " + getPositionString());
     }
 }

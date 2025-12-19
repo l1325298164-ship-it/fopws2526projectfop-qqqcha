@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.entities.GameObject;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -58,39 +59,17 @@ public class GameScreen implements Screen {
     // Screen interface methods with necessary functionality
     @Override
     public void render(float delta) {
-        // Check for escape key press to go back to the menu
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.goToMenu();
-        }
+        handleInput(delta);
 
-        ScreenUtils.clear(0, 0, 0, 1); // Clear the screen
+        gameManager.update(delta);
+        cameraManager.update(delta, gameManager.getPlayer());
 
-        camera.update(); // Update the camera
+        ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
 
-        // Move text in a circular path to have an example of a moving object
-        sinusInput += delta;
-        float textX = (float) (camera.position.x + Math.sin(sinusInput) * 100);
-        float textY = (float) (camera.position.y + Math.cos(sinusInput) * 100);
-
-        // Set up and begin drawing with the sprite batch
-        game.getSpriteBatch().setProjectionMatrix(camera.combined);
-
-        game.getSpriteBatch().begin(); // Important to call this before drawing anything
-
-        // Render the text
-        font.draw(game.getSpriteBatch(), "Press ESC to go to menu", textX, textY);
-
-        // Draw the character next to the text :) / We can reuse sinusInput here
-        game.getSpriteBatch().draw(
-                game.getCharacterDownAnimation().getKeyFrame(sinusInput, true),
-                textX - 96,
-                textY - 64,
-                64,
-                128
-        );
-
-        game.getSpriteBatch().end(); // Important to call this after drawing everything
+        renderWorld();
+        renderUI();
     }
+
 
     @Override
     public void resize(int width, int height) {
@@ -107,8 +86,22 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+        worldBatch = game.getSpriteBatch();
+        uiBatch = new SpriteBatch();
+        shapeRenderer = new ShapeRenderer();
 
+        gameManager = new GameManager();
+        mazeRenderer = new MazeRenderer(gameManager);
+        cameraManager = new CameraManager();
+        inputHandler = new PlayerInputHandler();
+        hud = new HUD(gameManager);
+
+
+        cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
+
+        Gdx.input.setInputProcessor(null); // 不用 Scene2D
     }
+
 
     @Override
     public void hide() {
@@ -119,4 +112,150 @@ public class GameScreen implements Screen {
     }
 
     // Additional methods and logic can be added as needed for the game screen
+    private void handleInput(float delta) {
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            game.goToMenu();
+            return;
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            restartGame();
+        }
+
+        inputHandler.update(delta, (dx, dy) -> {
+            int nx = gameManager.getPlayer().getX() + dx;
+            int ny = gameManager.getPlayer().getY() + dy;
+
+            if (gameManager.isValidMove(nx, ny)) {
+                gameManager.getPlayer().move(dx, dy);
+            }
+        });
+    }
+    private void renderWorld() {
+        worldBatch.setProjectionMatrix(cameraManager.getCamera().combined);
+        shapeRenderer.setProjectionMatrix(cameraManager.getCamera().combined);
+
+        worldBatch.begin();
+
+        // 1. 地板
+        mazeRenderer.renderFloor(worldBatch);
+
+        // 2. 收集并排序
+        var renderItems = collectAllRenderItems();
+        renderItems.sort((a, b) -> Float.compare(b.y, a.y));
+
+        // 3. 渲染
+        for (var item : renderItems) {
+            if (item.type == RenderItemType.ENTITY) {
+                item.entity.drawSprite(worldBatch);
+            } else {
+                mazeRenderer.renderWallAtPosition(
+                        worldBatch,
+                        (int) item.x,
+                        (int) item.y
+                );
+            }
+        }
+
+        worldBatch.end();
+    }
+    private enum RenderItemType {
+        WALL_BEHIND,
+        ENTITY,
+        WALL_FRONT
+    }
+    private class RenderItem {
+        float x, y;
+        RenderItemType type;
+        GameObject entity;
+
+        RenderItem(float x, float y, RenderItemType type) {
+            this.x = x;
+            this.y = y;
+            this.type = type;
+        }
+
+        RenderItem(GameObject entity) {
+            this.entity = entity;
+            this.x = entity.getX();
+            this.y = entity.getY();
+            this.type = RenderItemType.ENTITY;
+        }
+    }
+    private java.util.List<RenderItem> collectAllRenderItems() {
+        java.util.List<RenderItem> items = new java.util.ArrayList<>();
+
+        addAllWalls(items);
+        addAllEntities(items);
+
+        return items;
+    }
+    private void addAllWalls(java.util.List<RenderItem> items) {
+        int[][] maze = gameManager.getMazeForRendering();
+
+        for (int y = 0; y < maze.length; y++) {
+            for (int x = 0; x < maze[y].length; x++) {
+                if (maze[y][x] == 0) {
+                    boolean isFront = isWallInFrontOfAnyEntity(x, y);
+                    items.add(new RenderItem(
+                            x,
+                            y,
+                            isFront ? RenderItemType.WALL_FRONT : RenderItemType.WALL_BEHIND
+                    ));
+                }
+            }
+        }
+    }
+    private boolean isWallInFrontOfAnyEntity(int wallX, int wallY) {
+        var player = gameManager.getPlayer();
+        if (wallY > player.getY()) return true;
+
+        var key = gameManager.getKey();
+        if (key != null && key.isActive() && wallY > key.getY()) return true;
+
+        for (var door : gameManager.getExitDoors()) {
+            if (door != null && wallY > door.getY()) return true;
+        }
+
+        return false;
+    }
+    private void addAllEntities(java.util.List<RenderItem> items) {
+        items.add(new RenderItem(gameManager.getPlayer()));
+
+        var key = gameManager.getKey();
+        if (key != null && key.isActive()) {
+            items.add(new RenderItem(key));
+        }
+
+        for (var door : gameManager.getExitDoors()) {
+            if (door != null) {
+                items.add(new RenderItem(door));
+            }
+        }
+    }
+
+
+
+
+    private void renderUI() {
+        uiBatch.begin();
+
+        if (gameManager.isGameComplete()) {
+            hud.renderGameComplete(uiBatch);
+        } else {
+            hud.renderInGameUI(uiBatch);
+        }
+
+        uiBatch.end();
+
+    }
+    private void restartGame() {
+        // 重新创建游戏状态
+        gameManager = new GameManager();
+        mazeRenderer.setGameManager(gameManager);
+        cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
+    }
+
+
 }

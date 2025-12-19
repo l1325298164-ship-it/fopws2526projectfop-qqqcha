@@ -1,46 +1,49 @@
-// GameObject.java
+// GameObject.java - 添加纹理渲染支持
 package de.tum.cit.fop.maze.entities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import de.tum.cit.fop.maze.utils.Logger;
 
 public abstract class GameObject {
-    protected int x;
-    protected int y;
+    protected int x, y;
     protected boolean active = true;
+
+    // 渲染类型枚举
+    public enum RenderType {
+        SHAPE,  // 使用ShapeRenderer绘制
+        SPRITE  // 使用SpriteBatch绘制
+    }
 
     public GameObject(int x, int y) {
         this.x = x;
         this.y = y;
-        Logger.debug(getClass().getSimpleName() + " created at (" + x + ", " + y + ")");
     }
 
-    public int getX() { return x; }
-    public int getY() { return y; }
-    public void setPosition(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
-
-    // 明确区分渲染方式
+    // 抽象方法
     public abstract void drawShape(ShapeRenderer shapeRenderer);
-
-    // 可选：如果也用纹理
     public abstract void drawSprite(SpriteBatch batch);
-
-
-    // 或者更灵活：标记渲染类型
-    public enum RenderType { SHAPE, SPRITE, BOTH }
     public abstract RenderType getRenderType();
 
+    // 响应纹理模式变化
+    public void onTextureModeChanged() {
+        // 子类可以重写此方法
+    }
+
+    // 碰撞检测
     public boolean collidesWith(GameObject other) {
         return this.x == other.x && this.y == other.y;
     }
 
+    // Getter和Setter
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public void setX(int x) { this.x = x; }
+    public void setY(int y) { this.y = y; }
+    public void setPosition(int x, int y) { this.x = x; this.y = y; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+
+    // 调试信息
     public String getPositionString() {
         return "(" + x + ", " + y + ")";
     }
