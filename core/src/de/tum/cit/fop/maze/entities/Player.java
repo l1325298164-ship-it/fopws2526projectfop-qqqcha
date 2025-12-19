@@ -135,4 +135,27 @@ public class Player extends GameObject {
         Logger.debug("Player moved to " + getPositionString());
     }
 
+    public void takeDamage(int damage) {
+        if (isDead || isInvincible) return;
+
+        lives -= damage;
+        isInvincible = true;
+        invincibleTimer = 0;
+
+        Logger.gameEvent("Player took " + damage + " damage, lives left: " + lives);
+
+        if (lives <= 0) {
+            isDead = true;
+            Logger.gameEvent("Player died");
+        }
+    }
+
+    public int getLives() {
+        return lives;
+    }
+
+    public boolean isDead() {
+        return lives <= 0;
+    }
+
 }

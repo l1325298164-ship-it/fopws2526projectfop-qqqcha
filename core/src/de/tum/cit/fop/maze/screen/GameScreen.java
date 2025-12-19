@@ -16,6 +16,7 @@ import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.TextureManager;
 
 /**
  * The GameScreen class is responsible for rendering the gameplay screen.
@@ -37,7 +38,8 @@ public class GameScreen implements Screen {
     private SpriteBatch uiBatch;
     private ShapeRenderer shapeRenderer;
 
-    private float sinusInput = 0f;
+
+
 
     /**
      * Constructor for GameScreen. Sets up the camera and font.
@@ -122,15 +124,46 @@ public class GameScreen implements Screen {
     // Additional methods and logic can be added as needed for the game screen
     private void handleInput(float delta) {
 
+        // === 1. ESC 返回菜单 ===
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.goToMenu();
             return;
         }
 
+        // === 2. R 重开 ===
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             restartGame();
+            return;
         }
 
+        // === 3. F1-F4 切换纹理模式 ===
+        TextureManager textureManager = TextureManager.getInstance();
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
+            textureManager.switchMode(TextureManager.TextureMode.COLOR);
+            gameManager.onTextureModeChanged();
+            Logger.gameEvent("Texture mode switched to COLOR");
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
+            textureManager.switchMode(TextureManager.TextureMode.IMAGE);
+            gameManager.onTextureModeChanged();
+            Logger.gameEvent("Texture mode switched to IMAGE");
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+            textureManager.switchMode(TextureManager.TextureMode.PIXEL);
+            gameManager.onTextureModeChanged();
+            Logger.gameEvent("Texture mode switched to PIXEL");
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
+            textureManager.switchMode(TextureManager.TextureMode.MINIMAL);
+            gameManager.onTextureModeChanged();
+            Logger.gameEvent("Texture mode switched to MINIMAL");
+        }
+
+        // === 4. 玩家移动 ===
         inputHandler.update(delta, (dx, dy) -> {
             int nx = gameManager.getPlayer().getX() + dx;
             int ny = gameManager.getPlayer().getY() + dy;
@@ -140,6 +173,7 @@ public class GameScreen implements Screen {
             }
         });
     }
+
     private void renderWorld() {
         worldBatch.setProjectionMatrix(cameraManager.getCamera().combined);
         shapeRenderer.setProjectionMatrix(cameraManager.getCamera().combined);
@@ -230,6 +264,12 @@ public class GameScreen implements Screen {
     }
     private void addAllEntities(java.util.List<RenderItem> items) {
         items.add(new RenderItem(gameManager.getPlayer()));
+        for (var trap : gameManager.getTraps()) {
+            if (trap != null ) {
+                items.add(new RenderItem(trap));
+            }
+        }
+
 
         var key = gameManager.getKey();
         if (key != null && key.isActive()) {
@@ -241,6 +281,7 @@ public class GameScreen implements Screen {
                 items.add(new RenderItem(door));
             }
         }
+
     }
 
 

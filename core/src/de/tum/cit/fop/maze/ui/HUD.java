@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import de.tum.cit.fop.maze.entities.Compass;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -47,8 +48,10 @@ public class HUD {
 
             // 2. 生命值
             font.setColor(Color.RED);
-            font.draw(uiBatch, "life: " + gameManager.getLives() + "/" + gameManager.getMaxLives(),
-                20, Gdx.graphics.getHeight() - 80);
+            font.draw(uiBatch, "life: "
+                            + gameManager.getPlayer().getLives() + "/" + GameConstants.MAX_LIVES,
+                    20, Gdx.graphics.getHeight() - 80);
+
 
             // 3. 关卡信息
             font.setColor(Color.CYAN);

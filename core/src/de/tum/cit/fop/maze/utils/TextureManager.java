@@ -16,6 +16,8 @@ public class TextureManager implements Disposable {
     private static TextureManager instance;
     private Map<String, Texture> textures;
 
+
+
     // 纹理模式
     public enum TextureMode {
         COLOR,      // 纯色模式（现有功能）
@@ -33,6 +35,8 @@ public class TextureManager implements Disposable {
     public static final String LOCKED_DOOR = "locked_door";
     public static final String ENEMY1 = "enemy1";
     public static final String HEART = "heart";
+    public static final String TRAP = "trap";
+
 
     // 默认颜色（备用）
     private static final Color DEFAULT_COLOR = Color.WHITE;
@@ -73,6 +77,8 @@ public class TextureManager implements Disposable {
 
         imageMode.put(PLAYER, "Character/mainCharacter.png");
         imageMode.put(ENEMY1, "Character/Enemy1.png");
+        imageMode.put(TRAP, "Traps/spike.png"); // 路径示例
+
 
         imageMode.put(KEY, "Items/key_1.gif");
 
@@ -172,6 +178,8 @@ public class TextureManager implements Disposable {
             case LOCKED_DOOR: return GameConstants.LOCKED_DOOR_COLOR;
             case ENEMY1: return Color.PURPLE; // 敌人备用颜色
             case HEART: return GameConstants.HEART_COLOR;
+            case TRAP: return Color.RED; // 或你想要的陷阱颜色
+
             default: return DEFAULT_COLOR;
         }
     }
@@ -284,6 +292,9 @@ public class TextureManager implements Disposable {
 
     public Texture getPlayerTexture() {
         return getTexture(PLAYER);
+    }
+    public Texture getTrapTexture() {
+        return getTexture(TRAP);
     }
 
     public Texture getKeyTexture() {
