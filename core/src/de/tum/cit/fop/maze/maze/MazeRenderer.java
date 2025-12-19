@@ -252,4 +252,13 @@ public class MazeRenderer {
         this.gameManager = gameManager;
         this.texturesInitialized = false;
     }
+
+    public void onTextureModeChanged() {
+        texturesInitialized = false;
+        floorTexture = null;
+        wallTexture = null;
+
+        Logger.debug("MazeRenderer texture cache cleared");
+    }
+
 }

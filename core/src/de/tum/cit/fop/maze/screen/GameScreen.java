@@ -142,24 +142,28 @@ public class GameScreen implements Screen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
             textureManager.switchMode(TextureManager.TextureMode.COLOR);
             gameManager.onTextureModeChanged();
+            mazeRenderer.onTextureModeChanged();
             Logger.gameEvent("Texture mode switched to COLOR");
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
             textureManager.switchMode(TextureManager.TextureMode.IMAGE);
             gameManager.onTextureModeChanged();
+            mazeRenderer.onTextureModeChanged();
             Logger.gameEvent("Texture mode switched to IMAGE");
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
             textureManager.switchMode(TextureManager.TextureMode.PIXEL);
             gameManager.onTextureModeChanged();
+            mazeRenderer.onTextureModeChanged();
             Logger.gameEvent("Texture mode switched to PIXEL");
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
             textureManager.switchMode(TextureManager.TextureMode.MINIMAL);
             gameManager.onTextureModeChanged();
+            mazeRenderer.onTextureModeChanged();
             Logger.gameEvent("Texture mode switched to MINIMAL");
         }
 

@@ -106,21 +106,20 @@ public class TextureManager implements Disposable {
      * 切换纹理模式
      */
     public void switchMode(TextureMode mode) {
-        if (this.currentMode == mode) {
-            return;
-        }
+        if (this.currentMode == mode) return;
 
         Logger.debug("Switching texture mode from " + currentMode + " to " + mode);
 
-        // 清理当前纹理（保留颜色纹理）
-        clearImageTextures();
+        // 1️⃣ 先清理所有非颜色纹理
+        clearAllNonColorTextures();
 
-        // 设置新模式
+        // 2️⃣ 再切换模式
         this.currentMode = mode;
 
-        // 根据新模式预加载纹理
+        // 3️⃣ 预加载新模式需要的图片
         preloadTexturesForMode(mode);
     }
+
 
     /**
      * 预加载指定模式的纹理
@@ -187,31 +186,24 @@ public class TextureManager implements Disposable {
     /**
      * 清理图片纹理（保留颜色纹理）
      */
-    private void clearImageTextures() {
+    private void clearAllNonColorTextures() {
         Map<String, Texture> toKeep = new HashMap<>();
 
         for (Map.Entry<String, Texture> entry : textures.entrySet()) {
             String key = entry.getKey();
 
-            // 永远保留颜色纹理
+            // 只保留颜色纹理
             if (key.startsWith("color_")) {
                 toKeep.put(key, entry.getValue());
-                continue;
+            } else {
+                entry.getValue().dispose();
             }
-
-            // 当前是图片模式，保留图片
-            if (currentMode == TextureMode.IMAGE || currentMode == TextureMode.PIXEL) {
-                toKeep.put(key, entry.getValue());
-                continue;
-            }
-
-            // 其他情况才 dispose
-            entry.getValue().dispose();
         }
 
         textures = toKeep;
-        Logger.debug("Cleared textures, kept " + textures.size());
+        Logger.debug("Cleared all non-color textures, kept " + textures.size());
     }
+
 
 
     /**

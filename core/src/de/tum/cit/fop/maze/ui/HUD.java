@@ -16,7 +16,6 @@ import de.tum.cit.fop.maze.utils.TextureManager;
 public class HUD {
     private BitmapFont font;
     private GameManager gameManager;
-    private ShapeRenderer shapeRenderer; // 用于绘制指南针
     private TextureManager textureManager;
     private SpriteBatch uiBatchForCompass;
 
@@ -25,7 +24,6 @@ public class HUD {
         this.gameManager = gameManager;
         this.font = new BitmapFont();
         this.font.getData().setScale(1.2f);
-        this.shapeRenderer = new ShapeRenderer();
         this.textureManager = TextureManager.getInstance();
         Logger.debug("HUD initialized with compass support");
         this.uiBatchForCompass = new SpriteBatch();
@@ -88,21 +86,16 @@ public class HUD {
         Compass compass = gameManager.getCompass();
         if (!compass.isActive()) return;
 
-        // UI 投影
         Matrix4 uiMatrix = new Matrix4()
                 .setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-        shapeRenderer.setProjectionMatrix(uiMatrix);
         uiBatchForCompass.setProjectionMatrix(uiMatrix);
 
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         uiBatchForCompass.begin();
-
         compass.drawAsUI(uiBatchForCompass);
-
         uiBatchForCompass.end();
-        shapeRenderer.end();
     }
+
 
 
     /**
@@ -165,9 +158,7 @@ public class HUD {
         if (font != null) {
             font.dispose();
         }
-        if (shapeRenderer != null) {
-            shapeRenderer.dispose();
-        }
+
         if (uiBatchForCompass != null) {
             uiBatchForCompass.dispose();
         }
