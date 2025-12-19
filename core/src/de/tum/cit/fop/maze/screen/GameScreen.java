@@ -15,6 +15,7 @@ import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
+import de.tum.cit.fop.maze.utils.Logger;
 
 /**
  * The GameScreen class is responsible for rendering the gameplay screen.
@@ -109,7 +110,14 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
+        if (hud != null) hud.dispose();
+
+        if (worldBatch != null) worldBatch.dispose();
+        if (shapeRenderer != null) shapeRenderer.dispose();
+
+        Logger.debug("GameScreen disposed");
     }
+
 
     // Additional methods and logic can be added as needed for the game screen
     private void handleInput(float delta) {

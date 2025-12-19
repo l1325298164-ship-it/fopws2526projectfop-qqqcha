@@ -17,6 +17,8 @@ public class HUD {
     private GameManager gameManager;
     private ShapeRenderer shapeRenderer; // 用于绘制指南针
     private TextureManager textureManager;
+    private SpriteBatch uiBatchForCompass;
+
 
     public HUD(GameManager gameManager) {
         this.gameManager = gameManager;
@@ -25,6 +27,8 @@ public class HUD {
         this.shapeRenderer = new ShapeRenderer();
         this.textureManager = TextureManager.getInstance();
         Logger.debug("HUD initialized with compass support");
+        this.uiBatchForCompass = new SpriteBatch();
+
     }
 
     /**
@@ -64,6 +68,8 @@ public class HUD {
                     Gdx.graphics.getWidth() - 250,
                     Gdx.graphics.getHeight() - 20);
             }
+            // 6. 指南针
+            renderCompassAsUI();
 
         } catch (Exception e) {
             Logger.error("Error rendering in-game UI", e);
@@ -74,48 +80,27 @@ public class HUD {
      * 渲染指南针（UI模式）
      */
     public void renderCompassAsUI() {
-        if (gameManager == null || gameManager.getCompass() == null) {
-            return;
-        }
+        if (gameManager == null || gameManager.getCompass() == null) return;
 
         Compass compass = gameManager.getCompass();
-        if (!compass.isActive()) {
-            return;
-        }
+        if (!compass.isActive()) return;
 
-        try {
-            // 保存原始的投影矩阵
-            Matrix4 originalMatrix = shapeRenderer.getProjectionMatrix().cpy();
+        // UI 投影
+        Matrix4 uiMatrix = new Matrix4()
+                .setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-            // 设置ShapeRenderer使用屏幕坐标
-            shapeRenderer.setProjectionMatrix(
-                new Matrix4()
-                    .setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight())
-            );
+        shapeRenderer.setProjectionMatrix(uiMatrix);
+        uiBatchForCompass.setProjectionMatrix(uiMatrix);
 
-            // 创建一个临时的SpriteBatch用于指南针文字
-            SpriteBatch compassBatch = new SpriteBatch();
-            compassBatch.setProjectionMatrix(
-                new Matrix4()
-                    .setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight())
-            );
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        uiBatchForCompass.begin();
 
-            // 调用指南针的绘制方法
-            compassBatch.begin();
-            compass.drawAsUI(shapeRenderer, compassBatch);
-            compassBatch.end();
+        compass.drawAsUI(uiBatchForCompass);
 
-            compassBatch.dispose();
-
-            // 恢复原始的投影矩阵
-            shapeRenderer.setProjectionMatrix(originalMatrix);
-
-            Logger.debug("Compass rendered as UI by HUD");
-
-        } catch (Exception e) {
-            Logger.error("Error rendering compass as UI in HUD", e);
-        }
+        uiBatchForCompass.end();
+        shapeRenderer.end();
     }
+
 
     /**
      * 渲染游戏结束画面
@@ -180,6 +165,10 @@ public class HUD {
         if (shapeRenderer != null) {
             shapeRenderer.dispose();
         }
+        if (uiBatchForCompass != null) {
+            uiBatchForCompass.dispose();
+        }
+
         Logger.debug("HUD disposed");
     }
 }
