@@ -2,6 +2,7 @@
 package de.tum.cit.fop.maze.game;
 
 
+
 public enum GameState {
     PLAYING,
     PAUSED,
