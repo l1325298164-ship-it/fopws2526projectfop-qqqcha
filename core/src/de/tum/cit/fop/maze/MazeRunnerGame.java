@@ -29,6 +29,7 @@ public class MazeRunnerGame extends Game {
     public void create() {
         spriteBatch = new SpriteBatch();
         skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json"));
+        TextureManager.getInstance().switchMode(TextureManager.TextureMode.IMAGE);
         goToMenu();
     }
 

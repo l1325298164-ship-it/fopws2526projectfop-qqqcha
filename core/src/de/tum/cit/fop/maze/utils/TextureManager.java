@@ -67,13 +67,21 @@ public class TextureManager implements Disposable {
 
         // IMAGE 模式：映射到实际的图片文件
         Map<String, String> imageMode = new HashMap<>();
-        imageMode.put(FLOOR, "floor/780.jpg");      // 示例：使用为地板
-        imageMode.put(WALL, "Walls/wall_2.png");       // 使用wall 3.png作为墙壁
+
+        imageMode.put(FLOOR, "floor/780.jpg");
+        imageMode.put(WALL, "Walls/wall_2.png");
+
         imageMode.put(PLAYER, "Character/mainCharacter.png");
-        imageMode.put(KEY, "Items/key_1.gif");        // 示例：用libgdx图标作为钥匙
-        imageMode.put(DOOR, "images/wall 2 (1).png");   // 使用wall 2 (1).png作为门
-        imageMode.put(LOCKED_DOOR, "images/wall 2 (2).png"); // wall 2 (2).png作为锁着的门
-        imageMode.put(ENEMY1, "images/Enemy1.png");
+        imageMode.put(ENEMY1, "Character/Enemy1.png");
+
+        imageMode.put(KEY, "Items/key_1.gif");
+
+        imageMode.put(DOOR, "Walls/wall_1.png");
+        imageMode.put(LOCKED_DOOR, "Walls/wall_3.png");
+
+// 心心如果你有图可以补，没有也没关系
+// imageMode.put(HEART, "Items/heart.png");
+
         textureFileMap.put(TextureMode.IMAGE, imageMode);
 
         // PIXEL 模式：可以映射到像素风格的图片（如果没有，使用IMAGE模式的图片）
@@ -172,23 +180,31 @@ public class TextureManager implements Disposable {
      * 清理图片纹理（保留颜色纹理）
      */
     private void clearImageTextures() {
-        // 保留颜色纹理（以"color_"开头的键）
         Map<String, Texture> toKeep = new HashMap<>();
+
         for (Map.Entry<String, Texture> entry : textures.entrySet()) {
-            if (entry.getKey().startsWith("color_") || entry.getKey().contains(".")) {
-                toKeep.put(entry.getKey(), entry.getValue());
-            } else if (entry.getKey().equals(FLOOR) || entry.getKey().equals(WALL) ||
-                entry.getKey().equals(PLAYER) || entry.getKey().equals(KEY) ||
-                entry.getKey().equals(DOOR) || entry.getKey().equals(LOCKED_DOOR) ||
-                entry.getKey().equals(ENEMY1) || entry.getKey().equals(HEART)) {
-                // 这是图片纹理，需要清理
-                entry.getValue().dispose();
+            String key = entry.getKey();
+
+            // 永远保留颜色纹理
+            if (key.startsWith("color_")) {
+                toKeep.put(key, entry.getValue());
+                continue;
             }
+
+            // 当前是图片模式，保留图片
+            if (currentMode == TextureMode.IMAGE || currentMode == TextureMode.PIXEL) {
+                toKeep.put(key, entry.getValue());
+                continue;
+            }
+
+            // 其他情况才 dispose
+            entry.getValue().dispose();
         }
 
         textures = toKeep;
-        Logger.debug("Cleared image textures, kept " + textures.size() + " color textures");
+        Logger.debug("Cleared textures, kept " + textures.size());
     }
+
 
     /**
      * 获取纹理 - 智能选择
