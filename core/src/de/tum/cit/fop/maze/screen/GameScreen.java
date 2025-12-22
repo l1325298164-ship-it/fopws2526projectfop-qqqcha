@@ -9,7 +9,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.entities.GameObject;
+import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -17,6 +17,8 @@ import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
+
+import java.util.List;
 
 /**
  * The GameScreen class is responsible for rendering the gameplay screen.
@@ -112,13 +114,27 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
-        if (hud != null) hud.dispose();
+        if (hud != null) {
+            hud.dispose();
+            hud = null;
+        }
 
-        if (worldBatch != null) worldBatch.dispose();
-        if (shapeRenderer != null) shapeRenderer.dispose();
+        // ❌ 不要 dispose game.getSpriteBatch()
+        worldBatch = null;
+
+        if (uiBatch != null) {
+            uiBatch.dispose();
+            uiBatch = null;
+        }
+
+        if (shapeRenderer != null) {
+            shapeRenderer.dispose();
+            shapeRenderer = null;
+        }
 
         Logger.debug("GameScreen disposed");
     }
+
 
 
     // Additional methods and logic can be added as needed for the game screen
@@ -126,7 +142,9 @@ public class GameScreen implements Screen {
 
         // === 1. ESC 返回菜单 ===
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.goToMenu();
+            Gdx.app.postRunnable(() -> {
+                game.goToMenu();
+            });
             return;
         }
 
@@ -189,12 +207,30 @@ public class GameScreen implements Screen {
 
         // 2. 收集并排序
         var renderItems = collectAllRenderItems();
-        renderItems.sort((a, b) -> Float.compare(b.y, a.y));
+        renderItems.sort((a, b) -> {
+            // 1️⃣ 先按 y（视觉深度）
+            int yCompare = Float.compare(b.y, a.y);
+            if (yCompare != 0) return yCompare;
+
+            // 2️⃣ y 相同 → 按 priority
+            return Integer.compare(a.priority, b.priority);
+        });
+
 
         // 3. 渲染
         for (var item : renderItems) {
             if (item.type == RenderItemType.ENTITY) {
-                item.entity.drawSprite(worldBatch);
+
+                GameObject entity = item.entity;
+
+                if (entity.getRenderType() == GameObject.RenderType.SPRITE) {
+                    entity.drawSprite(worldBatch);
+                } else {
+                    worldBatch.end();
+                    entity.drawShape(shapeRenderer);
+                    worldBatch.begin();
+                }
+
             } else {
                 mazeRenderer.renderWallAtPosition(
                         worldBatch,
@@ -203,6 +239,7 @@ public class GameScreen implements Screen {
                 );
             }
         }
+
 
         worldBatch.end();
     }
@@ -213,20 +250,23 @@ public class GameScreen implements Screen {
     }
     private class RenderItem {
         float x, y;
+        int priority; // ⭐ 新增
         RenderItemType type;
         GameObject entity;
+
+        RenderItem(GameObject entity, int priority) {
+            this.entity = entity;
+            this.x = entity.getX();
+            this.y = entity.getY();
+            this.priority = priority;
+            this.type = RenderItemType.ENTITY;
+        }
 
         RenderItem(float x, float y, RenderItemType type) {
             this.x = x;
             this.y = y;
             this.type = type;
-        }
-
-        RenderItem(GameObject entity) {
-            this.entity = entity;
-            this.x = entity.getX();
-            this.y = entity.getY();
-            this.type = RenderItemType.ENTITY;
+            this.priority = 0;
         }
     }
     private java.util.List<RenderItem> collectAllRenderItems() {
@@ -264,29 +304,56 @@ public class GameScreen implements Screen {
             if (door != null && wallY > door.getY()) return true;
         }
 
+        // ⭐⭐⭐ 加这一段
+        for (Enemy enemy : gameManager.getEnemies()) {
+            if (enemy != null && enemy.isActive() && wallY > enemy.getY()) {
+                return true;
+            }
+        }
+
         return false;
     }
-    private void addAllEntities(java.util.List<RenderItem> items) {
-        items.add(new RenderItem(gameManager.getPlayer()));
-        for (var trap : gameManager.getTraps()) {
-            if (trap != null ) {
-                items.add(new RenderItem(trap));
+    private void addAllEntities(List<RenderItem> items) {
+
+        // Player
+        items.add(new RenderItem(gameManager.getPlayer(),100));
+
+        // Traps
+        for (Trap trap : gameManager.getTraps()) {
+            if (trap != null && trap.isActive()) {
+                items.add(new RenderItem(trap,10));
             }
         }
 
+        // ⭐⭐⭐ Enemies（你之前缺的就是这一段）
+        for (Enemy enemy : gameManager.getEnemies()) {
+            if (enemy != null && enemy.isActive()) {
+                items.add(new RenderItem(enemy,50));
+            }
+        }
 
-        var key = gameManager.getKey();
+        // ⭐⭐⭐ Enemy Bullets
+        for (EnemyBullet bullet : gameManager.getBullets()) {
+            if (bullet != null && bullet.isActive()) {
+                items.add(new RenderItem(bullet,100));
+            }
+        }
+
+        // Key
+        Key key = gameManager.getKey();
         if (key != null && key.isActive()) {
-            items.add(new RenderItem(key));
+            items.add(new RenderItem(key,20));
         }
 
-        for (var door : gameManager.getExitDoors()) {
+        // Exit Doors
+        for (ExitDoor door : gameManager.getExitDoors()) {
             if (door != null) {
-                items.add(new RenderItem(door));
+                items.add(new RenderItem(door,0));
             }
         }
-
     }
+
+
 
 
 
