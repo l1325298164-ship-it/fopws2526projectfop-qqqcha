@@ -17,6 +17,8 @@ public class GameManager  {
     private Key key;
     private List<ExitDoor> exitDoors; // 改为出口列表
     private List<Trap> traps;
+    private List<Enemy> enemies = new ArrayList<>();
+    private List<EnemyBullet> bullets = new ArrayList<>();
 
     private Compass compass;
     //maze
@@ -37,6 +39,8 @@ public class GameManager  {
         // 清空之前的出口
         exitDoors.clear();
         traps.clear();
+        enemies.clear();
+        bullets.clear();
 
 
         // 生成迷宫
@@ -57,6 +61,7 @@ public class GameManager  {
         // 生成出口
         generateExitDoors();
         generateTraps();
+        generateEnemies();
 
 
         compass = new Compass(player);
@@ -65,6 +70,9 @@ public class GameManager  {
         if (Logger.isDebugEnabled()) {
             mazeGenerator.printMazeForDebug(maze);
         }
+
+
+
     }
 
     private void generateExitDoors() {
@@ -167,6 +175,37 @@ public class GameManager  {
 
         Logger.gameEvent("Generated " + traps.size() + " traps");
     }
+    private void generateEnemies() {
+        int enemyCount = GameConstants.ENEMY_COUNT;
+        int attempts = 0;
+        int maxAttempts = 200;
+
+        // ✅ 用 enemies.size()
+        while (enemies.size() < enemyCount && attempts < maxAttempts) {
+            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
+            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
+            attempts++;
+
+            if (maze[y][x] != 1) continue;
+            if (Math.abs(x - player.getX()) + Math.abs(y - player.getY()) < 3) continue;
+            if (key != null && x == key.getX() && y == key.getY()) continue;
+
+            boolean overlapsDoor = false;
+            for (ExitDoor door : exitDoors) {
+                if (x == door.getX() && y == door.getY()) {
+                    overlapsDoor = true;
+                    break;
+                }
+            }
+            if (overlapsDoor) continue;
+
+            enemies.add(new EnemyE01_CorruptedPearl(x, y));
+            Logger.debug("EnemyE01_CorruptedPearl generated at (" + x + ", " + y + ")");
+        }
+
+        Logger.gameEvent("Generated " + enemies.size() + " enemies");
+    }
+
 
 
     /**
@@ -346,6 +385,15 @@ public class GameManager  {
         checkKeyCollection();
         checkTrapCollision();
 
+        for (Enemy e : enemies) {
+            e.update(deltaTime, this);
+        }
+
+        for (EnemyBullet b : bullets) {
+            b.update(deltaTime, this);
+        }
+
+
 
         // 总是查找最近的出口（包括锁定的）
         ExitDoor nearestExit = findNearestExit();
@@ -363,6 +411,10 @@ public class GameManager  {
         }
 
         checkExit();
+
+        enemies.removeIf(e -> e == null || e.isDead());
+        bullets.removeIf(b -> b == null || !b.isActive());
+
     }
 
     private void checkTrapCollision() {
@@ -476,6 +528,16 @@ public class GameManager  {
 
         return maze[y][x] == 1;
     }
+    public boolean isEnemyValidMove(int x, int y) {
+        if (x < 0 || x >= GameConstants.MAZE_WIDTH ||
+                y < 0 || y >= GameConstants.MAZE_HEIGHT) {
+            return false;
+        }
+
+        // 敌人只能走通路
+        return maze[y][x] == 1;
+    }
+
     // ✅ 添加这个方法：提供只读访问
     public int getMazeCell(int x, int y) {
         if (isValidCoordinate(x, y)) {
@@ -490,26 +552,7 @@ public class GameManager  {
     }
 
 
-    public boolean isPlayerAtEdge() {
-        Player player = getPlayer();
-        if (player == null) return false;
 
-        // 检查玩家是否靠近地图边缘
-        int edgeThreshold = 3;
-        return player.getX() <= edgeThreshold ||
-                player.getX() >= GameConstants.MAZE_WIDTH - edgeThreshold - 1 ||
-                player.getY() <= edgeThreshold ||
-                player.getY() >= GameConstants.MAZE_HEIGHT - edgeThreshold - 1;
-    }
-    public float[] getCameraBounds() {
-        // 返回相机应该限制的范围
-        return new float[] {
-                GameConstants.MIN_CAMERA_X,
-                GameConstants.MAX_CAMERA_X,
-                GameConstants.MIN_CAMERA_Y,
-                GameConstants.MAX_CAMERA_Y
-        };
-    }
 
 
     // Getter methods
@@ -570,6 +613,20 @@ public class GameManager  {
         return traps;
     }
 
+    public List<Enemy> getEnemies() {
+        return enemies;
+    }
+
+    public List<EnemyBullet> getBullets() {
+        return bullets;
+    }
+    public void spawnEnemy(Enemy enemy) {
+        enemies.add(enemy);
+    }
+
+    public void spawnProjectile(EnemyBullet bullet) {
+        bullets.add(bullet);
+    }
 
 
 }
