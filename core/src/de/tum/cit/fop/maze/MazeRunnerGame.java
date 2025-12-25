@@ -9,7 +9,7 @@ import de.tum.cit.fop.maze.screen.GameScreen;
 import de.tum.cit.fop.maze.screen.MenuScreen;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
-// 添加 Audio导入
+// 添加 Audio的导入
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.audio.AudioConfig;
