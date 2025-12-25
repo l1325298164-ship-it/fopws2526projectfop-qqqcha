@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.accoustic;
+package de.tum.cit.fop.maze.acoustic;
 
 public class SoundConfig {
     private String name;        // 音效名称

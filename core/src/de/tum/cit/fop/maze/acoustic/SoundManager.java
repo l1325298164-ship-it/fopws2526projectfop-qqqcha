@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.accoustic;
+package de.tum.cit.fop.maze.acoustic;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Sound;

@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.accoustic;
+package de.tum.cit.fop.maze.acoustic;
 
     public enum SoundType {
         // ========== 背景音乐 ==========
