@@ -3,20 +3,14 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.audio.Music;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.screen.GameScreen;
 import de.tum.cit.fop.maze.screen.MenuScreen;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
-import games.spooky.gdx.nativefilechooser.NativeFileChooser;
 // 添加 SoundManager 导入
-import de.tum.cit.fop.maze.accoustic.SoundManager;
+import de.tum.cit.fop.maze.acoustic.SoundManager;
 
 /**
  * The MazeRunnerGame class represents the core of the Maze Runner game.
