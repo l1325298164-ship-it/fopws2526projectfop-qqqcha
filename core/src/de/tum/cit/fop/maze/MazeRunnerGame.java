@@ -10,7 +10,7 @@ import de.tum.cit.fop.maze.screen.MenuScreen;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 // 添加 SoundManager 导入
-import de.tum.cit.fop.maze.acoustic.SoundManager;
+import de.tum.cit.fop.maze.audio.AudioManager;
 
 /**
  * The MazeRunnerGame class represents the core of the Maze Runner game.
@@ -20,7 +20,7 @@ public class MazeRunnerGame extends Game {
 
     private SpriteBatch spriteBatch;
     private Skin skin;
-    private SoundManager soundManager;  // 添加音效管理器字段
+    private AudioManager audioManager;  // 添加音效管理器字段
 
     @Override
     public void create() {
@@ -37,8 +37,8 @@ public class MazeRunnerGame extends Game {
         setScreen(new GameScreen(this));
         if (old != null) old.dispose();
         // 切换到游戏屏幕时确保音乐继续播放
-        if (soundManager != null) {
-            soundManager.resumeMusic();
+        if (audioManager != null) {
+            audioManager.resumeMusic();
         }
     }
 
@@ -47,8 +47,8 @@ public class MazeRunnerGame extends Game {
         setScreen(new MenuScreen(this));
         if (old != null) old.dispose();
         // 切换到菜单屏幕时确保音乐继续播放
-        if (soundManager != null) {
-            soundManager.resumeMusic();
+        if (audioManager != null) {
+            audioManager.resumeMusic();
         }
     }
 
@@ -66,16 +66,16 @@ public class MazeRunnerGame extends Game {
      */
     private void initializeSoundManager() {
         try {
-            soundManager = SoundManager.getInstance();
-            soundManager.preloadAllSounds();
+            audioManager = AudioManager.getInstance();
+            audioManager.preloadAllSounds();
 
             // 设置全局音量
-            soundManager.setMasterVolume(1.0f);
-            soundManager.setMusicVolume(0.6f);      // 背景音乐音量
-            soundManager.setSoundEffectsVolume(0.8f); // 音效音量
+            audioManager.setMasterVolume(1.0f);
+            audioManager.setMusicVolume(0.6f);      // 背景音乐音量
+            audioManager.setSoundEffectsVolume(0.8f); // 音效音量
 
             // 确保背景音乐播放（如果 SoundManager 不支持 autoPlay，可以手动调用）
-            soundManager.playMusic("background");
+            audioManager.playMusic("background");
 
             Logger.debug("音效系统初始化完成");
         } catch (Exception e) {
@@ -87,8 +87,8 @@ public class MazeRunnerGame extends Game {
     /**
      * 获取音效管理器
      */
-    public SoundManager getSoundManager() {
-        return soundManager;
+    public AudioManager getSoundManager() {
+        return audioManager;
     }
 
     @Override
@@ -98,8 +98,8 @@ public class MazeRunnerGame extends Game {
         if (spriteBatch != null) spriteBatch.dispose();
         if (skin != null) skin.dispose();
         // 清理音效资源
-        if (soundManager != null) {
-            soundManager.dispose();
+        if (audioManager != null) {
+            audioManager.dispose();
         }
 
         TextureManager.getInstance().dispose();
