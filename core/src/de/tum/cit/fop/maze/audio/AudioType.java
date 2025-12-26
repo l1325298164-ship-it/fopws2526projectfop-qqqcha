@@ -6,20 +6,20 @@ package de.tum.cit.fop.maze.audio;
  */
 public enum AudioType {
     // === 音乐 ===
-    MUSIC_MENU("music/menu-background.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MENU("sounds/music/menu-background.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
 
     // === 玩家音效 ===
-    PLAYER_MOVE("sfx/player/move01.wav", AudioCategory.PLAYER, false, 0.8f, true, false),
-    PLAYER_GET_KEY("sfx/player/get-key.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
-    PLAYER_HIT_WALL("sfx/player/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
-    PLAYER_ATTACKED("sfx/player/attacked01.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
+    PLAYER_MOVE("sounds/sfx/player/move01.wav", AudioCategory.PLAYER, false, 0.8f, true, false),
+    PLAYER_GET_KEY("sounds/sfx/player/get-key.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
+    PLAYER_HIT_WALL("sounds/sfx/player/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
+    PLAYER_ATTACKED("sounds/sfx/player/attacked01.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
 
     // === UI音效 ===
-    UI_CLICK("sfx/ui/click01.wav", AudioCategory.UI, false, 0.6f, false, true),
-    UI_SUCCESS("sfx/ui/enter-next-level.ogg", AudioCategory.UI, false, 0.8f, false, true),
-    UI_FAILURE("sfx/ui/game-failure.wav", AudioCategory.UI, false, 0.8f, false, true),
-    UI_HIT_DAZZLE("sfx/ui/hit-dazzle.wav", AudioCategory.UI, false, 1.0f, false, true),
-    UI_THROW_ATTACK("sfx/ui/throw-attack.wav", AudioCategory.UI, false, 1.0f, false, true);
+    UI_CLICK("sounds/sfx/ui/click01.wav", AudioCategory.UI, false, 0.6f, false, true),
+    UI_SUCCESS("sounds/sfx/ui/enter-next-level.ogg", AudioCategory.UI, false, 0.8f, false, true),
+    UI_FAILURE("sounds/sfx/ui/game-failure.wav", AudioCategory.UI, false, 0.8f, false, true),
+    UI_HIT_DAZZLE("sounds/sfx/ui/hit-dazzle.wav", AudioCategory.UI, false, 1.0f, false, true),
+    UI_THROW_ATTACK("sounds/sfx/ui/throw-attack.wav", AudioCategory.UI, false, 1.0f, false, true);
 
     private final String path;
     private final AudioCategory category;
