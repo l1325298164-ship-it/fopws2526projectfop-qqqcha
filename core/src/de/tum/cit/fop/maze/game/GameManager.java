@@ -629,4 +629,50 @@ public class GameManager  {
     }
 
 
+    public void setMaze(int[][] qteMaze) {
+        Logger.debug("GameManager.setMaze() - using fixed QTE maze");
+
+        // 1️⃣ 设置迷宫（深拷贝，防止外部改）
+        this.maze = new int[qteMaze.length][];
+        for (int i = 0; i < qteMaze.length; i++) {
+            this.maze[i] = Arrays.copyOf(qteMaze[i], qteMaze[i].length);
+        }
+
+        // 2️⃣ 清空与 QTE 无关的内容
+        exitDoors.clear();
+        traps.clear();
+        enemies.clear();
+        bullets.clear();
+        key = null;
+        compass = null;
+
+        // 3️⃣ 创建 / 重置玩家
+        // 👉 默认放在第一个通路格
+        int spawnX = 1;
+        int spawnY = 1;
+
+        outer:
+        for (int y = 0; y < maze.length; y++) {
+            for (int x = 0; x < maze[y].length; x++) {
+                if (maze[y][x] == 1) {
+                    spawnX = x;
+                    spawnY = y;
+                    break outer;
+                }
+            }
+        }
+
+        if (player == null) {
+            player = new Player(spawnX, spawnY);
+        } else {
+            player.setPosition(spawnX, spawnY);
+        }
+
+        // 4️⃣ 强制状态为 PLAYING（QTE 用）
+        gameState = GameState.PLAYING;
+
+        Logger.debug("QTE maze loaded, player spawned at (" +
+                spawnX + ", " + spawnY + ")");
+    }
+
 }

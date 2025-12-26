@@ -8,7 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import de.tum.cit.fop.maze.screen.GameScreen;
 import de.tum.cit.fop.maze.screen.IntroScreen;
 import de.tum.cit.fop.maze.screen.MenuScreen;
-import de.tum.cit.fop.maze.screen.QTCScreen;
+import de.tum.cit.fop.maze.screen.QTEScreen;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 // 添加 Audio的导入
@@ -36,9 +36,9 @@ public class MazeRunnerGame extends Game {
         goToMenu();
     }
 
-    public void goToQTC() {
+    public void goToQTE() {
         Screen old= getScreen();
-        setScreen(new QTCScreen(this));
+        setScreen(new QTEScreen(this));
         if (old != null) old.dispose();
         audioManager.stopAll();
     }
