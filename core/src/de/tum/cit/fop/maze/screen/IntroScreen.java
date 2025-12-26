@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 
 public class IntroScreen implements Screen {
@@ -42,20 +43,19 @@ public class IntroScreen implements Screen {
     public void render(float delta) {
         stateTime += delta;
 
-        TextureRegion frame = pvAnim.getKeyFrame(stateTime);
+        ScreenUtils.clear(0, 0, 0, 1);
 
         batch.begin();
-        batch.draw(frame, 0, 0, Gdx.graphics.getWidth(),
-                Gdx.graphics.getHeight()); // 全屏 PV
+        TextureRegion frame = pvAnim.getKeyFrame(stateTime);
+        batch.draw(frame, 0, 0, 1920, 1080);
         batch.end();
 
-        // ✅ 关键：PV 播完 → 切状态
+        // ✅ 只切 Screen，不 dispose
         if (pvAnim.isAnimationFinished(stateTime)) {
-            game.goToQTC();
-            dispose();
+            game.goToQTE(); // 或 setScreen(new ...)
         }
-
     }
+
 
     @Override
     public void resize(int i, int i1) {
