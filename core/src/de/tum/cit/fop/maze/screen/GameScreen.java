@@ -42,6 +42,10 @@ public class GameScreen implements Screen {
     private SpriteBatch uiBatch;
     private ShapeRenderer shapeRenderer;
 
+    private boolean isPlayerMoving = false;
+
+
+
 
 
 
@@ -141,6 +145,11 @@ public class GameScreen implements Screen {
 
     // Additional methods and logic can be added as needed for the game screen
     private void handleInput(float delta) {
+        boolean isTryingToMove =
+                Gdx.input.isKeyPressed(Input.Keys.UP) ||
+                        Gdx.input.isKeyPressed(Input.Keys.DOWN) ||
+                        Gdx.input.isKeyPressed(Input.Keys.LEFT) ||
+                        Gdx.input.isKeyPressed(Input.Keys.RIGHT);
 
         // === 1. ESC 返回菜单 ===
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -188,15 +197,28 @@ public class GameScreen implements Screen {
         }
 
         // === 4. 玩家移动 ===
+
         inputHandler.update(delta, (dx, dy) -> {
             int nx = gameManager.getPlayer().getX() + dx;
             int ny = gameManager.getPlayer().getY() + dy;
 
             if (gameManager.isValidMove(nx, ny)) {
                 gameManager.getPlayer().move(dx, dy);
-                AudioManager.getInstance().playPlayerMove();
             }
         });
+        if (isTryingToMove) {
+            if (!isPlayerMoving) {
+                AudioManager.getInstance().playPlayerMove();
+                isPlayerMoving = true;
+            }
+        } else {
+            if (isPlayerMoving) {
+                AudioManager.getInstance().stopPlayerMove();
+                isPlayerMoving = false;
+            }
+        }
+
+
     }
 
     private void renderWorld() {

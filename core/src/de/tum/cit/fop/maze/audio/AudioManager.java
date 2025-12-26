@@ -310,12 +310,12 @@ public class AudioManager implements Disposable {
     public void playPlayerMove() {
         String moveId = AudioType.PLAYER_MOVE.name();
 
-        // 如果已经在播放移动音效，先停止
+        // ⭐ 如果已经在播放，就什么都不做
         if (activeSounds.containsKey(moveId)) {
-            stopSound(moveId);
+            return;
         }
 
-        // 播放循环移动音效
+        // ⭐ 只在“第一次开始移动”时播放 loop 音效
         playSound(moveId, 1.0f, 1.0f, 0.0f);
     }
 
