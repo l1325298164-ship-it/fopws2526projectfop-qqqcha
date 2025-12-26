@@ -1,243 +1,287 @@
+{
+  "file_name": "craftacular-ui.png",
+  "size": [2048, 1024],
+  "repeat": "none",
+  "bounds": [
+  [1776, 794, 35, 42]
+  ],
+  "letter_a": [
+  [1883, 882, 36, 36]
+  ],
+  "letter_b": [
+  [1628, 788, 36, 48]
+  ],
+  "letter_c": [
+  [1992, 894, 34, 36]
+  ],
+  "letter_d": [
+  [680, 355, 36, 48]
+  ],
+  "letter_e": [
+  [1921, 882, 35, 36]
+  ],
+  "letter_f": [
+  [365, 182, 35, 52]
+  ],
+  "letter_g": [
+  [106, 20, 36, 51]
+  ],
+  "letter_h": [
+  [365, 236, 35, 54]
+  ],
+  "letter_i": [
+  [773, 418, 11, 48]
+  ],
+  "letter_j": [
+  [1853, 852, 17, 64]
+  ],
+  "letter_k": [
+  [1666, 789, 34, 47]
+  ],
+  "letter_l": [
+  [279, 23, 10, 50]
+  ],
+  "letter_m": [
+  [365, 292, 53, 42]
+  ],
+  "letter_n": [
+  [1776, 794, 35, 42]
+  ],
+  "letter_o": [
+  [1813, 800, 38, 36]
+  ],
+  "letter_p": [
+  [420, 238, 36, 51]
+  ],
+  "letter_q": [
+  [365, 129, 36, 51]
+  ],
+  "letter_r": [
+  [1170, 700, 29, 35]
+  ],
+  "letter_s": [
+  [1958, 882, 32, 36]
+  ],
+  "letter_t": [
+  [1194, 744, 27, 47]
+  ],
+  "letter_u": [
+  [242, 38, 35, 35]
+  ],
+  "letter_v": [
+  [242, 2, 35, 34]
+  ],
+  "letter_w": [
+  [991, 441, 48, 34]
+  ],
+  "letter_x": [
+  [291, 41, 34, 34]
+  ],
+  "letter_y": [
+  [372, 77, 35, 50]
+  ],
+  "letter_z": [
+  [359, 41, 29, 34]
+  ],
+  "navitem": [
+  [2, 706, 698, 104],
+  [712, 918, 698, 104],
+  [1648, 838, 203, 78],
+  [2, 520, 466, 78],
+  [938, 626, 203, 78],
+  [470, 626, 466, 78],
+  [470, 468, 156, 156],
+  [628, 468, 156, 156],
+  [1880, 920, 102, 102],
+  [2, 20, 102, 102],
+  [2, 918, 708, 104],
+  [2, 812, 708, 104],
+  [991, 522, 102, 102],
+  [786, 520, 203, 104],
+  [712, 812, 466, 104],
+  [160, 228, 203, 104],
+  [2, 600, 466, 104],
+  [786, 440, 203, 78],
+  [2, 440, 466, 78],
+  [470, 388, 203, 78],
+  [1180, 838, 466, 78],
+  [365, 336, 102, 102],
+  [160, 334, 203, 104],
+  [1412, 918, 466, 104],
+  [160, 122, 203, 104],
+  [702, 706, 466, 104],
+  [2, 282, 156, 156],
+  [2, 124, 156, 156]
+  ],
+  "number": [
+  [469, 341, 42, 45],
+  [513, 341, 42, 45],
+  [557, 341, 42, 45],
+  [601, 342, 42, 44],
+  [1048, 476, 42, 44],
+  [157, 76, 42, 44],
+  [1223, 792, 40, 44],
+  [1388, 793, 39, 43],
+  [1702, 793, 35, 43],
+  [431, 148, 23, 43]
+  ],
+  "sign_!": [
+  [2031, 930, 13, 47]
+  ],
+  "sign_#": [
+  [327, 41, 30, 34]
+  ],
+  "sign_$": [
+  [402, 189, 24, 45]
+  ],
+  "sign_%": [
+  [1041, 433, 43, 41]
+  ],
+  "sign_&": [
+  [1984, 932, 45, 45]
+  ],
+  "sign_double": [
+  [2, 2, 25, 16]
+  ],
+  "sign_\"": [
+  [2, 2, 25, 16]
+  ],
+  "sign_+": [
+  [786, 415, 25, 23]
+  ],
+  "sign_,": [
+  [69, 2, 11, 16]
+  ],
+  "sign_-": [
+  [751, 413, 20, 6]
+  ],
+  "sign_;": [
+  [390, 39, 11, 36]
+  ],
+  "sign_=": [
+  [29, 2, 25, 16]
+  ],
+  "sign_@": [
+  [106, 73, 49, 49]
+  ],
+  "sign_[": [
+  [144, 17, 16, 54]
+  ],
+  "sign_]": [
+  [402, 236, 16, 54]
+  ],
+  "sign_backslash": [
+  [428, 193, 26, 43]
+  ],
+  "sign_bigger": [
+  [813, 410, 21, 28]
+  ],
+  "sign_l": [
+  [1872, 862, 9, 54]
+  ],
+  "sign_qusk": [
+  [645, 339, 33, 47]
+  ],
+  "sign_slash": [
+  [403, 144, 26, 43]
+  ],
+  "sign_smaller": [
+  [836, 410, 21, 28]
+  ],
+  "sign_star": [
+  [279, 2, 19, 19]
+  ],
+  "sign_talk": [
+  [2028, 896, 11, 32]
+  ],
+  "sign_underline": [
+  [724, 413, 25, 6]
+  ],
+  "sign_{": [
+  [1853, 796, 23, 54]
+  ],
+  "sign_}": [
+  [1170, 737, 22, 54]
+  ],
+  "sign_`": [
+  [56, 2, 11, 16]
+  ],
+  "topletter_a": [
+  [1095, 571, 41, 53]
+  ],
+  "topletter_b": [
+  [1429, 793, 39, 43]
+  ],
+  "topletter_c": [
+  [1095, 524, 41, 45]
+  ],
+  "topletter_d": [
+  [287, 77, 41, 43]
+  ],
+  "topletter_e": [
+  [195, 31, 31, 43]
+  ],
+  "topletter_f": [
+  [162, 31, 31, 43]
+  ],
+  "topletter_g": [
+  [244, 75, 41, 45]
+  ],
+  "topletter_h": [
+  [1347, 793, 39, 43]
+  ],
+  "topletter_i": [
+  [228, 31, 12, 43]
+  ],
+  "topletter_j": [
+  [1143, 645, 19, 59]
+  ],
+  "topletter_k": [
+  [1306, 793, 39, 43]
+  ],
+  "topletter_l": [
+  [1223, 747, 31, 43]
+  ],
+  "topletter_m": [
+  [991, 477, 55, 43]
+  ],
+  "topletter_n": [
+  [1265, 793, 39, 43]
+  ],
+  "topletter_o": [
+  [724, 421, 47, 45]
+  ],
+  "topletter_p": [
+  [1510, 793, 38, 43]
+  ],
+  "topletter_q": [
+  [675, 405, 47, 61]
+  ],
+  "topletter_r": [
+  [1550, 793, 38, 43]
+  ],
+  "topletter_s": [
+  [1470, 791, 38, 45]
+  ],
+  "topletter_t": [
+  [1739, 793, 35, 43]
+  ],
+  "topletter_u": [
+  [201, 76, 41, 44]
+  ],
+  "topletter_v": [
+  [420, 291, 42, 43]
+  ],
+  "topletter_w": [
+  [1984, 979, 58, 43]
+  ],
+  "topletter_x": [
+  [1180, 793, 41, 43]
+  ],
+  "topletter_y": [
+  [330, 77, 40, 43]
+  ],
+  "topletter_z": [
+  [1590, 793, 36, 43]
+  ]
 
-craftacular-ui.png
-size: 1024,1024
-format: RGBA8888
-filter: Linear,Linear
-repeat: none
-armor
-  rotate: false
-  xy: 977, 893
-  size: 18, 18
-  orig: 18, 18
-  offset: 0, 0
-  index: -1
-armor-bg
-  rotate: false
-  xy: 857, 544
-  size: 18, 18
-  orig: 18, 18
-  offset: 0, 0
-  index: -1
-button
-  rotate: false
-  xy: 1, 309
-  size: 372, 65
-  split: 7, 7, 7, 11
-  pad: 8, 8, 8, 12
-  orig: 372, 65
-  offset: 0, 0
-  index: -1
-button-disabled
-  rotate: false
-  xy: 650, 958
-  size: 372, 65
-  split: 7, 7, 7, 11
-  pad: 8, 8, 8, 12
-  orig: 372, 65
-  offset: 0, 0
-  index: -1
-slider
-  rotate: false
-  xy: 650, 958
-  size: 372, 65
-  split: 7, 7, 7, 11
-  pad: 0, 0, 3, 3
-  orig: 372, 65
-  offset: 0, 0
-  index: -1
-button-hover
-  rotate: false
-  xy: 1, 242
-  size: 372, 65
-  split: 7, 7, 7, 11
-  pad: 8, 8, 8, 12
-  orig: 372, 65
-  offset: 0, 0
-  index: -1
-cell
-  rotate: false
-  xy: 523, 295
-  size: 11, 11
-  split: 4, 4, 4, 4
-  orig: 11, 11
-  offset: 0, 0
-  index: -1
-craftacular-mockup
-  rotate: false
-  xy: 650, 631
-  size: 325, 325
-  orig: 325, 325
-  offset: 0, 0
-  index: -1
-cursor
-  rotate: false
-  xy: 886, 623
-  size: 18, 6
-  split: 0, 17, 0, 5
-  orig: 18, 6
-  offset: 0, 0
-  index: -1
-dirt
-  rotate: false
-  xy: 227, 94
-  size: 146, 146
-  orig: 146, 146
-  offset: 0, 0
-  index: -1
-font-bold-export
-  rotate: false
-  xy: 1, 13
-  size: 224, 227
-  orig: 224, 227
-  offset: 0, 0
-  index: -1
-font-export
-  rotate: false
-  xy: 650, 424
-  size: 205, 205
-  orig: 205, 205
-  offset: 0, 0
-  index: -1
-font-title-export
-  rotate: false
-  xy: 1, 376
-  size: 647, 647
-  orig: 647, 647
-  offset: 0, 0
-  index: -1
-heart
-  rotate: false
-  xy: 650, 379
-  size: 18, 18
-  orig: 18, 18
-  offset: 0, 0
-  index: -1
-heart-bg
-  rotate: false
-  xy: 675, 404
-  size: 18, 18
-  orig: 18, 18
-  offset: 0, 0
-  index: -1
-meat
-  rotate: false
-  xy: 227, 71
-  size: 18, 18
-  orig: 18, 18
-  offset: 0, 0
-  index: -1
-meat-bg
-  rotate: false
-  xy: 375, 140
-  size: 18, 18
-  orig: 18, 18
-  offset: 0, 0
-  index: -1
-scroll-bg
-  rotate: false
-  xy: 375, 171
-  size: 146, 146
-  split: 0, 0, 14, 14
-  pad: 0, 0, 0, 1
-  orig: 146, 146
-  offset: 0, 0
-  index: -1
-scroll-horizontal
-  rotate: false
-  xy: 1022, 931
-  size: 1, 22
-  split: 0, 0, 0, 0
-  orig: 1, 22
-  offset: 0, 0
-  index: -1
-scroll-knob-horizontal
-  rotate: false
-  xy: 977, 869
-  size: 5, 22
-  split: 0, 4, 0, 4
-  pad: 1, 0, 0, 0
-  orig: 5, 22
-  offset: 0, 0
-  index: -1
-scroll-knob-vertical
-  rotate: false
-  xy: 1, 6
-  size: 22, 5
-  split: 0, 4, 0, 4
-  pad: 0, 0, 0, 0
-  orig: 22, 5
-  offset: 0, 0
-  index: -1
-scroll-vertical
-  rotate: false
-  xy: 227, 91
-  size: 22, 1
-  split: 0, 0, 0, 0
-  orig: 22, 1
-  offset: 0, 0
-  index: -1
-slider-knob
-  rotate: false
-  xy: 857, 564
-  size: 27, 65
-  split: 7, 7, 7, 11
-  orig: 27, 65
-  offset: 0, 0
-  index: -1
-text-field
-  rotate: false
-  xy: 375, 319
-  size: 268, 55
-  split: 3, 3, 3, 3
-  pad: 4, 4, 4, 4
-  orig: 268, 55
-  offset: 0, 0
-  index: -1
-tooltip
-  rotate: false
-  xy: 650, 399
-  size: 23, 23
-  split: 8, 8, 9, 8
-  pad: 7, 7, 8, 7
-  orig: 23, 23
-  offset: 0, 0
-  index: -1
-underline
-  rotate: false
-  xy: 398, 162
-  size: 5, 7
-  split: 2, 2, 0, 6
-  pad: 0, 0, 0, 6
-  orig: 5, 7
-  offset: 0, 0
-  index: -1
-white
-  rotate: false
-  xy: 1022, 955
-  size: 1, 1
-  orig: 1, 1
-  offset: 0, 0
-  index: -1
-window
-  rotate: false
-  xy: 977, 913
-  size: 43, 43
-  split: 16, 16, 16, 16
-  pad: 13, 13, 13, 13
-  orig: 43, 43
-  offset: 0, 0
-  index: -1
-xp
-  rotate: false
-  xy: 375, 160
-  size: 21, 9
-  orig: 21, 9
-  offset: 0, 0
-  index: -1
-xp-bg
-  rotate: false
-  xy: 523, 308
-  size: 21, 9
-  orig: 21, 9
-  offset: 0, 0
-  index: -1
