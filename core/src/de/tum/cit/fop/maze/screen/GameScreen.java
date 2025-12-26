@@ -9,6 +9,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
@@ -192,6 +194,7 @@ public class GameScreen implements Screen {
 
             if (gameManager.isValidMove(nx, ny)) {
                 gameManager.getPlayer().move(dx, dy);
+                AudioManager.getInstance().playPlayerMove();
             }
         });
     }
