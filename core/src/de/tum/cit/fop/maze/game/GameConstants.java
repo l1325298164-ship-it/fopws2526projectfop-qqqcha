@@ -28,7 +28,6 @@ public class GameConstants {
     public static final float MAX_CAMERA_X = MAZE_WIDTH * CELL_SIZE - VIEWPORT_WIDTH / 2;
     public static final float MAX_CAMERA_Y = MAZE_HEIGHT * CELL_SIZE - VIEWPORT_HEIGHT / 2;
 
-
     // 颜色常量
     public static final Color FLOOR_COLOR = new Color(0f, 200f/255f, 0f, 1f);
     public static final Color WALL_COLOR = new Color(100f/255f, 100f/255f, 100f/255f, 1f);
