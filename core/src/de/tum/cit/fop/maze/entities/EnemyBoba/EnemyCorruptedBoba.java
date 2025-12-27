@@ -8,136 +8,124 @@ import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
-/**
- * 堕落珍珠敌人 (Corrupted Boba Enemy)
- * 行为：巡逻 -> 蓄力(吸取珍珠) -> 喷射
- * 特效：程序化动画 (蓄力拉伸、发射压扁)
- */
 public class EnemyCorruptedBoba extends Enemy {
 
     private enum State {
         PATROL,
-        PREPARE, // 蓄力阶段 (Sucking up)
-        ATTACK,  // 攻击瞬间 (Spitting)
-        COOLDOWN // 攻击后摇
+        CHASE,   // 追击状态
+        PREPARE, // 蓄力 (停止移动)
+        ATTACK,  // 发射
+        COOLDOWN
     }
 
     private State state = State.PATROL;
     private float stateTimer = 0f;
 
-    // 战斗参数
-    private final float PREPARE_TIME = 0.6f; // 蓄力时间
-    private final float COOLDOWN_TIME = 1.0f;
-    private final float DETECT_RANGE = 7f;
+    // 距离参数
+    private final float DETECT_RANGE = 7f; // 发现玩家的距离
+    private final float ATTACK_RANGE = 3.5f; // 开始蓄力攻击的距离 (这就意味着它会追到3.5格才停下)
 
-    // 视觉参数 (程序化动画)
+    private final float PREPARE_TIME = 0.6f;
+    private final float COOLDOWN_TIME = 1.0f;
+
+    // 视觉参数
     private float scaleX = 1.0f;
     private float scaleY = 1.0f;
     private float shakeOffsetX = 0f;
     private float shakeOffsetY = 0f;
 
-    // 颜色脉冲
-    private float colorPulseTimer = 0f;
-
     public EnemyCorruptedBoba(int x, int y) {
         super(x, y);
-        this.hp = 8;        // 比普通敌人肉一点
-        this.attack = 15;   // 珍珠伤害较高
-        this.moveSpeed = 4.0f;
-
-        // 初始化贴图
+        this.hp = 8;
+        this.attack = 15;
+        this.moveSpeed = 3.5f; // 稍微调快一点，方便追击
         updateTexture();
     }
 
     @Override
     public void update(float delta, GameManager gm) {
         if (!active) return;
+        // ⭐【修复 1】必须添加这行，否则敌人动一步就会永远卡住
+        moveCooldown -= delta;
 
         Player player = gm.getPlayer();
         float dist = distanceTo(player);
         stateTimer += delta;
-        colorPulseTimer += delta;
 
+        // 状态机
         switch (state) {
             case PATROL:
-                handlePatrol(delta, gm, dist);
+                // 巡逻：随机走，看到玩家就追
+                tryMoveRandom(delta, gm);
+                if (dist <= DETECT_RANGE) {
+                    transitionTo(State.CHASE);
+                }
                 break;
+
+            case CHASE:
+                // 追击：走向玩家
+                moveToward(player.getX(), player.getY(), gm);
+
+                // 距离够近 -> 蓄力准备攻击
+                if (dist <= ATTACK_RANGE) {
+                    transitionTo(State.PREPARE);
+                }
+                // 玩家跑太远 -> 放弃追击
+                else if (dist > DETECT_RANGE * 1.5f) {
+                    transitionTo(State.PATROL);
+                }
+                break;
+
             case PREPARE:
-                handlePrepare(delta, gm);
+                // 蓄力：原地不动，调整朝向，等待动画
+                if (stateTimer >= PREPARE_TIME) {
+                    transitionTo(State.ATTACK);
+                }
+                // 如果蓄力时玩家跑出射程，是否取消？目前保持必发，增加难度
                 break;
+
             case ATTACK:
-                handleAttack(gm, player); // 只执行一帧
+                handleAttack(gm, player);
                 break;
+
             case COOLDOWN:
-                handleCooldown(delta);
+                if (stateTimer >= COOLDOWN_TIME) {
+                    // 冷却结束，如果玩家还在附近继续追，否则巡逻
+                    if (dist <= DETECT_RANGE) {
+                        transitionTo(State.CHASE);
+                    } else {
+                        transitionTo(State.PATROL);
+                    }
+                }
                 break;
         }
 
-        // 更新视觉动画 (果冻效果)
         updateProceduralAnimation(delta);
     }
 
-    // ================= 行为逻辑 =================
-
-    private void handlePatrol(float delta, GameManager gm, float dist) {
-        // 1. 简单的随机巡逻
-        tryMoveRandom(delta, gm);
-
-        // 2. 索敌
-        if (dist <= DETECT_RANGE) {
-            // 发现玩家，进入蓄力状态
-            transitionTo(State.PREPARE);
-        }
-    }
-
-    private void handlePrepare(float delta, GameManager gm) {
-        // 蓄力期间不移动，转向玩家
-        // 可以在这里添加根据玩家位置调整朝向的逻辑
-
-        if (stateTimer >= PREPARE_TIME) {
-            transitionTo(State.ATTACK);
-        }
-    }
-
     private void handleAttack(GameManager gm, Player player) {
-        // 计算射击方向
         float dx = player.getX() - x;
         float dy = player.getY() - y;
 
-        // 发射 BobaBullet
-        // 注意：我们发射的位置稍微偏移一点，模拟从嘴里吐出来
         BobaBullet bullet = new BobaBullet(
-                x + 0.5f, // 中心发射
+                x + 0.5f,
                 y + 0.5f,
                 dx, dy,
                 attack
         );
-
         gm.spawnProjectile(bullet);
-
-        // 发射完直接进入冷却
         transitionTo(State.COOLDOWN);
-    }
-
-    private void handleCooldown(float delta) {
-        if (stateTimer >= COOLDOWN_TIME) {
-            transitionTo(State.PATROL);
-        }
     }
 
     private void transitionTo(State newState) {
         this.state = newState;
         this.stateTimer = 0f;
 
-        // 状态切换时的瞬间视觉反馈
         if (newState == State.ATTACK) {
-            // 发射瞬间：压扁 (Squash)
-            scaleX = 1.4f;
-            scaleY = 0.6f;
+            scaleX = 1.4f; // 发射瞬间变宽
+            scaleY = 0.6f; // 发射瞬间变扁
         }
     }
-
-    // ================= 视觉逻辑 =================
 
     private void updateProceduralAnimation(float delta) {
         float targetScaleX = 1.0f;
@@ -146,23 +134,17 @@ public class EnemyCorruptedBoba extends Enemy {
         shakeOffsetY = 0f;
 
         if (state == State.PREPARE) {
-            // 蓄力动画：拉长变细 (模拟从下往上吸气)
-            // 随着时间推移，拉伸越明显
+            // 蓄力：变细变长，震动
             float progress = stateTimer / PREPARE_TIME;
-            targetScaleX = 1.0f - (0.3f * progress); // 变细
-            targetScaleY = 1.0f + (0.3f * progress); // 变高
+            targetScaleX = 1.0f - (0.25f * progress);
+            targetScaleY = 1.0f + (0.25f * progress);
 
-            // 蓄力震动 (Shaking)
             float shakePower = 0.05f * progress * GameConstants.CELL_SIZE;
             shakeOffsetX = MathUtils.random(-shakePower, shakePower);
             shakeOffsetY = MathUtils.random(-shakePower, shakePower);
-
-        } else if (state == State.COOLDOWN) {
-            // 冷却期间慢慢恢复正常
-            // 已经在 transitionTo 里设置了初始压扁值，这里利用插值让它弹回来
         }
 
-        // 弹性插值 (Lerp) - 让形变平滑恢复
+        // 平滑插值恢复形状
         float speed = 10f;
         scaleX += (targetScaleX - scaleX) * speed * delta;
         scaleY += (targetScaleY - scaleY) * speed * delta;
@@ -173,48 +155,31 @@ public class EnemyCorruptedBoba extends Enemy {
         if (!active) return;
         if (needsTextureUpdate) updateTexture();
 
-        // 计算绘制参数
         float drawX = x * GameConstants.CELL_SIZE;
         float drawY = y * GameConstants.CELL_SIZE;
         float centerOffset = GameConstants.CELL_SIZE / 2f;
 
-        // 保存 Batch 原始颜色
-        Color originalColor = batch.getColor();
+        // ⭐ 删除了之前的 batch.setColor 变红逻辑，只保留默认颜色
+        // 如果想要一点点受击反馈，可以在 takeDamage 里处理，这里保持纯净
 
-        // 1. 颜色变化
-        if (state == State.PREPARE) {
-            // 蓄力时变红/变亮
-            float pulse = 0.8f + MathUtils.sin(colorPulseTimer * 20f) * 0.2f;
-            batch.setColor(1f, pulse, pulse, 1f);
-        } else {
-            // 普通状态：稍微带点奶茶色
-            batch.setColor(0.9f, 0.8f, 0.7f, 1f);
-        }
-
-        // 2. 绘制带形变和震动的贴图
-        // 这里的关键是 originX/Y 设为中心，这样缩放才是向中心缩放
         if (texture != null) {
             batch.draw(
-                    texture, // 使用 Texture
+                    texture,
                     drawX + shakeOffsetX,
                     drawY + shakeOffsetY,
-                    centerOffset, centerOffset, // 旋转/缩放中心
+                    centerOffset, centerOffset,
                     GameConstants.CELL_SIZE, GameConstants.CELL_SIZE,
-                    scaleX, scaleY, // 应用我们的动态缩放
-                    0, // 旋转 (如果需要也可以加)
+                    scaleX, scaleY,
+                    0,
                     0, 0,
                     texture.getWidth(), texture.getHeight(),
                     false, false
             );
         }
-
-        // 恢复颜色
-        batch.setColor(originalColor);
     }
 
     @Override
     protected void updateTexture() {
-        // 复用 Enemy1 的贴图，或者你可以加载专门的贴图
         texture = textureManager.getEnemy1Texture();
         needsTextureUpdate = false;
     }
