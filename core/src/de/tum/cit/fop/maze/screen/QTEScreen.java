@@ -287,7 +287,7 @@ public class QTEScreen implements Screen {
                 qteState = QTEState.SUCCESS;
                 successTimer = 0f;
                 successStartX = playerX;
-                successTargetX = (playerGridX + 1) * cellSize;
+                successTargetX = (playerGridY + 1) * cellSize;
 
                 // ⭐ 这里不要立刻跳转，让成功动画播完
                 return;
