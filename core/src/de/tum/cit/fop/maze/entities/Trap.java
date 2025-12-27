@@ -42,7 +42,6 @@ public class Trap extends GameObject {
         isActive = false; // 只触发一次
     }
 
-
     public void update(float delta) {
         if (triggered) {
             animationTimer += delta;
@@ -63,15 +62,21 @@ public class Trap extends GameObject {
         // 被踩动画期间一定可见
         if (triggered) return true;
 
-        // 平时只在 COLOR 模式可见
-        return textureManager.getCurrentMode() == TextureManager.TextureMode.COLOR;
+        // 如果已经触发过且动画结束，不显示
+        if (!isActive) return false;
+
+        // 修改：在 IMAGE 模式也可见
+        TextureManager.TextureMode mode = textureManager.getCurrentMode();
+        return mode == TextureManager.TextureMode.IMAGE ||
+                mode == TextureManager.TextureMode.COLOR;
     }
 
     /* ================== 渲染 ================== */
 
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
-        if (!active || trapTexture != null) return;
+        // 修改：不检查 trapTexture != null，因为 SHAPE 模式本就不需要纹理
+        if (!active) return;  // 只检查 active，不检查 isActive
         if (!shouldBeVisible()) return;
 
         float progress = triggered
@@ -85,13 +90,21 @@ public class Trap extends GameObject {
 
         float alpha = triggered
                 ? 1f - progress
-                : 0.8f;
+                : (isActive ? 0.8f : 0.3f); // 未激活的陷阱半透明
 
         float size = GameConstants.CELL_SIZE * scale;
         float offset = (GameConstants.CELL_SIZE - size) / 2f;
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(new Color(1f, 0f, 0f, alpha));
+
+        // 根据状态改变颜色：已激活红色，已触发灰色
+        if (isActive) {
+            shapeRenderer.setColor(new Color(1f, 0f, 0f, alpha)); // 红色
+        } else if (triggered) {
+            shapeRenderer.setColor(new Color(1f, 0.5f, 0f, alpha)); // 触发中橙色
+        } else {
+            shapeRenderer.setColor(new Color(0.5f, 0.5f, 0.5f, alpha)); // 已触发灰色
+        }
 
         shapeRenderer.rect(
                 x * GameConstants.CELL_SIZE + offset,
@@ -105,6 +118,7 @@ public class Trap extends GameObject {
 
     @Override
     public void drawSprite(SpriteBatch batch) {
+        // 修改：不检查 isActive，因为触发后仍然要显示
         if (!active || trapTexture == null) return;
         if (!shouldBeVisible()) return;
 
@@ -123,12 +137,19 @@ public class Trap extends GameObject {
 
         float alpha = triggered
                 ? 1f - progress
-                : 1f;
+                : (isActive ? 1f : 0.4f); // 未激活的陷阱半透明
 
         float size = GameConstants.CELL_SIZE * scale;
         float offset = (GameConstants.CELL_SIZE - size) / 2f;
 
-        batch.setColor(1f, 1f, 1f, alpha);
+        // 根据状态调整颜色
+        if (isActive) {
+            batch.setColor(1f, 1f, 1f, alpha); // 正常颜色
+        } else if (triggered) {
+            batch.setColor(1f, 0.6f, 0.2f, alpha); // 触发中偏橙色
+        } else {
+            batch.setColor(0.5f, 0.5f, 0.5f, alpha); // 已触发灰色
+        }
 
         batch.draw(
                 trapTexture,
@@ -138,16 +159,35 @@ public class Trap extends GameObject {
                 size
         );
 
-        batch.setColor(1f, 1f, 1f, 1f);
+        batch.setColor(1f, 1f, 1f, 1f); // 恢复默认颜色
     }
 
     @Override
     public RenderType getRenderType() {
-        if (textureManager.getCurrentMode() == TextureManager.TextureMode.COLOR ||
-                textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
+        TextureManager.TextureMode mode = textureManager.getCurrentMode();
+
+        // 修改：IMAGE 模式使用 SPRITE 渲染
+        if (mode == TextureManager.TextureMode.IMAGE && trapTexture != null) {
+            return RenderType.SPRITE;
+        }
+
+        if (mode == TextureManager.TextureMode.COLOR ||
+                mode == TextureManager.TextureMode.MINIMAL ||
                 trapTexture == null) {
             return RenderType.SHAPE;
         }
+
+        // 默认使用 SPRITE
         return RenderType.SPRITE;
+    }
+
+    /* ================== Getter 方法 ================== */
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public boolean isTriggered() {
+        return triggered;
     }
 }
