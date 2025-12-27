@@ -88,6 +88,9 @@ public class QTEScreen implements Screen {
     private float successTimer = 0f;
     private float successStartX;
     private float successTargetX;
+    private float successStartY;
+    private float successTargetY;
+
 
     // =========================
     // 构造函数（重点）
@@ -195,7 +198,7 @@ public class QTEScreen implements Screen {
         // =========================
         // 固定 QTE 迷宫
         // =========================
-        int[][] maze = QTEMazeData.MAZE;
+        int[][] maze = QTEMazeData.MAZE2;
 
         int px = playerGridX;
         int py = playerGridY;
@@ -288,6 +291,9 @@ public class QTEScreen implements Screen {
                 successTimer = 0f;
                 successStartX = playerX;
                 successTargetX = (playerGridY + 1) * cellSize;
+                //成功后往上走一步，根据地图调整
+//                successStartY = playerY;
+//                successTargetY = (playerGridY + 1) * cellSize;
 
                 // ⭐ 这里不要立刻跳转，让成功动画播完
                 return;
