@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.screen.GameScreen;
 import de.tum.cit.fop.maze.screen.IntroScreen;
 import de.tum.cit.fop.maze.screen.MenuScreen;
@@ -27,6 +28,7 @@ public class MazeRunnerGame extends Game {
     private SpriteBatch spriteBatch;
     private Skin skin;
     private AudioManager audioManager;  // 添加音效管理器字段
+    private GameManager gameManager;
 
     @Override
     public void create() {
