@@ -11,8 +11,10 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
+import de.tum.cit.fop.maze.utils.TextureManager;
 
 /**
  * QTE Screen（MazeRenderer + 独立 Camera）
@@ -41,8 +43,8 @@ public class QTEScreen implements Screen {
     // =========================
     // 玩家格子坐标
     // =========================
-    private int playerGridX = 1;
-    private int playerGridY = 1;
+    private int playerGridX = 2;
+    private int playerGridY = 3;
 
     // =========================
     // 世界坐标
@@ -96,8 +98,10 @@ public class QTEScreen implements Screen {
     @Override
     public void show() {
         batch = new SpriteBatch();
+        TextureManager.getInstance()
+                .switchMode(TextureManager.TextureMode.IMAGE);
 
-        cellSize = 64f;
+        cellSize = GameConstants.CELL_SIZE;
 
         // QTE 专用紧张镜头（只看 4x4 格子）
         camera = new OrthographicCamera();
@@ -189,6 +193,7 @@ public class QTEScreen implements Screen {
 
         stateTime += delta * animationSpeed;
 
+        // 相机始终跟随玩家
         camera.position.set(
                 playerX + cellSize / 2f,
                 playerY + cellSize / 2f,
@@ -202,9 +207,29 @@ public class QTEScreen implements Screen {
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
+        // =================================================
+        // 1️⃣ 地板
+        // =================================================
         mazeRenderer.renderFloor(batch);
-        mazeRenderer.renderWallBase(batch);
 
+        int[][] maze = gameManager.getMazeForRendering();
+        int px = (int) (playerX / cellSize);
+        int py = (int) (playerY / cellSize);
+
+        // =================================================
+        // 2️⃣ 后墙（y >= 玩家）
+        // =================================================
+        for (int y = 0; y < maze.length; y++) {
+            for (int x = 0; x < maze[y].length; x++) {
+                if (maze[y][x] == 0 && y >= py){
+                    mazeRenderer.renderWallAtPosition(batch, x, y);
+                }
+            }
+        }
+
+        // =================================================
+        // 3️⃣ 玩家（含抖动）
+        // =================================================
         float wobble = Math.min(animationSpeed, 3f) * 1.2f;
         float wobbleX = (float) Math.sin(stateTime * 6f) * wobble;
         float wobbleY = (float) Math.cos(stateTime * 5f) * wobble * 0.5f;
@@ -218,12 +243,24 @@ public class QTEScreen implements Screen {
                 frame,
                 playerX + wobbleX,
                 playerY + wobbleY,
-                cellSize * 1.6f,
-                cellSize * 1.6f
+                cellSize,
+                cellSize
         );
+
+        // =================================================
+        // 4️⃣ 前墙（y < 玩家）
+        // =================================================
+        for (int y = 0; y < maze.length; y++) {
+            for (int x = 0; x < maze[y].length; x++) {
+                if (maze[y][x] == 0 && y < py) {
+                    mazeRenderer.renderWallAtPosition(batch, x, y);
+                }
+            }
+        }
 
         batch.end();
     }
+
 
     // =========================================================
     // 其他
