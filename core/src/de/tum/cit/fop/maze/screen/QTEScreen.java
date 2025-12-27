@@ -49,6 +49,13 @@ public class QTEScreen implements Screen {
     private GlyphLayout hintLayout = new GlyphLayout();
 
     // =========================
+// Countdown Font
+// =========================
+    private BitmapFont countdownFont;
+    private GlyphLayout countdownLayout = new GlyphLayout();
+
+
+    // =========================
     // Maze Renderer
     // =========================
     private QTEMazeRenderer mazeRenderer;
@@ -81,12 +88,20 @@ public class QTEScreen implements Screen {
     // QTE 状态
     // =========================
     private enum QTEState {
+        PREPARE,
         ACTIVE,
         SUCCESS_START,   // 刚成功：爆炸 + 定格
         SUCCESS_MOVE,    // 角色跳出
         DONE
     }
-    private QTEState qteState = QTEState.ACTIVE;
+    // =========================
+// QTE 倒计时
+// =========================
+    private static final float PREPARE_DURATION = 3f;
+    private float prepareTimer = 0f;
+
+    //初始状态
+    private QTEState qteState = QTEState.PREPARE;
 
     // 连打
     private int mashCount = 0;
@@ -176,6 +191,16 @@ public class QTEScreen implements Screen {
 
         hintFont.getData().setScale(0.3f);
         hintFont.setColor(1f, 0.9f, 0.95f, 1f);
+//倒计时字体
+        countdownFont = new BitmapFont(); // 先用默认
+        countdownFont.setUseIntegerPositions(false);
+
+// ⚠️ 大很多，但不要太夸张
+        countdownFont.getData().setScale(0.9f);
+
+// 黑色，强存在感
+        countdownFont.setColor(0f, 0f, 0f, 1f);
+        countdownFont.getData().markupEnabled = false;
 
         TextureManager.getInstance()
                 .switchMode(TextureManager.TextureMode.IMAGE);
@@ -278,6 +303,7 @@ public class QTEScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        updatePrepare(delta);
         updateQTE(delta);
         updateSuccess(delta);
 
@@ -331,6 +357,8 @@ public class QTEScreen implements Screen {
         renderProgressBar(delta);
 
         renderPressSpaceHint();
+
+        renderPrepareText();
     }
 
     private void renderProgressBar(float delta) {
@@ -500,7 +528,7 @@ public class QTEScreen implements Screen {
         float wobbleX = 0f;
         float wobbleY = 0f;
 
-        if (qteState == QTEState.ACTIVE) {
+        if (qteState == QTEState.ACTIVE || qteState == QTEState.PREPARE) {
             float wobble = Math.min(animationSpeed, 3f) * 1.2f;
             wobbleX =  MathUtils.sin(stateTime * 6f) * wobble;
             wobbleY =  MathUtils.cos(stateTime * 5f) * wobble * 0.5f;
@@ -508,7 +536,7 @@ public class QTEScreen implements Screen {
 
 
         TextureRegion frame =
-                (qteState == QTEState.ACTIVE)
+                (qteState == QTEState.ACTIVE || qteState == QTEState.PREPARE)
                         ? struggleAnim.getKeyFrame(stateTime)
                         : escapeFrame;
 
@@ -579,6 +607,59 @@ public class QTEScreen implements Screen {
             game.onQTEFinished(result);
         });
     }
+    private void updatePrepare(float delta) {
+        if (qteState != QTEState.PREPARE) return;
+
+        prepareTimer += delta;
+
+        if (prepareTimer >= PREPARE_DURATION) {
+            // 倒计时结束，正式开始 QTE
+            qteState = QTEState.ACTIVE;
+            prepareTimer = 0f;
+
+            // 清空所有 QTE 相关状态，确保“干净开局”
+            qteTimer = 0f;
+            mashCount = 0;
+            mashTimer = 0f;
+            displayedProgress = 0f;
+
+            Logger.debug("QTE -> ACTIVE");
+        }
+    }
+
+    private void renderPrepareText() {
+        if (qteState != QTEState.PREPARE) return;
+
+        String text;
+        int second = 3 - (int) prepareTimer;
+
+        switch (second) {
+            case 3:
+                text = "GET";
+                break;
+            case 2:
+                text = "READY";
+                break;
+            default:
+                text = "GO!";
+                break;
+        }
+
+        countdownLayout.setText(countdownFont, text);
+
+        // 中央 + 轻微缩放呼吸
+        float pulse = 0.85f + 0.15f * MathUtils.sin(stateTime * 6f);
+        countdownFont.setColor(0f, 0f, 0f, pulse);
+
+        float x = camera.position.x - countdownLayout.width / 2f;
+        float y = camera.position.y + countdownLayout.height / 2f;
+
+        batch.begin();
+        countdownFont.draw(batch, countdownLayout, x, y);
+        batch.end();
+    }
+
+
 
 
 
