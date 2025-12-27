@@ -25,6 +25,7 @@ import de.tum.cit.fop.maze.utils.TextureManager;
 
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.game.GameConstants;
+import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 
 import java.util.List;
 
@@ -52,8 +53,7 @@ public class GameScreen implements Screen {
 //===新增特效===
     private BobaBulletManager bobaBulletManager;
     private KeyEffectManager keyEffectManager;
-
-
+    private PortalEffectManager portalEffectManager;
 
 
 
@@ -122,6 +122,31 @@ public class GameScreen implements Screen {
             keyEffectManager.update(delta);
         }
 
+        // ============ [新增] 传送门特效逻辑开始 ============
+        // 检测是否触发了退出流程 (GameManager 里的 isExitingLevel 为 true)
+        if (gameManager.isExitingLevel() && !portalEffectManager.isActive()) {
+            // 获取玩家中心点坐标 (格坐标 -> 像素坐标 + 半个格子偏移)
+            float px = (gameManager.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
+            float py = (gameManager.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
+
+            // 启动龙卷风特效
+            portalEffectManager.startExitAnimation(px, py);
+
+            // 播放音效
+           // AudioManager.getInstance().play(AudioType.ENTER_NEXT_LEVEL);
+        }
+
+        // 更新特效状态 (呼吸灯、粒子运动等)
+        portalEffectManager.update(delta);
+
+        // 检查动画是否播放完毕，如果完毕则通知 GameManager 正式切关
+        if (portalEffectManager.isFinished()) {
+            gameManager.completeLevelTransition();
+            // 重置相机位置到新关卡的玩家位置
+            cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
+        }
+        // ============ [新增] 传送门特效逻辑结束 ============
+
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
         renderWorld();
         renderUI();
@@ -154,10 +179,11 @@ public class GameScreen implements Screen {
         inputHandler = new PlayerInputHandler();
         hud = new HUD(gameManager);
 
-        // 初始化boba特效管理器
+        // 初始化特效管理器
         bobaBulletManager = new BobaBulletManager();
         bobaBulletManager.setRenderMode(BobaBulletManager.RenderMode.MANAGED); // 让管理器全权负责子弹渲染
         keyEffectManager = new KeyEffectManager();
+        portalEffectManager = new PortalEffectManager();
 
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
 
@@ -199,6 +225,10 @@ public class GameScreen implements Screen {
 
         if (keyEffectManager != null) {
             keyEffectManager.dispose();
+        }
+
+        if (portalEffectManager != null) {
+            portalEffectManager.dispose();
         }
 
         Logger.debug("GameScreen disposed");
@@ -292,21 +322,46 @@ public class GameScreen implements Screen {
         // 1. 地板
         mazeRenderer.renderFloor(worldBatch);
 
-        // 2. 收集并排序
+        // ============ [新增 1] 渲染门后的蓝色呼吸光晕 ============
+        // 遍历所有出口，为解锁的门绘制背景光
+        for (ExitDoor door : gameManager.getExitDoors()) {
+            if (!door.isLocked()) {
+                // 计算中心点像素坐标 (格坐标 + 0.5f 偏移量) * 格子大小
+                float dx = (door.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                float dy = (door.getY() + 0.5f) * GameConstants.CELL_SIZE;
+
+                // 确保 portalEffectManager 已初始化
+                if (portalEffectManager != null) {
+                    portalEffectManager.renderBack(worldBatch, dx, dy);
+                }
+            }
+        }
+        // ====================================================
+
+        // 2. 收集并排序渲染对象
         var renderItems = collectAllRenderItems();
         renderItems.sort((a, b) -> {
-            // 1️⃣ 先按 y（视觉深度）
+            // 1️⃣ 先按 y（视觉深度）从上到下渲染
             int yCompare = Float.compare(b.y, a.y);
             if (yCompare != 0) return yCompare;
 
-            // 2️⃣ y 相同 → 按 priority
+            // 2️⃣ y 相同 → 按 priority 排序
             return Integer.compare(a.priority, b.priority);
         });
 
 
-        // 3. 渲染
+        // 3. 渲染实体和墙壁
         for (var item : renderItems) {
             if (item.type == RenderItemType.ENTITY) {
+
+                // ============ [新增 2] 玩家消失逻辑 ============
+                // 如果特效管理器说“该隐藏玩家了”，就跳过玩家的绘制
+                if (portalEffectManager != null &&
+                        item.entity == gameManager.getPlayer() &&
+                        portalEffectManager.shouldHidePlayer()) {
+                    continue;
+                }
+                // ============================================
 
                 GameObject entity = item.entity;
 
@@ -319,6 +374,7 @@ public class GameScreen implements Screen {
                 }
 
             } else {
+                // 渲染墙壁
                 mazeRenderer.renderWallAtPosition(
                         worldBatch,
                         (int) item.x,
@@ -327,19 +383,26 @@ public class GameScreen implements Screen {
             }
         }
 
-// 子弹特效
-        //bobaBulletManager.render(worldBatch);
-        // 特效贴图
+        // 子弹特效
         if (bobaBulletManager != null) {
             bobaBulletManager.render(worldBatch);
         }
 
-// 绘制钥匙特效
+        // 钥匙特效
         if (keyEffectManager != null) {
             keyEffectManager.render(worldBatch);
         }
+
+        // ============ [新增 3] 渲染前景：蓝色光条龙卷风 ============
+        // 这一步要在所有物体之后画，保证粒子在最上层
+        if (portalEffectManager != null) {
+            portalEffectManager.renderFront(worldBatch);
+        }
+        // ====================================================
+
         worldBatch.end();
     }
+
     private enum RenderItemType {
         WALL_BEHIND,
         ENTITY,
