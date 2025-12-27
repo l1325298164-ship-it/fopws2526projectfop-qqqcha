@@ -46,6 +46,9 @@ public class EnemyE01_CorruptedPearl extends Enemy {
     public void update(float delta, GameManager gm) {
         if (!active) return;
 
+        // ⭐ 更新受击闪烁
+        updateHitFlash(delta);
+
         Player player = gm.getPlayer();
         float dist = distanceTo(player);
 

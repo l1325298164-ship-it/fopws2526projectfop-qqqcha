@@ -389,6 +389,9 @@ public class GameManager  {
             e.update(deltaTime, this);
         }
 
+        // ⭐ 玩家 ↔ 敌人碰撞检测
+        checkEnemyCollision();
+
         for (EnemyBullet b : bullets) {
             b.update(deltaTime, this);
         }
@@ -628,6 +631,26 @@ public class GameManager  {
         bullets.add(bullet);
     }
 
+    private void checkEnemyCollision() {
+        for (Enemy enemy : enemies) {
+            if (enemy == null || enemy.isDead()) continue;
+
+            // 同一格 = 碰撞
+            if (player.getX() == enemy.getX() &&
+                    player.getY() == enemy.getY()) {
+
+                // 玩家受到敌人攻击
+                player.takeDamage(enemy.attack);
+
+                Logger.gameEvent(
+                        "Player hit by enemy at (" +
+                                enemy.getX() + ", " + enemy.getY() + ")"
+                );
+
+                // ⭐ 玩家有无敌帧，所以这里不用 break 也安全
+            }
+        }
+    }
 
     public void setMaze(int[][] qteMaze) {
         Logger.debug("GameManager.setMaze() - using fixed QTE maze");
