@@ -14,6 +14,9 @@ public enum AudioType {
     PLAYER_HIT_WALL("sounds/sfx/player/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
     PLAYER_ATTACKED("sounds/sfx/player/attacked01.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
 
+    // === 敌人音效 ===
+    ENEMY_ATTACKED("sounds/sfx/enemy/attacked01.wav", AudioCategory.ENEMY, false, 0.8f, false, false),
+
     // === UI音效 ===
     UI_CLICK("sounds/sfx/ui/click01.wav", AudioCategory.UI, false, 0.6f, false, true),
     UI_SUCCESS("sounds/sfx/ui/enter-next-level.ogg", AudioCategory.UI, false, 0.8f, false, true),
