@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet;
+import de.tum.cit.fop.maze.game.GameConstants;
 
 /**
  * Boba 子弹特效管理器
@@ -44,6 +45,8 @@ public class BobaBulletManager implements Disposable {
 
         // 默认配置
         setTrailIntensity(0.7f);
+
+        System.out.println("🔥🔥🔥 BobaBulletManager Constructor executed!");
     }
 
     /**
@@ -160,8 +163,8 @@ public class BobaBulletManager implements Disposable {
      */
     private void createDestructionEffect(BobaBullet bullet) {
         // 获取子弹的实际像素位置
-        float pixelX = bullet.getRealX();
-        float pixelY = bullet.getRealY();
+        float pixelX = bullet.getRealX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+        float pixelY = bullet.getRealY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
 
         // 使用粒子池创建爆开效果
         particlePool.createBurstEffect(pixelX, pixelY);

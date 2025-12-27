@@ -78,16 +78,20 @@ public class GameScreen implements Screen {
         gameManager.update(delta);
         cameraManager.update(delta, gameManager.getPlayer());
 
-        // 1. 同步：将 GameManager 中新生成的 BobaBullet 注册到特效管理器
-        for (EnemyBullet bullet : gameManager.getBullets()) {
-            if (bullet instanceof BobaBullet bobaBullet) {
+        // 把子弹交给特效系统
+        for (de.tum.cit.fop.maze.entities.EnemyBullet bullet : gameManager.getBullets()) {
+            if (bullet instanceof de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet) {
+                var bobaBullet = (de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet) bullet;
                 if (!bobaBullet.isManagedByEffectManager()) {
-                    bobaBulletManager.addBullet(bobaBullet);
+                    bobaBulletManager.addBullet(bobaBullet); // 注册子弹
                 }
             }
         }
-        // 2. 更新特效
-        bobaBulletManager.update(delta);
+
+        // 更新管理器
+        if (bobaBulletManager != null) {
+            bobaBulletManager.update(delta);
+        }
 
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
 
@@ -115,9 +119,6 @@ public class GameScreen implements Screen {
         uiBatch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
 
-        // 初始化boba特效管理器
-        bobaBulletManager = new BobaBulletManager();
-        bobaBulletManager.setRenderMode(BobaBulletManager.RenderMode.MANAGED); // 让管理器全权负责子弹渲染
 
         gameManager = new GameManager();
         mazeRenderer = new MazeRenderer(gameManager);
@@ -125,10 +126,17 @@ public class GameScreen implements Screen {
         inputHandler = new PlayerInputHandler();
         hud = new HUD(gameManager);
 
+        // 初始化boba特效管理器
+        bobaBulletManager = new BobaBulletManager();
+        bobaBulletManager.setRenderMode(BobaBulletManager.RenderMode.MANAGED); // 让管理器全权负责子弹渲染
+
 
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
 
         Gdx.input.setInputProcessor(null); // 不用 Scene2D
+
+        // 调试日志：确认这一行确实执行了
+        System.out.println("🔥🔥🔥 GameScreen SHOW executed, Manager created!");
     }
 
 
@@ -288,8 +296,12 @@ public class GameScreen implements Screen {
             }
         }
 
-// ⭐ 在这里调用特效渲染 ，建议放在实体之后，或者根据你的图层需求
-        bobaBulletManager.render(worldBatch);
+// 在这里调用特效渲染 ，建议放在实体之后，或者根据你的图层需求
+        //bobaBulletManager.render(worldBatch);
+        // 特效贴图
+        if (bobaBulletManager != null) {
+            bobaBulletManager.render(worldBatch);
+        }
 
         worldBatch.end();
     }

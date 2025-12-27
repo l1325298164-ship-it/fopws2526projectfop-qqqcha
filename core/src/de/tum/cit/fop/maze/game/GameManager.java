@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.entities.*;
+import de.tum.cit.fop.maze.entities.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -199,8 +200,12 @@ public class GameManager  {
             }
             if (overlapsDoor) continue;
 
-            enemies.add(new EnemyE01_CorruptedPearl(x, y));
-            Logger.debug("EnemyE01_CorruptedPearl generated at (" + x + ", " + y + ")");
+            // enemies.add(new EnemyE01_CorruptedPearl(x, y));
+            //Logger.debug("EnemyE01_CorruptedPearl generated at (" + x + ", " + y + ")");
+
+// ✅ 生成新的 Boba 敌人
+            enemies.add(new EnemyCorruptedBoba(x, y));
+            Logger.debug("EnemyCorruptedBoba generated at (" + x + ", " + y + ")");
         }
 
         Logger.gameEvent("Generated " + enemies.size() + " enemies");
