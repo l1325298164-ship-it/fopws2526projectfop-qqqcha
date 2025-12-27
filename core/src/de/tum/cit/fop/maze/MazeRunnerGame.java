@@ -50,6 +50,7 @@ public class MazeRunnerGame extends Game {
     }
 
 
+
     public void goToQTE() {
         Screen old= getScreen();
         setScreen(new QTEScreen(this));
