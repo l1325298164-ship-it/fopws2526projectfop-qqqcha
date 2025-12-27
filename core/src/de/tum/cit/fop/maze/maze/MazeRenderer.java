@@ -260,5 +260,28 @@ public class MazeRenderer {
 
         Logger.debug("MazeRenderer texture cache cleared");
     }
+    public void renderFloor(SpriteBatch batch, int[][] maze) {
+        checkTextures();
+
+        for (int y = 0; y < maze.length; y++) {
+            for (int x = 0; x < maze[y].length; x++) {
+                if (maze[y][x] == 1) {
+                    float px = x * GameConstants.CELL_SIZE;
+                    float py = y * GameConstants.CELL_SIZE;
+                    batch.draw(floorTexture, px, py,
+                            GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
+                }
+            }
+        }
+    }
+    public void renderWallAtPosition(SpriteBatch batch, int x, int y, int[][] maze) {
+        if (maze[y][x] != 0) return;
+
+        float px = x * GameConstants.CELL_SIZE;
+        float py = y * GameConstants.CELL_SIZE;
+
+        batch.draw(wallTexture, px, py,
+                GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
+    }
 
 }

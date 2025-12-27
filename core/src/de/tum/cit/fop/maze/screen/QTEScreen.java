@@ -14,12 +14,23 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
+import de.tum.cit.fop.maze.qte.QTEMazeData;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 /**
  * QTE Screen（MazeRenderer + 独立 Camera）
  */
 public class QTEScreen implements Screen {
+
+    public enum QTEResult {
+        SUCCESS,
+        FAIL
+    }
+
+    private QTEResult result = null;
+//成功失败判定时间
+    private static final float QTE_TIME_LIMIT = 3.0f;
+    private float qteTimer = 0f;
 
     private final MazeRunnerGame game;
     private final GameManager gameManager;
@@ -34,17 +45,12 @@ public class QTEScreen implements Screen {
     // =========================
     private MazeRenderer mazeRenderer;
 
-    // =========================
-    // 迷宫尺寸
-    // =========================
-    private static final int MAZE_WIDTH = 7;
-    private static final int MAZE_HEIGHT = 7;
 
     // =========================
     // 玩家格子坐标
     // =========================
-    private int playerGridX = 2;
-    private int playerGridY = 3;
+    private int playerGridX = 1;
+    private int playerGridY = 2;
 
     // =========================
     // 世界坐标
@@ -144,29 +150,7 @@ public class QTEScreen implements Screen {
         playerY = playerGridY * cellSize;
     }
 
-    private void updateQTE(float delta) {
-        if (qteState != QTEState.ACTIVE) return;
 
-        mashTimer += delta;
-
-        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-            mashCount++;
-        }
-
-        if (mashTimer >= MASH_WINDOW) {
-            animationSpeed = Math.min(3f, 1f + mashCount / 4f);
-
-            if (mashCount >= MASH_REQUIRED) {
-                qteState = QTEState.SUCCESS;
-                successTimer = 0f;
-                successStartX = playerX;
-                successTargetX = (playerGridX + 1) * cellSize;
-            }
-
-            mashCount = 0;
-            mashTimer = 0f;
-        }
-    }
 
     private void updateSuccess(float delta) {
         if (qteState != QTEState.SUCCESS) return;
@@ -177,8 +161,9 @@ public class QTEScreen implements Screen {
         playerX = successStartX + (successTargetX - successStartX) * t;
 
         if (t >= 1f) {
-            playerGridX++;
-            qteState = QTEState.DONE;
+            // ⛔ 成功后不再晃、不再更新
+            animationSpeed = 1f;
+            finishQTE(QTEResult.SUCCESS);
         }
     }
 
@@ -193,7 +178,7 @@ public class QTEScreen implements Screen {
 
         stateTime += delta * animationSpeed;
 
-        // 相机始终跟随玩家
+        // 相机跟随
         camera.position.set(
                 playerX + cellSize / 2f,
                 playerY + cellSize / 2f,
@@ -207,32 +192,42 @@ public class QTEScreen implements Screen {
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
-        // =================================================
-        // 1️⃣ 地板
-        // =================================================
-        mazeRenderer.renderFloor(batch);
+        // =========================
+        // 固定 QTE 迷宫
+        // =========================
+        int[][] maze = QTEMazeData.MAZE;
 
-        int[][] maze = gameManager.getMazeForRendering();
-        int px = (int) (playerX / cellSize);
-        int py = (int) (playerY / cellSize);
+        int px = playerGridX;
+        int py = playerGridY;
 
-        // =================================================
-        // 2️⃣ 后墙（y >= 玩家）
-        // =================================================
+        // =========================
+        // 1️⃣ 地板（全部）
+        // =========================
+        mazeRenderer.renderFloor(batch, maze);
+
+        // =========================
+        // 2️⃣ 后墙（y > 玩家）
+        // =========================
         for (int y = 0; y < maze.length; y++) {
             for (int x = 0; x < maze[y].length; x++) {
-                if (maze[y][x] == 0 && y >= py){
-                    mazeRenderer.renderWallAtPosition(batch, x, y);
+                if (maze[y][x] == 0 && y > py) {
+                    mazeRenderer.renderWallAtPosition(batch, x, y, maze);
                 }
             }
         }
 
-        // =================================================
-        // 3️⃣ 玩家（含抖动）
-        // =================================================
-        float wobble = Math.min(animationSpeed, 3f) * 1.2f;
-        float wobbleX = (float) Math.sin(stateTime * 6f) * wobble;
-        float wobbleY = (float) Math.cos(stateTime * 5f) * wobble * 0.5f;
+        // =========================
+        // 3️⃣ 玩家（抖动 + 动画）
+        // =========================
+        float wobbleX = 0f;
+        float wobbleY = 0f;
+
+        if (qteState == QTEState.ACTIVE) {
+            float wobble = Math.min(animationSpeed, 3f) * 1.2f;
+            wobbleX = (float) Math.sin(stateTime * 6f) * wobble;
+            wobbleY = (float) Math.cos(stateTime * 5f) * wobble * 0.5f;
+        }
+
 
         TextureRegion frame =
                 (qteState == QTEState.ACTIVE)
@@ -247,19 +242,75 @@ public class QTEScreen implements Screen {
                 cellSize
         );
 
-        // =================================================
-        // 4️⃣ 前墙（y < 玩家）
-        // =================================================
+        // =========================
+        // 4️⃣ 前墙（y <= 玩家）
+        // =========================
         for (int y = 0; y < maze.length; y++) {
             for (int x = 0; x < maze[y].length; x++) {
-                if (maze[y][x] == 0 && y < py) {
-                    mazeRenderer.renderWallAtPosition(batch, x, y);
+                if (maze[y][x] == 0 && y <= py) {
+                    mazeRenderer.renderWallAtPosition(batch, x, y, maze);
                 }
             }
         }
 
         batch.end();
     }
+
+    private void updateQTE(float delta) {
+        if (qteState != QTEState.ACTIVE) return;
+
+        // =====================
+        // 1️⃣ 总时间限制（失败）
+        // =====================
+        qteTimer += delta;
+        if (qteTimer >= QTE_TIME_LIMIT) {
+            finishQTE(QTEResult.FAIL);
+            return;
+        }
+
+        // =====================
+        // 2️⃣ 连打检测（成功）
+        // =====================
+        mashTimer += delta;
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            mashCount++;
+        }
+
+        if (mashTimer >= MASH_WINDOW) {
+
+            // 动画加速反馈
+            animationSpeed = Math.min(3f, 1f + mashCount / 4f);
+
+            if (mashCount >= MASH_REQUIRED) {
+                // ✅ 成功
+                qteState = QTEState.SUCCESS;
+                successTimer = 0f;
+                successStartX = playerX;
+                successTargetX = (playerGridX + 1) * cellSize;
+
+                // ⭐ 这里不要立刻跳转，让成功动画播完
+                return;
+            }
+
+            // 重置连打窗口
+            mashCount = 0;
+            mashTimer = 0f;
+        }
+    }
+    private void finishQTE(QTEResult result) {
+        if (qteState == QTEState.DONE) return;
+
+        qteState = QTEState.DONE;
+        this.result = result;
+
+        Gdx.app.postRunnable(() -> {
+            game.onQTEFinished(result);
+        });
+    }
+
+
+
 
 
     // =========================================================
@@ -273,6 +324,9 @@ public class QTEScreen implements Screen {
 
     @Override
     public void dispose() {
-        batch.dispose();
+        if (batch != null) {
+            batch.dispose();
+            batch = null;
+        }
     }
 }
