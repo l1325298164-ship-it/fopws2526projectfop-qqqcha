@@ -46,7 +46,7 @@ public class BobaBullet extends EnemyBullet {
         this.speed = 7f; // 比普通子弹稍快
 
         // 重新计算速度向量以应用新的 speed
-        float len = (float) Math.sqrt(dx*dx + dy*dy);
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
         if (len != 0) {
             this.vx = (dx / len) * speed;
             this.vy = (dy / len) * speed;
@@ -83,7 +83,7 @@ public class BobaBullet extends EnemyBullet {
             // 未撞墙，应用移动
             realX = nextX;
             realY = nextY;
-            traveled += Math.sqrt(moveX*moveX + moveY*moveY);
+            traveled += Math.sqrt(moveX * moveX + moveY * moveY);
         }
 
         // 同步格子坐标
@@ -121,8 +121,8 @@ public class BobaBullet extends EnemyBullet {
 
         // 简单的反弹逻辑：判断是横向还是纵向碰撞
         // 检查如果我们只在 X 轴移动是否会撞
-        boolean hitX = gm.getMazeCell((int)(realX + vx * 0.05f), (int)realY) == 0;
-        boolean hitY = gm.getMazeCell((int)realX, (int)(realY + vy * 0.05f)) == 0;
+        boolean hitX = gm.getMazeCell((int) (realX + vx * 0.05f), (int) realY) == 0;
+        boolean hitY = gm.getMazeCell((int) realX, (int) (realY + vy * 0.05f)) == 0;
 
         if (hitX) {
             vx = -vx * 0.8f; // 反弹并损失动能
@@ -150,7 +150,7 @@ public class BobaBullet extends EnemyBullet {
         targetScaleY = 1.0f;
 
         // 飞行时根据速度略微拉长 (Stretch)
-        float currentSpeed = (float)Math.sqrt(vx*vx + vy*vy);
+        float currentSpeed = (float) Math.sqrt(vx * vx + vy * vy);
         if (state == BobaState.FLYING && currentSpeed > 1f) {
             // 简单的拉伸：速度越快越长
             targetScaleX = 1.0f - (currentSpeed * 0.02f); // 变窄
@@ -187,10 +187,29 @@ public class BobaBullet extends EnemyBullet {
     // Getter / Setter 供特效管理器和渲染器使用
     // ==========================================
 
+
     @Override
     public void drawSprite(SpriteBatch batch) {
         // BobaBullet 通常由 BobaBulletManager 渲染
         // 如果没有管理器，这里可以放一个备用的渲染逻辑
+    }
+
+        // ⭐【修复 】添加兜底渲染
+        // 如果特效管理器没工作，至少画个简单的圆点让我们看见它
+        // 注意：这里借用 TextureManager 的纯色块
+        /*
+        batch.setColor(1f, 0.2f, 0.2f, 0.8f); // 红色半透明
+
+        float size = GameConstants.CELL_SIZE * 0.3f;
+        // 使用简单的方块模拟圆点
+        batch.draw(
+                de.tum.cit.fop.maze.utils.TextureManager.getInstance().getColorTexture(com.badlogic.gdx.graphics.Color.WHITE),
+                realX * GameConstants.CELL_SIZE - size/2,
+                realY * GameConstants.CELL_SIZE - size/2,
+                size, size
+        );
+
+        batch.setColor(1f, 1f, 1f, 1f); // 恢复颜色
     }
 
     public float getScaleX() { return scaleX; }
@@ -210,4 +229,4 @@ public class BobaBullet extends EnemyBullet {
 
     public boolean isManagedByEffectManager() { return managedByEffectManager; }
     public void setManagedByEffectManager(boolean managed) { this.managedByEffectManager = managed; }
-}
+          */
