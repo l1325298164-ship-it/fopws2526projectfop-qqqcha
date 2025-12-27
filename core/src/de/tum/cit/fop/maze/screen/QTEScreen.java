@@ -10,7 +10,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.game.GameConstants;
 
 /**
  * 极简 QTE Screen（无 Camera）
@@ -54,6 +53,10 @@ public class QTEScreen implements Screen {
     private Animation<TextureRegion> struggleAnim;
     private TextureRegion escapeFrame;
     private float stateTime = 0f;
+
+    public MazeRunnerGame getGame() {
+        return game;
+    }
 
     // =========================
     // QTE 状态
