@@ -3,8 +3,11 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.screen.GameScreen;
 import de.tum.cit.fop.maze.screen.IntroScreen;
 import de.tum.cit.fop.maze.screen.MenuScreen;
@@ -25,20 +28,34 @@ public class MazeRunnerGame extends Game {
     private SpriteBatch spriteBatch;
     private Skin skin;
     private AudioManager audioManager;  // 添加音效管理器字段
+    private GameManager gameManager;
+
 
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
-        skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json"));
-        TextureManager.getInstance().switchMode(TextureManager.TextureMode.IMAGE);
-        initializeSoundManager();// 初始化音效系统
 
+
+        // 1️⃣ 先加载 atlas
+        TextureAtlas uiAtlas =
+                new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
+
+        // 2️⃣ 用 atlas + json 直接构造 Skin
+        skin = new Skin(
+                Gdx.files.internal("ui/skinbutton.json"),
+                uiAtlas
+        );
+
+
+
+        initializeSoundManager();
         goToMenu();
     }
 
+
     public void goToQTE() {
         Screen old= getScreen();
-        setScreen(new QTEScreen(this));
+        setScreen(new QTEScreen(this,gameManager));
         if (old != null) old.dispose();
         audioManager.stopAll();
     }
@@ -151,6 +168,10 @@ public class MazeRunnerGame extends Game {
 
         Logger.debug("Game disposed");
     }
+    public GameManager getGameManager() {
+        return gameManager;
+    }
+
 }
 
 
