@@ -80,57 +80,49 @@ public class GameScreen implements Screen {
     public void render(float delta) {
         handleInput(delta);
 
+        // 1️⃣ 先记录旧状态 (必须在 update 之前)
+        boolean playerHadKey = gameManager.getPlayer().hasKey();
+
+        // 2️⃣ 更新游戏逻辑 (只调用一次！)
         gameManager.update(delta);
         cameraManager.update(delta, gameManager.getPlayer());
 
-        //子弹
-        // 把子弹交给特效系统
-        for (de.tum.cit.fop.maze.entities.EnemyBullet bullet : gameManager.getBullets()) {
-            if (bullet instanceof de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet) {
-                var bobaBullet = (de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet) bullet;
+        // === 子弹逻辑 ===
+        for (EnemyBullet bullet : gameManager.getBullets()) {
+            if (bullet instanceof BobaBullet) {
+                var bobaBullet = (BobaBullet) bullet;
                 if (!bobaBullet.isManagedByEffectManager()) {
-                    bobaBulletManager.addBullet(bobaBullet); // 注册子弹
+                    bobaBulletManager.addBullet(bobaBullet);
                 }
             }
         }
 
-        // 更新管理器
         if (bobaBulletManager != null) {
             bobaBulletManager.update(delta);
         }
 
-        //钥匙
-        // 1. 记录更新前的状态
-        boolean playerHadKey = gameManager.getPlayer().hasKey();
-
-        gameManager.update(delta);
-
-        // 2. 检查状态变化 (从没钥匙 -> 有钥匙)
+        // 3️⃣ 检查钥匙收集 (从无 -> 有)
         if (!playerHadKey && gameManager.getPlayer().hasKey()) {
-            // 获取刚刚被吃掉的钥匙对象引用
             var key = gameManager.getKey();
 
-            // 计算像素位置：网格坐标 * 单元格大小 + 偏移量(4是你在Key.java里用的偏移)
             float pixelX = key.getX() * GameConstants.CELL_SIZE + 4;
             float pixelY = key.getY() * GameConstants.CELL_SIZE + 4;
 
-            // 获取纹理
             Texture keyTexture = TextureManager.getInstance().getKeyTexture();
 
-            // 播放特效
-            keyEffectManager.spawnKeyEffect(pixelX, pixelY, keyTexture);
+            // 调试日志
+            System.out.println("✨ 触发钥匙特效！坐标: " + pixelX + "," + pixelY);
 
-            // 播放声音
+            keyEffectManager.spawnKeyEffect(pixelX, pixelY, keyTexture);
             AudioManager.getInstance().play(AudioType.PLAYER_GET_KEY);
         }
 
-        // 3. 更新特效
+        // 4️⃣ 更新特效
         if (keyEffectManager != null) {
             keyEffectManager.update(delta);
         }
 
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
-
         renderWorld();
         renderUI();
     }
