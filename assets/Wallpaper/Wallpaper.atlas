@@ -1,0 +1,34 @@
+
+Wallpaper.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+Wallpaper
+  rotate: false
+  xy: 2, 2406
+  size: 1600, 1200
+  orig: 1600, 1200
+  offset: 0, 0
+  index: 1
+Wallpaper
+  rotate: false
+  xy: 2, 1204
+  size: 1600, 1200
+  orig: 1600, 1200
+  offset: 0, 0
+  index: 2
+Wallpaper
+  rotate: false
+  xy: 1604, 2406
+  size: 1600, 1200
+  orig: 1600, 1200
+  offset: 0, 0
+  index: 3
+Wallpaper
+  rotate: false
+  xy: 2, 2
+  size: 1600, 1200
+  orig: 1600, 1200
+  offset: 0, 0
+  index: 4
