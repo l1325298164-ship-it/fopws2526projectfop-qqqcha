@@ -4,7 +4,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
-import de.tum.cit.fop.maze.entities.BobaBullet;
+import de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.game.GameConstants;
 
 /**
