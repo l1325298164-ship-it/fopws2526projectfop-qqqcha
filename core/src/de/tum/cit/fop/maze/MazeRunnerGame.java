@@ -71,7 +71,7 @@ public class MazeRunnerGame extends Game {
 
             case PV2_FAIL -> {
                 stage = StoryStage.QTE2;
-                setScreen(new QTEScreen(this, gameManager));
+                setScreen(new MenuScreen(this));
             }
 
             // =====================
@@ -84,7 +84,7 @@ public class MazeRunnerGame extends Game {
 
             case PV3_FAIL -> {
                 stage = StoryStage.MAZE_GAME1;
-                setScreen(new GameScreen(this));
+                setScreen(new MenuScreen(this));
             }
 
             // =====================
