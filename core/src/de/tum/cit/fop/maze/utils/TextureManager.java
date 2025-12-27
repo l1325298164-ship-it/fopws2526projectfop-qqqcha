@@ -43,7 +43,7 @@ public class TextureManager implements Disposable {
 
     // 图片文件映射（不同模式使用不同图片）
     private Map<TextureMode, Map<String, String>> textureFileMap;
-    private TextureMode currentMode = TextureMode.COLOR; // 默认纯色模式
+    private TextureMode currentMode = TextureMode.IMAGE; // 默认纯色模式
 
     private TextureManager() {
         textures = new HashMap<>();

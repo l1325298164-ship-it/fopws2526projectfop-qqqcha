@@ -30,6 +30,7 @@ public class MazeRunnerGame extends Game {
     private AudioManager audioManager;  // 添加音效管理器字段
     private GameManager gameManager;
 
+
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
@@ -69,6 +70,7 @@ public class MazeRunnerGame extends Game {
 
     public void goToGame() {
         Screen old = getScreen();
+        Logger.debug("TextureManager CONSTRUCTOR");
         //临时更改为pv播放
         setScreen(new GameScreen(this));
         if (old != null) old.dispose();
