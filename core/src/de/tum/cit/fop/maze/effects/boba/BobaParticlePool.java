@@ -1,21 +1,19 @@
 package de.tum.cit.fop.maze.effects.boba;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
-import de.tum.cit.fop.maze.game.GameConstants;
 
 /**
- * 粒子池 - 支持奶茶飞溅特效
+ * 粒子池 - 奶茶雾气与飞溅特效
  */
 public class BobaParticlePool {
 
     public enum ParticleType {
-        DEFAULT, // 普通黑珍珠碎屑
-        MILK     // 奶茶液滴
+        MIST,   // ⭐ 新增：奶茶雾气 (向上蒸发)
+        DROPLET // ⭐ 新增：奶茶液滴 (受重力下落)
     }
 
     private static class Particle {
@@ -31,7 +29,7 @@ public class BobaParticlePool {
 
     private final Pool<Particle> particlePool;
     private final Array<Particle> activeParticles;
-    private final ShapeRenderer shapeRenderer; // 用于绘制简单粒子
+    private final ShapeRenderer shapeRenderer;
 
     public BobaParticlePool() {
         particlePool = new Pool<Particle>() {
@@ -45,49 +43,55 @@ public class BobaParticlePool {
     }
 
     /**
-     * 创建普通爆开效果 (珍珠黑)
+     * 创建奶茶雾气蒸发效果 (替代原来的 Burst)
      */
-    public void createBurstEffect(float x, float y) {
-        createEffect(x, y, 8, ParticleType.DEFAULT);
+    public void createMistEffect(float x, float y) {
+        // 产生 5-8 个雾气粒子
+        for (int i = 0; i < 8; i++) {
+            Particle p = particlePool.obtain();
+            initParticle(p, x, y, ParticleType.MIST);
+            activeParticles.add(p);
+        }
     }
 
     /**
-     * 创建奶茶飞溅效果 (奶茶色)
+     * 创建奶茶液滴飞溅效果
      */
     public void createSplashEffect(float x, float y) {
-        createEffect(x, y, 12, ParticleType.MILK);
+        // 产生 6-10 个液滴
+        for (int i = 0; i < 10; i++) {
+            Particle p = particlePool.obtain();
+            initParticle(p, x, y, ParticleType.DROPLET);
+            activeParticles.add(p);
+        }
     }
 
-    private void createEffect(float x, float y, int count, ParticleType type) {
-        for (int i = 0; i < count; i++) {
-            Particle p = particlePool.obtain();
-            p.x = x;
-            p.y = y;
-            p.type = type;
-            p.active = true;
+    private void initParticle(Particle p, float x, float y, ParticleType type) {
+        p.x = x;
+        p.y = y;
+        p.type = type;
+        p.active = true;
 
-            // 随机方向
-            float angle = MathUtils.random(0f, MathUtils.PI2);
-            float speed;
+        if (type == ParticleType.MIST) {
+            // 雾气：向上的速度为主，左右随机漂浮
+            float angle = MathUtils.random(45f, 135f) * MathUtils.degreesToRadians; // 朝上
+            float speed = MathUtils.random(10f, 40f);
+            p.vx = MathUtils.cos(angle) * speed;
+            p.vy = MathUtils.sin(angle) * speed + 20f; // 基础上升速度
 
-            if (type == ParticleType.MILK) {
-                // 奶茶液滴：速度更快，范围更广
-                speed = MathUtils.random(60f, 180f);
-                p.size = MathUtils.random(2f, 5f);
-                p.lifetime = MathUtils.random(0.4f, 0.8f);
-            } else {
-                // 普通碎屑
-                speed = MathUtils.random(30f, 100f);
-                p.size = MathUtils.random(3f, 6f);
-                p.lifetime = MathUtils.random(0.3f, 0.6f);
-            }
-
+            p.size = MathUtils.random(6f, 12f); // 雾气比较大
+            p.lifetime = MathUtils.random(0.5f, 0.8f); // 消失得慢一点
             p.maxLifetime = p.lifetime;
+        } else {
+            // 液滴：向四周炸开，速度快
+            float angle = MathUtils.random(0f, 360f) * MathUtils.degreesToRadians;
+            float speed = MathUtils.random(50f, 150f);
             p.vx = MathUtils.cos(angle) * speed;
             p.vy = MathUtils.sin(angle) * speed;
-            p.alpha = 1.0f;
 
-            activeParticles.add(p);
+            p.size = MathUtils.random(3f, 5f); // 液滴比较小
+            p.lifetime = MathUtils.random(0.3f, 0.5f);
+            p.maxLifetime = p.lifetime;
         }
     }
 
@@ -99,15 +103,16 @@ public class BobaParticlePool {
             p.y += p.vy * delta;
             p.lifetime -= delta;
 
-            // 重力效果
-            if (p.type == ParticleType.MILK) {
-                p.vy -= 400 * delta; // 液体重力感更强
+            if (p.type == ParticleType.DROPLET) {
+                // 液滴受重力下落
+                p.vy -= 400f * delta;
             } else {
-                p.vy -= 150 * delta; // 烟雾/碎屑飘得慢
+                // 雾气缓慢上升且变大
+                p.vy += 10f * delta;
+                p.size += 15f * delta; // 扩散感
             }
 
-            // 更新透明度
-            p.alpha = p.lifetime / p.maxLifetime;
+            p.alpha = p.lifetime / p.maxLifetime; // 慢慢消失
 
             if (p.lifetime <= 0) {
                 activeParticles.removeIndex(i);
@@ -116,17 +121,10 @@ public class BobaParticlePool {
         }
     }
 
-    /**
-     * 渲染所有粒子
-     * 注意：我们需要暂时结束 SpriteBatch 来使用 ShapeRenderer，或者直接用 batch 画纹理
-     * 这里为了简单且效果好，使用 ShapeRenderer 画圆
-     */
     public void render(SpriteBatch batch) {
         if (activeParticles.size == 0) return;
 
-        batch.end(); // 暂停 SpriteBatch
-
-        // 开启混合模式以支持透明度
+        batch.end();
         com.badlogic.gdx.Gdx.gl.glEnable(com.badlogic.gdx.Gdx.gl.GL_BLEND);
         com.badlogic.gdx.Gdx.gl.glBlendFunc(com.badlogic.gdx.Gdx.gl.GL_SRC_ALPHA, com.badlogic.gdx.Gdx.gl.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -134,32 +132,20 @@ public class BobaParticlePool {
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
         for (Particle p : activeParticles) {
-            if (p.type == ParticleType.MILK) {
-                // 奶茶色 (米白/浅棕)
-                shapeRenderer.setColor(0.85f, 0.75f, 0.65f, p.alpha);
+            if (p.type == ParticleType.MIST) {
+                // 奶茶色雾气 (米白/浅棕，半透明)
+                shapeRenderer.setColor(0.95f, 0.9f, 0.8f, p.alpha * 0.6f);
             } else {
-                // 珍珠黑 (深紫黑)
-                shapeRenderer.setColor(0.1f, 0.05f, 0.15f, p.alpha);
+                // 奶茶液滴 (稍微深一点的棕色，不透明度高)
+                shapeRenderer.setColor(0.85f, 0.75f, 0.65f, p.alpha);
             }
             shapeRenderer.circle(p.x, p.y, p.size / 2);
         }
 
         shapeRenderer.end();
         com.badlogic.gdx.Gdx.gl.glDisable(com.badlogic.gdx.Gdx.gl.GL_BLEND);
-
-        batch.begin(); // 恢复 SpriteBatch
+        batch.begin();
     }
-
-    public void clearAllParticles() {
-        particlePool.freeAll(activeParticles);
-        activeParticles.clear();
-    }
-
-    public int getActiveParticleCount() {
-        return activeParticles.size;
-    }
-
-    public void resetStats() {}
 
     public void dispose() {
         shapeRenderer.dispose();
