@@ -6,9 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.g2d.Animation;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.g2d.*;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
@@ -44,6 +42,11 @@ public class QTEScreen implements Screen {
     // Camera（QTE 专用）
     // =========================
     private OrthographicCamera camera;
+    // =========================
+// QTE 引导文字
+// =========================
+    private BitmapFont hintFont;
+    private GlyphLayout hintLayout = new GlyphLayout();
 
     // =========================
     // Maze Renderer
@@ -167,6 +170,12 @@ public class QTEScreen implements Screen {
     public void show() {
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
+        // 👉 引导字体（先用默认，后期可换 TTF）
+        hintFont = new BitmapFont();
+        hintFont.setUseIntegerPositions(false);
+
+        hintFont.getData().setScale(0.3f);
+        hintFont.setColor(1f, 0.9f, 0.95f, 1f);
 
         TextureManager.getInstance()
                 .switchMode(TextureManager.TextureMode.IMAGE);
@@ -204,6 +213,26 @@ public class QTEScreen implements Screen {
                 new com.badlogic.gdx.graphics.Texture("qte/player_escape.png")
         );
     }
+//提示词
+    private void renderPressSpaceHint() {
+        if (qteState != QTEState.ACTIVE) return;
+
+        String text = "PRESS  SPACE";
+        hintLayout.setText(hintFont, text);
+
+        // 🌬 呼吸动画（alpha）
+        float pulse = 0.6f + 0.4f * MathUtils.sin(stateTime * 4f);
+
+        hintFont.setColor(0.1f, 0.1f, 0.1f, pulse);
+
+        float textX = camera.position.x - hintLayout.width / 2f;
+        float textY = barY + BAR_HEIGHT + 9f; // 文字位置 在进度条上方
+
+        batch.begin();
+        hintFont.draw(batch, hintLayout, textX, textY);
+        batch.end();
+    }
+
 
     // =========================================================
     // 更新
@@ -300,6 +329,8 @@ public class QTEScreen implements Screen {
         batch.end();
 
         renderProgressBar(delta);
+
+        renderPressSpaceHint();
     }
 
     private void renderProgressBar(float delta) {
