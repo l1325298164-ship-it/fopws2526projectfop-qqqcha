@@ -43,7 +43,7 @@ public class MazeRunnerGame extends Game {
                 Gdx.files.internal("ui/skinbutton.json"),
                 uiAtlas
         );
-
+        gameManager = new GameManager();
 
         initializeSoundManager();
         goToMenu();
@@ -53,7 +53,7 @@ public class MazeRunnerGame extends Game {
 
     public void goToQTE() {
         Screen old= getScreen();
-        setScreen(new QTEScreen(this));
+        setScreen(new QTEScreen(this,gameManager));
         if (old != null) old.dispose();
         audioManager.stopAll();
     }
@@ -165,6 +165,10 @@ public class MazeRunnerGame extends Game {
         TextureManager.getInstance().dispose();
 
         Logger.debug("Game disposed");
+    }
+
+    public GameManager getGameManager() {
+        return gameManager;
     }
 }
 

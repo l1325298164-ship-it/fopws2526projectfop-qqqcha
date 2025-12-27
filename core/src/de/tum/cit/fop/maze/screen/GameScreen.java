@@ -100,8 +100,7 @@ public class GameScreen implements Screen {
         worldBatch = game.getSpriteBatch();
         uiBatch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
-
-        gameManager = new GameManager();
+        gameManager = game.getGameManager();
         mazeRenderer = new MazeRenderer(gameManager);
         cameraManager = new CameraManager();
         inputHandler = new PlayerInputHandler();
