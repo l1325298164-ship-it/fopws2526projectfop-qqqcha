@@ -166,8 +166,14 @@ public class BobaBulletManager implements Disposable {
         float pixelX = bullet.getRealX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
         float pixelY = bullet.getRealY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
 
-        // 使用粒子池创建爆开效果
-        particlePool.createBurstEffect(pixelX, pixelY);
+        // 同时播放两种特效，打造层次感
+        // 1. 播放雾气 (原 Burst，现在是 Mist)
+        particlePool.createMistEffect(pixelX, pixelY);
+
+        // 2. 播放飞溅
+        particlePool.createSplashEffect(pixelX, pixelY);
+
+        System.out.println("Playing Mist & Splash effect at " + pixelX + "," + pixelY);
     }
 
     /**

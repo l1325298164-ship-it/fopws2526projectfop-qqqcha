@@ -92,6 +92,7 @@ public class BobaBullet extends EnemyBullet {
         updateVisuals(delta);
     }
 
+    // 1. 撞墙逻辑更新：减小撞击时的压扁程度
     private void handleWallCollision(GameManager gm, int wallX, int wallY) {
         if (bounceCount >= MAX_BOUNCES) {
             triggerPop();
@@ -100,19 +101,23 @@ public class BobaBullet extends EnemyBullet {
         bounceCount++;
         state = BobaState.BOUNCING;
 
-        // 简单的反弹逻辑
         boolean hitX = gm.getMazeCell((int) (realX + vx * 0.05f), (int) realY) == 0;
         boolean hitY = gm.getMazeCell((int) realX, (int) (realY + vy * 0.05f)) == 0;
 
-        if (hitX) vx = -vx * 0.8f;
-        if (hitY) vy = -vy * 0.8f;
+        // 反弹速度保留更多 (0.8f -> 0.9f)，看起来更弹
+        if (hitX) vx = -vx * 0.9f;
+        if (hitY) vy = -vy * 0.9f;
 
-        // 撞击瞬间压扁
-        scaleX = 1.5f;
-        scaleY = 0.6f;
+        // ⭐ 修改：形变幅度减小
+        // 原来是 1.5f / 0.6f (太夸张)
+        // 现在是 1.25f / 0.8f (轻微挤压)
+        scaleX = 1.25f;
+        scaleY = 0.8f;
+
         rotation += 180f;
     }
 
+    // 2. 视觉逻辑更新：减小飞行时的拉伸程度
     private void updateVisuals(float delta) {
         wobbleTime += delta;
         rotation += rotationSpeed * delta;
@@ -121,14 +126,14 @@ public class BobaBullet extends EnemyBullet {
 
         float currentSpeed = (float) Math.sqrt(vx * vx + vy * vy);
         if (state == BobaState.FLYING && currentSpeed > 1f) {
-            // 飞行拉伸
-            targetScaleX = 1.0f - (currentSpeed * 0.02f);
-            targetScaleY = 1.0f + (currentSpeed * 0.02f);
+            // ⭐ 修改：拉伸系数减半 (0.02f -> 0.01f)
+            targetScaleX = 1.0f - (currentSpeed * 0.01f); // 微微变细
+            targetScaleY = 1.0f + (currentSpeed * 0.01f); // 微微变长
         }
 
-        // 弹性插值恢复形状
-        scaleX = scaleX + (targetScaleX - scaleX) * 10f * delta;
-        scaleY = scaleY + (targetScaleY - scaleY) * 10f * delta;
+        // 加快恢复速度 (10f -> 15f)，让它回弹更干脆
+        scaleX = scaleX + (targetScaleX - scaleX) * 15f * delta;
+        scaleY = scaleY + (targetScaleY - scaleY) * 15f * delta;
     }
 
     private void updatePoppingState(float delta) {
