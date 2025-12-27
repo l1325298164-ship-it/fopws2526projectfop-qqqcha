@@ -28,6 +28,9 @@ public class GameManager  {
     private int lives = GameConstants.MAX_LIVES;
     private int currentLevel = 1;
 
+    // 等待通关特效
+    private boolean isExitingLevel = false;
+
     public GameManager() {
         Logger.debug("GameManager initialized");
         exitDoors = new ArrayList<>();
@@ -496,10 +499,14 @@ public class GameManager  {
                         exitDoor.unlock();
                         Logger.gameEvent("Exit door " + exitDoor.getDoorId() + " unlocked");
                     } else {
-                        // 通过出口
-                        if (currentLevel < GameConstants.MAX_LEVELS) {
+                        // 原有代码 通过出口
+                        //if (currentLevel < GameConstants.MAX_LEVELS) {
                             // 进入下一关
-                            initializeLevel();
+                            //initializeLevel();
+                        // --- 为了实现传送特效修改部分 ---
+                        if (!isExitingLevel) {
+                            isExitingLevel = true;
+                            // 这里不要直接 initializeLevel()，而是等 GameScreen 通知
                         } else {
                             // 游戏通关
                             gameState = GameState.LEVEL_COMPLETE;
@@ -512,6 +519,16 @@ public class GameManager  {
                     Logger.gameEvent("Player tried to exit without key");
                 }
             }
+        }
+    }
+
+    // 新增方法：供 GameScreen 在动画播放完毕后调用
+    public void completeLevelTransition() {
+        isExitingLevel = false;
+        if (currentLevel < GameConstants.MAX_LEVELS) {
+            initializeLevel();
+        } else {
+            gameState = GameState.LEVEL_COMPLETE;
         }
     }
 
@@ -579,6 +596,9 @@ public class GameManager  {
     public Compass getCompass() {
         return compass;
     }
+
+    // 添加 Getter
+    public boolean isExitingLevel() { return isExitingLevel; }
 
     public void restart() {
         Logger.gameEvent("Game restarted");
