@@ -1,0 +1,59 @@
+button.png
+size:2048,512
+repeat:none
+navitem
+bounds:712,400,698,104
+navitem (1)
+bounds:2,188,698,104
+navitem (10)
+bounds:1648,320,203,78
+navitem (11)
+bounds:2,2,466,78
+navitem (12)
+bounds:1617,134,203,78
+navitem (13)
+bounds:470,108,466,78
+navitem (14)
+bounds:938,30,156,156
+navitem (15)
+bounds:1096,30,156,156
+navitem (16)
+bounds:1822,8,102,102
+navitem (17)
+bounds:1795,216,102,102
+navitem (18)
+bounds:2,400,708,104
+navitem (19)
+bounds:2,294,708,104
+navitem (2)
+bounds:1899,244,102,102
+navitem (20)
+bounds:1412,108,203,104
+navitem (21)
+bounds:712,294,466,104
+navitem (22)
+bounds:1385,214,203,104
+navitem (23)
+bounds:2,82,466,104
+navitem (24)
+bounds:1412,28,203,78
+navitem (25)
+bounds:470,28,466,78
+navitem (26)
+bounds:1617,54,203,78
+navitem (27)
+bounds:1180,320,466,78
+navitem (3)
+bounds:1822,112,102,102
+navitem (4)
+bounds:1180,214,203,104
+navitem (5)
+bounds:1412,400,466,104
+navitem (6)
+bounds:1590,214,203,104
+navitem (7)
+bounds:702,188,466,104
+navitem (8)
+bounds:1880,348,156,156
+navitem (9)
+bounds:1254,56,156,156

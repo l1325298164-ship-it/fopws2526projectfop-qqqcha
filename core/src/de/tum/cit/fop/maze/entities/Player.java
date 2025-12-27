@@ -5,6 +5,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -139,6 +141,9 @@ public class Player extends GameObject {
         if (isDead || isInvincible) return;
 
         lives -= damage;
+
+        // 🔊 玩家受伤音效（只播一次）
+        AudioManager.getInstance().play(AudioType.PLAYER_ATTACKED);
         isInvincible = true;
         invincibleTimer = 0;
 

@@ -5,6 +5,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -12,7 +14,7 @@ import de.tum.cit.fop.maze.utils.TextureManager;
 public abstract class Enemy extends GameObject {
 
     protected int hp;
-    protected int attack;
+    public int attack;
     protected float moveSpeed;
     protected float detectRange;
     protected static final float MOVE_INTERVAL = 0.25f; // 0.25 秒走一步
@@ -33,6 +35,11 @@ public abstract class Enemy extends GameObject {
     protected Texture texture;
     protected boolean needsTextureUpdate = true;
 
+    // ===== 受击闪烁相关 =====
+    protected boolean isHitFlash = false;
+    protected float hitFlashTimer = 0f;
+    // 闪烁总时长
+    protected static final float HIT_FLASH_TIME = 0.25f;
 
 
 
@@ -46,11 +53,40 @@ public abstract class Enemy extends GameObject {
     public abstract void update(float delta, GameManager gm);
 
     public void takeDamage(int dmg) {
+        if (!active) return;
+
         hp -= dmg;
+
+        // 🔊 敌人受伤音效
+        AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED);
+
+        // ✨ 触发受击闪烁
+        isHitFlash = true;
+        hitFlashTimer = 0f;
+
         if (hp <= 0) {
-            active = false;
+            die();
         }
     }
+    protected void updateHitFlash(float delta) {
+        if (isHitFlash) {
+            hitFlashTimer += delta;
+            if (hitFlashTimer >= HIT_FLASH_TIME) {
+                isHitFlash = false;
+                hitFlashTimer = 0f;
+            }
+        }
+    }
+
+
+    private void die() {
+        active = false;
+        // 以后可以加：
+        // AudioManager.getInstance().play(AudioType.ENEMY_DIE);
+        // 掉落物
+        // 计分
+    }
+
 
     public boolean isDead() {
         return !active;
@@ -74,6 +110,13 @@ public abstract class Enemy extends GameObject {
         Texture tex = (texture != null)
                 ? texture
                 : TextureManager.getInstance().getColorTexture(Color.PURPLE);
+
+        // ✨ 受击闪烁效果（和 Player 一致）
+        if (isHitFlash && hitFlashTimer % 0.1f > 0.05f) {
+            batch.setColor(1f, 1f, 1f, 0.6f);
+        } else {
+            batch.setColor(1f, 1f, 1f, 1f);
+        }
 
         batch.draw(
                 tex,
@@ -186,7 +229,6 @@ public abstract class Enemy extends GameObject {
             moveCooldown = MOVE_INTERVAL;
         }
     }
-
 
 
 

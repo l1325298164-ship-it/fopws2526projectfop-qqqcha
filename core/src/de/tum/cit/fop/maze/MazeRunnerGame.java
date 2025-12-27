@@ -6,7 +6,9 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import de.tum.cit.fop.maze.screen.GameScreen;
+import de.tum.cit.fop.maze.screen.IntroScreen;
 import de.tum.cit.fop.maze.screen.MenuScreen;
+import de.tum.cit.fop.maze.screen.QTEScreen;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 // 添加 Audio的导入
@@ -34,8 +36,25 @@ public class MazeRunnerGame extends Game {
         goToMenu();
     }
 
+    public void goToQTE() {
+        Screen old= getScreen();
+        setScreen(new QTEScreen(this));
+        if (old != null) old.dispose();
+        audioManager.stopAll();
+    }
+
+
+    public void goToPV() {
+        Screen old = getScreen();
+        setScreen(new IntroScreen(this));
+        if (old != null) old.dispose();
+        audioManager.stopAll();
+
+    }
+
     public void goToGame() {
         Screen old = getScreen();
+        //临时更改为pv播放
         setScreen(new GameScreen(this));
         if (old != null) old.dispose();
         // 切换到游戏屏幕时确保音乐继续播放
@@ -132,6 +151,7 @@ public class MazeRunnerGame extends Game {
 
         Logger.debug("Game disposed");
     }
-
 }
+
+
 
