@@ -14,7 +14,6 @@ import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.qte.QTEMazeData;
 import de.tum.cit.fop.maze.qte.QTEMazeRenderer;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -118,6 +117,14 @@ public class QTEScreen implements Screen {
     private float successTargetX;
     private float successStartY;
     private float successTargetY;
+    // =========================
+// Trap（QTE 陷阱）
+// =========================
+    private TextureRegion trapRegion;
+
+    // 角色初始世界坐标（陷阱固定在这里）
+    private float trapX;
+    private float trapY;
 
     // =========================
 // Progress Bar
@@ -237,8 +244,33 @@ public class QTEScreen implements Screen {
         escapeFrame = new TextureRegion(
                 new com.badlogic.gdx.graphics.Texture("qte/player_escape.png")
         );
+        // =========================
+// QTE Trap
+// =========================
+        trapRegion = new TextureRegion(
+                new com.badlogic.gdx.graphics.Texture("qte/trap.png")
+        );
+
+// 记录角色初始位置（世界坐标）
+// ⚠️ 注意：只记录一次，不要在 render 里算
+        trapX = playerGridX * cellSize;
+        trapY = playerGridY * cellSize;
     }
-//提示词
+
+    //trap
+    private void drawTrap() {
+        if (trapRegion == null) return;
+
+        batch.draw(
+                trapRegion,
+                trapX,
+                trapY,
+                cellSize,
+                cellSize
+        );
+    }
+
+    //提示词
     private void renderPressSpaceHint() {
         if (qteState != QTEState.ACTIVE) return;
 
@@ -338,6 +370,7 @@ public class QTEScreen implements Screen {
                 }
             }
         }
+        drawTrap();
 
 // 3️⃣ 玩家
         drawPlayer();
