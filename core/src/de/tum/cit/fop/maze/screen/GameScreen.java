@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
@@ -21,6 +22,9 @@ import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
+
+import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
+import de.tum.cit.fop.maze.game.GameConstants;
 
 import java.util.List;
 
@@ -45,8 +49,9 @@ public class GameScreen implements Screen {
     private ShapeRenderer shapeRenderer;
 
     private boolean isPlayerMoving = false;
-//===新增boba子弹===
+//===新增特效===
     private BobaBulletManager bobaBulletManager;
+    private KeyEffectManager keyEffectManager;
 
 
 
@@ -78,6 +83,7 @@ public class GameScreen implements Screen {
         gameManager.update(delta);
         cameraManager.update(delta, gameManager.getPlayer());
 
+        //子弹
         // 把子弹交给特效系统
         for (de.tum.cit.fop.maze.entities.EnemyBullet bullet : gameManager.getBullets()) {
             if (bullet instanceof de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet) {
@@ -91,6 +97,36 @@ public class GameScreen implements Screen {
         // 更新管理器
         if (bobaBulletManager != null) {
             bobaBulletManager.update(delta);
+        }
+
+        //钥匙
+        // 1. 记录更新前的状态
+        boolean playerHadKey = gameManager.getPlayer().hasKey();
+
+        gameManager.update(delta);
+
+        // 2. 检查状态变化 (从没钥匙 -> 有钥匙)
+        if (!playerHadKey && gameManager.getPlayer().hasKey()) {
+            // 获取刚刚被吃掉的钥匙对象引用
+            var key = gameManager.getKey();
+
+            // 计算像素位置：网格坐标 * 单元格大小 + 偏移量(4是你在Key.java里用的偏移)
+            float pixelX = key.getX() * GameConstants.CELL_SIZE + 4;
+            float pixelY = key.getY() * GameConstants.CELL_SIZE + 4;
+
+            // 获取纹理
+            Texture keyTexture = TextureManager.getInstance().getKeyTexture();
+
+            // 播放特效
+            keyEffectManager.spawnKeyEffect(pixelX, pixelY, keyTexture);
+
+            // 播放声音
+            AudioManager.getInstance().play(AudioType.PLAYER_GET_KEY);
+        }
+
+        // 3. 更新特效
+        if (keyEffectManager != null) {
+            keyEffectManager.update(delta);
         }
 
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
@@ -129,7 +165,7 @@ public class GameScreen implements Screen {
         // 初始化boba特效管理器
         bobaBulletManager = new BobaBulletManager();
         bobaBulletManager.setRenderMode(BobaBulletManager.RenderMode.MANAGED); // 让管理器全权负责子弹渲染
-
+        keyEffectManager = new KeyEffectManager();
 
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
 
@@ -167,6 +203,10 @@ public class GameScreen implements Screen {
         //===新增===
         if (bobaBulletManager != null) {
             bobaBulletManager.dispose();
+        }
+
+        if (keyEffectManager != null) {
+            keyEffectManager.dispose();
         }
 
         Logger.debug("GameScreen disposed");
@@ -295,13 +335,17 @@ public class GameScreen implements Screen {
             }
         }
 
-// 在这里调用特效渲染 ，建议放在实体之后，或者根据你的图层需求
+// 子弹特效
         //bobaBulletManager.render(worldBatch);
         // 特效贴图
         if (bobaBulletManager != null) {
             bobaBulletManager.render(worldBatch);
         }
 
+// 绘制钥匙特效
+        if (keyEffectManager != null) {
+            keyEffectManager.render(worldBatch);
+        }
         worldBatch.end();
     }
     private enum RenderItemType {
