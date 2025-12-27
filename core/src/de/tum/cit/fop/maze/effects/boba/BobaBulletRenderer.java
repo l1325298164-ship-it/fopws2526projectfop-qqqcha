@@ -1,73 +1,104 @@
 package de.tum.cit.fop.maze.effects.boba;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.game.GameConstants;
 
 /**
  * 适配格子坐标的珍珠子弹渲染器
+ * 支持形变 (Squash & Stretch) 和旋转
  */
 public class BobaBulletRenderer {
 
     private float effectIntensity = 1.0f;
+    private TextureRegion bulletTexture;
+    private final ShapeRenderer shapeRenderer;
 
-    /**
-     * 渲染珍珠子弹
-     */
+    public BobaBulletRenderer() {
+        shapeRenderer = new ShapeRenderer();
+        loadTexture();
+    }
+
+    private void loadTexture() {
+        try {
+            // 尝试加载资源，文件名需确保正确
+            Texture tex = new Texture(Gdx.files.internal("effects/boba-pearl-bullet.png"));
+            // 线性过滤让旋转更平滑
+            tex.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+            this.bulletTexture = new TextureRegion(tex);
+        } catch (Exception e) {
+            // 资源不存在时不报错，静默失败，稍后使用 ShapeRenderer 备用
+            this.bulletTexture = null;
+        }
+    }
+
     public void render(BobaBullet bullet, SpriteBatch batch) {
         if (bullet == null || !bullet.isActive()) return;
 
-        // 获取子弹的真实像素坐标
-        float screenX = bullet.getRealX() - GameConstants.CELL_SIZE/2;
-        float screenY = bullet.getRealY() - GameConstants.CELL_SIZE/2;
+        // 1. 获取基础渲染参数
+        float x = bullet.getRealX();
+        float y = bullet.getRealY();
+        float radius = GameConstants.CELL_SIZE * 0.25f; // 基础半径
+        float size = radius * 2;
 
-        // 计算视觉效果参数
-        float currentSize = bullet.getCurrentRenderSize() * effectIntensity;
-        float wobbleX = bullet.getWobbleOffsetX() * effectIntensity;
-        float wobbleY = bullet.getWobbleOffsetY() * effectIntensity;
+        // 屏幕绘制坐标 (左下角)
+        float drawX = x - radius;
+        float drawY = y - radius;
+
+        // 2. 获取特效参数 (来自 BobaBullet 的物理计算)
+        float scaleX = bullet.getScaleX() * effectIntensity;
+        float scaleY = bullet.getScaleY() * effectIntensity;
         float rotation = bullet.getRotation();
 
-        // 获取子弹颜色
-        float[] color = bullet.getColor();
+        // 3. 绘制
+        if (bulletTexture != null) {
+            // 使用纹理绘制 (支持旋转和缩放)
+            // originX/Y 设置为中心点，以便围绕中心旋转和缩放
+            batch.setColor(1f, 1f, 1f, 1f);
+            batch.draw(
+                    bulletTexture,
+                    drawX, drawY,               // 绘制位置
+                    radius, radius,             // 旋转/缩放中心 (origin)
+                    size, size,                 // 基础宽高
+                    scaleX, scaleY,             // 缩放比例
+                    rotation                    // 旋转角度
+            );
+        } else {
+            // 备用绘制方案：简单的深色圆形
+            batch.end();
+            shapeRenderer.setProjectionMatrix(batch.getProjectionMatrix());
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // 保存原始颜色
-        com.badlogic.gdx.graphics.Color originalColor = batch.getColor();
+            // 珍珠黑
+            shapeRenderer.setColor(0.2f, 0.1f, 0.05f, 1f);
 
-        // 应用子弹颜色
-        batch.setColor(color[0], color[1], color[2], 1f);
+            // 注意：ShapeRenderer 不直接支持带旋转的椭圆，
+            // 这里简单模拟缩放，不处理旋转以保持简单
+            shapeRenderer.ellipse(
+                    x - (radius * scaleX),
+                    y - (radius * scaleY),
+                    size * scaleX,
+                    size * scaleY
+            );
 
-        // 绘制子弹
-        // 注意：这里假设子弹纹理已经在 BobaBullet 类中加载
-        // 如果有纹理，使用纹理绘制，否则使用简单的圆形
-
-        // 暂时使用简单的圆形绘制
-        // 在实际项目中，你应该使用子弹的纹理
-        com.badlogic.gdx.graphics.glutils.ShapeRenderer shape =
-                new com.badlogic.gdx.graphics.glutils.ShapeRenderer();
-
-        batch.end(); // 结束 SpriteBatch
-
-        shape.setProjectionMatrix(batch.getProjectionMatrix());
-        shape.begin(com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType.Filled);
-        shape.setColor(color[0], color[1], color[2], 1f);
-        shape.circle(screenX + wobbleX, screenY + wobbleY, currentSize/2);
-        shape.end();
-
-        batch.begin(); // 重新开始 SpriteBatch
-
-        // 恢复原始颜色
-        batch.setColor(originalColor);
+            shapeRenderer.end();
+            batch.begin();
+        }
     }
 
-    /**
-     * 设置特效强度
-     */
     public void setEffectIntensity(float intensity) {
-        this.effectIntensity = MathUtils.clamp(intensity, 0.1f, 2.0f);
+        this.effectIntensity = Math.max(0.1f, Math.min(2.0f, intensity));
     }
 
     public void dispose() {
-        // 清理资源
+        if (shapeRenderer != null) shapeRenderer.dispose();
+        if (bulletTexture != null && bulletTexture.getTexture() != null) {
+            bulletTexture.getTexture().dispose();
+        }
     }
 }
