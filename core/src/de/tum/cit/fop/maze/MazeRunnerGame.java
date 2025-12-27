@@ -3,7 +3,9 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import de.tum.cit.fop.maze.screen.GameScreen;
 import de.tum.cit.fop.maze.screen.IntroScreen;
@@ -29,12 +31,22 @@ public class MazeRunnerGame extends Game {
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
-        skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json"));
-        TextureManager.getInstance().switchMode(TextureManager.TextureMode.IMAGE);
-        initializeSoundManager();// 初始化音效系统
 
+        // 1️⃣ 先加载 atlas
+        TextureAtlas uiAtlas =
+                new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
+
+        // 2️⃣ 用 atlas + json 直接构造 Skin
+        skin = new Skin(
+                Gdx.files.internal("ui/skinbutton.json"),
+                uiAtlas
+        );
+
+
+        initializeSoundManager();
         goToMenu();
     }
+
 
     public void goToQTE() {
         Screen old= getScreen();

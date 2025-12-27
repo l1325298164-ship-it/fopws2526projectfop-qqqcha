@@ -1,0 +1,61 @@
+{
+  "com.badlogic.gdx.graphics.g2d.BitmapFont": {
+    "default-font": {
+      "file": "character.fnt"
+    }
+  },
+
+  "com.badlogic.gdx.graphics.Color": {
+    "WHITE": {
+      "r": 1,
+      "g": 1,
+      "b": 1,
+      "a": 1
+    },
+    "GRAY": {
+      "r": 0.5,
+      "g": 0.5,
+      "b": 0.5,
+      "a": 1
+    },
+    "BLACK": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    }
+  },
+
+  "com.badlogic.gdx.scenes.scene2d.ui.Button$ButtonStyle": {
+    "navButton": {
+      "up": "navitem",
+      "down": "navitem (1)",
+      "checked": "navitem (18)",
+      "disabled": "navitem (19)"
+    }
+  },
+
+  "com.badlogic.gdx.scenes.scene2d.ui.TextButton$TextButtonStyle": {
+    "navTextButton": {
+      "up": "navitem",
+      "down": "navitem (1)",
+      "checked": "navitem (18)",
+      "disabled": "navitem (19)",
+      "font": "default-font",
+      "fontColor": "WHITE",
+      "downFontColor": "GRAY",
+      "disabledFontColor": "GRAY"
+    }
+  },
+
+  "com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle": {
+    "default": {
+      "font": "default-font",
+      "fontColor": "WHITE"
+    },
+    "title": {
+      "font": "default-font",
+      "fontColor": "WHITE"
+    }
+  }
+}
