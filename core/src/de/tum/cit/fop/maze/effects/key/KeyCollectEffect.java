@@ -56,7 +56,7 @@ public class KeyCollectEffect {
         // 保存之前的混合模式和颜色
         int srcFunc = batch.getBlendSrcFunc();
         int dstFunc = batch.getBlendDstFunc();
-        Color oldColor = batch.getColor();
+        Color oldColor = new Color(batch.getColor());
 
         float width = 32; // 假设大小，或者用 texture.getWidth()
         float height = 32;
