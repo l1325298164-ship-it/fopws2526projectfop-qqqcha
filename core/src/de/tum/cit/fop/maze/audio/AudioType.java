@@ -9,7 +9,7 @@ public enum AudioType {
     MUSIC_MENU("sounds/music/menu-background.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
 
     // === 玩家音效 ===
-    PLAYER_MOVE("sounds/sfx/player/move01_16.wav", AudioCategory.PLAYER, false, 0.8f, true, false),
+    PLAYER_MOVE("sounds/sfx/player/move01.wav", AudioCategory.PLAYER, false, 0.8f, true, false),
     PLAYER_GET_KEY("sounds/sfx/player/get-key.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
     PLAYER_HIT_WALL("sounds/sfx/player/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
     PLAYER_ATTACKED("sounds/sfx/player/attacked01.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
