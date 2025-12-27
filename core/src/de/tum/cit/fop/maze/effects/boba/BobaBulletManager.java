@@ -3,9 +3,7 @@ package de.tum.cit.fop.maze.effects.boba;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-import de.tum.cit.fop.maze.entities.BobaBullet;
-import de.tum.cit.fop.maze.game.GameConstants;
-import com.badlogic.gdx.math.Vector2;
+import de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet;
 
 /**
  * Boba 子弹特效管理器
