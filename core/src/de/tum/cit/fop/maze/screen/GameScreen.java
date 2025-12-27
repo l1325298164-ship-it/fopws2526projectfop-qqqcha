@@ -249,7 +249,6 @@ public class GameScreen implements Screen {
             }
         }
 
-
     }
 
     private void renderWorld() {
