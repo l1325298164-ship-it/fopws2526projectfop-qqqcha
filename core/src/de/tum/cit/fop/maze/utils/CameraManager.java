@@ -5,10 +5,18 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 
+
+
 public class CameraManager {
     private OrthographicCamera camera;
     private float targetX, targetY;
     private float smoothSpeed = 5.0f; // 相机跟随的平滑度
+    // ===== QTE / 自由目标支持 =====
+    private boolean useFreeTarget = false;
+    private float freeTargetX;
+    private float freeTargetY;
+
+
 
     public CameraManager() {
         camera = new OrthographicCamera();
@@ -92,4 +100,37 @@ public class CameraManager {
         Logger.debug(String.format("Camera resized to: %.0fx%.0f",
             camera.viewportWidth, camera.viewportHeight));
     }
+    // 给 QTE 用：直接指定相机目标点
+    public void setTarget(float x, float y) {
+        this.freeTargetX = x;
+        this.freeTargetY = y;
+        this.useFreeTarget = true;
+    }
+    // QTE 用的 update（没有 Player）
+    public void update(float deltaTime) {
+        if (!useFreeTarget) return;
+
+        targetX = freeTargetX;
+        targetY = freeTargetY;
+
+        // 限制相机范围
+        targetX = Math.max(GameConstants.MIN_CAMERA_X,
+                Math.min(GameConstants.MAX_CAMERA_X, targetX));
+        targetY = Math.max(GameConstants.MIN_CAMERA_Y,
+                Math.min(GameConstants.MAX_CAMERA_Y, targetY));
+
+        float currentX = camera.position.x;
+        float currentY = camera.position.y;
+
+        float newX = currentX + (targetX - currentX) * smoothSpeed * deltaTime;
+        float newY = currentY + (targetY - currentY) * smoothSpeed * deltaTime;
+
+        camera.position.set(newX, newY, 0);
+        camera.update();
+    }
+    public void disableFreeTarget() {
+        useFreeTarget = false;
+    }
+
+
 }

@@ -4,39 +4,48 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
+
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.maze.MazeRenderer;
 
 /**
- * 极简 QTE Screen（无 Camera）
- * - 左下角坐标
- * - 连打加速动画
- * - 成功后向右移动一格
+ * QTE Screen（MazeRenderer + 独立 Camera）
  */
 public class QTEScreen implements Screen {
 
     private final MazeRunnerGame game;
-    private float trapX;
-    private float trapY;
+    private final GameManager gameManager;
 
     // =========================
-    // 迷宫逻辑尺寸（仅用于算格子）
+    // Camera（QTE 专用）
+    // =========================
+    private OrthographicCamera camera;
+
+    // =========================
+    // Maze Renderer
+    // =========================
+    private MazeRenderer mazeRenderer;
+
+    // =========================
+    // 迷宫尺寸
     // =========================
     private static final int MAZE_WIDTH = 7;
     private static final int MAZE_HEIGHT = 7;
 
     // =========================
-    // 玩家格子坐标（左下角）
+    // 玩家格子坐标
     // =========================
     private int playerGridX = 1;
     private int playerGridY = 1;
 
     // =========================
-    // 屏幕坐标
+    // 世界坐标
     // =========================
     private float playerX;
     private float playerY;
@@ -46,17 +55,11 @@ public class QTEScreen implements Screen {
     // 渲染
     // =========================
     private SpriteBatch batch;
-    private Texture background;
-    private Texture trapTexture;
 
-    // 玩家动画
+    // 动画
     private Animation<TextureRegion> struggleAnim;
     private TextureRegion escapeFrame;
     private float stateTime = 0f;
-
-    public MazeRunnerGame getGame() {
-        return game;
-    }
 
     // =========================
     // QTE 状态
@@ -64,9 +67,7 @@ public class QTEScreen implements Screen {
     private enum QTEState { ACTIVE, SUCCESS, DONE }
     private QTEState qteState = QTEState.ACTIVE;
 
-    // =========================
-    // 连打判定
-    // =========================
+    // 连打
     private int mashCount = 0;
     private float mashTimer = 0f;
     private static final float MASH_WINDOW = 1.0f;
@@ -74,53 +75,69 @@ public class QTEScreen implements Screen {
 
     private float animationSpeed = 1.0f;
 
-    // =========================
     // 成功移动
-    // =========================
     private static final float SUCCESS_DURATION = 0.4f;
     private float successTimer = 0f;
     private float successStartX;
     private float successTargetX;
 
-    public QTEScreen(MazeRunnerGame game) {
+    // =========================
+    // 构造函数（重点）
+    // =========================
+    public QTEScreen(MazeRunnerGame game, GameManager gameManager) {
         this.game = game;
+        this.gameManager = gameManager;
     }
+
+    // =========================================================
+    // 生命周期
+    // =========================================================
 
     @Override
     public void show() {
         batch = new SpriteBatch();
 
-        background = new Texture("qte/background.png");
-        trapTexture = new Texture("qte/trap.png");
+        cellSize = 64f;
 
-        // === 计算格子在屏幕中的大小 ===
-        float cellW = Gdx.graphics.getWidth() / (float) MAZE_WIDTH;
-        float cellH = Gdx.graphics.getHeight() / (float) MAZE_HEIGHT;
-        cellSize = Math.min(cellW, cellH);
+        // QTE 专用紧张镜头（只看 4x4 格子）
+        camera = new OrthographicCamera();
+        camera.setToOrtho(false, 4 * cellSize, 4 * cellSize);
 
         updatePlayerScreenPos();
-        trapX = playerX;
-        trapY = playerY;
 
-        // === 加载挣扎动画 ===
+        camera.position.set(
+                playerX + cellSize / 2f,
+                playerY + cellSize / 2f,
+                0
+        );
+        camera.update();
+
+        // MazeRenderer：直接用传进来的 GameManager
+        mazeRenderer = new MazeRenderer(gameManager);
+
+        // 动画
         Array<TextureRegion> frames = new Array<>();
         for (int i = 0; i < 4; i++) {
             frames.add(new TextureRegion(
-                    new Texture("qte/player_struggle_00" + i + ".png")
+                    new com.badlogic.gdx.graphics.Texture(
+                            "qte/player_struggle_00" + i + ".png")
             ));
         }
         struggleAnim = new Animation<>(0.15f, frames, Animation.PlayMode.LOOP);
-        escapeFrame = new TextureRegion(new Texture("qte/player_escape.png"));
+        escapeFrame = new TextureRegion(
+                new com.badlogic.gdx.graphics.Texture("qte/player_escape.png")
+        );
     }
+
+    // =========================================================
+    // 更新
+    // =========================================================
 
     private void updatePlayerScreenPos() {
         playerX = playerGridX * cellSize;
         playerY = playerGridY * cellSize;
     }
 
-    // =========================
-    // QTE 更新
-    // =========================
     private void updateQTE(float delta) {
         if (qteState != QTEState.ACTIVE) return;
 
@@ -159,6 +176,10 @@ public class QTEScreen implements Screen {
         }
     }
 
+    // =========================================================
+    // 渲染
+    // =========================================================
+
     @Override
     public void render(float delta) {
         updateQTE(delta);
@@ -166,35 +187,25 @@ public class QTEScreen implements Screen {
 
         stateTime += delta * animationSpeed;
 
-        Gdx.gl.glClearColor(0,0,0,1);
+        camera.position.set(
+                playerX + cellSize / 2f,
+                playerY + cellSize / 2f,
+                0
+        );
+        camera.update();
+
+        Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
+        batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
-        // 背景铺满
-        batch.draw(
-                background,
-                0, 0,
-                Gdx.graphics.getWidth(),
-                Gdx.graphics.getHeight()
-        );
+        mazeRenderer.renderFloor(batch);
+        mazeRenderer.renderWallBase(batch);
 
-
-
-
-        // 陷阱（固定）
-        batch.draw(
-                trapTexture,
-                trapX,
-                trapY,
-                cellSize,
-                cellSize
-        );
-
-        // 玩家抖动（仅人物）
         float wobble = Math.min(animationSpeed, 3f) * 1.2f;
-        float wobbleX = (float)Math.sin(stateTime * 6f) * wobble;
-        float wobbleY = (float)Math.cos(stateTime * 5f) * wobble * 0.5f;
+        float wobbleX = (float) Math.sin(stateTime * 6f) * wobble;
+        float wobbleY = (float) Math.cos(stateTime * 5f) * wobble * 0.5f;
 
         TextureRegion frame =
                 (qteState == QTEState.ACTIVE)
@@ -212,7 +223,11 @@ public class QTEScreen implements Screen {
         batch.end();
     }
 
-    @Override public void resize(int w, int h) {}
+    // =========================================================
+    // 其他
+    // =========================================================
+
+    @Override public void resize(int width, int height) {}
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
@@ -220,7 +235,5 @@ public class QTEScreen implements Screen {
     @Override
     public void dispose() {
         batch.dispose();
-        background.dispose();
-        trapTexture.dispose();
     }
 }
