@@ -77,7 +77,7 @@ public class TextureManager implements Disposable {
 
         imageMode.put(PLAYER, "Character/mainCharacter.png");
         imageMode.put(ENEMY1, "Character/Enemy1.png");
-        imageMode.put(TRAP, "Traps/spike.png"); // 路径示例
+        imageMode.put(TRAP, "qte/trap.png"); // 路径示例
 
 
         imageMode.put(KEY, "Items/key_1.gif");
