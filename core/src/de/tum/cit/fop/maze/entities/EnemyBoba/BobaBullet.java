@@ -233,6 +233,7 @@ public class BobaBullet extends GameObject implements Disposable {
 
     // ============ Getter 方法（供特效管理器使用） ============
 
+
     public float getRealX() { return realX; }
     public float getRealY() { return realY; }
 
