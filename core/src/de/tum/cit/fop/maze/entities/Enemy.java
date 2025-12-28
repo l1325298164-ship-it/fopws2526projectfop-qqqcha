@@ -15,6 +15,7 @@ public abstract class Enemy extends GameObject {
 
     protected int hp;
     public int attack;
+    protected int collisionDamage; // 近战碰撞伤害
     protected float moveSpeed;
     protected float detectRange;
     protected static final float MOVE_INTERVAL = 0.25f; // 0.25 秒走一步
@@ -230,7 +231,13 @@ public abstract class Enemy extends GameObject {
         }
     }
 
+    public int getCollisionDamage() {
+        return collisionDamage;
+    }
 
+    public int getAttackDamage() {
+        return attack;
+    }
 
 
 }
