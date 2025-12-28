@@ -379,6 +379,9 @@ public class GameManager  {
 
         currentLevel++;
 
+        // 🔥【修复】强制将状态设为进行中，确保 update 循环能跑起来
+        gameState = GameState.PLAYING;
+
         Logger.gameEvent("Level " + currentLevel + " started");
     }
     public void update(float deltaTime) {
@@ -495,11 +498,6 @@ public class GameManager  {
         }
     }
 
-
-
-
-
-
     private void checkExit() {
         for (ExitDoor exitDoor : exitDoors) {
             if (exitDoor != null && player.collidesWith(exitDoor)) {
@@ -509,21 +507,14 @@ public class GameManager  {
                         exitDoor.unlock();
                         Logger.gameEvent("Exit door " + exitDoor.getDoorId() + " unlocked");
                     } else {
-                        // 原有代码 通过出口
-                        //if (currentLevel < GameConstants.MAX_LEVELS) {
-                            // 进入下一关
-                            //initializeLevel();
-                        // --- 为了实现传送特效修改部分 ---
+                        // --- 修复部分 ---
+                        // 只要触发了退出，就标记状态，不要在这里直接判赢
                         if (!isExitingLevel) {
                             isExitingLevel = true;
-                            // 这里不要直接 initializeLevel()，而是等 GameScreen 通知
-                        } else {
-                            // 游戏通关
-                            gameState = GameState.LEVEL_COMPLETE;
-                            Logger.gameEvent("Game completed!");
+                            // 等待 GameScreen 的特效播放完毕后调用 completeLevelTransition
                         }
+                        // 删除 else { gameState = GameState.LEVEL_COMPLETE; } 块
                         return;
-                        // 退出循环，因为已经进入下一关或游戏结束
                     }
                 } else {
                     Logger.gameEvent("Player tried to exit without key");
