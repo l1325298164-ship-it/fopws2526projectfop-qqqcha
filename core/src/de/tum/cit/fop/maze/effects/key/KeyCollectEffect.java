@@ -91,7 +91,9 @@ public class KeyCollectEffect {
                 0, 0, texture.getWidth(), texture.getHeight(), false, false);
 
         // 恢复环境颜色
-        batch.setColor(oldColor);
+        //batch.setColor(oldColor);
+        // 🟢 改为强制重置为纯白色：
+        batch.setColor(Color.WHITE);
     }
 
     public boolean isFinished() {

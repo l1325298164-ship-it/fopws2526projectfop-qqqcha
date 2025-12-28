@@ -141,12 +141,17 @@ public class PortalEffectManager {
         );
 
         // 恢复
-        batch.setColor(oldColor);
+        //batch.setColor(oldColor);
+        // 🟢 改为强制重置为纯白色：
+        batch.setColor(Color.WHITE);
+
         batch.setBlendFunction(srcFunc, dstFunc);
     }
 
     public void renderFront(SpriteBatch batch) {
         particlePool.render(batch);
+        // 🟢 加一道保险，防止粒子特效污染后续渲染
+        batch.setColor(Color.WHITE);
     }
 
     public float getDoorFloatOffset() {
