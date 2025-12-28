@@ -41,22 +41,57 @@ public class IntroScreen implements Screen {
         this.exitType = exitType;
     }
 
-    @Override
     public void show() {
         batch = new SpriteBatch();
 
-        pvAtlas = new TextureAtlas(Gdx.files.internal(atlasPath));
+        // 添加调试信息
+        Gdx.app.debug("IntroScreen", "Loading atlas from: " + atlasPath);
 
-        Array<TextureAtlas.AtlasRegion> frames =
-                pvAtlas.findRegions(regionName); // 自动按 _0000, _0001
+        try {
+            pvAtlas = new TextureAtlas(Gdx.files.internal(atlasPath));
 
-        pvAnim = new Animation<>(
-                0.1f,                  // FPS 可调
-                frames,
-                Animation.PlayMode.NORMAL
-        );
+            // 检查图集是否加载成功
+            if (pvAtlas == null) {
+                Gdx.app.error("IntroScreen", "Failed to load texture atlas!");
+                return;
+            }
 
-        stateTime = 0f;
+            // 列出图集中的所有区域，用于调试
+            Gdx.app.debug("IntroScreen", "Atlas regions found: ");
+            for (TextureAtlas.AtlasRegion region : pvAtlas.getRegions()) {
+                Gdx.app.debug("IntroScreen", "- " + region.name);
+            }
+
+            Array<TextureAtlas.AtlasRegion> frames = pvAtlas.findRegions(regionName);
+
+            // 重要：检查是否找到了帧
+            Gdx.app.debug("IntroScreen", "Looking for region: " + regionName);
+            Gdx.app.debug("IntroScreen", "Found frames count: " + frames.size);
+
+            if (frames.size == 0) {
+                Gdx.app.error("IntroScreen", "No frames found for region: " + regionName);
+
+                // 尝试寻找类似名称的区域（常见命名差异）
+                for (TextureAtlas.AtlasRegion region : pvAtlas.getRegions()) {
+                    if (region.name.contains(regionName) || regionName.contains(region.name)) {
+                        Gdx.app.debug("IntroScreen", "Found similar region: " + region.name);
+                    }
+                }
+
+                return;
+            }
+
+            pvAnim = new Animation<>(
+                    0.5f,
+                    frames,
+                    Animation.PlayMode.NORMAL
+            );
+
+            stateTime = 0f;
+
+        } catch (Exception e) {
+            Gdx.app.error("IntroScreen", "Error loading intro animation: " + e.getMessage());
+        }
     }
 
     @Override
