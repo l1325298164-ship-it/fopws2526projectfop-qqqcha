@@ -278,6 +278,7 @@ public class GameScreen implements Screen {
                 continue;
             }
 
+
             boolean isFront =
                     mazeRenderer.isWallInFrontOfAnyEntity(
                             group.startX,
