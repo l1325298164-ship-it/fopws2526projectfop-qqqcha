@@ -13,6 +13,7 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
  * 后续可以换成真正 UI
  */
 public class ModeChoiceMenuScreen implements Screen {
+    //TODO难度切换界面 （开启新篇章）
 
     private final MazeRunnerGame game;
     private SpriteBatch batch;
