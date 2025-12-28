@@ -40,7 +40,7 @@ public class MazeRunnerGame extends Game {
         MAZE_GAME1,
         PV4,
         MODE_MENU,
-        MAZE_GAME
+        MAZE_GAME//正式游戏
     }
 
 
