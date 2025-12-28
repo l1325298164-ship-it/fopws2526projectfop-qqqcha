@@ -12,6 +12,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.effects.QTE.QTERippleManager;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.qte.QTEMazeData;
@@ -130,12 +131,15 @@ public class QTEScreen implements Screen {
     private TextureRegion trapRegion;
 
     // =========================
-    // Progress Bar
+    // Progress Bar & Effects
     // =========================
     private Float lockedProgress = null; // null = 未锁定
     private float progress = 0f;        // 0 ~ 1
     private float displayedProgress = 0f; // 用于平滑动画
     private boolean progressExploding = false;
+
+    // 🔥【新增】波纹管理器
+    private QTERippleManager rippleManager;
 
     // 进度条背景（粉色，20% 透明）
     private static final Color BAR_BG_COLOR = new Color(1.0f, 0.4f, 0.7f, 0.2f);
@@ -185,6 +189,9 @@ public class QTEScreen implements Screen {
     public void show() {
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
+
+        // 🔥【新增】初始化波纹管理器
+        rippleManager = new QTERippleManager();
 
         // 👉 引导字体（先用默认，后期可换 TTF）
         hintFont = new BitmapFont();
@@ -441,6 +448,11 @@ public class QTEScreen implements Screen {
     // 在QTEScreen中修改主渲染方法（最终方案）
     @Override
     public void render(float delta) {
+        // 🔥【新增】波纹逻辑更新
+        if (rippleManager != null) {
+            rippleManager.update(delta);
+        }
+
         updatePrepare(delta);
         updateQTE(delta);
         updateSuccess(delta);
@@ -464,15 +476,16 @@ public class QTEScreen implements Screen {
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
+        // 1️⃣ 渲染地板/墙壁/实体（背景层）
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
         int[][] maze = QTEMazeData.MAZE2;
 
-        // 1️⃣ 渲染地板
+        // 渲染地板
         mazeRenderer.renderFloor(batch, maze);
 
-        // 2️⃣ 按行从下往上渲染
+        // 按行从下往上渲染
         // 从最下面一行开始（y=0），到最上面一行（y=maze.length-1）
         for (int y = 0; y < maze.length; y++) {
             // 渲染这一行的所有墙壁
@@ -508,6 +521,14 @@ public class QTEScreen implements Screen {
 
         batch.end();
 
+        // 2️⃣ 渲染波纹特效（在背景之上，UI之下）
+        // 🔥【新增】调整层级：波纹先画，会被后面的 UI 黑框盖住中心
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        if (rippleManager != null) {
+            rippleManager.render(shapeRenderer);
+        }
+
+        // 3️⃣ 渲染 UI（进度条、文字）
         renderProgressBar(delta);
         renderPressSpaceHint();
         renderPrepareText();
@@ -678,6 +699,15 @@ public class QTEScreen implements Screen {
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             mashCount++;
+
+            // 🔥【新增】播放波纹特效
+            if (rippleManager != null) {
+                // 计算进度条中心点（黑框的几何中心）
+                float centerX = barX + barWidth / 2f;
+                float centerY = barY + BAR_HEIGHT / 2f;
+
+                rippleManager.spawnRipple(centerX, centerY);
+            }
         }
 
         if (mashCount >= MASH_REQUIRED) {
@@ -802,6 +832,11 @@ public class QTEScreen implements Screen {
         if (countdownFont != null) {
             countdownFont.dispose();
             countdownFont = null;
+        }
+        // 🔥【新增】清理波纹管理器
+        if (rippleManager != null) {
+            rippleManager.dispose();
+            rippleManager = null;
         }
     }
 }
