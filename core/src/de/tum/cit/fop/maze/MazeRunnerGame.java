@@ -34,6 +34,7 @@ public class MazeRunnerGame extends Game {
         PV2_FAIL,   // ❗失败后不再推进
         QTE2,
 
+
         PV3_SUCCESS,
         PV3_FAIL,   // ❗失败后不再推进
 
