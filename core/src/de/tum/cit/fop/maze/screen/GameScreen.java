@@ -366,9 +366,27 @@ public class GameScreen implements Screen {
     }
 
     private void restartGame() {
-        // 重新创建游戏状态
-        gameManager = new GameManager();
+        Logger.debug("开始重新启动游戏...");
+
+        // 重置现有的 GameManager
+        gameManager.resetGame();
+
+        // 重置 MazeRenderer
         mazeRenderer.setGameManager(gameManager);
+
+        // 重置 HUD
+        hud = new HUD(gameManager);
+
+        // 重置输入处理器
+        inputHandler = new PlayerInputHandler();
+
+        // 重新居中相机
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
+
+        // 停止并重新开始移动音效
+        AudioManager.getInstance().stopPlayerMove();
+        isPlayerMoving = false;
+
+        Logger.debug("游戏重新启动完成");
     }
 }
