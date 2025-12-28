@@ -1,34 +1,34 @@
 
 Wallpaper.png
-size: 4096, 4096
+size: 2048, 1024
 format: RGBA8888
 filter: Linear, Linear
 repeat: none
 Wallpaper
   rotate: false
-  xy: 2, 2406
-  size: 1600, 1200
-  orig: 1600, 1200
-  offset: 0, 0
-  index: 1
-Wallpaper
-  rotate: false
-  xy: 2, 1204
-  size: 1600, 1200
-  orig: 1600, 1200
-  offset: 0, 0
-  index: 2
-Wallpaper
-  rotate: false
-  xy: 1604, 2406
-  size: 1600, 1200
-  orig: 1600, 1200
+  xy: 2, 704
+  size: 1355, 251
+  orig: 1355, 251
   offset: 0, 0
   index: 3
 Wallpaper
   rotate: false
   xy: 2, 2
-  size: 1600, 1200
-  orig: 1600, 1200
+  size: 777, 700
+  orig: 777, 700
   offset: 0, 0
-  index: 4
+  index: 2
+Wallpaper
+  rotate: false
+  xy: 781, 444
+  size: 354, 258
+  orig: 354, 258
+  offset: 0, 0
+  index: 1
+Wallpaper
+  rotate: false
+  xy: 781, 42
+  size: 129, 400
+  orig: 129, 400
+  offset: 0, 0
+  index: 0
