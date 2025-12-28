@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
@@ -34,22 +35,84 @@ public class MenuScreen implements Screen {
         Viewport viewport = new ScreenViewport(camera); // Create a viewport with the camera
         stage = new Stage(viewport, game.getSpriteBatch()); // Create a stage for UI elements
 
-        Table table = new Table(); // Create a table for layout
-        table.setFillParent(true); // Make the table fill the stage
-        stage.addActor(table); // Add the table to the stage
+        Table table = new Table();
+        table.setFillParent(true);
+        stage.addActor(table);
 
-        // Add a label as a title
-        table.add(new Label("Hello World from the Menu!", game.getSkin(), "title")).padBottom(80).row();
+// ===== Title =====
+        Label title = new Label(
+                "Hello World from the Menu!",
+                game.getSkin(),
+                "title"
+        );
+        title.setAlignment(Align.center);
+        title.setFontScale(1.1f);   // 标题稍微大一点
 
-        // Create and add a button to go to the game screen
-        TextButton goToGameButton = new TextButton("Go To Game", game.getSkin());
-        table.add(goToGameButton).width(300).row();
+        table.add(title)
+                .padBottom(80)
+                .row();
+
+// ===== Button common config =====
+        float buttonWidth = 360f;
+        float buttonHeight = 96f;
+        float buttonFontScale = 0.8f;
+        float buttonSpacing = 20f;
+
+// ===== Start Game Button =====
+        TextButton goToGameButton =
+                new TextButton("START GAME", game.getSkin(), "navTextButton");
+
+        goToGameButton.align(Align.center);
+        goToGameButton.getLabel().setAlignment(Align.center);
+        goToGameButton.getLabel().setFontScale(buttonFontScale);
+
+        table.add(goToGameButton)
+                .width(buttonWidth)
+                .height(buttonHeight)
+                .padBottom(buttonSpacing)
+                .row();
+
         goToGameButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                game.goToGame(); // Change to the game screen when button is pressed
+                game.goToGame();
             }
         });
+
+// ===== Reset Button =====
+        TextButton goToIntroButton =
+                new TextButton("RESET THE WORLD", game.getSkin(), "navTextButton");
+
+        goToIntroButton.align(Align.center);
+        goToIntroButton.getLabel().setAlignment(Align.center);
+        goToIntroButton.getLabel().setFontScale(buttonFontScale);
+
+        table.add(goToIntroButton)
+                .width(buttonWidth)
+                .height(buttonHeight)
+                .padBottom(buttonSpacing)
+                .row();
+
+        goToIntroButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.goToPV();
+            }
+        });
+
+// ===== Test Button =====
+        TextButton testButton =
+                new TextButton("TEST", game.getSkin(), "navTextButton");
+
+        testButton.align(Align.center);
+        testButton.getLabel().setAlignment(Align.center);
+        testButton.getLabel().setFontScale(buttonFontScale);
+
+        table.add(testButton)
+                .width(buttonWidth)
+                .height(buttonHeight)
+                .row();
+
     }
 
     @Override

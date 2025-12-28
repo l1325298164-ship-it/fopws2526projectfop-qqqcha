@@ -4,9 +4,10 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import de.tum.cit.fop.maze.screen.GameScreen;
-import de.tum.cit.fop.maze.screen.MenuScreen;
+import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.screen.*;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 // 添加 Audio的导入
@@ -23,19 +24,146 @@ public class MazeRunnerGame extends Game {
     private SpriteBatch spriteBatch;
     private Skin skin;
     private AudioManager audioManager;  // 添加音效管理器字段
+    private GameManager gameManager;
+
+    public enum StoryStage {
+        PV1,
+        QTE1,
+
+        PV2_SUCCESS,
+        PV2_FAIL,   // ❗失败后不再推进
+        QTE2,
+
+        PV3_SUCCESS,
+        PV3_FAIL,   // ❗失败后不再推进
+
+        MAZE_GAME1,
+        PV4,
+        MODE_MENU,
+        MAZE_GAME
+    }
+
+
+    private StoryStage stage = StoryStage.PV1;
+    public void nextStage() {
+        Screen old = getScreen();
+
+        switch (stage) {
+
+            // =====================
+            // 第一段
+            // =====================
+            case PV1 -> {
+                stage = StoryStage.QTE1;
+                setScreen(new QTEScreen(this, gameManager));
+            }
+
+            // ⚠️ QTE1 不在这里处理
+            // QTE1 → onQTEFinished()
+
+            // =====================
+            // 第二段（分支）
+            // =====================
+            case PV2_SUCCESS -> {
+                stage = StoryStage.QTE2;
+                setScreen(new QTEScreen(this, gameManager));
+            }
+
+            case PV2_FAIL -> {
+                stage = StoryStage.QTE2;
+                setScreen(new MenuScreen(this));
+            }
+
+            // =====================
+            // 第三段（分支）
+            // =====================
+            case PV3_SUCCESS -> {
+                stage = StoryStage.MAZE_GAME1;
+                setScreen(new GameScreen(this));
+            }
+
+            case PV3_FAIL -> {
+                stage = StoryStage.MAZE_GAME1;
+                setScreen(new MenuScreen(this));
+            }
+
+            // =====================
+            // Maze → Menu → 正式游戏
+            // =====================
+            case MAZE_GAME1 -> {
+                stage = StoryStage.PV4;
+                setScreen(new IntroScreen(this, "pv/4/pre1.atlas",
+                        "pre1",
+                        IntroScreen.PVExit.NEXT_STAGE));
+            }
+
+            case PV4 -> {
+                stage = StoryStage.MODE_MENU;
+                setScreen(new ModeChoiceMenuScreen(this));
+            }
+
+            case MODE_MENU -> {
+                stage = StoryStage.MAZE_GAME;
+                setScreen(new GameScreen(this));
+            }
+
+            default -> {
+                // 防御性兜底（防止卡死）
+                Gdx.app.log("Stage", "Unhandled stage: " + stage);
+            }
+        }
+
+        if (old != null) old.dispose();
+    }
+
 
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
-        skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json"));
-        TextureManager.getInstance().switchMode(TextureManager.TextureMode.IMAGE);
-        initializeSoundManager();// 初始化音效系统
 
+        // 1️⃣ 先加载 atlas
+        TextureAtlas uiAtlas =
+                new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
+
+        // 2️⃣ 用 atlas + json 直接构造 Skin
+        skin = new Skin(
+                Gdx.files.internal("ui/skinbutton.json"),
+                uiAtlas
+        );
+        gameManager = new GameManager();
+
+        initializeSoundManager();
         goToMenu();
+    }
+
+
+
+    public void goToQTE() {
+        Screen old= getScreen();
+        setScreen(new QTEScreen(this,gameManager));
+        if (old != null) old.dispose();
+        audioManager.stopAll();
+    }
+
+
+    public void goToPV() {
+        Screen old = getScreen();
+
+        setScreen(new IntroScreen(
+                this,
+                "pv/1/pre1.atlas",
+                "pre1",
+                IntroScreen.PVExit.NEXT_STAGE
+        ));
+
+        if (old != null) old.dispose();
+        audioManager.stopAll();
     }
 
     public void goToGame() {
         Screen old = getScreen();
+        Logger.debug("TextureManager CONSTRUCTOR");
+        //临时更改为pv播放
         setScreen(new GameScreen(this));
         if (old != null) old.dispose();
         // 切换到游戏屏幕时确保音乐继续播放
@@ -133,5 +261,65 @@ public class MazeRunnerGame extends Game {
         Logger.debug("Game disposed");
     }
 
+    public GameManager getGameManager() {
+        return gameManager;
+    }
+
+    public void onQTEFinished(QTEScreen.QTEResult result) {
+        Screen old = getScreen();
+
+        switch (stage) {
+
+            // =====================
+            // QTE1 结果
+            // =====================
+            case QTE1 -> {
+                if (result == QTEScreen.QTEResult.SUCCESS) {
+                    stage = StoryStage.PV2_SUCCESS;
+                    setScreen(new IntroScreen(
+                            this,
+                            "pv/2/pre1.atlas",
+                            "pre1",IntroScreen.PVExit.NEXT_STAGE
+                    ));
+                } else {
+                    // ❌ 失败：直接进失败 PV
+                    stage = StoryStage.PV2_FAIL;
+                    setScreen(new IntroScreen(
+                            this,
+                            "pv/5/pre1.atlas",
+                            "pre1",IntroScreen.PVExit.TO_MENU
+                    ));
+                }
+            }
+
+            // =====================
+            // QTE2 结果
+            // =====================
+            case QTE2 -> {
+                if (result == QTEScreen.QTEResult.SUCCESS) {
+                    stage = StoryStage.PV3_SUCCESS;
+                    setScreen(new IntroScreen(
+                            this,
+                            "pv/3/pre1.atlas",
+                            "pre1",IntroScreen.PVExit.NEXT_STAGE
+                    ));
+                } else {
+                    // ❌ 失败：直接进失败 PV
+                    stage = StoryStage.PV3_FAIL;
+                    setScreen(new IntroScreen(
+                            this,
+                            "pv/5/pre1.atlas",
+                            "pre1",IntroScreen.PVExit.TO_MENU
+                    ));
+                }
+            }
+        }
+
+        if (old != null) old.dispose();
+    }
+
+
 }
+
+
 
