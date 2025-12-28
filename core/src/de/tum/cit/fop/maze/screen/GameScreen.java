@@ -148,12 +148,17 @@ public class GameScreen implements Screen {
             portalEffectManager.reset();
             // (可选) 顺便重建迷宫渲染器，虽然 MazeRenderer 是动态获取的，但为了保险可以重建
             mazeRenderer = new MazeRenderer(gameManager);
+
             // 🔥【建议】顺便清空其他特效，防止上一关的子弹/钥匙光效残留
             if (bobaBulletManager != null) {
-                bobaBulletManager.dispose(); // 或者新建一个 clear() 方法
-                bobaBulletManager = new BobaBulletManager(); // 简单粗暴重建，或者实现 clear()
-                bobaBulletManager.setRenderMode(BobaBulletManager.RenderMode.MANAGED);
+                // 先静默清理旧子弹（不要爆炸特效）
+                bobaBulletManager.clearAllBullets(false);
+                bobaBulletManager.dispose();
             }
+            // 重建管理器
+            bobaBulletManager = new BobaBulletManager();
+            bobaBulletManager.setRenderMode(BobaBulletManager.RenderMode.MANAGED);
+
             if (keyEffectManager != null) {
                 // keyEffectManager.clear(); // 如果有 clear 方法最好，没有就重建
                 keyEffectManager = new KeyEffectManager();
@@ -533,10 +538,6 @@ public class GameScreen implements Screen {
     }
 
 
-
-
-
-
     private void renderUI() {
         uiBatch.begin();
 
@@ -550,6 +551,11 @@ public class GameScreen implements Screen {
 
     }
     private void restartGame() {
+        // 🔥 修复：重置游戏前，先静默清理掉旧的子弹
+        if (bobaBulletManager != null) {
+            bobaBulletManager.clearAllBullets(false);
+        }
+
         // 重新创建游戏状态
         gameManager = new GameManager();
         mazeRenderer.setGameManager(gameManager);
