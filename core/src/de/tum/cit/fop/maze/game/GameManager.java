@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.entities.*;
+import de.tum.cit.fop.maze.entities.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -11,17 +12,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class GameManager {
+public class GameManager  {
     private GameState gameState = GameState.PLAYING;
     private Player player;
     private Key key;
-    private List<ExitDoor> exitDoors;
+    private List<ExitDoor> exitDoors; // 改为出口列表
     private List<Trap> traps;
     private List<Enemy> enemies = new ArrayList<>();
     private List<EnemyBullet> bullets = new ArrayList<>();
-    private Compass compass;
 
-    // maze
+    private Compass compass;
+    //maze
     private MazeGenerator mazeGenerator;
     private int[][] maze;
     private int lives = GameConstants.MAX_LIVES;
@@ -35,24 +36,28 @@ public class GameManager {
     private float gameCompleteTime = 0;
     private boolean keyCollected = false;
     private boolean compassActive = false;
+    // 等待通关特效
+    private boolean isExitingLevel = false;
 
     public GameManager() {
         Logger.debug("GameManager initialized");
         exitDoors = new ArrayList<>();
         traps = new ArrayList<>();
         initializeGame();
+
     }
 
     private void initializeGame() {
         Logger.debug("初始化游戏...");
-
         // 清空之前的出口
         exitDoors.clear();
         traps.clear();
         enemies.clear();
         bullets.clear();
 
+
         // 生成迷宫
+
         mazeGenerator = new MazeGenerator();
         maze = mazeGenerator.generateMaze();
 
@@ -157,9 +162,8 @@ public class GameManager {
 
         Logger.gameEvent("Generated " + exitDoors.size() + " exit doors");
     }
-
     private void generateTraps() {
-        int trapCount = GameConstants.TRAP_COUNT;
+        int trapCount = GameConstants.TRAP_COUNT; // 你可以自己加这个常量
         int attempts = 0;
         int maxAttempts = 200;
 
@@ -202,12 +206,12 @@ public class GameManager {
 
         Logger.gameEvent("Generated " + traps.size() + " traps");
     }
-
     private void generateEnemies() {
         int enemyCount = GameConstants.ENEMY_COUNT;
         int attempts = 0;
         int maxAttempts = 200;
 
+        // ✅ 用 enemies.size()
         while (enemies.size() < enemyCount && attempts < maxAttempts) {
             int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
             int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
@@ -226,12 +230,18 @@ public class GameManager {
             }
             if (overlapsDoor) continue;
 
-            enemies.add(new EnemyE01_CorruptedPearl(x, y));
-            Logger.debug("Enemy generated at (" + x + ", " + y + ")");
+            // enemies.add(new EnemyE01_CorruptedPearl(x, y));
+            //Logger.debug("EnemyE01_CorruptedPearl generated at (" + x + ", " + y + ")");
+
+// ✅ 生成新的 Boba 敌人
+            enemies.add(new EnemyCorruptedBoba(x, y));
+            Logger.debug("EnemyCorruptedBoba generated at (" + x + ", " + y + ")");
         }
 
         Logger.gameEvent("Generated " + enemies.size() + " enemies");
     }
+
+
 
     /**
      * 检查出口是否可以从内部进入
@@ -255,7 +265,7 @@ public class GameManager {
      * 检查是否太靠近其他出口
      */
     private boolean isTooCloseToOtherExit(int x, int y, int currentDoorIndex) {
-        int minDistance = 5;
+        int minDistance = 5; // 最小距离
 
         for (int i = 0; i < currentDoorIndex; i++) {
             ExitDoor existingDoor = exitDoors.get(i);
@@ -312,7 +322,7 @@ public class GameManager {
             int x = MathUtils.random(1, width - 2);
             int y = MathUtils.random(1, height - 2);
 
-            // 检查是否是通路且不是靠近边界
+            // 检查是否是通路且不是靠近边界（避免出生在死胡同）
             if (maze[y][x] == 1) {
                 // 检查周围是否有至少2个方向可走
                 int possibleDirections = 0;
@@ -334,23 +344,24 @@ public class GameManager {
     }
 
     private void initializeLevel() {
-        // 清空列表
+        // 清空出口列表
         exitDoors.clear();
-        traps.clear();
+        traps.clear();   // ⭐ 必须
+
+        // 🔥【新增】清空旧敌人和子弹
         enemies.clear();
         bullets.clear();
 
-        // 重新生成迷宫
+        // 重新生成迷宫和物品
         maze = mazeGenerator.generateMaze();
 
-        // 重新生成玩家位置
+        // 生成玩家
         int[] randomPos = findRandomPathPosition();
         startX = randomPos[0];
         startY = randomPos[1];
         player.setPosition(startX, startY);
         player.setHasKey(false);
         player.reset();
-
         Logger.debug("Level " + currentLevel + ": Player spawned at (" +
                 startX + ", " + startY + ")");
 
@@ -359,12 +370,11 @@ public class GameManager {
 
         currentLevel++;
 
+
         Logger.gameEvent("Level " + currentLevel + " started");
     }
-
     public void update(float deltaTime) {
         if (gameState != GameState.PLAYING) return;
-
         if (player.isDead()) {
             gameState = GameState.GAME_OVER;
             Logger.gameEvent("Game Over - Player died");
@@ -485,6 +495,16 @@ public class GameManager {
                     Logger.gameEvent("Exit door is locked, need key");
                 }
             }
+        }
+    }
+
+    // 新增方法：供 GameScreen 在动画播放完毕后调用
+    public void completeLevelTransition() {
+        isExitingLevel = false;
+        if (currentLevel < GameConstants.MAX_LEVELS) {
+            initializeLevel();
+        } else {
+            gameState = GameState.LEVEL_COMPLETE;
         }
     }
 

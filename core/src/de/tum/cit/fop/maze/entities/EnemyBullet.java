@@ -9,49 +9,57 @@ import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class EnemyBullet extends GameObject {
 
-    private float realX;
-    private float realY;
-
-    private float vx, vy;
-    private float speed = 6f;
-    private float traveled = 0f;
-    private float maxRange = 8f;
-
-    private int damage;
+    // ⭐ 修改为 protected，供 BobaBullet 使用
+    protected float realX;
+    protected float realY;
+    protected float vx, vy;
+    protected float speed = 6f;
+    protected float traveled = 0f;
+    protected float maxRange = 8f;
+    protected int damage;
 
     public EnemyBullet(float x, float y, float dx, float dy, int damage) {
-        super((int) x, (int) y); // ✅ 只用于初始化格子坐标
+        super((int) x, (int) y);
         this.realX = x;
         this.realY = y;
-        float len = (float) Math.sqrt(dx*dx + dy*dy);
-        vx = dx / len;
-        vy = dy / len;
         this.damage = damage;
+
+        // 归一化方向向量
+        float len = (float) Math.sqrt(dx*dx + dy*dy);
+        if (len != 0) {
+            vx = (dx / len) * speed;
+            vy = (dy / len) * speed;
+        } else {
+            vx = speed;
+            vy = 0;
+        }
     }
 
     public void update(float delta, GameManager gm) {
-        float move = speed * delta;
+        float moveX = vx * delta;
+        float moveY = vy * delta;
 
-        realX += vx * move;
-        realY += vy * move;
-        traveled += move;
+        realX += moveX;
+        realY += moveY;
+        traveled += Math.sqrt(moveX*moveX + moveY*moveY);
 
-        // 同步到 GameObject（用于碰撞 / 渲染）
+        // 同步格子坐标
         this.x = (int) realX;
         this.y = (int) realY;
-        // 撞墙
+
+        // 1. 撞墙检测
         if (gm.getMazeCell(x, y) == 0) {
-            active = false;
+            active = false; // 普通子弹直接销毁
             return;
         }
 
-        // 射程限制
+        // 2. 射程限制
         if (traveled >= maxRange) {
             active = false;
             return;
         }
 
-        // 命中玩家
+        // 3. 命中玩家
         Player player = gm.getPlayer();
         if (player.collidesWith(this)) {
             player.takeDamage(damage);
@@ -61,13 +69,14 @@ public class EnemyBullet extends GameObject {
 
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
-
+        // 默认不绘制形状
     }
 
     @Override
     public void drawSprite(SpriteBatch batch) {
         if (!active) return;
 
+        // 简单的红色方形绘制，子类会覆盖此方法
         batch.setColor(1f, 0.3f, 0.3f, 1f);
         batch.draw(
                 TextureManager.getInstance().getColorTexture(Color.RED),
@@ -84,6 +93,7 @@ public class EnemyBullet extends GameObject {
         return RenderType.SPRITE;
     }
 
-
-
+    // Getter 用于子类或外部访问
+    public float getRealX() { return realX; }
+    public float getRealY() { return realY; }
 }

@@ -1,4 +1,4 @@
-// Player.java - 修正版本
+// Player.java - 更新版本
 package de.tum.cit.fop.maze.entities;
 
 import com.badlogic.gdx.graphics.Color;
@@ -55,7 +55,6 @@ public class Player extends GameObject {
         needsTextureUpdate = true;
         Logger.debug("Player texture needs update due to mode change");
     }
-
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
         if (!active || isDead || playerTexture != null) return;
@@ -71,10 +70,10 @@ public class Player extends GameObject {
         }
 
         shapeRenderer.rect(
-                x * GameConstants.CELL_SIZE + 2,
-                y * GameConstants.CELL_SIZE + 2,
-                GameConstants.CELL_SIZE - 4,
-                GameConstants.CELL_SIZE - 4
+            x * GameConstants.CELL_SIZE + 2,
+            y * GameConstants.CELL_SIZE + 2,
+            GameConstants.CELL_SIZE - 4,
+            GameConstants.CELL_SIZE - 4
         );
         shapeRenderer.end();
     }
@@ -98,7 +97,7 @@ public class Player extends GameObject {
         float posX = x * GameConstants.CELL_SIZE;
         float posY = y * GameConstants.CELL_SIZE;
         batch.draw(playerTexture, posX, posY,
-                GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
+            GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
 
         // 重置颜色
         batch.setColor(1, 1, 1, 1);
@@ -108,8 +107,8 @@ public class Player extends GameObject {
     public RenderType getRenderType() {
         // 如果当前模式是COLOR或没有纹理，使用SHAPE
         if (textureManager.getCurrentMode() == TextureManager.TextureMode.COLOR ||
-                textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
-                playerTexture == null) {
+            textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
+            playerTexture == null) {
             return RenderType.SHAPE;
         }
         return RenderType.SPRITE;
