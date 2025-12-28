@@ -11,7 +11,6 @@ import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
-
 import java.util.*;
 
 public class MazeRenderer {
