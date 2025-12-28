@@ -244,19 +244,30 @@ public class BobaBulletManager implements Disposable {
         particlePool.resetStats();
     }
 
+    // 🔥 修复：增加带参数的方法，控制是否显示特效
     /**
      * 清空所有受管理的子弹
+     * @param showEffects 是否播放销毁特效
      */
-    public void clearAllBullets() {
-        // 为每个子弹创建销毁效果
-        for (BobaBullet bullet : managedBullets) {
-            createDestructionEffect(bullet);
+    public void clearAllBullets(boolean showEffects) {
+        if (showEffects) {
+            // 为每个子弹创建销毁效果
+            for (BobaBullet bullet : managedBullets) {
+                createDestructionEffect(bullet);
+            }
         }
 
         // 清空所有列表
         managedBullets.clear();
         trailSystem.clearAllTrails();
         particlePool.clearAllParticles();
+    }
+
+    /**
+     * 清空所有受管理的子弹 (默认播放特效)
+     */
+    public void clearAllBullets() {
+        clearAllBullets(true);
     }
 
     /**
@@ -289,10 +300,12 @@ public class BobaBulletManager implements Disposable {
 
     @Override
     public void dispose() {
+        // 🔥 修复：必须先清理子弹（且不播放特效），再销毁资源
+        clearAllBullets(false);
+
         bulletRenderer.dispose();
         trailSystem.dispose();
         particlePool.dispose();
-        clearAllBullets();
     }
 
     /**
