@@ -10,13 +10,13 @@ public class EnemyE01_CorruptedPearl extends Enemy {
 
     private float shootCooldown = 0f;
     private static final float SHOOT_INTERVAL = 1.2f;
+
     public EnemyE01_CorruptedPearl(int x, int y) {
         super(x, y);
 
         this.hp = 5;
-        this.attack = 10;          // 子弹攻击伤害
-        this.collisionDamage = 5; // 碰撞伤害（通常比子弹低）
-        this.moveSpeed = 0.5f;
+        this.attack = 5;
+        this.moveSpeed = 0.5f;   // ⚠️ 不要太大
         this.detectRange = 6f;
 
         updateTexture();

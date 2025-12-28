@@ -1,4 +1,4 @@
-// Player.java - 修正版本
+// Player.java - 更新版本
 package de.tum.cit.fop.maze.entities;
 
 import com.badlogic.gdx.graphics.Color;
@@ -26,9 +26,6 @@ public class Player extends GameObject {
     // 状态标识
     private boolean needsTextureUpdate = true;
 
-    // 分数
-    private int score = 0;
-
     public Player(int x, int y) {
         super(x, y);
         this.lives = GameConstants.INITIAL_PLAYER_LIVES;
@@ -55,7 +52,6 @@ public class Player extends GameObject {
         needsTextureUpdate = true;
         Logger.debug("Player texture needs update due to mode change");
     }
-
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
         if (!active || isDead || playerTexture != null) return;
@@ -71,10 +67,10 @@ public class Player extends GameObject {
         }
 
         shapeRenderer.rect(
-                x * GameConstants.CELL_SIZE + 2,
-                y * GameConstants.CELL_SIZE + 2,
-                GameConstants.CELL_SIZE - 4,
-                GameConstants.CELL_SIZE - 4
+            x * GameConstants.CELL_SIZE + 2,
+            y * GameConstants.CELL_SIZE + 2,
+            GameConstants.CELL_SIZE - 4,
+            GameConstants.CELL_SIZE - 4
         );
         shapeRenderer.end();
     }
@@ -98,7 +94,7 @@ public class Player extends GameObject {
         float posX = x * GameConstants.CELL_SIZE;
         float posY = y * GameConstants.CELL_SIZE;
         batch.draw(playerTexture, posX, posY,
-                GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
+            GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
 
         // 重置颜色
         batch.setColor(1, 1, 1, 1);
@@ -108,8 +104,8 @@ public class Player extends GameObject {
     public RenderType getRenderType() {
         // 如果当前模式是COLOR或没有纹理，使用SHAPE
         if (textureManager.getCurrentMode() == TextureManager.TextureMode.COLOR ||
-                textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
-                playerTexture == null) {
+            textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
+            playerTexture == null) {
             return RenderType.SHAPE;
         }
         return RenderType.SPRITE;
@@ -167,58 +163,4 @@ public class Player extends GameObject {
         return lives <= 0;
     }
 
-    // 获取分数
-    public int getScore() {
-        return score;
-    }
-
-    // 增加分数
-    public void addScore(int points) {
-        score += points;
-        Logger.debug("Player score increased by " + points + ", total: " + score);
-    }
-
-    /**
-     * 重置玩家状态
-     */
-    public void reset() {
-        // 重置位置到初始位置（需要在GameManager中设置）
-        // 这里只重置状态，位置由GameManager负责设置
-
-        // 重置生命值
-        this.lives = GameConstants.INITIAL_PLAYER_LIVES;
-
-        // 重置钥匙状态
-        this.hasKey = false;
-
-        // 重置无敌状态
-        this.isInvincible = false;
-        this.invincibleTimer = 0;
-
-        // 重置死亡状态
-        this.isDead = false;
-
-        // 重置分数
-        this.score = 0;
-
-        // 重置纹理状态
-        this.needsTextureUpdate = true;
-        updateTexture();
-
-        Logger.debug("Player状态已重置: 生命=" + lives + ", 分数=" + score + ", 有钥匙=" + hasKey);
-    }
-
-    /**
-     * 设置玩家位置（用于重置时的重新定位）
-     */
-    public void setPosition(int x, int y) {
-        this.x = x;
-        this.y = y;
-        Logger.debug("Player位置设置为: " + getPositionString());
-    }
-
-    // 其他辅助方法
-    public String getPositionString() {
-        return "(" + x + ", " + y + ")";
-    }
 }
