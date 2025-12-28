@@ -344,6 +344,16 @@ public class MazeRenderer {
 
         Logger.debug("MazeRenderer 游戏管理器已更新，状态已重置");
     }
+    public void renderWallGroup(SpriteBatch batch, WallGroup group) {
+        ensureTextures();
+
+        float cellSize = getCellSize();
+        float wallHeight = cellSize * getWallHeightMultiplier();
+        int overlap = getWallOverlap();
+
+        group.render(batch, wallRegions, cellSize, wallHeight, overlap);
+    }
+
 
     public void dispose() {
         if (wallAtlas != null) wallAtlas.dispose();
