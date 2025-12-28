@@ -30,7 +30,7 @@ public class PackPV {
                 settings,
                 root + "/assets_raw/player1",
                 root + "/assets/player1",
-                "front"
+                "left.new"
         );
 
 
