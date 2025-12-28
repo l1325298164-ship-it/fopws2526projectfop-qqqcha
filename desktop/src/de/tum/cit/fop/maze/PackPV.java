@@ -19,6 +19,7 @@ public class PackPV {
         settings.filterMin = TextureFilter.Linear;
         settings.filterMag = TextureFilter.Linear;
 
+
         // 可选：防止重名时报错（PV 序列一般安全）
         settings.alias = false;
 
@@ -28,9 +29,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/pv",
-                root + "/assets/pv",
-                "pre1"
+                root + "/assets_raw/Wallpaper",
+                root + "/assets/Wallpaper",
+                "Wallpaper"
         );
 
 

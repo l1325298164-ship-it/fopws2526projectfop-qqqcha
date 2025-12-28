@@ -3,7 +3,6 @@ package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.entities.*;
-import de.tum.cit.fop.maze.entities.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -12,71 +11,94 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class GameManager  {
+public class GameManager {
     private GameState gameState = GameState.PLAYING;
     private Player player;
     private Key key;
-    private List<ExitDoor> exitDoors; // 改为出口列表
+    private List<ExitDoor> exitDoors;
     private List<Trap> traps;
     private List<Enemy> enemies = new ArrayList<>();
     private List<EnemyBullet> bullets = new ArrayList<>();
-
     private Compass compass;
-    //maze
+
+    // maze
     private MazeGenerator mazeGenerator;
     private int[][] maze;
     private int lives = GameConstants.MAX_LIVES;
     private int currentLevel = 1;
 
-    // 等待通关特效
-    private boolean isExitingLevel = false;
+    // 玩家初始位置
+    private int startX, startY;
+
+    // 游戏完成状态
+    private boolean isGameComplete = false;
+    private float gameCompleteTime = 0;
+    private boolean keyCollected = false;
+    private boolean compassActive = false;
 
     public GameManager() {
         Logger.debug("GameManager initialized");
         exitDoors = new ArrayList<>();
         traps = new ArrayList<>();
         initializeGame();
-
     }
 
     private void initializeGame() {
+        Logger.debug("初始化游戏...");
+
         // 清空之前的出口
         exitDoors.clear();
         traps.clear();
         enemies.clear();
         bullets.clear();
 
-
         // 生成迷宫
-
         mazeGenerator = new MazeGenerator();
         maze = mazeGenerator.generateMaze();
 
-
-        // 100%概率：随机出现在迷宫中
+        // 生成玩家位置
         int[] randomPos = findRandomPathPosition();
-        player = new Player(randomPos[0], randomPos[1]);
-        Logger.debug("Player randomly spawned at (" + randomPos[0] + ", " + randomPos[1] + ")");
+        startX = randomPos[0];
+        startY = randomPos[1];
 
+        if (player == null) {
+            player = new Player(startX, startY);
+        } else {
+            player.setPosition(startX, startY);
+            player.reset(); // 重置玩家状态
+        }
 
-        // 生成钥匙
-        generateKey();
+        Logger.debug("Player spawned at (" + startX + ", " + startY + ")");
 
-        // 生成出口
-        generateExitDoors();
-        generateTraps();
-        generateEnemies();
-
-
-        compass = new Compass(player);
+        // 生成游戏元素
+        generateLevelElements();
 
         // 打印迷宫用于调试
         if (Logger.isDebugEnabled()) {
             mazeGenerator.printMazeForDebug(maze);
         }
+    }
 
+    private void generateLevelElements() {
+        // 生成钥匙
+        generateKey();
 
+        // 生成出口
+        generateExitDoors();
 
+        // 生成陷阱
+        generateTraps();
+
+        // 生成敌人
+        generateEnemies();
+
+        // 重置玩家钥匙状态
+        player.setHasKey(false);
+        keyCollected = false;
+
+        // 创建指南针
+        compass = new Compass(player);
+        compassActive = true;
     }
 
     private void generateExitDoors() {
@@ -135,8 +157,9 @@ public class GameManager  {
 
         Logger.gameEvent("Generated " + exitDoors.size() + " exit doors");
     }
+
     private void generateTraps() {
-        int trapCount = GameConstants.TRAP_COUNT; // 你可以自己加这个常量
+        int trapCount = GameConstants.TRAP_COUNT;
         int attempts = 0;
         int maxAttempts = 200;
 
@@ -179,12 +202,12 @@ public class GameManager  {
 
         Logger.gameEvent("Generated " + traps.size() + " traps");
     }
+
     private void generateEnemies() {
         int enemyCount = GameConstants.ENEMY_COUNT;
         int attempts = 0;
         int maxAttempts = 200;
 
-        // ✅ 用 enemies.size()
         while (enemies.size() < enemyCount && attempts < maxAttempts) {
             int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
             int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
@@ -203,18 +226,12 @@ public class GameManager  {
             }
             if (overlapsDoor) continue;
 
-            // enemies.add(new EnemyE01_CorruptedPearl(x, y));
-            //Logger.debug("EnemyE01_CorruptedPearl generated at (" + x + ", " + y + ")");
-
-// ✅ 生成新的 Boba 敌人
-            enemies.add(new EnemyCorruptedBoba(x, y));
-            Logger.debug("EnemyCorruptedBoba generated at (" + x + ", " + y + ")");
+            enemies.add(new EnemyE01_CorruptedPearl(x, y));
+            Logger.debug("Enemy generated at (" + x + ", " + y + ")");
         }
 
         Logger.gameEvent("Generated " + enemies.size() + " enemies");
     }
-
-
 
     /**
      * 检查出口是否可以从内部进入
@@ -238,7 +255,7 @@ public class GameManager  {
      * 检查是否太靠近其他出口
      */
     private boolean isTooCloseToOtherExit(int x, int y, int currentDoorIndex) {
-        int minDistance = 5; // 最小距离
+        int minDistance = 5;
 
         for (int i = 0; i < currentDoorIndex; i++) {
             ExitDoor existingDoor = exitDoors.get(i);
@@ -251,55 +268,26 @@ public class GameManager  {
         return false;
     }
 
-    // ✅ 添加这个方法，确保返回副本
-    public int[][] getMaze() {
-        // 创建深拷贝，防止外部修改
-        int[][] copy = new int[maze.length][];
-        for (int i = 0; i < maze.length; i++) {
-            copy[i] = Arrays.copyOf(maze[i], maze[i].length);
-        }
-        return copy;
-    }
     /**
      * 查找最近的出口
      */
     private ExitDoor findNearestExit() {
-        Logger.debug("=== findNearestExit START ===");
-
         if (exitDoors.isEmpty()) {
-            Logger.debug("exitDoors list is empty!");
             return null;
         }
-
-        Logger.debug("Checking " + exitDoors.size() + " exit doors (including locked):");
 
         ExitDoor nearest = null;
         float minDistance = Float.MAX_VALUE;
 
-        for (int i = 0; i < exitDoors.size(); i++) {
-            ExitDoor door = exitDoors.get(i);
-
-            // 不再跳过锁定的门！即使锁定也计算距离
+        for (ExitDoor door : exitDoors) {
             float distance = calculateDistance(player.getX(), player.getY(),
                     door.getX(), door.getY());
-
-            Logger.debug("Door " + door.getDoorId() +
-                    " at (" + door.getX() + "," + door.getY() + ")" +
-                    " - locked: " + door.isLocked() +
-                    " - distance: " + distance);
 
             if (distance < minDistance) {
                 minDistance = distance;
                 nearest = door;
-                Logger.debug("  This is now the nearest door");
             }
         }
-
-        Logger.debug("Nearest door: " +
-                (nearest != null ?
-                        "Door " + nearest.getDoorId() + " (locked: " + nearest.isLocked() + ")" :
-                        "null"));
-        Logger.debug("=== findNearestExit END ===");
 
         return nearest;
     }
@@ -324,7 +312,7 @@ public class GameManager  {
             int x = MathUtils.random(1, width - 2);
             int y = MathUtils.random(1, height - 2);
 
-            // 检查是否是通路且不是靠近边界（避免出生在死胡同）
+            // 检查是否是通路且不是靠近边界
             if (maze[y][x] == 1) {
                 // 检查周围是否有至少2个方向可走
                 int possibleDirections = 0;
@@ -346,153 +334,133 @@ public class GameManager  {
     }
 
     private void initializeLevel() {
-        // 清空出口列表
+        // 清空列表
         exitDoors.clear();
-        traps.clear();   // ⭐ 必须
-
-        // 🔥【新增】清空旧敌人和子弹
+        traps.clear();
         enemies.clear();
         bullets.clear();
 
-        // 重新生成迷宫和物品
+        // 重新生成迷宫
         maze = mazeGenerator.generateMaze();
 
-        // 生成玩家
+        // 重新生成玩家位置
         int[] randomPos = findRandomPathPosition();
-        player.setPosition(randomPos[0], randomPos[1]);
-        Logger.debug("Level " + currentLevel + ": Player spawned at (" +
-                randomPos[0] + ", " + randomPos[1] + ")");
-
-        // 重新生成钥匙和出口
-        generateKey();
-        generateExitDoors();
-        generateTraps(); //
-
-        // 🔥【新增】生成新关卡的敌人
-        generateEnemies();
-
-        // 重置玩家钥匙状态
+        startX = randomPos[0];
+        startY = randomPos[1];
+        player.setPosition(startX, startY);
         player.setHasKey(false);
+        player.reset();
 
-        // 更新指南针
-        compass = new Compass(player);
+        Logger.debug("Level " + currentLevel + ": Player spawned at (" +
+                startX + ", " + startY + ")");
+
+        // 重新生成游戏元素
+        generateLevelElements();
 
         currentLevel++;
 
-        // 🔥【修复】强制将状态设为进行中，确保 update 循环能跑起来
-        gameState = GameState.PLAYING;
-
         Logger.gameEvent("Level " + currentLevel + " started");
     }
+
     public void update(float deltaTime) {
         if (gameState != GameState.PLAYING) return;
+
         if (player.isDead()) {
             gameState = GameState.GAME_OVER;
+            Logger.gameEvent("Game Over - Player died");
             return;
         }
 
-
+        // 更新玩家
         player.update(deltaTime);
 
-        // ⭐ 更新 Trap（动画在这里走）
+        // 更新陷阱
         for (Trap trap : traps) {
-            if (trap != null) {
-                trap.update(deltaTime);
-            }
+            trap.update(deltaTime);
         }
+
+        // 检查碰撞
         checkKeyCollection();
         checkTrapCollision();
 
+        // 更新敌人
         for (Enemy e : enemies) {
             e.update(deltaTime, this);
         }
 
-        // ⭐ 玩家 ↔ 敌人碰撞检测
+        // 检查敌人碰撞
         checkEnemyCollision();
 
+        // 更新子弹
         for (EnemyBullet b : bullets) {
             b.update(deltaTime, this);
         }
 
-
-
-        // 总是查找最近的出口（包括锁定的）
-        ExitDoor nearestExit = findNearestExit();
-
-        Logger.debug("GameManager.update() - nearestExit: " +
-                (nearestExit != null ?
-                        "Door " + nearestExit.getDoorId() +
-                                " (locked: " + nearestExit.isLocked() + ")" :
-                        "null"));
-
-        // 更新指南针
-        if (compass != null) {
-            compass.update(nearestExit);
-            Logger.debug("Compass active: " + compass.isActive());
-        }
-
-        checkExit();
-
+        // 移除无效的敌人和子弹
         enemies.removeIf(e -> e == null || e.isDead());
         bullets.removeIf(b -> b == null || !b.isActive());
 
+        // 更新指南针
+        ExitDoor nearestExit = findNearestExit();
+        if (compass != null) {
+            compass.update(nearestExit);
+        }
+
+        // 检查出口
+        checkExit();
     }
 
     private void checkTrapCollision() {
         for (Trap trap : traps) {
-            if (trap != null && trap.isActive() && player.collidesWith(trap)) {
+            if (trap.isActive() && player.collidesWith(trap)) {
                 trap.onPlayerStep(player);
                 Logger.gameEvent("Player stepped on a trap at " + trap.getPositionString());
             }
         }
     }
 
-
-
     private void generateKey() {
         int keyX, keyY;
         int attempts = 0;
+        int maxAttempts = 100;
 
         do {
             keyX = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
             keyY = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
             attempts++;
-            if (attempts > 100) {
-                Logger.error("Failed to generate key after 100 attempts");
-                // 强制生成在可用位置，该算法还可以改进，比如生成在距离玩家30steps的位置
+
+            if (attempts >= maxAttempts) {
+                Logger.error("Failed to generate key after " + maxAttempts + " attempts");
+                // 寻找第一个可用的通路位置
+                outer:
                 for (int y = 1; y < GameConstants.MAZE_HEIGHT - 1; y++) {
                     for (int x = 1; x < GameConstants.MAZE_WIDTH - 1; x++) {
-                        keyX = x;
-                        keyY = y;
+                        if (maze[y][x] == 1 &&
+                                Math.abs(x - player.getX()) + Math.abs(y - player.getY()) >= 3) {
+                            keyX = x;
+                            keyY = y;
+                            break outer;
+                        }
                     }
                 }
                 break;
             }
-        } while (maze[keyY][keyX] == 0);
+        } while (maze[keyY][keyX] != 1 ||
+                Math.abs(keyX - player.getX()) + Math.abs(keyY - player.getY()) < 3);
 
         key = new Key(keyX, keyY);
         Logger.debug("Key generated at " + key.getPositionString() + " after " + attempts + " attempts");
     }
 
-
-
-
-    private boolean isNearPlayer(int x, int y) {
-        int distance = Math.abs(x - 1) + Math.abs(y - 1);
-        return distance < 3;
-    }
-
-
-
     private void checkKeyCollection() {
         if (key != null && key.isActive() && player.collidesWith(key)) {
             key.collect();
             player.setHasKey(true);
+            keyCollected = true;
+
             // 解锁所有出口门
             for (ExitDoor door : exitDoors) {
-                if (door != null) {
-                    door.unlock();
-                }
+                door.unlock();
             }
             Logger.gameEvent("Key collected, all " + exitDoors.size() + " exit doors unlocked");
         }
@@ -500,36 +468,23 @@ public class GameManager  {
 
     private void checkExit() {
         for (ExitDoor exitDoor : exitDoors) {
-            if (exitDoor != null && player.collidesWith(exitDoor)) {
-                if (player.hasKey()) {
-                    if (exitDoor.isLocked()) {
-                        // 解锁当前出口
-                        exitDoor.unlock();
-                        Logger.gameEvent("Exit door " + exitDoor.getDoorId() + " unlocked");
+            if (player.collidesWith(exitDoor)) {
+                if (!exitDoor.isLocked()) {
+                    // 通过出口
+                    if (currentLevel < GameConstants.MAX_LEVELS) {
+                        // 进入下一关
+                        initializeLevel();
                     } else {
-                        // --- 修复部分 ---
-                        // 只要触发了退出，就标记状态，不要在这里直接判赢
-                        if (!isExitingLevel) {
-                            isExitingLevel = true;
-                            // 等待 GameScreen 的特效播放完毕后调用 completeLevelTransition
-                        }
-                        // 删除 else { gameState = GameState.LEVEL_COMPLETE; } 块
-                        return;
+                        // 游戏通关
+                        gameState = GameState.LEVEL_COMPLETE;
+                        isGameComplete = true;
+                        Logger.gameEvent("Game completed!");
                     }
+                    return;
                 } else {
-                    Logger.gameEvent("Player tried to exit without key");
+                    Logger.gameEvent("Exit door is locked, need key");
                 }
             }
-        }
-    }
-
-    // 新增方法：供 GameScreen 在动画播放完毕后调用
-    public void completeLevelTransition() {
-        isExitingLevel = false;
-        if (currentLevel < GameConstants.MAX_LEVELS) {
-            initializeLevel();
-        } else {
-            gameState = GameState.LEVEL_COMPLETE;
         }
     }
 
@@ -540,33 +495,36 @@ public class GameManager  {
         }
 
         // 检查是否是出口
-
-
-        // 检查是否是任意出口
         for (ExitDoor exitDoor : exitDoors) {
             if (x == exitDoor.getX() && y == exitDoor.getY()) {
-                return player.hasKey() || !exitDoor.isLocked();
+                return !exitDoor.isLocked() || player.hasKey();
             }
         }
 
         return maze[y][x] == 1;
     }
+
     public boolean isEnemyValidMove(int x, int y) {
         if (x < 0 || x >= GameConstants.MAZE_WIDTH ||
                 y < 0 || y >= GameConstants.MAZE_HEIGHT) {
             return false;
         }
-
-        // 敌人只能走通路
         return maze[y][x] == 1;
     }
 
-    // ✅ 添加这个方法：提供只读访问
+    public int[][] getMaze() {
+        int[][] copy = new int[maze.length][];
+        for (int i = 0; i < maze.length; i++) {
+            copy[i] = Arrays.copyOf(maze[i], maze[i].length);
+        }
+        return copy;
+    }
+
     public int getMazeCell(int x, int y) {
         if (isValidCoordinate(x, y)) {
             return maze[y][x];
         }
-        return 0; // 越界返回墙
+        return 0;
     }
 
     private boolean isValidCoordinate(int x, int y) {
@@ -574,67 +532,23 @@ public class GameManager  {
                 y >= 0 && y < GameConstants.MAZE_HEIGHT;
     }
 
-
-
-
-
     // Getter methods
     public GameState getGameState() { return gameState; }
     public void setGameState(GameState state) { this.gameState = state; }
     public Player getPlayer() { return player; }
     public Key getKey() { return key; }
-    public ExitDoor getExitDoor() { return exitDoors.isEmpty() ? null : exitDoors.get(0);  }
-    public boolean isGameComplete() { return gameState == GameState.LEVEL_COMPLETE; }
-    public int[][] getMazeForRendering() {
-        return maze; // 直接返回引用，因为MazeRenderer只需要读取
-    }
-    // ✅ 新增：获取所有出口
-    public ArrayList<ExitDoor> getExitDoors() {
-        return (ArrayList<ExitDoor>) exitDoors;
+    public boolean isGameComplete() { return isGameComplete; }
+    public int getCurrentLevel() { return currentLevel; }
+    public int getLives() { return lives; }
+
+    public List<ExitDoor> getExitDoors() {
+        return exitDoors;
     }
 
-    // ✅ 新增：获取指南针
     public Compass getCompass() {
         return compass;
     }
 
-    // 添加 Getter
-    public boolean isExitingLevel() { return isExitingLevel; }
-
-    public void restart() {
-        Logger.gameEvent("Game restarted");
-        initializeGame();
-        gameState = GameState.PLAYING;
-    }
-
-    public Object getCurrentLevel() {
-        return currentLevel;
-    }
-    public void onTextureModeChanged() {
-        // 通知玩家
-        if (player != null) {
-            player.onTextureModeChanged();
-        }
-
-        // 通知钥匙
-        if (key != null) {
-            key.onTextureModeChanged();
-        }
-
-        // 通知所有出口
-        for (ExitDoor door : exitDoors) {
-            door.onTextureModeChanged();
-        }
-
-        for (Trap trap : traps) {
-            if (trap != null) {
-                trap.onTextureModeChanged();
-            }
-        }
-
-        Logger.gameEvent("Texture mode changed to: " +
-                TextureManager.getInstance().getCurrentMode());
-    }
     public List<Trap> getTraps() {
         return traps;
     }
@@ -646,6 +560,36 @@ public class GameManager  {
     public List<EnemyBullet> getBullets() {
         return bullets;
     }
+
+    public void restart() {
+        Logger.gameEvent("Game restarted");
+        currentLevel = 1;
+        initializeGame();
+        gameState = GameState.PLAYING;
+        isGameComplete = false;
+    }
+
+    public void onTextureModeChanged() {
+        if (player != null) {
+            player.onTextureModeChanged();
+        }
+
+        if (key != null) {
+            key.onTextureModeChanged();
+        }
+
+        for (ExitDoor door : exitDoors) {
+            door.onTextureModeChanged();
+        }
+
+        for (Trap trap : traps) {
+            trap.onTextureModeChanged();
+        }
+
+        Logger.gameEvent("Texture mode changed to: " +
+                TextureManager.getInstance().getCurrentMode());
+    }
+
     public void spawnEnemy(Enemy enemy) {
         enemies.add(enemy);
     }
@@ -658,19 +602,26 @@ public class GameManager  {
         for (Enemy enemy : enemies) {
             if (enemy == null || enemy.isDead()) continue;
 
-            // 同一格 = 碰撞
+            // 更精确的碰撞检测（使用网格坐标）
             if (player.getX() == enemy.getX() &&
                     player.getY() == enemy.getY()) {
 
-                // 玩家受到敌人攻击
-                player.takeDamage(enemy.attack);
+                // 获取敌人的碰撞伤害
+                int damage = enemy.getCollisionDamage();
+
+                // 对玩家造成伤害
+                player.takeDamage(damage);
+
+                // 添加击退效果（可选）
+//                applyKnockbackFromEnemy(enemy);
 
                 Logger.gameEvent(
                         "Player hit by enemy at (" +
-                                enemy.getX() + ", " + enemy.getY() + ")"
+                                enemy.getX() + ", " + enemy.getY() +
+                                ") for " + damage + " damage"
                 );
 
-                // ⭐ 玩家有无敌帧，所以这里不用 break 也安全
+                break; // 一次只处理一个敌人的碰撞
             }
         }
     }
@@ -678,13 +629,13 @@ public class GameManager  {
     public void setMaze(int[][] qteMaze) {
         Logger.debug("GameManager.setMaze() - using fixed QTE maze");
 
-        // 1️⃣ 设置迷宫（深拷贝，防止外部改）
+        // 深拷贝迷宫
         this.maze = new int[qteMaze.length][];
         for (int i = 0; i < qteMaze.length; i++) {
             this.maze[i] = Arrays.copyOf(qteMaze[i], qteMaze[i].length);
         }
 
-        // 2️⃣ 清空与 QTE 无关的内容
+        // 清空内容
         exitDoors.clear();
         traps.clear();
         enemies.clear();
@@ -692,8 +643,7 @@ public class GameManager  {
         key = null;
         compass = null;
 
-        // 3️⃣ 创建 / 重置玩家
-        // 👉 默认放在第一个通路格
+        // 创建/重置玩家
         int spawnX = 1;
         int spawnY = 1;
 
@@ -712,13 +662,79 @@ public class GameManager  {
             player = new Player(spawnX, spawnY);
         } else {
             player.setPosition(spawnX, spawnY);
+            player.reset();
         }
 
-        // 4️⃣ 强制状态为 PLAYING（QTE 用）
+        // 强制状态为 PLAYING
         gameState = GameState.PLAYING;
+        isGameComplete = false;
 
         Logger.debug("QTE maze loaded, player spawned at (" +
                 spawnX + ", " + spawnY + ")");
     }
+
+    public void resetGame() {
+        Logger.debug("GameManager 重置游戏状态");
+
+        // 重置迷宫
+        if (mazeGenerator == null) {
+            mazeGenerator = new MazeGenerator();
+        }
+        maze = mazeGenerator.generateMaze();
+
+        // 重置游戏状态
+        currentLevel = 1;
+        gameState = GameState.PLAYING;
+        isGameComplete = false;
+        gameCompleteTime = 0;
+        keyCollected = false;
+        compassActive = false;
+
+        // 清空所有实体
+        exitDoors.clear();
+        enemies.clear();
+        traps.clear();
+        bullets.clear();
+        key = null;
+        compass = null;
+
+        // 重新生成玩家
+        int[] randomPos = findRandomPathPosition();
+        startX = randomPos[0];
+        startY = randomPos[1];
+
+        if (player == null) {
+            player = new Player(startX, startY);
+        } else {
+            player.reset();
+            player.setPosition(startX, startY);
+            player.setHasKey(false);
+        }
+
+        // 重新生成游戏元素
+        generateLevelElements();
+
+        Logger.debug("游戏状态已重置");
+    }
+
+    // 添加的辅助方法
+    public boolean isKeyCollected() {
+        return keyCollected;
+    }
+
+    public boolean isCompassActive() {
+        return compassActive && compass != null;
+    }
+
+    // Getter methods
+    public ExitDoor getExitDoor() { return exitDoors.isEmpty() ? null : exitDoors.get(0);  }
+    public int[][] getMazeForRendering() {
+        return maze; // 直接返回引用，因为MazeRenderer只需要读取
+    }
+
+
+
+
+
 
 }
