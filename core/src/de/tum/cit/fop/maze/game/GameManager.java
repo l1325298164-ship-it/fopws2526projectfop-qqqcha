@@ -350,6 +350,10 @@ public class GameManager  {
         exitDoors.clear();
         traps.clear();   // ⭐ 必须
 
+        // 🔥【新增】清空旧敌人和子弹
+        enemies.clear();
+        bullets.clear();
+
         // 重新生成迷宫和物品
         maze = mazeGenerator.generateMaze();
 
@@ -363,6 +367,9 @@ public class GameManager  {
         generateKey();
         generateExitDoors();
         generateTraps(); //
+
+        // 🔥【新增】生成新关卡的敌人
+        generateEnemies();
 
         // 重置玩家钥匙状态
         player.setHasKey(false);

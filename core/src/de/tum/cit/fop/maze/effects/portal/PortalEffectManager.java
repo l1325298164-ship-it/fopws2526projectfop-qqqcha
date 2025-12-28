@@ -177,4 +177,12 @@ public class PortalEffectManager {
         if (glowTexture != null) glowTexture.dispose();
         particlePool.dispose();
     }
+
+    // 🔥【新增】重置状态方法
+    public void reset() {
+        this.currentState = State.IDLE;
+        this.timer = 0f;
+        this.playerHidden = false;
+        //particlePool.clear();
+    }
 }

@@ -144,6 +144,20 @@ public class GameScreen implements Screen {
             gameManager.completeLevelTransition();
             // 重置相机位置到新关卡的玩家位置
             cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
+            // 🔥【新增】关键修复：重置特效状态，防止无限循环切关
+            portalEffectManager.reset();
+            // (可选) 顺便重建迷宫渲染器，虽然 MazeRenderer 是动态获取的，但为了保险可以重建
+            mazeRenderer = new MazeRenderer(gameManager);
+            // 🔥【建议】顺便清空其他特效，防止上一关的子弹/钥匙光效残留
+            if (bobaBulletManager != null) {
+                bobaBulletManager.dispose(); // 或者新建一个 clear() 方法
+                bobaBulletManager = new BobaBulletManager(); // 简单粗暴重建，或者实现 clear()
+                bobaBulletManager.setRenderMode(BobaBulletManager.RenderMode.MANAGED);
+            }
+            if (keyEffectManager != null) {
+                // keyEffectManager.clear(); // 如果有 clear 方法最好，没有就重建
+                keyEffectManager = new KeyEffectManager();
+            }
         }
         // ============ [新增] 传送门特效逻辑结束 ============
 
