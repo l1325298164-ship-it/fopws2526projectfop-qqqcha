@@ -6,12 +6,14 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.*;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -20,18 +22,14 @@ import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
-import java.util.List;
+import java.util.*;
 
-/**
- * The GameScreen class is responsible for rendering the gameplay screen.
- * It handles the game logic and rendering of the game elements.
- */
 public class GameScreen implements Screen {
 
     private final MazeRunnerGame game;
     private final OrthographicCamera camera;
     private final BitmapFont font;
-    // === 新增 ===
+
     private GameManager gameManager;
     private MazeRenderer mazeRenderer;
     private CameraManager cameraManager;
@@ -44,30 +42,92 @@ public class GameScreen implements Screen {
 
     private boolean isPlayerMoving = false;
 
+    // 渲染对象接口
+    private interface Renderable {
+        float getY();
+        int getRenderOrder(); // 0: 后墙, 1: 实体, 2: 前墙
+        void render(SpriteBatch batch, ShapeRenderer shapeRenderer);
+    }
 
+    // 墙壁渲染对象
+    private class WallRenderable implements Renderable {
+        private final MazeRenderer.WallGroup wallGroup;
+        private final boolean isFront;
 
+        WallRenderable(MazeRenderer.WallGroup wallGroup, boolean isFront) {
+            this.wallGroup = wallGroup;
+            this.isFront = isFront;
+        }
 
+        @Override
+        public float getY() {
+            return wallGroup.startY;
+        }
 
+        @Override
+        public int getRenderOrder() {
+            return isFront ? 2 : 0; // 前墙=2, 后墙=0
+        }
 
-    /**
-     * Constructor for GameScreen. Sets up the camera and font.
-     *
-     * @param game The main game class, used to access global resources and methods.
-     */
+        @Override
+        public void render(SpriteBatch batch, ShapeRenderer shapeRenderer) {
+            float cellSize = mazeRenderer.getCellSize();
+            float wallHeight = cellSize * mazeRenderer.getWallHeightMultiplier();
+            int wallOverlap = mazeRenderer.getWallOverlap();
+
+            TextureRegion region = mazeRenderer.getWallRegion(wallGroup.textureIndex);
+            if (region != null) {
+                float totalWidth = wallGroup.length * cellSize;
+                float startXPos = wallGroup.startX * cellSize;
+                float startYPos = wallGroup.startY * cellSize - wallOverlap;
+
+                batch.draw(region, startXPos, startYPos, totalWidth, wallHeight);
+            }
+        }
+    }
+
+    // 实体渲染对象
+    private class EntityRenderable implements Renderable {
+        private final GameObject entity;
+        private final int priority;
+
+        EntityRenderable(GameObject entity, int priority) {
+            this.entity = entity;
+            this.priority = priority;
+        }
+
+        @Override
+        public float getY() {
+            return entity.getY();
+        }
+
+        @Override
+        public int getRenderOrder() {
+            return 1; // 实体=1
+        }
+
+        @Override
+        public void render(SpriteBatch batch, ShapeRenderer shapeRenderer) {
+            if (entity.getRenderType() == GameObject.RenderType.SPRITE) {
+                entity.drawSprite(batch);
+            } else {
+                batch.end();
+                entity.drawShape(shapeRenderer);
+                batch.begin();
+            }
+        }
+    }
+
     public GameScreen(MazeRunnerGame game) {
         this.game = game;
 
-        // Create and configure the camera for the game view
         camera = new OrthographicCamera();
         camera.setToOrtho(false);
         camera.zoom = 0.75f;
 
-        // Get the font from the game's skin TODO
         font = new BitmapFont();
     }
 
-
-    // Screen interface methods with necessary functionality
     @Override
     public void render(float delta) {
         handleInput(delta);
@@ -80,7 +140,6 @@ public class GameScreen implements Screen {
         renderWorld();
         renderUI();
     }
-
 
     @Override
     public void resize(int width, int height) {
@@ -97,8 +156,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
-
-
         worldBatch = game.getSpriteBatch();
         uiBatch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
@@ -108,12 +165,9 @@ public class GameScreen implements Screen {
         inputHandler = new PlayerInputHandler();
         hud = new HUD(gameManager);
 
-
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
-
-        Gdx.input.setInputProcessor(null); // 不用 Scene2D
+        Gdx.input.setInputProcessor(null);
     }
-
 
     @Override
     public void hide() {
@@ -126,7 +180,6 @@ public class GameScreen implements Screen {
             hud = null;
         }
 
-        // ❌ 不要 dispose game.getSpriteBatch()
         worldBatch = null;
 
         if (uiBatch != null) {
@@ -138,15 +191,12 @@ public class GameScreen implements Screen {
             shapeRenderer.dispose();
             shapeRenderer = null;
         }
-        //font
+
         if (font != null) font.dispose();
 
         Logger.debug("GameScreen disposed");
     }
 
-
-
-    // Additional methods and logic can be added as needed for the game screen
     private void handleInput(float delta) {
         boolean isTryingToMove =
                 Gdx.input.isKeyPressed(Input.Keys.UP) ||
@@ -154,21 +204,19 @@ public class GameScreen implements Screen {
                         Gdx.input.isKeyPressed(Input.Keys.LEFT) ||
                         Gdx.input.isKeyPressed(Input.Keys.RIGHT);
 
-        // === 1. ESC 返回菜单 ===
+        // ESC 返回菜单
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            Gdx.app.postRunnable(() -> {
-                game.goToMenu();
-            });
+            Gdx.app.postRunnable(() -> game.goToMenu());
             return;
         }
 
-        // === 2. R 重开 ===
+        // R 重开
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             restartGame();
             return;
         }
 
-        // === 3. F1-F4 切换纹理模式 ===
+        // F1-F4 切换纹理模式
         TextureManager textureManager = TextureManager.getInstance();
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
@@ -199,8 +247,7 @@ public class GameScreen implements Screen {
             Logger.gameEvent("Texture mode switched to MINIMAL");
         }
 
-        // === 4. 玩家移动 ===
-
+        // 玩家移动
         inputHandler.update(delta, (dx, dy) -> {
             int nx = gameManager.getPlayer().getX() + dx;
             int ny = gameManager.getPlayer().getY() + dy;
@@ -209,6 +256,7 @@ public class GameScreen implements Screen {
                 gameManager.getPlayer().move(dx, dy);
             }
         });
+
         if (isTryingToMove) {
             if (!isPlayerMoving) {
                 AudioManager.getInstance().playPlayerMove();
@@ -220,8 +268,6 @@ public class GameScreen implements Screen {
                 isPlayerMoving = false;
             }
         }
-
-
     }
 
     private void renderWorld() {
@@ -233,158 +279,79 @@ public class GameScreen implements Screen {
         // 1. 地板
         mazeRenderer.renderFloor(worldBatch);
 
-        // 2. 收集并排序
-        var renderItems = collectAllRenderItems();
-        renderItems.sort((a, b) -> {
-            // 1️⃣ 先按 y（视觉深度）
-            int yCompare = Float.compare(b.y, a.y);
+        // 2. 收集所有需要渲染的物体
+        List<Renderable> allRenderables = collectAllRenderables();
+
+        // 3. 按深度排序
+        allRenderables.sort((a, b) -> {
+            // 1️⃣ 先按 y 坐标（从高到低）
+            int yCompare = Float.compare(b.getY(), a.getY());
             if (yCompare != 0) return yCompare;
 
-            // 2️⃣ y 相同 → 按 priority
-            return Integer.compare(a.priority, b.priority);
+            // 2️⃣ y 相同 → 按渲染类型（后墙->实体->前墙）
+            return Integer.compare(a.getRenderOrder(), b.getRenderOrder());
         });
 
-
-        // 3. 渲染
-        for (var item : renderItems) {
-            if (item.type == RenderItemType.ENTITY) {
-
-                GameObject entity = item.entity;
-
-                if (entity.getRenderType() == GameObject.RenderType.SPRITE) {
-                    entity.drawSprite(worldBatch);
-                } else {
-                    worldBatch.end();
-                    entity.drawShape(shapeRenderer);
-                    worldBatch.begin();
-                }
-
-            } else {
-                mazeRenderer.renderWallAtPosition(
-                        worldBatch,
-                        (int) item.x,
-                        (int) item.y
-                );
-            }
+        // 4. 按顺序渲染所有物体
+        for (Renderable renderable : allRenderables) {
+            renderable.render(worldBatch, shapeRenderer);
         }
-
 
         worldBatch.end();
     }
-    private enum RenderItemType {
-        WALL_BEHIND,
-        ENTITY,
-        WALL_FRONT
-    }
-    private class RenderItem {
-        float x, y;
-        int priority; // ⭐ 新增
-        RenderItemType type;
-        GameObject entity;
 
-        RenderItem(GameObject entity, int priority) {
-            this.entity = entity;
-            this.x = entity.getX();
-            this.y = entity.getY();
-            this.priority = priority;
-            this.type = RenderItemType.ENTITY;
+    // 收集所有需要渲染的物体
+    private List<Renderable> collectAllRenderables() {
+        List<Renderable> renderables = new ArrayList<>();
+
+        // 添加墙壁
+        List<MazeRenderer.WallGroup> wallGroups = mazeRenderer.getWallGroups();
+        float playerY = gameManager.getPlayer().getY();
+
+        for (MazeRenderer.WallGroup group : wallGroups) {
+            boolean isFront = mazeRenderer.isWallInFrontOfAnyEntity(group.startX, group.startY);
+            renderables.add(new WallRenderable(group, isFront));
         }
 
-        RenderItem(float x, float y, RenderItemType type) {
-            this.x = x;
-            this.y = y;
-            this.type = type;
-            this.priority = 0;
-        }
-    }
-    private java.util.List<RenderItem> collectAllRenderItems() {
-        java.util.List<RenderItem> items = new java.util.ArrayList<>();
+        // 添加玩家
+        renderables.add(new EntityRenderable(gameManager.getPlayer(), 100));
 
-        addAllWalls(items);
-        addAllEntities(items);
-
-        return items;
-    }
-    private void addAllWalls(java.util.List<RenderItem> items) {
-        int[][] maze = gameManager.getMazeForRendering();
-
-        for (int y = 0; y < maze.length; y++) {
-            for (int x = 0; x < maze[y].length; x++) {
-                if (maze[y][x] == 0) {
-                    boolean isFront = isWallInFrontOfAnyEntity(x, y);
-                    items.add(new RenderItem(
-                            x,
-                            y,
-                            isFront ? RenderItemType.WALL_FRONT : RenderItemType.WALL_BEHIND
-                    ));
-                }
-            }
-        }
-    }
-    private boolean isWallInFrontOfAnyEntity(int wallX, int wallY) {
-        var player = gameManager.getPlayer();
-        if (wallY > player.getY()) return true;
-
-        var key = gameManager.getKey();
-        if (key != null && key.isActive() && wallY > key.getY()) return true;
-
-        for (var door : gameManager.getExitDoors()) {
-            if (door != null && wallY > door.getY()) return true;
-        }
-
-        // ⭐⭐⭐ 加这一段
-        for (Enemy enemy : gameManager.getEnemies()) {
-            if (enemy != null && enemy.isActive() && wallY > enemy.getY()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-    private void addAllEntities(List<RenderItem> items) {
-
-        // Player
-        items.add(new RenderItem(gameManager.getPlayer(),100));
-
-        // Traps
+        // 添加陷阱
         for (Trap trap : gameManager.getTraps()) {
             if (trap != null && trap.isActive()) {
-                items.add(new RenderItem(trap,10));
+                renderables.add(new EntityRenderable(trap, 10));
             }
         }
 
-        // ⭐⭐⭐ Enemies（你之前缺的就是这一段）
+        // 添加敌人
         for (Enemy enemy : gameManager.getEnemies()) {
             if (enemy != null && enemy.isActive()) {
-                items.add(new RenderItem(enemy,50));
+                renderables.add(new EntityRenderable(enemy, 50));
             }
         }
 
-        // ⭐⭐⭐ Enemy Bullets
+        // 添加子弹
         for (EnemyBullet bullet : gameManager.getBullets()) {
             if (bullet != null && bullet.isActive()) {
-                items.add(new RenderItem(bullet,100));
+                renderables.add(new EntityRenderable(bullet, 100));
             }
         }
 
-        // Key
+        // 添加钥匙
         Key key = gameManager.getKey();
         if (key != null && key.isActive()) {
-            items.add(new RenderItem(key,20));
+            renderables.add(new EntityRenderable(key, 20));
         }
 
-        // Exit Doors
+        // 添加出口门
         for (ExitDoor door : gameManager.getExitDoors()) {
             if (door != null) {
-                items.add(new RenderItem(door,0));
+                renderables.add(new EntityRenderable(door, 0));
             }
         }
+
+        return renderables;
     }
-
-
-
-
-
 
     private void renderUI() {
         uiBatch.begin();
@@ -396,14 +363,12 @@ public class GameScreen implements Screen {
         }
 
         uiBatch.end();
-
     }
+
     private void restartGame() {
         // 重新创建游戏状态
         gameManager = new GameManager();
         mazeRenderer.setGameManager(gameManager);
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
     }
-
-
 }
