@@ -70,8 +70,8 @@ public class GameScreen implements Screen {
         camera.setToOrtho(false);
         camera.zoom = 0.75f;
 
-        // Get the font from the game's skin
-        font = game.getSkin().getFont("font");
+        // Get the font from the game's skin TODO
+        font = new BitmapFont();
     }
 
 
@@ -168,9 +168,12 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+
+
         worldBatch = game.getSpriteBatch();
         uiBatch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
+        gameManager = game.getGameManager();
 
 
         gameManager = new GameManager();
@@ -217,6 +220,8 @@ public class GameScreen implements Screen {
             shapeRenderer.dispose();
             shapeRenderer = null;
         }
+        //font
+        if (font != null) font.dispose();
 
         //===新增===
         if (bobaBulletManager != null) {

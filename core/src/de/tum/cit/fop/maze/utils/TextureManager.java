@@ -43,7 +43,7 @@ public class TextureManager implements Disposable {
 
     // 图片文件映射（不同模式使用不同图片）
     private Map<TextureMode, Map<String, String>> textureFileMap;
-    private TextureMode currentMode = TextureMode.COLOR; // 默认纯色模式
+    private TextureMode currentMode = TextureMode.IMAGE; // 默认纯色模式
 
     private TextureManager() {
         textures = new HashMap<>();
@@ -77,7 +77,7 @@ public class TextureManager implements Disposable {
 
         imageMode.put(PLAYER, "Character/mainCharacter.png");
         imageMode.put(ENEMY1, "Character/Enemy1.png");
-        imageMode.put(TRAP, "Traps/spike.png"); // 路径示例
+        imageMode.put(TRAP, "qte/trap.png"); // 路径示例
 
 
         imageMode.put(KEY, "Items/key_1.gif");
