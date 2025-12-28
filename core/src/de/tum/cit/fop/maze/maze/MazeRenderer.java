@@ -332,10 +332,18 @@ public class MazeRenderer {
 
     public void setGameManager(GameManager gameManager) {
         this.gameManager = gameManager;
-        texturesReady = false;
-        wallGroups.clear();
-        groupsAnalyzed = false;
-        Logger.debug("游戏管理器更新，清理缓存");
+        this.texturesReady = false;
+        this.wallGroups.clear();
+        this.groupsAnalyzed = false;
+
+        // 强制重新加载纹理
+        this.floorTexture = null;
+        if (this.wallAtlas != null) {
+            this.wallAtlas.dispose();
+            this.wallAtlas = null;
+        }
+
+        Logger.debug("MazeRenderer 游戏管理器已更新，状态已重置");
     }
 
     public void dispose() {
