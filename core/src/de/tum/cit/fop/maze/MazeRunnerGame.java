@@ -312,46 +312,46 @@ public class MazeRunnerGame extends Game {
             // =====================
             // Game 结果
             // =====================
-            case MAZE_GAME1 -> {
-                if (result == MazeGame1.GameResult.SUCCESS) {
-                    stage = StoryStage.PV2_SUCCESS;
-                    setScreen(new IntroScreen(
-                            this,
-                            "pv/2/pv_2.atlas",
-                            "pv_2",IntroScreen.PVExit.NEXT_STAGE
-                    ));
-                } else {
-                    // ❌ 失败：直接进失败 PV
-                    stage = StoryStage.PV2_FAIL;
-                    setScreen(new IntroScreen(
-                            this,
-                            "pv/5/pre1.atlas",
-                            "pre1",IntroScreen.PVExit.TO_MENU
-                    ));
-                }
-            }
+//            case MAZE_GAME1 -> {
+//                if (result == MazeGame1.GameResult.SUCCESS) {
+//                    stage = StoryStage.PV2_SUCCESS;
+//                    setScreen(new IntroScreen(
+//                            this,
+//                            "pv/2/pv_2.atlas",
+//                            "pv_2",IntroScreen.PVExit.NEXT_STAGE
+//                    ));
+//                } else {
+//                    // ❌ 失败：直接进失败 PV
+//                    stage = StoryStage.PV2_FAIL;
+//                    setScreen(new IntroScreen(
+//                            this,
+//                            "pv/5/pre1.atlas",
+//                            "pre1",IntroScreen.PVExit.TO_MENU
+//                    ));
+//                }
+//            }
 
             // =====================
             // QTE2 结果
             // =====================
-            case QTE2 -> {
-                if (result == QTEScreen.QTEResult.SUCCESS) {
-                    stage = StoryStage.PV3_SUCCESS;
-                    setScreen(new IntroScreen(
-                            this,
-                            "pv/5/pre1.atlas",
-                            "pre1",IntroScreen.PVExit.NEXT_STAGE
-                    ));
-                } else {
-                    // ❌ 失败：直接进失败 PV
-                    stage = StoryStage.PV3_FAIL;
-                    setScreen(new IntroScreen(
-                            this,
-                            "pv/5/pre1.atlas",
-                            "pre1",IntroScreen.PVExit.TO_MENU
-                    ));
-                }
-            }
+//            case QTE2 -> {
+//                if (result == QTEScreen.QTEResult.SUCCESS) {
+//                    stage = StoryStage.PV3_SUCCESS;
+//                    setScreen(new IntroScreen(
+//                            this,
+//                            "pv/5/pre1.atlas",
+//                            "pre1",IntroScreen.PVExit.NEXT_STAGE
+//                    ));
+//                } else {
+//                    // ❌ 失败：直接进失败 PV
+//                    stage = StoryStage.PV3_FAIL;
+//                    setScreen(new IntroScreen(
+//                            this,
+//                            "pv/5/pre1.atlas",
+//                            "pre1",IntroScreen.PVExit.TO_MENU
+//                    ));
+//                }
+//            }
         }
 
         if (old != null) old.dispose();
