@@ -131,7 +131,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        handleInput(delta);
+
 
         handleInput(delta);
 
@@ -216,60 +216,74 @@ public class GameScreen implements Screen {
         worldBatch.setProjectionMatrix(cameraManager.getCamera().combined);
         shapeRenderer.setProjectionMatrix(cameraManager.getCamera().combined);
 
+        worldBatch.begin();
+        mazeRenderer.renderFloor(worldBatch);
+        worldBatch.end();
+
+
         List<RenderItem> items = collectAllRenderItems();
         items.sort(Comparator
                 .comparingDouble((RenderItem r) -> -r.y)
                 .thenComparingInt(r -> r.type.ordinal())
                 .thenComparingInt(r -> r.priority));
 
-        /* ========= 第一阶段：Sprite 渲染 ========= */
-        worldBatch.begin();
-
-        mazeRenderer.renderFloor(worldBatch);
-
-        // 门后蓝色呼吸光
-        for (ExitDoor door : gameManager.getExitDoors()) {
-            if (!door.isLocked()) {
-                float dx = (door.getX() + 0.5f) * GameConstants.CELL_SIZE;
-                float dy = (door.getY() + 0.5f) * GameConstants.CELL_SIZE;
-                portalEffectManager.renderBack(worldBatch, dx, dy);
-            }
-        }
+        boolean spriteBatchActive = false;
+        boolean shapeBatchActive = false;
 
         for (RenderItem item : items) {
 
-            if (item.type == RenderItemType.WALL_BEHIND) {
+            // ===== 墙（永远是 Sprite）=====
+            if (item.type == RenderItemType.WALL_BEHIND ||
+                    item.type == RenderItemType.WALL_FRONT) {
+
+                if (shapeBatchActive) {
+                    shapeRenderer.end();
+                    shapeBatchActive = false;
+                }
+                if (!spriteBatchActive) {
+                    worldBatch.begin();
+                    spriteBatchActive = true;
+                }
+
                 mazeRenderer.renderWallGroup(worldBatch, item.wall);
+                continue;
             }
 
-            if (item.type == RenderItemType.ENTITY &&
-                    item.entity.getRenderType() == GameObject.RenderType.SPRITE) {
-                item.entity.drawSprite(worldBatch);
-            }
+            // ===== 实体 =====
+            GameObject entity = item.entity;
 
-            if (item.type == RenderItemType.WALL_FRONT) {
-                mazeRenderer.renderWallGroup(worldBatch, item.wall);
+            if (entity.getRenderType() == GameObject.RenderType.SPRITE) {
+
+                if (shapeBatchActive) {
+                    shapeRenderer.end();
+                    shapeBatchActive = false;
+                }
+                if (!spriteBatchActive) {
+                    worldBatch.begin();
+                    spriteBatchActive = true;
+                }
+
+                entity.drawSprite(worldBatch);
+
+            } else { // SHAPE
+
+                if (spriteBatchActive) {
+                    worldBatch.end();
+                    spriteBatchActive = false;
+                }
+                if (!shapeBatchActive) {
+                    shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+                    shapeBatchActive = true;
+                }
+
+                entity.drawShape(shapeRenderer);
             }
         }
 
-        bobaBulletManager.render(worldBatch);
-        keyEffectManager.render(worldBatch);
-        portalEffectManager.renderFront(worldBatch);
-
-        worldBatch.end();
-
-        /* ========= 第二阶段：Shape 渲染（🔥 你缺的） ========= */
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-
-        for (RenderItem item : items) {
-            if (item.type == RenderItemType.ENTITY &&
-                    item.entity.getRenderType() == GameObject.RenderType.SHAPE) {
-                item.entity.drawShape(shapeRenderer);
-            }
-        }
-
-        shapeRenderer.end();
+        if (spriteBatchActive) worldBatch.end();
+        if (shapeBatchActive) shapeRenderer.end();
     }
+
 
 
     private void renderUI() {
