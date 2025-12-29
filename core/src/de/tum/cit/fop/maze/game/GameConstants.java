@@ -14,8 +14,12 @@ public class GameConstants {
     public static final float MOVE_DELAY_NORMAL = 0.1f;
     public static final float MOVE_DELAY_FAST = 0.05f;
 
-    public static final int UI_MARGIN = 10;
-    public static final int ICON_SIZE = 40;
+    //enemy数量在这里
+
+    public static final int ENEMY_E01_PEARL_COUNT = 15;
+    public static final int ENEMY_E02_COFFEE_BEAN_COUNT = 2;
+    public static final int ENEMY_E03_CARAMEL_COUNT = 2;
+
 
 
     // 相机相关常量

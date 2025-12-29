@@ -16,6 +16,7 @@ import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -65,8 +66,10 @@ public class GameScreen implements Screen {
     private enum RenderItemType {
         WALL_BEHIND,
         ENTITY,
+        EFFECT,      // ⭐ 新增
         WALL_FRONT
     }
+
 
     private static class RenderItem {
         float y;                 // 用于深度排序
@@ -90,6 +93,13 @@ public class GameScreen implements Screen {
             this.y = wall.startY;
             this.type = type;
             this.priority = 0;
+        }
+
+        RenderItem(GameObject entity, int priority, RenderItemType type) {
+            this.entity = entity;
+            this.y = entity.getY();
+            this.priority = priority;
+            this.type = type;
         }
     }
 
@@ -213,6 +223,7 @@ public class GameScreen implements Screen {
     /* ================= 渲染 ================= */
 
     private void renderWorld() {
+
         worldBatch.setProjectionMatrix(cameraManager.getCamera().combined);
         shapeRenderer.setProjectionMatrix(cameraManager.getCamera().combined);
 
@@ -230,11 +241,14 @@ public class GameScreen implements Screen {
         boolean spriteBatchActive = false;
         boolean shapeBatchActive = false;
 
+
         for (RenderItem item : items) {
 
             // ===== 墙（永远是 Sprite）=====
             if (item.type == RenderItemType.WALL_BEHIND ||
                     item.type == RenderItemType.WALL_FRONT) {
+
+
 
                 if (shapeBatchActive) {
                     shapeRenderer.end();
@@ -252,6 +266,7 @@ public class GameScreen implements Screen {
             // ===== 实体 =====
             GameObject entity = item.entity;
 
+
             if (entity.getRenderType() == GameObject.RenderType.SPRITE) {
 
                 if (shapeBatchActive) {
@@ -264,6 +279,14 @@ public class GameScreen implements Screen {
                 }
 
                 entity.drawSprite(worldBatch);
+                //门的呼吸灯特效等实体墙砖整上去了再改善！！TODO
+                if (entity instanceof ExitDoor door) {
+                    portalEffectManager.renderBack(
+                            worldBatch,
+                            door.getX() * GameConstants.CELL_SIZE,
+                            door.getY() * GameConstants.CELL_SIZE
+                    );
+                }
 
             } else { // SHAPE
 
@@ -278,10 +301,16 @@ public class GameScreen implements Screen {
 
                 entity.drawShape(shapeRenderer);
             }
+
         }
 
         if (spriteBatchActive) worldBatch.end();
         if (shapeBatchActive) shapeRenderer.end();
+        worldBatch.begin();
+        bobaBulletManager.render(worldBatch);
+        keyEffectManager.render(worldBatch);
+        portalEffectManager.renderFront(worldBatch);
+        worldBatch.end();
     }
 
 
@@ -350,9 +379,8 @@ public class GameScreen implements Screen {
             if (e.isActive()) items.add(new RenderItem(e, 50));
         }
 
-        for (EnemyBullet b : gameManager.getBullets()) {
-            if (b.isActive()) items.add(new RenderItem(b, 80));
-        }
+
+
 
         Key key = gameManager.getKey();
         if (key != null && key.isActive()) items.add(new RenderItem(key, 20));
@@ -362,9 +390,19 @@ public class GameScreen implements Screen {
         }
     }
 
+
     /* ================= 输入 ================= */
 
     private void handleInput(float delta) {
+        // 🔒 TODO关卡传送动画期间，完全锁定玩家输入 进入动画
+        if (waitingForPortal) {
+            return;
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            pendingExitToMenu = true;
+            return;
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             pendingExitToMenu = true;
             return;
@@ -377,10 +415,22 @@ public class GameScreen implements Screen {
 
         TextureManager tm = TextureManager.getInstance();
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) tm.switchMode(TextureManager.TextureMode.COLOR);
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) tm.switchMode(TextureManager.TextureMode.IMAGE);
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) tm.switchMode(TextureManager.TextureMode.PIXEL);
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) tm.switchMode(TextureManager.TextureMode.MINIMAL);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
+            tm.switchMode(TextureManager.TextureMode.COLOR);
+            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
+            tm.switchMode(TextureManager.TextureMode.IMAGE);
+            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+            tm.switchMode(TextureManager.TextureMode.PIXEL);
+            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
+            tm.switchMode(TextureManager.TextureMode.MINIMAL);
+            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
+        }
 
         inputHandler.update(delta, (dx, dy) -> {
             int nx = gameManager.getPlayer().getX() + dx;
@@ -393,6 +443,7 @@ public class GameScreen implements Screen {
 
     private void restartGame() {
         gameManager.resetGame();
+        bobaBulletManager.clearAllBullets(true);
         mazeRenderer.setGameManager(gameManager);
         hud = new HUD(gameManager);
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());

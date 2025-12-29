@@ -7,6 +7,7 @@ import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyE02_SmallCoffeeBean;
+import de.tum.cit.fop.maze.entities.enemy.EnemyE03_CaramelJuggernaut;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.entities.trap.TrapT01_Geyser;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
@@ -43,6 +44,8 @@ public class GameManager  {
     private boolean compassActive = false;
     // 等待通关特效
     private boolean isExitingLevel = false;
+
+    private static final int BORDER_THICKNESS = 4;
 
     public GameManager() {
         Logger.debug("GameManager initialized");
@@ -112,61 +115,46 @@ public class GameManager  {
     }
 
     private void generateExitDoors() {
-        int doorsToGenerate = GameConstants.EXIT_COUNT;
         int attempts = 0;
-        int maxAttempts = 200;
+        int maxAttempts = 500;
 
-        for (int i = 0; i < doorsToGenerate; i++) {
-            boolean doorPlaced = false;
-            int doorX = 0, doorY = 0;
+        while (exitDoors.size() < GameConstants.EXIT_COUNT && attempts < maxAttempts) {
+            int x = MathUtils.random(4, GameConstants.MAZE_WIDTH - 5);
+            int y = MathUtils.random(4, GameConstants.MAZE_HEIGHT - 5);
+            attempts++;
 
-            while (!doorPlaced && attempts < maxAttempts) {
-                // 随机选择一个边界
-                int side = MathUtils.random(0, 3);
-                switch (side) {
-                    case 0: // 上边界
-                        doorX = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-                        doorY = GameConstants.MAZE_HEIGHT - 1;
-                        break;
-                    case 1: // 右边界
-                        doorX = GameConstants.MAZE_WIDTH - 1;
-                        doorY = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-                        break;
-                    case 2: // 下边界
-                        doorX = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-                        doorY = 0;
-                        break;
-                    default: // 左边界
-                        doorX = 0;
-                        doorY = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-                        break;
-                }
-                attempts++;
+            if (!isValidInternalDoorSpot(x, y)) continue;
+            if (isTooCloseToOtherExit(x, y, exitDoors.size())) continue;
 
-                // 检查位置是否可用
-                boolean positionAvailable =
-                        maze[doorY][doorX] == 0 && // 必须是墙
-                                isAccessibleFromInside(doorX, doorY) && // 必须可从内部进入
-                                !isTooCloseToOtherExit(doorX, doorY, i); // 不能太靠近其他出口
-
-                if (positionAvailable) {
-                    // 创建新的出口
-                    ExitDoor exitDoor = new ExitDoor(doorX, doorY, i + 1);
-                    exitDoors.add(exitDoor);
-                    doorPlaced = true;
-                    Logger.debug("Exit door " + (i + 1) + " generated at (" +
-                            doorX + ", " + doorY + ")");
-                }
-            }
-
-            if (!doorPlaced) {
-                Logger.warning("Failed to generate exit door " + (i + 1) +
-                        " after " + attempts + " attempts");
-            }
+            exitDoors.add(new ExitDoor(x, y, exitDoors.size() + 1));
+            Logger.debug("Internal exit door generated at (" + x + ", " + y + ")");
         }
 
-        Logger.gameEvent("Generated " + exitDoors.size() + " exit doors");
+        Logger.gameEvent("Generated " + exitDoors.size() + " internal exit doors");
     }
+
+    private boolean isValidInternalDoorSpot(int x, int y) {
+        // 1. 必须是墙
+        if (maze[y][x] != 0) return false;
+
+        // 2. 不能靠外 4 层（给主题墙留空间）
+        int B = 4;
+        if (x < B || y < B ||
+                x >= GameConstants.MAZE_WIDTH - B ||
+                y >= GameConstants.MAZE_HEIGHT - B) {
+            return false;
+        }
+
+        // 3. 至少一侧是通路
+        if (maze[y + 1][x] == 1) return true;
+        if (maze[y - 1][x] == 1) return true;
+        if (maze[y][x + 1] == 1) return true;
+        if (maze[y][x - 1] == 1) return true;
+
+        return false;
+    }
+
+
     private void generateTraps() {
         int trapCount = GameConstants.TRAP_COUNT; // 你可以自己加这个常量
         int attempts = 0;
@@ -211,13 +199,42 @@ public class GameManager  {
 
         Logger.gameEvent("Generated " + traps.size() + " traps");
     }
+
+
     private void generateEnemies() {
-        int enemyCount = GameConstants.ENEMY_COUNT;
+
+        // EnemyCorruptedBoba（会射 BobaBullet 的敌人）
+        generateEnemyType(
+                GameConstants.ENEMY_E01_PEARL_COUNT,
+                (x, y) -> new EnemyCorruptedBoba(x, y)
+        );
+
+        generateEnemyType(
+                GameConstants.ENEMY_E02_COFFEE_BEAN_COUNT,
+                (x, y) -> new EnemyE02_SmallCoffeeBean(x, y)
+        );
+
+        generateEnemyType(
+                GameConstants.ENEMY_E03_CARAMEL_COUNT,
+                (x, y) -> new EnemyE03_CaramelJuggernaut(x, y)
+        );
+
+        Logger.gameEvent("Generated " + enemies.size() + " enemies");
+    }
+
+
+
+
+    @FunctionalInterface
+    private interface EnemyFactory {
+        Enemy create(int x, int y);
+    }
+
+    private void generateEnemyType(int count, EnemyFactory factory) {
         int attempts = 0;
         int maxAttempts = 200;
 
-        // ✅ 用 enemies.size()
-        while (enemies.size() < enemyCount && attempts < maxAttempts) {
+        while (count > 0 && attempts < maxAttempts) {
             int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
             int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
             attempts++;
@@ -235,24 +252,9 @@ public class GameManager  {
             }
             if (overlapsDoor) continue;
 
-            // enemies.add(new EnemyE01_CorruptedPearl(x, y));
-            //Logger.debug("EnemyE01_CorruptedPearl generated at (" + x + ", " + y + ")");
-
-// ✅ 生成新的 Boba 敌人
-            enemies.add(new EnemyCorruptedBoba(x, y));
-            Logger.debug("EnemyCorruptedBoba generated at (" + x + ", " + y + ")");
-            enemies.add(new EnemyE02_SmallCoffeeBean(x, y));
-            Logger.debug("EnemyE02_SmallCoffeeBean generated at (" + x + ", " + y + ")");
-            //可选择混合生成
-//            if (MathUtils.randomBoolean()) {
-//                enemies.add(new EnemyE01_CorruptedPearl(x, y));
-//            } else {
-//                enemies.add(new EnemyE02_SmallCoffeeBean(x, y));
-//            }
-
+            enemies.add(factory.create(x, y));
+            count--;
         }
-
-        Logger.gameEvent("Generated " + enemies.size() + " enemies");
     }
 
 
@@ -260,20 +262,32 @@ public class GameManager  {
     /**
      * 检查出口是否可以从内部进入
      */
-    private boolean isAccessibleFromInside(int doorX, int doorY) {
-        if (doorX == 0 && maze[doorY][1] == 1) { // 左边界
-            return true;
-        } else if (doorX == GameConstants.MAZE_WIDTH - 1 &&
-                maze[doorY][GameConstants.MAZE_WIDTH - 2] == 1) { // 右边界
-            return true;
-        } else if (doorY == 0 && maze[1][doorX] == 1) { // 下边界
-            return true;
-        } else if (doorY == GameConstants.MAZE_HEIGHT - 1 &&
-                maze[GameConstants.MAZE_HEIGHT - 2][doorX] == 1) { // 上边界
-            return true;
+    private boolean hasPathBehindWall(int doorX, int doorY) {
+
+        // 上门 → 看下面
+        if (doorY >= GameConstants.MAZE_HEIGHT - BORDER_THICKNESS) {
+            return maze[doorY - 1][doorX] == 1;
         }
+
+        // 下门 → 看上面
+        if (doorY < BORDER_THICKNESS) {
+            return maze[doorY + 1][doorX] == 1;
+        }
+
+        // 左门 → 看右
+        if (doorX < BORDER_THICKNESS) {
+            return maze[doorY][doorX + 1] == 1;
+        }
+
+        // 右门 → 看左
+        if (doorX >= GameConstants.MAZE_WIDTH - BORDER_THICKNESS) {
+            return maze[doorY][doorX - 1] == 1;
+        }
+
         return false;
     }
+
+
 
     /**
      * 检查是否太靠近其他出口
