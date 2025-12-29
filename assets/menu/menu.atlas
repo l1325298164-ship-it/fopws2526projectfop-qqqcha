@@ -1,0 +1,26 @@
+
+menu.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame133 (1)
+  rotate: false
+  xy: 2, 2
+  size: 3291, 3192
+  orig: 3291, 3192
+  offset: 0, 0
+  index: -1
+
+menu2.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame134 (1)
+  rotate: false
+  xy: 2, 2
+  size: 3291, 3192
+  orig: 3291, 3192
+  offset: 0, 0
+  index: -1
