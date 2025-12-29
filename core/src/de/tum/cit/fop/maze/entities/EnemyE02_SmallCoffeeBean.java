@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.entities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.game.GameManager;
 
 /**
@@ -20,6 +21,11 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
         changeDirInterval = 0.2f;  // 疯狂换方向
 
         updateTexture();
+    }
+
+    @Override
+    public void drawShape(ShapeRenderer shapeRenderer) {
+
     }
 
     /* ================== 渲染 ================== */

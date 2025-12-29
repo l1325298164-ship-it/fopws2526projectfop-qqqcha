@@ -12,46 +12,50 @@ import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 public abstract class Enemy extends GameObject {
-// ===== 逻辑格子坐标（原本的 x, y）=====
-    // x, y 仍然存在，用于碰撞 & 地图判断
 
-    // ===== 连续世界坐标（新增）=====
+    /* ================= 坐标 ================= */
+
+    // 逻辑格子坐标：用于碰撞 & 地图判断（x, y 在 GameObject 里）
     protected float worldX;
     protected float worldY;
 
+    /* ================= 属性 ================= */
+
     protected int hp;
     public int attack;
-    protected int collisionDamage; // 近战碰撞伤害
+    protected int collisionDamage;
     protected float moveSpeed;
     protected float detectRange;
-    // ===== 默认值（相当于以前的常量）=====
-    protected float moveInterval = 0.25f;      // 走一步的节奏
-    protected float changeDirInterval = 1.5f;  // 换方向节奏
 
+    // 行为节奏（实例级）
+    protected float moveInterval = 0.25f;
+    protected float changeDirInterval = 1.5f;
 
+    /* ================= 移动状态 ================= */
 
     protected boolean isMoving = false;
     protected float targetX;
     protected float targetY;
 
-    // 巡逻相关
     protected float moveCooldown = 0f;
-    protected float dirCooldown = 0f;      // 控制“换方向”
+    protected float dirCooldown = 0f;
 
     protected int dirX = 0;
     protected int dirY = 0;
 
-
+    /* ================= 渲染 ================= */
 
     protected TextureManager textureManager;
     protected Texture texture;
     protected boolean needsTextureUpdate = true;
 
-    // ===== 受击闪烁相关 =====
+    /* ================= 受击闪烁 ================= */
+
     protected boolean isHitFlash = false;
     protected float hitFlashTimer = 0f;
-    // 闪烁总时长
     protected static final float HIT_FLASH_TIME = 0.25f;
+
+    /* ================= 方向（只允许上下左右） ================= */
 
     protected static final int[][] CARDINAL_DIRS = {
             { 1, 0 },   // 右
@@ -60,66 +64,47 @@ public abstract class Enemy extends GameObject {
             { 0,-1 }    // 下
     };
 
+    /* ================= 构造 ================= */
 
     public Enemy(int x, int y) {
         super(x, y);
-        // ⭐ 初始世界坐标 = 格子中心
         this.worldX = x;
         this.worldY = y;
-
         textureManager = TextureManager.getInstance();
     }
 
-    protected abstract void updateTexture();
+    /* ================= 抽象 ================= */
 
+    protected abstract void updateTexture();
     public abstract void update(float delta, GameManager gm);
+
+    /* ================= 受伤 ================= */
 
     public void takeDamage(int dmg) {
         if (!active) return;
 
         hp -= dmg;
-
-        // 🔊 敌人受伤音效
         AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED);
 
-        // ✨ 触发受击闪烁
         isHitFlash = true;
         hitFlashTimer = 0f;
 
         if (hp <= 0) {
-            die();
+            active = false;
         }
     }
+
     protected void updateHitFlash(float delta) {
-        if (isHitFlash) {
-            hitFlashTimer += delta;
-            if (hitFlashTimer >= HIT_FLASH_TIME) {
-                isHitFlash = false;
-                hitFlashTimer = 0f;
-            }
+        if (!isHitFlash) return;
+
+        hitFlashTimer += delta;
+        if (hitFlashTimer >= HIT_FLASH_TIME) {
+            isHitFlash = false;
+            hitFlashTimer = 0f;
         }
     }
 
-
-    private void die() {
-        active = false;
-        // 以后可以加：
-        // AudioManager.getInstance().play(AudioType.ENEMY_DIE);
-        // 掉落物
-        // 计分
-    }
-
-
-    public boolean isDead() {
-        return !active;
-    }
-
-    public void onTextureModeChanged() {
-        needsTextureUpdate = true;
-    }
-
-    /* ================== 渲染（对齐 Trap / Player） ================== */
-
+    /* ================= 渲染 ================= */
 
     @Override
     public void drawSprite(SpriteBatch batch) {
@@ -133,7 +118,6 @@ public abstract class Enemy extends GameObject {
                 ? texture
                 : TextureManager.getInstance().getColorTexture(Color.PURPLE);
 
-        // ✨ 受击闪烁效果（和 Player 一致）
         if (isHitFlash && hitFlashTimer % 0.1f > 0.05f) {
             batch.setColor(1f, 1f, 1f, 0.6f);
         } else {
@@ -148,155 +132,83 @@ public abstract class Enemy extends GameObject {
                 GameConstants.CELL_SIZE
         );
     }
+
+    /* ================= 连续移动（安全版） ================= */
+
     protected void moveContinuously(float delta) {
         if (!isMoving) return;
 
         float dx = targetX - worldX;
         float dy = targetY - worldY;
+        float dist2 = dx * dx + dy * dy;
 
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-
-        // ⭐ 已到达目标
-        if (dist < 0.01f) {
+        if (dist2 < 1e-6f) {
             worldX = targetX;
             worldY = targetY;
             isMoving = false;
             return;
         }
 
-        // ⭐ 连续移动
+        float dist = (float) Math.sqrt(dist2);
         float step = moveSpeed * delta;
+
+        if (step >= dist) {
+            worldX = targetX;
+            worldY = targetY;
+            isMoving = false;
+            return;
+        }
 
         worldX += (dx / dist) * step;
         worldY += (dy / dist) * step;
     }
+
     protected void startMoveTo(int nx, int ny) {
-        // ⭐ 地图合法性仍然用格子判断
         x = nx;
         y = ny;
-
         targetX = nx;
         targetY = ny;
         isMoving = true;
     }
 
-
-
-
-    public void drawShape(ShapeRenderer shapeRenderer) {
-        if (!active || texture != null) return;
-
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(Color.PURPLE);
-
-        shapeRenderer.rect(
-                x * GameConstants.CELL_SIZE + 4,
-                y * GameConstants.CELL_SIZE + 4,
-                GameConstants.CELL_SIZE - 8,
-                GameConstants.CELL_SIZE - 8
-        );
-        shapeRenderer.end();
-    }
-
-    @Override
-    public RenderType getRenderType() {
-        return RenderType.SPRITE;
-    }
+    /* ================= 随机移动（最终稳定版） ================= */
 
     protected void tryMoveRandom(float delta, GameManager gm) {
+
         if (isMoving) return;
-        // 1️⃣ 冷却计时
+
         moveCooldown -= delta;
         dirCooldown -= delta;
 
-        // 2️⃣ 定期换方向
         if (dirCooldown <= 0f) {
-            int[] dir = CARDINAL_DIRS[MathUtils.random(0, CARDINAL_DIRS.length - 1)];
-            dirX = dir[0];
-            dirY = dir[1];
-            dirCooldown = changeDirInterval;
+            pickRandomDir();
         }
 
-        // 3️⃣ 没到移动时间 → 不走
         if (moveCooldown > 0f) return;
 
-        int nx = x + dirX;
-        int ny = y + dirY;
-
-        // 4️⃣ 敌人专用移动规则
-        boolean moved = false;
-
-// 最多尝试 4 次（防止死循环）
+        // 最多尝试 4 个正交方向
         for (int i = 0; i < 4; i++) {
-            nx = x + dirX;
-            ny = y + dirY;
+            int nx = x + dirX;
+            int ny = y + dirY;
 
             if (gm.isEnemyValidMove(nx, ny)) {
                 startMoveTo(nx, ny);
-                moved = true;
-                break;
+                moveCooldown = moveInterval;
+                dirCooldown = changeDirInterval;
+                return;
             }
-
-            // ❌ 走不了 → 立刻换方向再试
-            dirX = MathUtils.random(-1, 1);
-            dirY = MathUtils.random(-1, 1);
-
-            if (dirX == 0 && dirY == 0) {
-                dirX = 1;
-            }
+            pickRandomDir();
         }
-
-// 如果 4 次都走不了，就这帧不动（极少发生）
-
-        // 5️⃣ 重置移动冷却
-        moveCooldown = moveInterval;
+        // 4 次都失败：本帧直接结束，不进 cooldown
     }
 
-    protected void moveToward(int targetX, int targetY, GameManager gm) {
-        if (moveCooldown > 0f) return;
-
-        int dx = Integer.compare(targetX, x);
-        int dy = Integer.compare(targetY, y);
-
-        boolean moved = false;
-
-        // 先尝试 X 方向
-        if (dx != 0 && gm.isEnemyValidMove(x + dx, y)) {
-            x += dx;
-            moved = true;
-        }
-        // 再尝试 Y 方向
-        else if (dy != 0 && gm.isEnemyValidMove(x, y + dy)) {
-            y += dy;
-            moved = true;
-        }
-
-        if (moved) {
-            moveCooldown = moveInterval;
-        }
+    protected void pickRandomDir() {
+        int[] dir = CARDINAL_DIRS[MathUtils.random(0, CARDINAL_DIRS.length - 1)];
+        dirX = dir[0];
+        dirY = dir[1];
     }
 
-
-    protected void moveAwayFrom(int targetX, int targetY, GameManager gm) {
-        if (moveCooldown > 0f) return;
-
-        int dx = Integer.compare(x, targetX);
-        int dy = Integer.compare(y, targetY);
-
-        boolean moved = false;
-
-        if (dx != 0 && gm.isEnemyValidMove(x + dx, y)) {
-            x += dx;
-            moved = true;
-        } else if (dy != 0 && gm.isEnemyValidMove(x, y + dy)) {
-            y += dy;
-            moved = true;
-        }
-
-        if (moved) {
-            moveCooldown = moveInterval;
-        }
-    }
+    /* ================= Getter ================= */
 
     public int getCollisionDamage() {
         return collisionDamage;
@@ -306,7 +218,7 @@ public abstract class Enemy extends GameObject {
         return attack;
     }
 
-
+    public boolean isDead() {
+        return !active;
+    }
 }
-
-
