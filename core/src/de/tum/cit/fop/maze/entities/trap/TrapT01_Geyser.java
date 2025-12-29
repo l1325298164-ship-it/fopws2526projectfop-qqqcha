@@ -18,6 +18,7 @@ public class TrapT01_Geyser extends Trap {
         ERUPTING
     }
 
+
     private State state = State.IDLE;
 
     private float timer = 0f;
