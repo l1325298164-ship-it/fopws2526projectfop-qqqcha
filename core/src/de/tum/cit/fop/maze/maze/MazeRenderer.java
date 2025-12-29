@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.entities.ExitDoor;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -353,8 +354,64 @@ public class MazeRenderer {
         float wallHeight = cellSize * getWallHeightMultiplier();
         int overlap = getWallOverlap();
 
-        group.render(batch, wallRegions, cellSize, wallHeight, overlap);
+        if (group.textureIndex < 0 || group.textureIndex >= wallRegions.length) {
+            return;
+        }
+
+        TextureRegion baseRegion = wallRegions[group.textureIndex];
+        if (baseRegion == null) return;
+
+        int tiles = group.length;
+
+        // region 原始尺寸
+        float u0 = baseRegion.getU();
+        float u1 = baseRegion.getU2();
+        float v0 = baseRegion.getV();
+        float v1 = baseRegion.getV2();
+
+        float uStep = (u1 - u0) / tiles;
+
+        for (int i = 0; i < tiles; i++) {
+            int x = group.startX + i;
+            int y = group.startY;
+
+            // 🚪 门所在 tile 不画墙
+            if (isExitDoorAt(x, y)) {
+                continue;
+            }
+
+            float drawX = x * cellSize;
+            float drawY = y * cellSize - overlap;
+
+            // ✂️ 取 region 的第 i 段
+            TextureRegion slice = new TextureRegion(
+                    baseRegion.getTexture(),
+                    (int) ((u0 + i * uStep) * baseRegion.getTexture().getWidth()),
+                    (int) (v0 * baseRegion.getTexture().getHeight()),
+                    (int) (uStep * baseRegion.getTexture().getWidth()),
+                    baseRegion.getRegionHeight()
+            );
+
+            batch.draw(
+                    slice,
+                    drawX,
+                    drawY,
+                    cellSize,
+                    wallHeight
+            );
+        }
     }
+
+
+    private boolean isExitDoorAt(int x, int y) {
+        for (ExitDoor door : gameManager.getExitDoors()) {
+            if (door.getX() == x && door.getY() == y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
 
     public void dispose() {
@@ -364,4 +421,5 @@ public class MazeRenderer {
         groupsAnalyzed = false;
         Logger.debug("MazeRenderer 已释放");
     }
+    //TODO 准备更新成Auto-Tiling
 }
