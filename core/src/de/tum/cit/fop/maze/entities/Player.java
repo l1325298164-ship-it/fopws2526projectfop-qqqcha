@@ -66,10 +66,10 @@ public class Player extends GameObject {
         leftAtlas  = new TextureAtlas("player/left.atlas");
         rightAtlas = new TextureAtlas("player/right.atlas");
 //帧率自己调整
-        frontAnim = new Animation<>(0.15f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
-        backAnim  = new Animation<>(0.15f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
-        leftAnim  = new Animation<>(0.15f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
-        rightAnim = new Animation<>(0.15f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
+        frontAnim = new Animation<>(0.4f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
+        backAnim  = new Animation<>(0.4f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
+        leftAnim  = new Animation<>(0.4f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
+        rightAnim = new Animation<>(0.4f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
 
         Logger.gameEvent("Player spawned at " + getPositionString());
     }
@@ -163,30 +163,30 @@ public class Player extends GameObject {
 
     public void update(float deltaTime) {
 
-        //待机动画帧
-        stateTime += deltaTime;
+        // ===== 动画时间（与移动速度同步）=====
+        float animationSpeed = 1f / getMoveDelayMultiplier();
+        stateTime += deltaTime * animationSpeed;
 
         if (!isMoving) {
-            stateTime = 0f; // 停在第一帧
+            stateTime = 0f;
         }
-
         isMoving = false;
 
+        // ===== 无敌 =====
         if (isInvincible) {
             invincibleTimer += deltaTime;
             if (invincibleTimer >= GameConstants.INVINCIBLE_TIME) {
                 isInvincible = false;
                 invincibleTimer = 0;
-                Logger.debug("Player invincibility ended");
             }
         }
-        // ===== 减速计时 =====
+
+        // ===== 减速 =====
         if (slowed) {
             slowTimer -= deltaTime;
             if (slowTimer <= 0f) {
-                slowTimer = 0f;
                 slowed = false;
-                Logger.debug("Player slow ended");
+                slowTimer = 0f;
             }
         }
     }
