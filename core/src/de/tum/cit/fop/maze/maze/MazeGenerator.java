@@ -222,18 +222,7 @@ public class MazeGenerator {
         }
     }
 
-    /**
-     * 设置1x2区域为墙
-     */
-    private void set1x2AreaAsWall(int[][] maze, int startX, int startY) {
-        for (int dy = 0; dy < WALL_HEIGHT; dy++) {
-            for (int dx = 0; dx < WALL_WIDTH; dx++) {
-                if (startY + dy < maze.length && startX + dx < maze[0].length) {
-                    maze[startY + dy][startX + dx] = 0;
-                }
-            }
-        }
-    }
+
 
     /**
      * 确保起点和终点的3x3区域

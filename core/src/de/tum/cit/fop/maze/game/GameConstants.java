@@ -16,7 +16,7 @@ public class GameConstants {
 
     //enemy数量在这里
 
-    public static final int ENEMY_E01_PEARL_COUNT = 15;
+    public static final int ENEMY_E01_PEARL_COUNT = 2;
     public static final int ENEMY_E02_COFFEE_BEAN_COUNT = 2;
     public static final int ENEMY_E03_CARAMEL_COUNT = 2;
 
@@ -30,7 +30,7 @@ public class GameConstants {
 
 
     // 总陷阱数（= 各类型之和）
-    public static int TRAP_COUNT=170;
+    public static int TRAP_COUNT=TRAP_T01_GEYSER_COUNT+TRAP_T02_PEARL_MINE_COUNT+TRAP_T03_TEA_SHARDS_COUNT+TRAP_T04_MUD_COUNT;
 
     // ===== T04 泥潭（区域型） =====
 
