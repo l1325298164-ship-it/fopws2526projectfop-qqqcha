@@ -265,7 +265,6 @@ public class GameScreen implements Screen {
             GameObject entity = item.entity;
 
 
-
             if (entity.getRenderType() == GameObject.RenderType.SPRITE) {
 
                 if (shapeBatchActive) {
@@ -278,7 +277,14 @@ public class GameScreen implements Screen {
                 }
 
                 entity.drawSprite(worldBatch);
-
+                //门的呼吸灯特效等实体墙砖整上去了再改善！！TODO
+                if (entity instanceof ExitDoor door) {
+                    portalEffectManager.renderBack(
+                            worldBatch,
+                            door.getX() * GameConstants.CELL_SIZE,
+                            door.getY() * GameConstants.CELL_SIZE
+                    );
+                }
 
             } else { // SHAPE
 
@@ -300,6 +306,8 @@ public class GameScreen implements Screen {
         if (shapeBatchActive) shapeRenderer.end();
         worldBatch.begin();
         bobaBulletManager.render(worldBatch);
+        keyEffectManager.render(worldBatch);
+        portalEffectManager.renderFront(worldBatch);
         worldBatch.end();
     }
 
