@@ -54,6 +54,8 @@ public class GameScreen implements Screen {
     private PortalEffectManager portalEffectManager;
     private boolean waitingForPortal = false;
 
+//防止崩溃
+    private boolean pendingExitToMenu = false;
 
     /* ================= 渲染结构 ================= */
 
@@ -198,6 +200,11 @@ public class GameScreen implements Screen {
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
         renderWorld();
         renderUI();
+
+        if (pendingExitToMenu) {
+            game.goToMenu();
+            return;
+        }
     }
 
     /* ================= 渲染 ================= */
@@ -327,7 +334,7 @@ public class GameScreen implements Screen {
 
     private void handleInput(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.goToMenu();
+            pendingExitToMenu = true;
             return;
         }
 
