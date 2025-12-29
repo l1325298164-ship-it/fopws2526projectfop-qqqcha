@@ -28,9 +28,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/menu",
-                root + "/assets/menu",
-                "menu"
+                root + "/assets_raw/move",
+                root + "/assets/move",
+                "move"
         );
 
 
