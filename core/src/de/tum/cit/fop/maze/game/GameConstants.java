@@ -4,13 +4,13 @@ package de.tum.cit.fop.maze.game;
 import com.badlogic.gdx.graphics.Color;
 
 public class GameConstants {
-    public static final int MAZE_WIDTH = 30;      // 必须是奇数
-    public static final int MAZE_HEIGHT = 30;     // 必须是奇数
+    public static final int MAZE_WIDTH = 30;
+    public static final int MAZE_HEIGHT = 30;
     public static final int CELL_SIZE = 30;
     // 新增：出口数量
     public static final int EXIT_COUNT = 3;  // 出口数量
 
-
+    //奔跑参数在这里
     public static final float MOVE_DELAY_NORMAL = 0.1f;
     public static final float MOVE_DELAY_FAST = 0.05f;
 
@@ -19,6 +19,26 @@ public class GameConstants {
     public static final int ENEMY_E01_PEARL_COUNT = 15;
     public static final int ENEMY_E02_COFFEE_BEAN_COUNT = 2;
     public static final int ENEMY_E03_CARAMEL_COUNT = 2;
+
+// ===== Trap 精确数量（调试用） =====
+// 各类型陷阱精确数量
+    public static final int TRAP_T01_GEYSER_COUNT = 70;
+    public static final int TRAP_T02_PEARL_MINE_COUNT = 30;
+    public static final int TRAP_T03_TEA_SHARDS_COUNT = 20;
+    // 泥潭总格子数（不是块数）
+    public static final int TRAP_T04_MUD_COUNT = 50;
+
+
+    // 总陷阱数（= 各类型之和）
+    public static int TRAP_COUNT=170;
+
+    // ===== T04 泥潭（区域型） =====
+
+    // 每一块泥潭最小 / 最大尺寸
+    public static final int MUD_PATCH_MIN_SIZE = 3;
+    public static final int MUD_PATCH_MAX_SIZE = 6;
+
+
 
 
 
@@ -50,8 +70,6 @@ public class GameConstants {
     // 游戏规则
     public static final int MAX_LIVES = 3;
     public static final int MAX_LEVELS = 5;
-    public static final int TRAP_COUNT = 100;
-    public static final int ENEMY_COUNT =10 ;
 
     private GameConstants() {} // 防止实例化
 }
