@@ -392,6 +392,15 @@ public class GameScreen implements Screen {
     /* ================= 输入 ================= */
 
     private void handleInput(float delta) {
+        // 🔒 TODO关卡传送动画期间，完全锁定玩家输入 进入动画
+        if (waitingForPortal) {
+            return;
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            pendingExitToMenu = true;
+            return;
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             pendingExitToMenu = true;
             return;

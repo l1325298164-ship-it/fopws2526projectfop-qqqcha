@@ -45,6 +45,8 @@ public class GameManager  {
     // 等待通关特效
     private boolean isExitingLevel = false;
 
+    private static final int BORDER_THICKNESS = 4;
+
     public GameManager() {
         Logger.debug("GameManager initialized");
         exitDoors = new ArrayList<>();
@@ -113,61 +115,46 @@ public class GameManager  {
     }
 
     private void generateExitDoors() {
-        int doorsToGenerate = GameConstants.EXIT_COUNT;
         int attempts = 0;
-        int maxAttempts = 200;
+        int maxAttempts = 500;
 
-        for (int i = 0; i < doorsToGenerate; i++) {
-            boolean doorPlaced = false;
-            int doorX = 0, doorY = 0;
+        while (exitDoors.size() < GameConstants.EXIT_COUNT && attempts < maxAttempts) {
+            int x = MathUtils.random(4, GameConstants.MAZE_WIDTH - 5);
+            int y = MathUtils.random(4, GameConstants.MAZE_HEIGHT - 5);
+            attempts++;
 
-            while (!doorPlaced && attempts < maxAttempts) {
-                // 随机选择一个边界
-                int side = MathUtils.random(0, 3);
-                switch (side) {
-                    case 0: // 上边界
-                        doorX = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-                        doorY = GameConstants.MAZE_HEIGHT - 1;
-                        break;
-                    case 1: // 右边界
-                        doorX = GameConstants.MAZE_WIDTH - 1;
-                        doorY = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-                        break;
-                    case 2: // 下边界
-                        doorX = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-                        doorY = 0;
-                        break;
-                    default: // 左边界
-                        doorX = 0;
-                        doorY = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-                        break;
-                }
-                attempts++;
+            if (!isValidInternalDoorSpot(x, y)) continue;
+            if (isTooCloseToOtherExit(x, y, exitDoors.size())) continue;
 
-                // 检查位置是否可用
-                boolean positionAvailable =
-                        maze[doorY][doorX] == 0 && // 必须是墙
-                                isAccessibleFromInside(doorX, doorY) && // 必须可从内部进入
-                                !isTooCloseToOtherExit(doorX, doorY, i); // 不能太靠近其他出口
-
-                if (positionAvailable) {
-                    // 创建新的出口
-                    ExitDoor exitDoor = new ExitDoor(doorX, doorY, i + 1);
-                    exitDoors.add(exitDoor);
-                    doorPlaced = true;
-                    Logger.debug("Exit door " + (i + 1) + " generated at (" +
-                            doorX + ", " + doorY + ")");
-                }
-            }
-
-            if (!doorPlaced) {
-                Logger.warning("Failed to generate exit door " + (i + 1) +
-                        " after " + attempts + " attempts");
-            }
+            exitDoors.add(new ExitDoor(x, y, exitDoors.size() + 1));
+            Logger.debug("Internal exit door generated at (" + x + ", " + y + ")");
         }
 
-        Logger.gameEvent("Generated " + exitDoors.size() + " exit doors");
+        Logger.gameEvent("Generated " + exitDoors.size() + " internal exit doors");
     }
+
+    private boolean isValidInternalDoorSpot(int x, int y) {
+        // 1. 必须是墙
+        if (maze[y][x] != 0) return false;
+
+        // 2. 不能靠外 4 层（给主题墙留空间）
+        int B = 4;
+        if (x < B || y < B ||
+                x >= GameConstants.MAZE_WIDTH - B ||
+                y >= GameConstants.MAZE_HEIGHT - B) {
+            return false;
+        }
+
+        // 3. 至少一侧是通路
+        if (maze[y + 1][x] == 1) return true;
+        if (maze[y - 1][x] == 1) return true;
+        if (maze[y][x + 1] == 1) return true;
+        if (maze[y][x - 1] == 1) return true;
+
+        return false;
+    }
+
+
     private void generateTraps() {
         int trapCount = GameConstants.TRAP_COUNT; // 你可以自己加这个常量
         int attempts = 0;
@@ -275,20 +262,32 @@ public class GameManager  {
     /**
      * 检查出口是否可以从内部进入
      */
-    private boolean isAccessibleFromInside(int doorX, int doorY) {
-        if (doorX == 0 && maze[doorY][1] == 1) { // 左边界
-            return true;
-        } else if (doorX == GameConstants.MAZE_WIDTH - 1 &&
-                maze[doorY][GameConstants.MAZE_WIDTH - 2] == 1) { // 右边界
-            return true;
-        } else if (doorY == 0 && maze[1][doorX] == 1) { // 下边界
-            return true;
-        } else if (doorY == GameConstants.MAZE_HEIGHT - 1 &&
-                maze[GameConstants.MAZE_HEIGHT - 2][doorX] == 1) { // 上边界
-            return true;
+    private boolean hasPathBehindWall(int doorX, int doorY) {
+
+        // 上门 → 看下面
+        if (doorY >= GameConstants.MAZE_HEIGHT - BORDER_THICKNESS) {
+            return maze[doorY - 1][doorX] == 1;
         }
+
+        // 下门 → 看上面
+        if (doorY < BORDER_THICKNESS) {
+            return maze[doorY + 1][doorX] == 1;
+        }
+
+        // 左门 → 看右
+        if (doorX < BORDER_THICKNESS) {
+            return maze[doorY][doorX + 1] == 1;
+        }
+
+        // 右门 → 看左
+        if (doorX >= GameConstants.MAZE_WIDTH - BORDER_THICKNESS) {
+            return maze[doorY][doorX - 1] == 1;
+        }
+
         return false;
     }
+
+
 
     /**
      * 检查是否太靠近其他出口
