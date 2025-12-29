@@ -56,80 +56,45 @@ public class ExitDoor extends GameObject {
     }
 
     @Override
-    public void drawShape(ShapeRenderer shapeRenderer) {
+    public void drawShape(ShapeRenderer sr) {
         if (!active) return;
 
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-
-        // 如果是最近的出口，用不同颜色高亮
+        // 最近出口高亮
         if (isNearest && !locked) {
-            shapeRenderer.setColor(Color.GOLD);
+            sr.setColor(Color.GOLD);
         } else {
-            shapeRenderer.setColor(locked ? lockedColor : unlockedColor);
+            sr.setColor(locked ? lockedColor : unlockedColor);
         }
 
-        // 绘制门主体
-        shapeRenderer.rect(
-            x * GameConstants.CELL_SIZE + 2,
-            y * GameConstants.CELL_SIZE + 2,
-            GameConstants.CELL_SIZE - 4,
-            GameConstants.CELL_SIZE - 4
+        sr.rect(
+                x * GameConstants.CELL_SIZE + 2,
+                y * GameConstants.CELL_SIZE + 2,
+                GameConstants.CELL_SIZE - 4,
+                GameConstants.CELL_SIZE - 4
         );
-
-        // 如果是最近的出口，绘制边框
-        if (isNearest && !locked) {
-            shapeRenderer.set(ShapeRenderer.ShapeType.Line);
-            shapeRenderer.setColor(Color.YELLOW);
-            shapeRenderer.rect(
-                x * GameConstants.CELL_SIZE,
-                y * GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE
-            );
-        }
-
-        shapeRenderer.end();
     }
+
 
     @Override
     public void drawSprite(SpriteBatch batch) {
         if (!active || doorTexture == null) return;
 
-        // 如果需要更新纹理
         if (needsTextureUpdate) {
             updateTexture();
         }
 
-        batch.draw(doorTexture,
-            x * GameConstants.CELL_SIZE,
-            y * GameConstants.CELL_SIZE,
-            GameConstants.CELL_SIZE,
-            GameConstants.CELL_SIZE);
-
-        // 如果是最近的出口，绘制高亮效果
-        if (isNearest && !locked) {
-            // 可以使用叠加效果或特殊纹理
-            // 这里简单地在门上画一个金色边框
-            ShapeRenderer shapeRenderer = new ShapeRenderer();
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-            shapeRenderer.setColor(Color.YELLOW);
-            shapeRenderer.rect(
+        batch.draw(
+                doorTexture,
                 x * GameConstants.CELL_SIZE,
                 y * GameConstants.CELL_SIZE,
                 GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE
-            );
-            shapeRenderer.end();
-        }
+                GameConstants.CELL_SIZE+2
+        );
     }
+
 
     @Override
     public RenderType getRenderType() {
-        if (textureManager.getCurrentMode() == TextureManager.TextureMode.COLOR ||
-            textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
-            doorTexture == null) {
-            return RenderType.SHAPE;
-        }
         return RenderType.SPRITE;
     }
 
