@@ -12,6 +12,7 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
 
     public EnemyE02_SmallCoffeeBean(int x, int y) {
         super(x, y);
+        size = 0.8f;
 
         hp = 3;
         collisionDamage = 5;
@@ -44,7 +45,7 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
     protected void updateTexture() {
         // 先复用 enemy1 的贴图
         // 以后你可以在 TextureManager 里加 ENEMY2
-        texture = textureManager.getEnemy1Texture();
+        texture = textureManager.getEnemy2Texture();
         needsTextureUpdate = false;
     }
 

@@ -218,6 +218,7 @@ public class GameScreen implements Screen {
 
         worldBatch.begin();
         mazeRenderer.renderFloor(worldBatch);
+        bobaBulletManager.render(worldBatch);
         worldBatch.end();
 
 
@@ -350,9 +351,6 @@ public class GameScreen implements Screen {
             if (e.isActive()) items.add(new RenderItem(e, 50));
         }
 
-        for (EnemyBullet b : gameManager.getBullets()) {
-            if (b.isActive()) items.add(new RenderItem(b, 80));
-        }
 
         Key key = gameManager.getKey();
         if (key != null && key.isActive()) items.add(new RenderItem(key, 20));

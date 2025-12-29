@@ -30,6 +30,10 @@ public abstract class Enemy extends GameObject {
     // 行为节奏（实例级）
     protected float moveInterval = 0.25f;
     protected float changeDirInterval = 1.5f;
+    /* ================= 尺寸 ================= */
+
+    // 敌人占用的“格子大小比例”（1.0 = 正好一格）
+    protected float size = 1.0f;
 
     /* ================= 移动状态 ================= */
 
@@ -124,13 +128,21 @@ public abstract class Enemy extends GameObject {
             batch.setColor(1f, 1f, 1f, 1f);
         }
 
+        float cell = GameConstants.CELL_SIZE;
+        float drawSize = cell * size;
+
+// 居中对齐（关键）
+        float drawX = worldX * cell + (cell - drawSize) * 0.5f;
+        float drawY = worldY * cell + (cell - drawSize) * 0.5f;
+
         batch.draw(
                 tex,
-                worldX * GameConstants.CELL_SIZE,
-                worldY * GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE
+                drawX,
+                drawY,
+                drawSize,
+                drawSize
         );
+
     }
 
     /* ================= 连续移动（安全版） ================= */
