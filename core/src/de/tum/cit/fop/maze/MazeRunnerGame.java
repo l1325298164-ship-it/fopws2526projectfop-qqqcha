@@ -98,6 +98,7 @@ public class MazeRunnerGame extends Game {
                 setScreen(new ModeChoiceMenuScreen(this));
             }
 
+
             case MODE_MENU -> {
                 stage = StoryStage.MAZE_GAME;
                 setScreen(new GameScreen(this));
