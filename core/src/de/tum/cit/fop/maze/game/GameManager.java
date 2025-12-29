@@ -8,10 +8,7 @@ import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyE02_SmallCoffeeBean;
 import de.tum.cit.fop.maze.entities.enemy.EnemyE03_CaramelJuggernaut;
-import de.tum.cit.fop.maze.entities.trap.Trap;
-import de.tum.cit.fop.maze.entities.trap.TrapT01_Geyser;
-import de.tum.cit.fop.maze.entities.trap.TrapT02_PearlMine;
-import de.tum.cit.fop.maze.entities.trap.TrapT03_TeaShards;
+import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -164,6 +161,7 @@ public class GameManager  {
         int t01Count = GameConstants.TRAP_T01_GEYSER_COUNT;
         int t02Count = GameConstants.TRAP_T02_PEARL_MINE_COUNT;
         int t03Count = GameConstants.TRAP_T03_TEA_SHARDS_COUNT;
+        int t04Count = GameConstants.TRAP_T04_MUD_COUNT;
 
         // ===== 防御性校验（防止调参炸游戏）=====
         if (t01Count + t02Count != GameConstants.TRAP_COUNT) {
@@ -223,9 +221,89 @@ public class GameManager  {
             traps.add(new TrapT03_TeaShards(x, y));
             t03Count--;
         }
+        // ===== 生成 T04 泥潭 =====
+        generateMudPatches(GameConstants.TRAP_T04_MUD_COUNT);
 
 
     }
+    private void generateMudPatches(int totalMudCount) {
+
+        int remaining = totalMudCount;
+        int maxAttempts = 500;
+        int attempts = 0;
+
+        while (remaining > 0 && attempts < maxAttempts) {
+            attempts++;
+
+            // 随机决定这一块泥潭大小
+            int patchSize = MathUtils.random(
+                    GameConstants.MUD_PATCH_MIN_SIZE,
+                    GameConstants.MUD_PATCH_MAX_SIZE
+            );
+            patchSize = Math.min(patchSize, remaining);
+
+            // 随机一个起点
+            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
+            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
+
+            if (!isValidTrapPosition(x, y)) continue;
+
+            // 用 BFS / 扩散方式生成这一块
+            List<int[]> patchCells = new ArrayList<>();
+            patchCells.add(new int[]{x, y});
+
+            int index = 0;
+            while (patchCells.size() < patchSize && index < patchCells.size()) {
+                int[] cell = patchCells.get(index++);
+                int cx = cell[0];
+                int cy = cell[1];
+
+                int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+                shuffleDirections(dirs);
+
+                for (int[] d : dirs) {
+                    if (patchCells.size() >= patchSize) break;
+
+                    int nx = cx + d[0];
+                    int ny = cy + d[1];
+
+                    if (!isValidTrapPosition(nx, ny)) continue;
+
+                    boolean alreadyUsed = false;
+                    for (int[] p : patchCells) {
+                        if (p[0] == nx && p[1] == ny) {
+                            alreadyUsed = true;
+                            break;
+                        }
+                    }
+                    if (alreadyUsed) continue;
+
+                    patchCells.add(new int[]{nx, ny});
+                }
+            }
+
+            // 真正生成 Trap
+            for (int[] cell : patchCells) {
+                traps.add(new TrapT04_Mud(cell[0], cell[1]));
+                remaining--;
+                if (remaining <= 0) break;
+            }
+        }
+
+        Logger.gameEvent("Generated mud patches, total tiles: " +
+                (totalMudCount - remaining));
+    }
+
+    private void shuffleDirections(int[][] dirs) {
+        for (int i = dirs.length - 1; i > 0; i--) {
+            int j = MathUtils.random(i);
+            int[] tmp = dirs[i];
+            dirs[i] = dirs[j];
+            dirs[j] = tmp;
+        }
+    }
+
+
 
     private boolean isValidTrapPosition(int x, int y) {
 
