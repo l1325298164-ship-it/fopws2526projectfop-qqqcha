@@ -248,6 +248,12 @@ public class GameScreen implements Screen {
             if (item.type == RenderItemType.WALL_BEHIND ||
                     item.type == RenderItemType.WALL_FRONT) {
 
+                // 🔥【新增】如果是 Front 墙，并且位置是门 → 不渲染
+                if (item.type == RenderItemType.WALL_FRONT &&
+                        isWallGroupOnExitDoor(item.wall)) {
+                    continue;
+                }
+
                 if (shapeBatchActive) {
                     shapeRenderer.end();
                     shapeBatchActive = false;
@@ -413,10 +419,22 @@ public class GameScreen implements Screen {
 
         TextureManager tm = TextureManager.getInstance();
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) tm.switchMode(TextureManager.TextureMode.COLOR);
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) tm.switchMode(TextureManager.TextureMode.IMAGE);
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) tm.switchMode(TextureManager.TextureMode.PIXEL);
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) tm.switchMode(TextureManager.TextureMode.MINIMAL);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
+            tm.switchMode(TextureManager.TextureMode.COLOR);
+            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
+            tm.switchMode(TextureManager.TextureMode.IMAGE);
+            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+            tm.switchMode(TextureManager.TextureMode.PIXEL);
+            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
+            tm.switchMode(TextureManager.TextureMode.MINIMAL);
+            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
+        }
 
         inputHandler.update(delta, (dx, dy) -> {
             int nx = gameManager.getPlayer().getX() + dx;

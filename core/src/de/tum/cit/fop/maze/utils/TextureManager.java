@@ -79,6 +79,8 @@ public class TextureManager implements Disposable {
 
         imageMode.put(FLOOR, "floor/780.jpg");
         imageMode.put(WALL, "Walls/wall_2.png");
+        imageMode.put(DOOR, "Items/door.png");
+        imageMode.put(LOCKED_DOOR, "Items/locked-door.png");
 
         imageMode.put(PLAYER, "Character/mainCharacter.png");
         imageMode.put(ENEMY1, "Character/Enemy1.png");
@@ -90,8 +92,7 @@ public class TextureManager implements Disposable {
 
         imageMode.put(KEY, "Items/key_1.gif");
 
-        imageMode.put(DOOR, "Walls/wall_1.png");
-        imageMode.put(LOCKED_DOOR, "Walls/wall_3.png");
+
 
 // 心心如果你有图可以补，没有也没关系
 // imageMode.put(HEART, "Items/heart.png");
