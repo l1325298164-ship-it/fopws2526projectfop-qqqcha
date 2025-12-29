@@ -21,7 +21,13 @@ public class Player extends GameObject {
     private float invincibleTimer = 0;
     private boolean isInvincible = false;
     private boolean isDead = false;
-//朝向
+    private boolean moving = false;
+    private float moveTimer = 0;
+    private static final float MOVE_COOLDOWN = 0.15f; // 移动间隔
+
+
+
+    //朝向
     public enum Direction {
         UP, DOWN, LEFT, RIGHT
     }
@@ -45,7 +51,7 @@ public class Player extends GameObject {
     private Animation<TextureRegion> frontAnim, backAnim, leftAnim, rightAnim;
 
     private float stateTime = 0f;
-    private boolean isMoving = false;
+    public boolean isMoving = false;
 
 
 
@@ -78,37 +84,10 @@ public class Player extends GameObject {
     public void drawShape(ShapeRenderer shapeRenderer) {
 
     }
+    public boolean isMoving() {
+        return moving;
+    }
 
-    /**
-     * 更新纹理
-     */
-
-
-    /**
-     * 响应纹理模式切换,已停用
-     */
-//    @Override
-//    public void drawShape(ShapeRenderer shapeRenderer) {
-//        if (!active || isDead || playerTexture != null) return;
-//
-//        // 备用：使用颜色绘制
-//        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-//
-//        // 无敌状态闪烁效果
-//        if (isInvincible && invincibleTimer % 0.2f > 0.1f) {
-//            shapeRenderer.setColor(Color.WHITE);
-//        } else {
-//            shapeRenderer.setColor(color);
-//        }
-//
-//        shapeRenderer.rect(
-//            x * GameConstants.CELL_SIZE + 2,
-//            y * GameConstants.CELL_SIZE + 2,
-//            GameConstants.CELL_SIZE - 4,
-//            GameConstants.CELL_SIZE - 4
-//        );
-//        shapeRenderer.end();
-//    }
 
     @Override
     public void drawSprite(SpriteBatch batch) {
@@ -162,7 +141,6 @@ public class Player extends GameObject {
 
 
     public void update(float deltaTime) {
-
         // ===== 动画时间（与移动速度同步）=====
         float animationSpeed = 1f / getMoveDelayMultiplier();
         stateTime += deltaTime * animationSpeed;
@@ -189,6 +167,14 @@ public class Player extends GameObject {
                 slowTimer = 0f;
             }
         }
+
+        // ===== 新增：更新移动状态 =====
+        if (moving) {
+            moveTimer += deltaTime;
+            if (moveTimer >= MOVE_COOLDOWN) {
+                moving = false;
+            }
+        }
     }
     //减速倍率
     public float getMoveDelayMultiplier() {
@@ -213,6 +199,10 @@ public class Player extends GameObject {
         else if (dy < 0) direction = Direction.DOWN;
 
         isMoving = true;
+
+        // 🔥 新增：设置移动状态
+        moving = true;
+        moveTimer = 0;
 
         this.x += dx;
         this.y += dy;
