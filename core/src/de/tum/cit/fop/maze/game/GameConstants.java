@@ -16,9 +16,9 @@ public class GameConstants {
 
     //enemy数量在这里
 
-    public static final int ENEMY_E01_PEARL_COUNT = 3;
-    public static final int ENEMY_E02_COFFEE_BEAN_COUNT = 5;
-    public static final int ENEMY_E03_CARAMEL_COUNT = 5;
+    public static final int ENEMY_E01_PEARL_COUNT = 15;
+    public static final int ENEMY_E02_COFFEE_BEAN_COUNT = 2;
+    public static final int ENEMY_E03_CARAMEL_COUNT = 2;
 
 
 

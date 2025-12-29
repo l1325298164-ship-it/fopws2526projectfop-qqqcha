@@ -16,6 +16,7 @@ import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -65,8 +66,10 @@ public class GameScreen implements Screen {
     private enum RenderItemType {
         WALL_BEHIND,
         ENTITY,
+        EFFECT,      // ⭐ 新增
         WALL_FRONT
     }
+
 
     private static class RenderItem {
         float y;                 // 用于深度排序
@@ -90,6 +93,13 @@ public class GameScreen implements Screen {
             this.y = wall.startY;
             this.type = type;
             this.priority = 0;
+        }
+
+        RenderItem(GameObject entity, int priority, RenderItemType type) {
+            this.entity = entity;
+            this.y = entity.getY();
+            this.priority = priority;
+            this.type = type;
         }
     }
 
@@ -213,12 +223,12 @@ public class GameScreen implements Screen {
     /* ================= 渲染 ================= */
 
     private void renderWorld() {
+
         worldBatch.setProjectionMatrix(cameraManager.getCamera().combined);
         shapeRenderer.setProjectionMatrix(cameraManager.getCamera().combined);
 
         worldBatch.begin();
         mazeRenderer.renderFloor(worldBatch);
-        bobaBulletManager.render(worldBatch);
         worldBatch.end();
 
 
@@ -230,6 +240,7 @@ public class GameScreen implements Screen {
 
         boolean spriteBatchActive = false;
         boolean shapeBatchActive = false;
+
 
         for (RenderItem item : items) {
 
@@ -253,6 +264,8 @@ public class GameScreen implements Screen {
             // ===== 实体 =====
             GameObject entity = item.entity;
 
+
+
             if (entity.getRenderType() == GameObject.RenderType.SPRITE) {
 
                 if (shapeBatchActive) {
@@ -265,6 +278,7 @@ public class GameScreen implements Screen {
                 }
 
                 entity.drawSprite(worldBatch);
+
 
             } else { // SHAPE
 
@@ -279,10 +293,14 @@ public class GameScreen implements Screen {
 
                 entity.drawShape(shapeRenderer);
             }
+
         }
 
         if (spriteBatchActive) worldBatch.end();
         if (shapeBatchActive) shapeRenderer.end();
+        worldBatch.begin();
+        bobaBulletManager.render(worldBatch);
+        worldBatch.end();
     }
 
 
@@ -352,6 +370,8 @@ public class GameScreen implements Screen {
         }
 
 
+
+
         Key key = gameManager.getKey();
         if (key != null && key.isActive()) items.add(new RenderItem(key, 20));
 
@@ -359,6 +379,7 @@ public class GameScreen implements Screen {
             items.add(new RenderItem(door, 0));
         }
     }
+
 
     /* ================= 输入 ================= */
 
