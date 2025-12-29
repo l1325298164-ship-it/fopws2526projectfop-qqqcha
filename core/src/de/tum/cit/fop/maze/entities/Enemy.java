@@ -12,14 +12,27 @@ import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 public abstract class Enemy extends GameObject {
+// ===== 逻辑格子坐标（原本的 x, y）=====
+    // x, y 仍然存在，用于碰撞 & 地图判断
+
+    // ===== 连续世界坐标（新增）=====
+    protected float worldX;
+    protected float worldY;
 
     protected int hp;
     public int attack;
     protected int collisionDamage; // 近战碰撞伤害
     protected float moveSpeed;
     protected float detectRange;
-    protected static final float MOVE_INTERVAL = 0.25f; // 0.25 秒走一步
+    // ===== 默认值（相当于以前的常量）=====
+    protected float moveInterval = 0.25f;      // 走一步的节奏
+    protected float changeDirInterval = 1.5f;  // 换方向节奏
 
+
+
+    protected boolean isMoving = false;
+    protected float targetX;
+    protected float targetY;
 
     // 巡逻相关
     protected float moveCooldown = 0f;
@@ -28,8 +41,6 @@ public abstract class Enemy extends GameObject {
     protected int dirX = 0;
     protected int dirY = 0;
 
-    // 控制多久换一次方向（秒）
-    protected static final float CHANGE_DIR_INTERVAL = 1.5f;
 
 
     protected TextureManager textureManager;
@@ -42,10 +53,20 @@ public abstract class Enemy extends GameObject {
     // 闪烁总时长
     protected static final float HIT_FLASH_TIME = 0.25f;
 
+    protected static final int[][] CARDINAL_DIRS = {
+            { 1, 0 },   // 右
+            {-1, 0 },   // 左
+            { 0, 1 },   // 上
+            { 0,-1 }    // 下
+    };
 
 
     public Enemy(int x, int y) {
         super(x, y);
+        // ⭐ 初始世界坐标 = 格子中心
+        this.worldX = x;
+        this.worldY = y;
+
         textureManager = TextureManager.getInstance();
     }
 
@@ -121,12 +142,44 @@ public abstract class Enemy extends GameObject {
 
         batch.draw(
                 tex,
-                x * GameConstants.CELL_SIZE,
-                y * GameConstants.CELL_SIZE,
+                worldX * GameConstants.CELL_SIZE,
+                worldY * GameConstants.CELL_SIZE,
                 GameConstants.CELL_SIZE,
                 GameConstants.CELL_SIZE
         );
     }
+    protected void moveContinuously(float delta) {
+        if (!isMoving) return;
+
+        float dx = targetX - worldX;
+        float dy = targetY - worldY;
+
+        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+
+        // ⭐ 已到达目标
+        if (dist < 0.01f) {
+            worldX = targetX;
+            worldY = targetY;
+            isMoving = false;
+            return;
+        }
+
+        // ⭐ 连续移动
+        float step = moveSpeed * delta;
+
+        worldX += (dx / dist) * step;
+        worldY += (dy / dist) * step;
+    }
+    protected void startMoveTo(int nx, int ny) {
+        // ⭐ 地图合法性仍然用格子判断
+        x = nx;
+        y = ny;
+
+        targetX = nx;
+        targetY = ny;
+        isMoving = true;
+    }
+
 
 
 
@@ -151,22 +204,17 @@ public abstract class Enemy extends GameObject {
     }
 
     protected void tryMoveRandom(float delta, GameManager gm) {
-
+        if (isMoving) return;
         // 1️⃣ 冷却计时
         moveCooldown -= delta;
         dirCooldown -= delta;
 
         // 2️⃣ 定期换方向
         if (dirCooldown <= 0f) {
-            dirX = MathUtils.random(-1, 1);
-            dirY = MathUtils.random(-1, 1);
-
-            // 防止完全不动
-            if (dirX == 0 && dirY == 0) {
-                dirX = 1;
-            }
-
-            dirCooldown = CHANGE_DIR_INTERVAL;
+            int[] dir = CARDINAL_DIRS[MathUtils.random(0, CARDINAL_DIRS.length - 1)];
+            dirX = dir[0];
+            dirY = dir[1];
+            dirCooldown = changeDirInterval;
         }
 
         // 3️⃣ 没到移动时间 → 不走
@@ -176,13 +224,32 @@ public abstract class Enemy extends GameObject {
         int ny = y + dirY;
 
         // 4️⃣ 敌人专用移动规则
-        if (gm.isEnemyValidMove(nx, ny)) {
-            x = nx;
-            y = ny;
+        boolean moved = false;
+
+// 最多尝试 4 次（防止死循环）
+        for (int i = 0; i < 4; i++) {
+            nx = x + dirX;
+            ny = y + dirY;
+
+            if (gm.isEnemyValidMove(nx, ny)) {
+                startMoveTo(nx, ny);
+                moved = true;
+                break;
+            }
+
+            // ❌ 走不了 → 立刻换方向再试
+            dirX = MathUtils.random(-1, 1);
+            dirY = MathUtils.random(-1, 1);
+
+            if (dirX == 0 && dirY == 0) {
+                dirX = 1;
+            }
         }
 
+// 如果 4 次都走不了，就这帧不动（极少发生）
+
         // 5️⃣ 重置移动冷却
-        moveCooldown = MOVE_INTERVAL;
+        moveCooldown = moveInterval;
     }
 
     protected void moveToward(int targetX, int targetY, GameManager gm) {
@@ -205,7 +272,7 @@ public abstract class Enemy extends GameObject {
         }
 
         if (moved) {
-            moveCooldown = MOVE_INTERVAL;
+            moveCooldown = moveInterval;
         }
     }
 
@@ -227,7 +294,7 @@ public abstract class Enemy extends GameObject {
         }
 
         if (moved) {
-            moveCooldown = MOVE_INTERVAL;
+            moveCooldown = moveInterval;
         }
     }
 
