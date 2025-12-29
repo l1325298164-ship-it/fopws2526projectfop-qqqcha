@@ -25,9 +25,18 @@ public class GameConstants {
     public static final int TRAP_T01_GEYSER_COUNT = 70;
     public static final int TRAP_T02_PEARL_MINE_COUNT = 30;
     public static final int TRAP_T03_TEA_SHARDS_COUNT = 20;
+    // 泥潭总格子数（不是块数）
+    public static final int TRAP_T04_MUD_COUNT = 50;
+
 
     // 总陷阱数（= 各类型之和）
-    public static int TRAP_COUNT=120;
+    public static int TRAP_COUNT=170;
+
+    // ===== T04 泥潭（区域型） =====
+
+    // 每一块泥潭最小 / 最大尺寸
+    public static final int MUD_PATCH_MIN_SIZE = 3;
+    public static final int MUD_PATCH_MAX_SIZE = 6;
 
 
 
