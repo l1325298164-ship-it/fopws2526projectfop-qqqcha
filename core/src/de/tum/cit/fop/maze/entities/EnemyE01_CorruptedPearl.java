@@ -13,10 +13,13 @@ public class EnemyE01_CorruptedPearl extends Enemy {
     public EnemyE01_CorruptedPearl(int x, int y) {
         super(x, y);
 
-        this.hp = 5;
-        this.attack = 10;          // 子弹攻击伤害
-        this.collisionDamage = 5; // 碰撞伤害（通常比子弹低）
-        this.moveSpeed = 0.5f;
+        hp = 5;
+        collisionDamage = 5;
+        attack = 10;
+
+        moveSpeed = 2.5f;
+        moveInterval = 0.35f;
+        changeDirInterval = 2.0f;
         this.detectRange = 6f;
 
         updateTexture();
