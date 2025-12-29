@@ -127,8 +127,8 @@ public class Player extends GameObject {
         TextureRegion frame = currentAnim.getKeyFrame(stateTime, true);
 // === 缩放：高度占一格，宽度按比例 ===
         float scale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
-        float drawWidth  = frame.getRegionWidth() * scale;
-        float drawHeight = GameConstants.CELL_SIZE;
+        float drawWidth  = frame.getRegionWidth() * scale+10;
+        float drawHeight = GameConstants.CELL_SIZE+10;
 
 // === 脚底对齐 ===
         float cellX = x * GameConstants.CELL_SIZE;
