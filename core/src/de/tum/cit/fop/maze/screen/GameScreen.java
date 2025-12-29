@@ -141,8 +141,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-
-
         handleInput(delta);
 
 // === 先检测是否触发传送门 ===
@@ -156,6 +154,13 @@ public class GameScreen implements Screen {
 
                     portalEffectManager.startExitAnimation(px, py);
                     waitingForPortal = true;
+
+                    // 🔥 播放传送门音效
+                    AudioManager.getInstance().play(AudioType.UI_SUCCESS);
+
+                    // 🔥 停止玩家移动音效
+                    AudioManager.getInstance().stopPlayerMove();
+                    isPlayerMoving = false;
                     break;
                 }
             }
@@ -164,8 +169,22 @@ public class GameScreen implements Screen {
 // === 只有不在传送动画时，才更新 GameManager ===
         if (!waitingForPortal) {
             gameManager.update(delta);
-        }
 
+
+// 🔥 玩家移动音效控制
+        Player player = gameManager.getPlayer();
+        boolean nowMoving = player.isMoving();
+
+        if (nowMoving && !isPlayerMoving) {
+            // 开始移动
+            AudioManager.getInstance().playPlayerMove();
+            isPlayerMoving = true;
+        } else if (!nowMoving && isPlayerMoving) {
+            // 停止移动
+            AudioManager.getInstance().stopPlayerMove();
+            isPlayerMoving = false;
+        }
+    }
 
 
         cameraManager.update(delta, gameManager.getPlayer());
@@ -208,6 +227,9 @@ public class GameScreen implements Screen {
             keyEffectManager = new KeyEffectManager();
             playerHadKey = false;
             waitingForPortal = false;
+
+            // 🔥 关卡切换完成，恢复玩家移动音效状态
+            isPlayerMoving = false;
         }
 
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
@@ -308,6 +330,7 @@ public class GameScreen implements Screen {
         if (shapeBatchActive) shapeRenderer.end();
         worldBatch.begin();
         bobaBulletManager.render(worldBatch);
+
         keyEffectManager.render(worldBatch);
         portalEffectManager.renderFront(worldBatch);
         worldBatch.end();
@@ -396,10 +419,17 @@ public class GameScreen implements Screen {
     private void handleInput(float delta) {
         // 🔒 TODO关卡传送动画期间，完全锁定玩家输入 进入动画
         if (waitingForPortal) {
+            // 🔥 确保在传送动画期间玩家移动音效停止
+            if (isPlayerMoving) {
+                AudioManager.getInstance().stopPlayerMove();
+                isPlayerMoving = false;
+            }
             return;
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            // 🔥 播放 UI 音效
+            AudioManager.getInstance().playUIClick();
             pendingExitToMenu = true;
             return;
         }
@@ -409,6 +439,8 @@ public class GameScreen implements Screen {
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            // 🔥 播放 UI 音效
+            AudioManager.getInstance().playUIClick();
             restartGame();
             return;
         }
@@ -441,8 +473,18 @@ public class GameScreen implements Screen {
                 int ny = player.getY() + dy;
                 if (gameManager.isValidMove(nx, ny)) {
                     player.move(dx, dy);
+
+                    // 🔥 播放移动音效（移动时播放单次音效，持续移动音效由render方法控制）
+                    if (!isPlayerMoving) {
+                        AudioManager.getInstance().play(AudioType.PLAYER_MOVE);
+                    }
+                } else {
+                    // 🔥 撞墙音效
+                    AudioManager.getInstance().play(AudioType.PLAYER_HIT_WALL);
                 }
             }
+
+
 
             @Override
             public float getMoveDelayMultiplier() {
@@ -466,7 +508,12 @@ public class GameScreen implements Screen {
     @Override public void resize(int w, int h) {}
     @Override public void pause() {}
     @Override public void resume() {}
-    @Override public void hide() {}
+    @Override
+    public void hide() {
+        // 🔥 离开游戏屏幕时停止玩家移动音效
+        AudioManager.getInstance().stopPlayerMove();
+        isPlayerMoving = false;
+    }
 
     @Override
     public void dispose() {

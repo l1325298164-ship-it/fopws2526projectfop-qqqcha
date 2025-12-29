@@ -3,7 +3,10 @@ package de.tum.cit.fop.maze.entities;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
@@ -18,13 +21,39 @@ public class Player extends GameObject {
     private float invincibleTimer = 0;
     private boolean isInvincible = false;
     private boolean isDead = false;
+    private boolean moving = false;
+    private float moveTimer = 0;
+    private static final float MOVE_COOLDOWN = 0.15f; // 移动间隔
 
-    // 纹理管理
-    private TextureManager textureManager;
-    private Texture playerTexture;
 
-    // 状态标识
-    private boolean needsTextureUpdate = true;
+
+    //朝向
+    public enum Direction {
+        UP, DOWN, LEFT, RIGHT
+    }
+    private Direction direction = Direction.DOWN;
+//动画调整
+    float cellX = x * GameConstants.CELL_SIZE;
+    float cellY = y * GameConstants.CELL_SIZE;
+
+    float cellCenterX = cellX + GameConstants.CELL_SIZE / 2f;
+    float footY = cellY; // 脚踩在格子底边
+    float drawWidth;
+    float drawHeight; // = CELL_SIZE
+    float drawX = cellCenterX - drawWidth / 2f;
+    float drawY = footY;
+
+
+
+
+    //ani相关
+    private TextureAtlas frontAtlas, backAtlas, leftAtlas, rightAtlas;
+    private Animation<TextureRegion> frontAnim, backAnim, leftAnim, rightAnim;
+
+    private float stateTime = 0f;
+    public boolean isMoving = false;
+
+
 
     //效果
     private float slowTimer = 0f;
@@ -37,104 +66,113 @@ public class Player extends GameObject {
     public Player(int x, int y) {
         super(x, y);
         this.lives = GameConstants.INITIAL_PLAYER_LIVES;
-        this.textureManager = TextureManager.getInstance();
 
-        // 初始加载纹理
-        updateTexture();
+        frontAtlas = new TextureAtlas("player/front.atlas");
+        backAtlas  = new TextureAtlas("player/back.atlas");
+        leftAtlas  = new TextureAtlas("player/left.atlas");
+        rightAtlas = new TextureAtlas("player/right.atlas");
+//帧率自己调整
+        frontAnim = new Animation<>(0.4f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
+        backAnim  = new Animation<>(0.4f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
+        leftAnim  = new Animation<>(0.4f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
+        rightAnim = new Animation<>(0.4f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
 
-        Logger.gameEvent("Player spawned at " + getPositionString() + " with " + lives + " lives");
+        Logger.gameEvent("Player spawned at " + getPositionString());
     }
 
-    /**
-     * 更新纹理
-     */
-    private void updateTexture() {
-        playerTexture = textureManager.getPlayerTexture();
-        needsTextureUpdate = false;
-    }
-
-    /**
-     * 响应纹理模式切换
-     */
-    public void onTextureModeChanged() {
-        needsTextureUpdate = true;
-        Logger.debug("Player texture needs update due to mode change");
-    }
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
-        if (!active || isDead || playerTexture != null) return;
 
-        // 备用：使用颜色绘制
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-
-        // 无敌状态闪烁效果
-        if (isInvincible && invincibleTimer % 0.2f > 0.1f) {
-            shapeRenderer.setColor(Color.WHITE);
-        } else {
-            shapeRenderer.setColor(color);
-        }
-
-        shapeRenderer.rect(
-            x * GameConstants.CELL_SIZE + 2,
-            y * GameConstants.CELL_SIZE + 2,
-            GameConstants.CELL_SIZE - 4,
-            GameConstants.CELL_SIZE - 4
-        );
-        shapeRenderer.end();
     }
+    public boolean isMoving() {
+        return moving;
+    }
+
 
     @Override
     public void drawSprite(SpriteBatch batch) {
-        if (!active || isDead || playerTexture == null) return;
+        if (!active || isDead) return;
 
-        // 如果需要更新纹理
-        if (needsTextureUpdate) {
-            updateTexture();
+        Animation<TextureRegion> currentAnim;
+
+        switch (direction) {
+            case UP:    currentAnim = backAnim; break;
+            case LEFT:  currentAnim = leftAnim; break;
+            case RIGHT: currentAnim = rightAnim; break;
+            case DOWN:
+            default:    currentAnim = frontAnim; break;
         }
 
-        // 无敌状态闪烁效果
+        TextureRegion frame = currentAnim.getKeyFrame(stateTime, true);
+// === 缩放：高度占一格，宽度按比例 ===
+        float scale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
+        float drawWidth  = frame.getRegionWidth() * scale+10;
+        float drawHeight = GameConstants.CELL_SIZE+10;
+
+// === 脚底对齐 ===
+        float cellX = x * GameConstants.CELL_SIZE;
+        float cellY = y * GameConstants.CELL_SIZE;
+
+        float drawX = cellX + GameConstants.CELL_SIZE / 2f - drawWidth / 2f;
+        float drawY = cellY;
+
+// === 无敌闪烁 ===
         if (isInvincible && invincibleTimer % 0.2f > 0.1f) {
-            batch.setColor(1, 1, 1, 0.7f); // 半透明闪烁
+            batch.setColor(1, 1, 1, 0.7f);
         } else {
-            batch.setColor(1, 1, 1, 1);
+            batch.setColor(1, 1, 1, 1f);
         }
 
-        float posX = x * GameConstants.CELL_SIZE;
-        float posY = y * GameConstants.CELL_SIZE;
-        batch.draw(playerTexture, posX, posY,
-            GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
+        batch.draw(
+                frame,
+                drawX,
+                drawY,
+                drawWidth,
+                drawHeight
+        );
 
-        // 重置颜色
-        batch.setColor(1, 1, 1, 1);
+        batch.setColor(1, 1, 1, 1f);
     }
 
     @Override
     public RenderType getRenderType() {
-        // 如果当前模式是COLOR或没有纹理，使用SHAPE
-        if (textureManager.getCurrentMode() == TextureManager.TextureMode.COLOR ||
-            textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
-            playerTexture == null) {
-            return RenderType.SHAPE;
-        }
         return RenderType.SPRITE;
     }
 
+
     public void update(float deltaTime) {
+        // ===== 动画时间（与移动速度同步）=====
+        float animationSpeed = 1f / getMoveDelayMultiplier();
+        stateTime += deltaTime * animationSpeed;
+
+        if (!isMoving) {
+            stateTime = 0f;
+        }
+        isMoving = false;
+
+        // ===== 无敌 =====
         if (isInvincible) {
             invincibleTimer += deltaTime;
             if (invincibleTimer >= GameConstants.INVINCIBLE_TIME) {
                 isInvincible = false;
                 invincibleTimer = 0;
-                Logger.debug("Player invincibility ended");
             }
         }
-        // ===== 减速计时 =====
+
+        // ===== 减速 =====
         if (slowed) {
             slowTimer -= deltaTime;
             if (slowTimer <= 0f) {
-                slowTimer = 0f;
                 slowed = false;
-                Logger.debug("Player slow ended");
+                slowTimer = 0f;
+            }
+        }
+
+        // ===== 新增：更新移动状态 =====
+        if (moving) {
+            moveTimer += deltaTime;
+            if (moveTimer >= MOVE_COOLDOWN) {
+                moving = false;
             }
         }
     }
@@ -154,10 +192,24 @@ public class Player extends GameObject {
 
     public void move(int dx, int dy) {
         if (isDead) return;
+
+        if (dx > 0) direction = Direction.RIGHT;
+        else if (dx < 0) direction = Direction.LEFT;
+        else if (dy > 0) direction = Direction.UP;
+        else if (dy < 0) direction = Direction.DOWN;
+
+        isMoving = true;
+
+        // 🔥 新增：设置移动状态
+        moving = true;
+        moveTimer = 0;
+
         this.x += dx;
         this.y += dy;
+
         Logger.debug("Player moved to " + getPositionString());
     }
+
 
 
     public void takeDamage(int damage) {
@@ -222,9 +274,6 @@ public class Player extends GameObject {
         // 重置分数
         this.score = 0;
 
-        // 重置纹理状态
-        this.needsTextureUpdate = true;
-        updateTexture();
 
         Logger.debug("Player状态已重置: 生命=" + lives + ", 分数=" + score + ", 有钥匙=" + hasKey);
     }

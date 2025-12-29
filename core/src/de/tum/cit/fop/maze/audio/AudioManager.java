@@ -214,6 +214,15 @@ public class AudioManager implements Disposable {
             return -1;
         }
 
+
+        // 🔥 重要：如果是循环音效且已经在播放，停止之前的实例
+        if (config.isLoop() && activeSounds.containsKey(id)) {
+            Sound existingSound = sounds.get(id);
+            if (existingSound != null) {
+                existingSound.stop(activeSounds.get(id).soundId);
+            }
+            activeSounds.remove(id);
+        }
         // 确保音效已加载
         Sound sound = loadSound(id);
         if (sound == null) return -1;
