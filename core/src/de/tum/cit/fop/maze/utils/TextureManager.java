@@ -34,6 +34,11 @@ public class TextureManager implements Disposable {
     public static final String DOOR = "door";
     public static final String LOCKED_DOOR = "locked_door";
     public static final String ENEMY1 = "enemy1";
+    public static final String ENEMY2 = "enemy2";
+    public static final String ENEMY3 = "enemy3";
+    public static final String ENEMY3AOE = "ENEMY3AOE";
+
+
     public static final String HEART = "heart";
     public static final String TRAP = "trap";
 
@@ -74,16 +79,20 @@ public class TextureManager implements Disposable {
 
         imageMode.put(FLOOR, "floor/780.jpg");
         imageMode.put(WALL, "Walls/wall_2.png");
+        imageMode.put(DOOR, "Items/door.png");
+        imageMode.put(LOCKED_DOOR, "Items/locked-door.png");
 
         imageMode.put(PLAYER, "Character/mainCharacter.png");
         imageMode.put(ENEMY1, "Character/Enemy1.png");
+        imageMode.put(ENEMY2, "Character/Enemy2.png");
+        imageMode.put(ENEMY3, "Character/Enemy3.png");
+        imageMode.put(ENEMY3AOE, "Character/Enemy3AOE.png");
         imageMode.put(TRAP, "qte/trap.png"); // 路径示例
 
 
         imageMode.put(KEY, "Items/key_1.gif");
 
-        imageMode.put(DOOR, "Walls/wall_1.png");
-        imageMode.put(LOCKED_DOOR, "Walls/wall_3.png");
+
 
 // 心心如果你有图可以补，没有也没关系
 // imageMode.put(HEART, "Items/heart.png");
@@ -304,6 +313,17 @@ public class TextureManager implements Disposable {
     public Texture getEnemy1Texture() {
         return getTexture(ENEMY1);
     }
+    public Texture getEnemy2Texture() {return getTexture(ENEMY2);
+    }
+
+    public Texture getEnemy3Texture() {
+        return getTexture(ENEMY3);
+    }
+
+    public Texture getEnemy3AOETexture() {
+        return getTexture(ENEMY3AOE);
+    }
+
 
     public Texture getHeartTexture() {
         return getTexture(HEART);

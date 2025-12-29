@@ -17,6 +17,8 @@ public class MazeGenerator {
     private static final int WALL_HEIGHT = 1;     // 墙高度：2格
     private static final int PATH_WIDTH = 3;      // 道路宽度：3格
     private static final int PATH_HEIGHT = 3;     // 道路高度：3格
+    private static final int BORDER_THICKNESS = 4;
+
 
     public MazeGenerator() {
         random = new Random();
@@ -70,8 +72,34 @@ public class MazeGenerator {
         Logger.debug("Maze generation completed - Size: " + adjustedWidth + "x" + adjustedHeight);
         Logger.debug("Configuration - Path: " + PATH_WIDTH + "x" + PATH_HEIGHT +
             ", Wall: " + WALL_WIDTH + "x" + WALL_HEIGHT);
-
+        addOuterBorderWalls(maze);
         return maze;
+    }
+
+    /**
+     * 在迷宫四周生成固定厚度的外墙（用于主题贴图）
+     */
+    private void addOuterBorderWalls(int[][] maze) {
+        int height = maze.length;
+        int width = maze[0].length;
+
+        // 上下边界
+        for (int y = 0; y < BORDER_THICKNESS; y++) {
+            for (int x = 0; x < width; x++) {
+                maze[y][x] = 0;                     // 下
+                maze[height - 1 - y][x] = 0;        // 上
+            }
+        }
+
+        // 左右边界
+        for (int x = 0; x < BORDER_THICKNESS; x++) {
+            for (int y = 0; y < height; y++) {
+                maze[y][x] = 0;                     // 左
+                maze[y][width - 1 - x] = 0;         // 右
+            }
+        }
+
+        Logger.debug("Applied outer border walls with thickness = " + BORDER_THICKNESS);
     }
 
     /**
@@ -92,8 +120,8 @@ public class MazeGenerator {
      */
     private void generate3x3PathDFS(int[][] maze) {
         // 起始位置考虑墙的厚度
-        int startX = WALL_WIDTH;
-        int startY = WALL_HEIGHT;
+        int startX = BORDER_THICKNESS;
+        int startY = BORDER_THICKNESS;
 
         Stack<int[]> stack = new Stack<>();
         stack.push(new int[]{startX, startY});
@@ -162,8 +190,10 @@ public class MazeGenerator {
         int height = maze.length;
 
         // 检查边界
-        if (startX < WALL_WIDTH || startX >= width - WALL_WIDTH - PATH_WIDTH ||
-            startY < WALL_HEIGHT || startY >= height - WALL_HEIGHT - PATH_HEIGHT) {
+        if (startX < BORDER_THICKNESS ||
+                startY < BORDER_THICKNESS ||
+                startX >= width - BORDER_THICKNESS - PATH_WIDTH ||
+                startY >= height - BORDER_THICKNESS - PATH_HEIGHT) {
             return false;
         }
 

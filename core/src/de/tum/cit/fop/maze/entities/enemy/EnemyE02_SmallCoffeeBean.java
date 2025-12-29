@@ -2,6 +2,7 @@ package de.tum.cit.fop.maze.entities.enemy;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
 /**
@@ -12,6 +13,7 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
 
     public EnemyE02_SmallCoffeeBean(int x, int y) {
         super(x, y);
+        size = 0.8f;
 
         hp = 3;
         collisionDamage = 5;
@@ -40,11 +42,13 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
         super.drawSprite(batch); // 直接复用 Enemy 的渲染
     }
 
+
+
     @Override
     protected void updateTexture() {
         // 先复用 enemy1 的贴图
         // 以后你可以在 TextureManager 里加 ENEMY2
-        texture = textureManager.getEnemy1Texture();
+        texture = textureManager.getEnemy2Texture();
         needsTextureUpdate = false;
     }
 

@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.entities.ExitDoor;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -178,24 +179,89 @@ public class MazeRenderer {
 
         for (int y = 0; y < maze.length; y++) {
             for (int x = 0; x < maze[y].length; x++) {
-                if (maze[y][x] == 0) {
-                    // 检查水平连续长度
-                    int length = 1;
-                    while (x + length < maze[y].length && maze[y][x + length] == 0) {
-                        length++;
-                    }
 
-                    // 智能分割连续墙壁
-                    splitWallSegment(x, y, length);
+                if (maze[y][x] != 0) continue;
 
-                    x += length - 1; // 跳过已处理的墙壁
+                // 1️⃣ 找连续墙长度
+                int length = 1;
+                while (x + length < maze[y].length && maze[y][x + length] == 0) {
+                    length++;
                 }
+
+                // 2️⃣ 检查这一段里有没有门
+                int doorX = -1;
+                for (ExitDoor door : gameManager.getExitDoors()) {
+                    if (door.getY() == y &&
+                            door.getX() >= x &&
+                            door.getX() < x + length) {
+                        doorX = door.getX();
+                        break;
+                    }
+                }
+
+                if (doorX == -1) {
+                    // 🚫 没门：允许五连
+                    splitWallSegment(x, y, length);
+                } else {
+                    // 🚪 有门：断开 + 禁五连
+                    int leftLen = doorX - x;
+                    int rightLen = x + length - doorX - 1;
+
+                    if (leftLen > 0) {
+                        splitWallSegmentNoFive(x, y, leftLen);
+                    }
+                    if (rightLen > 0) {
+                        splitWallSegmentNoFive(doorX + 1, y, rightLen);
+                    }
+                }
+
+                x += length - 1; // 跳过整个连续段
             }
         }
 
         groupsAnalyzed = true;
         Logger.debug("墙壁分组分析完成，共 " + wallGroups.size() + " 个分组");
     }
+
+
+    // 含门墙段：禁止生成五连（003）
+    private void splitWallSegmentNoFive(int startX, int startY, int totalLength) {
+        int remaining = totalLength;
+        int currentX = startX;
+
+        while (remaining > 0) {
+            if (remaining >= 3) {
+                if (remaining == 4) {
+                    wallGroups.add(new WallGroup(currentX, startY, 2, 1));
+                    wallGroups.add(new WallGroup(currentX + 2, startY, 2, 1));
+                    remaining = 0;
+                } else {
+                    wallGroups.add(new WallGroup(currentX, startY, 3, 2));
+                    currentX += 3;
+                    remaining -= 3;
+                }
+            } else if (remaining >= 2) {
+                wallGroups.add(new WallGroup(currentX, startY, 2, 1));
+                currentX += 2;
+                remaining -= 2;
+            } else {
+                wallGroups.add(new WallGroup(currentX, startY, 1, 0));
+                remaining = 0;
+            }
+        }
+    }
+
+    private boolean hasDoorInRange(int startX, int y, int length) {
+        for (ExitDoor door : gameManager.getExitDoors()) {
+            if (door.getY() == y &&
+                    door.getX() >= startX &&
+                    door.getX() < startX + length) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     // 智能分割墙壁段
     private void splitWallSegment(int startX, int startY, int totalLength) {
@@ -353,8 +419,59 @@ public class MazeRenderer {
         float wallHeight = cellSize * getWallHeightMultiplier();
         int overlap = getWallOverlap();
 
-        group.render(batch, wallRegions, cellSize, wallHeight, overlap);
+        if (group.textureIndex < 0 || group.textureIndex >= wallRegions.length) {
+            return;
+        }
+
+        TextureRegion baseRegion = wallRegions[group.textureIndex];
+        if (baseRegion == null) return;
+
+        int tiles = group.length;
+
+        // region 原始尺寸
+        float u0 = baseRegion.getU();
+        float u1 = baseRegion.getU2();
+        float v0 = baseRegion.getV();
+        float v1 = baseRegion.getV2();
+
+        float uStep = (u1 - u0) / tiles;
+
+        for (int i = 0; i < tiles; i++) {
+            int x = group.startX + i;
+            int y = group.startY;
+
+            float drawX = x * cellSize;
+            float drawY = y * cellSize - overlap;
+
+            // ✂️ 取 region 的第 i 段
+            TextureRegion slice = new TextureRegion(
+                    baseRegion.getTexture(),
+                    (int) ((u0 + i * uStep) * baseRegion.getTexture().getWidth()),
+                    (int) (v0 * baseRegion.getTexture().getHeight()),
+                    (int) (uStep * baseRegion.getTexture().getWidth()),
+                    baseRegion.getRegionHeight()
+            );
+
+            batch.draw(
+                    slice,
+                    drawX,
+                    drawY,
+                    cellSize,
+                    wallHeight
+            );
+        }
     }
+
+
+    private boolean isExitDoorAt(int x, int y) {
+        for (ExitDoor door : gameManager.getExitDoors()) {
+            if (door.getX() == x && door.getY() == y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
 
     public void dispose() {
@@ -364,4 +481,5 @@ public class MazeRenderer {
         groupsAnalyzed = false;
         Logger.debug("MazeRenderer 已释放");
     }
+    //TODO 准备更新成Auto-Tiling
 }
