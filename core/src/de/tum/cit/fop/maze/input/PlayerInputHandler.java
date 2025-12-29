@@ -20,9 +20,10 @@ public class PlayerInputHandler {
         boolean isRunning = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) ||
             Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
 
-        currentMoveDelay = isRunning ?
-            GameConstants.MOVE_DELAY_FAST :
-            GameConstants.MOVE_DELAY_NORMAL;
+        currentMoveDelay = (isRunning ?
+                GameConstants.MOVE_DELAY_FAST :
+                GameConstants.MOVE_DELAY_NORMAL)
+                * callback.getMoveDelayMultiplier();
 
         if (moveTimer < currentMoveDelay) {
             return;
@@ -53,5 +54,7 @@ public class PlayerInputHandler {
 
     public interface InputHandlerCallback {
         void onMoveInput(int dx, int dy);
+        // 新增：获取移动延迟倍率
+        float getMoveDelayMultiplier();
     }
 }

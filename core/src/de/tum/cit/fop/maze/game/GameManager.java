@@ -10,6 +10,8 @@ import de.tum.cit.fop.maze.entities.enemy.EnemyE02_SmallCoffeeBean;
 import de.tum.cit.fop.maze.entities.enemy.EnemyE03_CaramelJuggernaut;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.entities.trap.TrapT01_Geyser;
+import de.tum.cit.fop.maze.entities.trap.TrapT02_PearlMine;
+import de.tum.cit.fop.maze.entities.trap.TrapT03_TeaShards;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -156,48 +158,102 @@ public class GameManager  {
 
 
     private void generateTraps() {
-        int trapCount = GameConstants.TRAP_COUNT; // 你可以自己加这个常量
-        int attempts = 0;
-        int maxAttempts = 200;
 
-        while (traps.size() < trapCount && attempts < maxAttempts) {
-            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-            attempts++;
+        traps.clear();
 
-            // 1. 必须是通路
-            if (maze[y][x] != 1) continue;
+        int t01Count = GameConstants.TRAP_T01_GEYSER_COUNT;
+        int t02Count = GameConstants.TRAP_T02_PEARL_MINE_COUNT;
+        int t03Count = GameConstants.TRAP_T03_TEA_SHARDS_COUNT;
 
-            // 2. 不能生成在玩家起点附近
-            if (Math.abs(x - player.getX()) + Math.abs(y - player.getY()) < 3) continue;
-
-            // 3. 不能和 Key / Door 重叠
-            if (key != null && x == key.getX() && y == key.getY()) continue;
-
-            boolean overlapsDoor = false;
-            for (ExitDoor door : exitDoors) {
-                if (x == door.getX() && y == door.getY()) {
-                    overlapsDoor = true;
-                    break;
-                }
-            }
-            if (overlapsDoor) continue;
-
-            // 4. 不能和已有 de.tum.cit.fop.maze.entities.trap.Trap 重叠
-            boolean overlapsTrap = false;
-            for (Trap trap : traps) {
-                if (x == trap.getX() && y == trap.getY()) {
-                    overlapsTrap = true;
-                    break;
-                }
-            }
-            if (overlapsTrap) continue;
-
-            traps.add(new TrapT01_Geyser(x, y, 4f));
-            Logger.debug("de.tum.cit.fop.maze.entities.trap.Trap generated at (" + x + ", " + y + ")");
+        // ===== 防御性校验（防止调参炸游戏）=====
+        if (t01Count + t02Count != GameConstants.TRAP_COUNT) {
+            Logger.warning(
+                    "Trap count mismatch! T01(" + t01Count +
+                            ") + T02(" + t02Count +
+                            ") != TRAP_COUNT(" + GameConstants.TRAP_COUNT + ")"
+            );
         }
 
-        Logger.gameEvent("Generated " + traps.size() + " traps");
+        int attempts = 0;
+        int maxAttempts = 500;
+
+        // ===== 1️⃣ 生成 T02 地雷 =====
+        while (t02Count > 0 && attempts < maxAttempts) {
+            attempts++;
+
+            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
+            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
+
+            if (!isValidTrapPosition(x, y)) continue;
+
+            traps.add(new TrapT02_PearlMine(x, y, this));
+            t02Count--;
+        }
+
+        // ===== 2️⃣ 生成 T01 喷泉 =====
+        attempts = 0;
+
+        while (t01Count > 0 && attempts < maxAttempts) {
+            attempts++;
+
+            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
+            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
+
+            if (!isValidTrapPosition(x, y)) continue;
+
+            traps.add(new TrapT01_Geyser(x, y, 4f));
+            t01Count--;
+        }
+
+        Logger.gameEvent(
+                "Generated traps: " +
+                        (GameConstants.TRAP_T01_GEYSER_COUNT - t01Count) + " Geyser, " +
+                        (GameConstants.TRAP_T02_PEARL_MINE_COUNT - t02Count) + " PearlMine"
+        );
+        // ===== 生成 T03 茶叶碎 =====
+        attempts = 0;
+        while (t03Count > 0 && attempts < maxAttempts) {
+            attempts++;
+
+            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
+            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
+
+            if (!isValidTrapPosition(x, y)) continue;
+
+            traps.add(new TrapT03_TeaShards(x, y));
+            t03Count--;
+        }
+
+
+    }
+
+    private boolean isValidTrapPosition(int x, int y) {
+
+        // 1. 必须是通路
+        if (maze[y][x] != 1) return false;
+
+        // 2. 不能离玩家太近
+        if (Math.abs(x - player.getX()) +
+                Math.abs(y - player.getY()) < 3) return false;
+
+        // 3. 不能和 Key 重叠
+        if (key != null && x == key.getX() && y == key.getY()) return false;
+
+        // 4. 不能和 Door 重叠
+        for (ExitDoor door : exitDoors) {
+            if (x == door.getX() && y == door.getY()) {
+                return false;
+            }
+        }
+
+        // 5. 不能和已有 Trap 重叠
+        for (Trap trap : traps) {
+            if (x == trap.getX() && y == trap.getY()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 

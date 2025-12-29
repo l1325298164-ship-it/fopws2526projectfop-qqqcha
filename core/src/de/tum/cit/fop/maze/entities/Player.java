@@ -26,6 +26,11 @@ public class Player extends GameObject {
     // 状态标识
     private boolean needsTextureUpdate = true;
 
+    //效果
+    private float slowTimer = 0f;
+    private boolean slowed = false;
+
+
     // 分数
     private int score = 0;
 
@@ -123,7 +128,21 @@ public class Player extends GameObject {
                 Logger.debug("Player invincibility ended");
             }
         }
+        // ===== 减速计时 =====
+        if (slowed) {
+            slowTimer -= deltaTime;
+            if (slowTimer <= 0f) {
+                slowTimer = 0f;
+                slowed = false;
+                Logger.debug("Player slow ended");
+            }
+        }
     }
+    //减速倍率
+    public float getMoveDelayMultiplier() {
+        return slowed ? 2.0f : 1.0f;
+    }
+
 
     public boolean hasKey() { return hasKey; }
     public void setHasKey(boolean hasKey) {
@@ -139,6 +158,7 @@ public class Player extends GameObject {
         this.y += dy;
         Logger.debug("Player moved to " + getPositionString());
     }
+
 
     public void takeDamage(int damage) {
         if (isDead || isInvincible) return;
@@ -183,7 +203,9 @@ public class Player extends GameObject {
     public void reset() {
         // 重置位置到初始位置（需要在GameManager中设置）
         // 这里只重置状态，位置由GameManager负责设置
-
+        //避免极端情况下「重开关卡还在减速」。
+        this.slowed = false;
+        this.slowTimer = 0f;
         // 重置生命值
         this.lives = GameConstants.INITIAL_PLAYER_LIVES;
 
@@ -220,4 +242,14 @@ public class Player extends GameObject {
     public String getPositionString() {
         return "(" + x + ", " + y + ")";
     }
+
+    public void applySlow(float slowDuration) {
+        // 不可叠加：只刷新持续时间
+        slowed = true;
+        slowTimer = Math.max(slowTimer, slowDuration);
+
+        Logger.debug("Player slowed for " + slowTimer + " seconds");
+    }
+
+
 }

@@ -432,11 +432,21 @@ public class GameScreen implements Screen {
             for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
         }
 
-        inputHandler.update(delta, (dx, dy) -> {
-            int nx = gameManager.getPlayer().getX() + dx;
-            int ny = gameManager.getPlayer().getY() + dy;
-            if (gameManager.isValidMove(nx, ny)) {
-                gameManager.getPlayer().move(dx, dy);
+        Player player = gameManager.getPlayer();
+
+        inputHandler.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+            @Override
+            public void onMoveInput(int dx, int dy) {
+                int nx = player.getX() + dx;
+                int ny = player.getY() + dy;
+                if (gameManager.isValidMove(nx, ny)) {
+                    player.move(dx, dy);
+                }
+            }
+
+            @Override
+            public float getMoveDelayMultiplier() {
+                return player.getMoveDelayMultiplier();
             }
         });
     }
