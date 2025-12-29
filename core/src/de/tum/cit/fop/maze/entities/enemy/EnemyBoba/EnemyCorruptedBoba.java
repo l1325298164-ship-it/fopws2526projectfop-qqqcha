@@ -152,7 +152,7 @@ public class EnemyCorruptedBoba extends Enemy {
 
     @Override
     public RenderType getRenderType() {
-        return null;
+        return RenderType.SPRITE;
     }
 
     @Override

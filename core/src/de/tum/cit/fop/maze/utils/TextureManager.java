@@ -34,6 +34,11 @@ public class TextureManager implements Disposable {
     public static final String DOOR = "door";
     public static final String LOCKED_DOOR = "locked_door";
     public static final String ENEMY1 = "enemy1";
+    public static final String ENEMY2 = "enemy2";
+    public static final String ENEMY3 = "enemy3";
+    public static final String ENEMY3AOE = "ENEMY3AOE";
+
+
     public static final String HEART = "heart";
     public static final String TRAP = "trap";
 
@@ -77,6 +82,9 @@ public class TextureManager implements Disposable {
 
         imageMode.put(PLAYER, "Character/mainCharacter.png");
         imageMode.put(ENEMY1, "Character/Enemy1.png");
+        imageMode.put(ENEMY2, "Character/Enemy2.png");
+        imageMode.put(ENEMY3, "Character/Enemy3.png");
+        imageMode.put(ENEMY3AOE, "Character/Enemy3AOE.png");
         imageMode.put(TRAP, "qte/trap.png"); // 路径示例
 
 
@@ -304,6 +312,17 @@ public class TextureManager implements Disposable {
     public Texture getEnemy1Texture() {
         return getTexture(ENEMY1);
     }
+    public Texture getEnemy2Texture() {return getTexture(ENEMY2);
+    }
+
+    public Texture getEnemy3Texture() {
+        return getTexture(ENEMY3);
+    }
+
+    public Texture getEnemy3AOETexture() {
+        return getTexture(ENEMY3AOE);
+    }
+
 
     public Texture getHeartTexture() {
         return getTexture(HEART);

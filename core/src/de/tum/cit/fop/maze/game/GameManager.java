@@ -7,6 +7,7 @@ import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyE02_SmallCoffeeBean;
+import de.tum.cit.fop.maze.entities.enemy.EnemyE03_CaramelJuggernaut;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.entities.trap.TrapT01_Geyser;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
@@ -211,13 +212,42 @@ public class GameManager  {
 
         Logger.gameEvent("Generated " + traps.size() + " traps");
     }
+
+
     private void generateEnemies() {
-        int enemyCount = GameConstants.ENEMY_COUNT;
+
+        // EnemyCorruptedBoba（会射 BobaBullet 的敌人）
+        generateEnemyType(
+                GameConstants.ENEMY_E01_PEARL_COUNT,
+                (x, y) -> new EnemyCorruptedBoba(x, y)
+        );
+
+        generateEnemyType(
+                GameConstants.ENEMY_E02_COFFEE_BEAN_COUNT,
+                (x, y) -> new EnemyE02_SmallCoffeeBean(x, y)
+        );
+
+        generateEnemyType(
+                GameConstants.ENEMY_E03_CARAMEL_COUNT,
+                (x, y) -> new EnemyE03_CaramelJuggernaut(x, y)
+        );
+
+        Logger.gameEvent("Generated " + enemies.size() + " enemies");
+    }
+
+
+
+
+    @FunctionalInterface
+    private interface EnemyFactory {
+        Enemy create(int x, int y);
+    }
+
+    private void generateEnemyType(int count, EnemyFactory factory) {
         int attempts = 0;
         int maxAttempts = 200;
 
-        // ✅ 用 enemies.size()
-        while (enemies.size() < enemyCount && attempts < maxAttempts) {
+        while (count > 0 && attempts < maxAttempts) {
             int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
             int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
             attempts++;
@@ -235,24 +265,9 @@ public class GameManager  {
             }
             if (overlapsDoor) continue;
 
-            // enemies.add(new EnemyE01_CorruptedPearl(x, y));
-            //Logger.debug("EnemyE01_CorruptedPearl generated at (" + x + ", " + y + ")");
-
-// ✅ 生成新的 Boba 敌人
-            enemies.add(new EnemyCorruptedBoba(x, y));
-            Logger.debug("EnemyCorruptedBoba generated at (" + x + ", " + y + ")");
-            enemies.add(new EnemyE02_SmallCoffeeBean(x, y));
-            Logger.debug("EnemyE02_SmallCoffeeBean generated at (" + x + ", " + y + ")");
-            //可选择混合生成
-//            if (MathUtils.randomBoolean()) {
-//                enemies.add(new EnemyE01_CorruptedPearl(x, y));
-//            } else {
-//                enemies.add(new EnemyE02_SmallCoffeeBean(x, y));
-//            }
-
+            enemies.add(factory.create(x, y));
+            count--;
         }
-
-        Logger.gameEvent("Generated " + enemies.size() + " enemies");
     }
 
 
