@@ -236,6 +236,15 @@ public class GameManager  {
 // ✅ 生成新的 Boba 敌人
             enemies.add(new EnemyCorruptedBoba(x, y));
             Logger.debug("EnemyCorruptedBoba generated at (" + x + ", " + y + ")");
+            enemies.add(new EnemyE02_SmallCoffeeBean(x, y));
+            Logger.debug("EnemyE02_SmallCoffeeBean generated at (" + x + ", " + y + ")");
+            //可选择混合生成
+//            if (MathUtils.randomBoolean()) {
+//                enemies.add(new EnemyE01_CorruptedPearl(x, y));
+//            } else {
+//                enemies.add(new EnemyE02_SmallCoffeeBean(x, y));
+//            }
+
         }
 
         Logger.gameEvent("Generated " + enemies.size() + " enemies");
