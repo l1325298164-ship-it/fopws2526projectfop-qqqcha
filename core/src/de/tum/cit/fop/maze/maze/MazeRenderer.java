@@ -155,16 +155,18 @@ public class MazeRenderer {
 
     // 渲染地板
     public void renderFloor(SpriteBatch batch) {
-        ensureTextures();
-        int[][] maze = gameManager.getMazeForRendering();
-        int size = GameConstants.CELL_SIZE;
-        for (int y = 0; y < maze.length; y++) {
-            for (int x = 0; x < maze[y].length; x++) {
-                if (maze[y][x] == 1) {
-                    batch.draw(floorTexture, x * size, y * size, size, size);
-                }
-            }
-        }
+        Texture floorTexture = TextureManager.getInstance().getFloorTexture();
+
+        float width = GameConstants.MAZE_WIDTH * GameConstants.CELL_SIZE;
+        float height = GameConstants.MAZE_HEIGHT * GameConstants.CELL_SIZE;
+
+        batch.draw(
+                floorTexture,
+                0,
+                0,
+                width,
+                height
+        );
     }
 
     // 分析墙壁分组
