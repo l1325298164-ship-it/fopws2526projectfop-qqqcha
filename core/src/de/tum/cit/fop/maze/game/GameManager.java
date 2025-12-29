@@ -3,7 +3,12 @@ package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.entities.*;
-import de.tum.cit.fop.maze.entities.EnemyBoba.EnemyCorruptedBoba;
+import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
+import de.tum.cit.fop.maze.entities.enemy.EnemyE02_SmallCoffeeBean;
+import de.tum.cit.fop.maze.entities.trap.Trap;
+import de.tum.cit.fop.maze.entities.trap.TrapT01_Geyser;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -190,7 +195,7 @@ public class GameManager  {
             }
             if (overlapsDoor) continue;
 
-            // 4. 不能和已有 Trap 重叠
+            // 4. 不能和已有 de.tum.cit.fop.maze.entities.trap.Trap 重叠
             boolean overlapsTrap = false;
             for (Trap trap : traps) {
                 if (x == trap.getX() && y == trap.getY()) {
@@ -200,8 +205,8 @@ public class GameManager  {
             }
             if (overlapsTrap) continue;
 
-            traps.add(new Trap(x, y));
-            Logger.debug("Trap generated at (" + x + ", " + y + ")");
+            traps.add(new TrapT01_Geyser(x, y, 4f));
+            Logger.debug("de.tum.cit.fop.maze.entities.trap.Trap generated at (" + x + ", " + y + ")");
         }
 
         Logger.gameEvent("Generated " + traps.size() + " traps");

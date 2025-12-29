@@ -6,7 +6,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.game.GameConstants;
 
 public class BobaBulletRenderer {

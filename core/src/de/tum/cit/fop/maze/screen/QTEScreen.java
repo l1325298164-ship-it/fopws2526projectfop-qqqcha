@@ -122,7 +122,7 @@ public class QTEScreen implements Screen {
     private float successTargetX;
 
     // =========================
-    // Trap（QTE 陷阱）
+    // de.tum.cit.fop.maze.entities.trap.Trap（QTE 陷阱）
     // =========================
     private int trapGridX;
     private int trapGridY;
@@ -246,7 +246,7 @@ public class QTEScreen implements Screen {
         );
 
         // =========================
-        // QTE Trap - 固定在玩家初始位置
+        // QTE de.tum.cit.fop.maze.entities.trap.Trap - 固定在玩家初始位置
         // =========================
         trapRegion = new TextureRegion(
                 new com.badlogic.gdx.graphics.Texture("qte/trap.png")

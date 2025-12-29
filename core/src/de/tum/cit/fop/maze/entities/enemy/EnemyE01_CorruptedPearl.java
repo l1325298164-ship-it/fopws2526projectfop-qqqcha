@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.entities;
+package de.tum.cit.fop.maze.entities.enemy;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;

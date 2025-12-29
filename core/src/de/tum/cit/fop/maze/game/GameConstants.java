@@ -46,7 +46,7 @@ public class GameConstants {
     // 游戏规则
     public static final int MAX_LIVES = 3;
     public static final int MAX_LEVELS = 5;
-    public static final int TRAP_COUNT = 1;
+    public static final int TRAP_COUNT = 100;
     public static final int ENEMY_COUNT =10 ;
 
     private GameConstants() {} // 防止实例化
