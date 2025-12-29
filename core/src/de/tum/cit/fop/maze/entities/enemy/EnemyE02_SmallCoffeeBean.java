@@ -2,6 +2,7 @@ package de.tum.cit.fop.maze.entities.enemy;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
 /**
@@ -40,6 +41,8 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
     public void drawSprite(SpriteBatch batch) {
         super.drawSprite(batch); // 直接复用 Enemy 的渲染
     }
+
+
 
     @Override
     protected void updateTexture() {

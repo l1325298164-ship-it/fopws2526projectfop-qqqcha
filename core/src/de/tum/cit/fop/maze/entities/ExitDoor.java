@@ -88,7 +88,7 @@ public class ExitDoor extends GameObject {
                 x * GameConstants.CELL_SIZE,
                 y * GameConstants.CELL_SIZE,
                 GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE+2
+                GameConstants.CELL_SIZE+5
         );
     }
 

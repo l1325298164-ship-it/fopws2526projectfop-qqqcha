@@ -248,11 +248,7 @@ public class GameScreen implements Screen {
             if (item.type == RenderItemType.WALL_BEHIND ||
                     item.type == RenderItemType.WALL_FRONT) {
 
-                // 🔥【新增】如果是 Front 墙，并且位置是门 → 不渲染
-                if (item.type == RenderItemType.WALL_FRONT &&
-                        isWallGroupOnExitDoor(item.wall)) {
-                    continue;
-                }
+
 
                 if (shapeBatchActive) {
                     shapeRenderer.end();
@@ -447,6 +443,7 @@ public class GameScreen implements Screen {
 
     private void restartGame() {
         gameManager.resetGame();
+        bobaBulletManager.clearAllBullets(true);
         mazeRenderer.setGameManager(gameManager);
         hud = new HUD(gameManager);
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
