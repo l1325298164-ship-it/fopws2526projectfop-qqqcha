@@ -15,6 +15,9 @@ import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
+import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
+import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
@@ -159,7 +162,7 @@ public class GameScreen implements Screen {
 
         // === 将 GameManager 中的新 BobaBullet 注册到特效管理器 ===
         for (EnemyBullet bullet : gameManager.getBullets()) {
-            if (bullet instanceof de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet bobaBullet) {
+            if (bullet instanceof de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet bobaBullet) {
                 if (!bobaBullet.isManagedByEffectManager()) {
                     bobaBulletManager.addBullet(bobaBullet);
                 }
@@ -213,6 +216,13 @@ public class GameScreen implements Screen {
         worldBatch.setProjectionMatrix(cameraManager.getCamera().combined);
         shapeRenderer.setProjectionMatrix(cameraManager.getCamera().combined);
 
+        List<RenderItem> items = collectAllRenderItems();
+        items.sort(Comparator
+                .comparingDouble((RenderItem r) -> -r.y)
+                .thenComparingInt(r -> r.type.ordinal())
+                .thenComparingInt(r -> r.priority));
+
+        /* ========= 第一阶段：Sprite 渲染 ========= */
         worldBatch.begin();
 
         mazeRenderer.renderFloor(worldBatch);
@@ -226,19 +236,14 @@ public class GameScreen implements Screen {
             }
         }
 
-        List<RenderItem> items = collectAllRenderItems();
-        items.sort(Comparator
-                .comparingDouble((RenderItem r) -> -r.y)
-                .thenComparingInt(r -> r.type.ordinal())
-                .thenComparingInt(r -> r.priority));
-
         for (RenderItem item : items) {
 
             if (item.type == RenderItemType.WALL_BEHIND) {
                 mazeRenderer.renderWallGroup(worldBatch, item.wall);
             }
 
-            if (item.type == RenderItemType.ENTITY) {
+            if (item.type == RenderItemType.ENTITY &&
+                    item.entity.getRenderType() == GameObject.RenderType.SPRITE) {
                 item.entity.drawSprite(worldBatch);
             }
 
@@ -252,7 +257,20 @@ public class GameScreen implements Screen {
         portalEffectManager.renderFront(worldBatch);
 
         worldBatch.end();
+
+        /* ========= 第二阶段：Shape 渲染（🔥 你缺的） ========= */
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        for (RenderItem item : items) {
+            if (item.type == RenderItemType.ENTITY &&
+                    item.entity.getRenderType() == GameObject.RenderType.SHAPE) {
+                item.entity.drawShape(shapeRenderer);
+            }
+        }
+
+        shapeRenderer.end();
     }
+
 
     private void renderUI() {
         uiBatch.begin();

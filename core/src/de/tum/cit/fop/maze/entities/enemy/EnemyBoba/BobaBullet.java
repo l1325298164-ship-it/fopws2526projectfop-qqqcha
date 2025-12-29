@@ -1,8 +1,8 @@
-package de.tum.cit.fop.maze.entities.EnemyBoba;
+package de.tum.cit.fop.maze.entities.enemy.EnemyBoba;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
-import de.tum.cit.fop.maze.entities.EnemyBullet;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;

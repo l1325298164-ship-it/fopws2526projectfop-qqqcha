@@ -3,7 +3,7 @@ package de.tum.cit.fop.maze.effects.boba;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-import de.tum.cit.fop.maze.entities.EnemyBoba.BobaBullet;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.game.GameConstants;
 
 /**

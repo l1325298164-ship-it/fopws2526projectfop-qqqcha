@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.entities;
+package de.tum.cit.fop.maze.entities.enemy;
 
 enum EnemyState {
     IDLE,
