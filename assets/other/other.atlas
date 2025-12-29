@@ -4,20 +4,6 @@ size: 4096, 2048
 format: RGBA8888
 filter: Linear, Linear
 repeat: none
-frame133
-  rotate: false
-  xy: 3633, 1567
-  size: 348, 333
-  orig: 348, 333
-  offset: 0, 0
-  index: -1
-frame134
-  rotate: false
-  xy: 1899, 234
-  size: 348, 333
-  orig: 348, 333
-  offset: 0, 0
-  index: -1
 frame166
   rotate: false
   xy: 1798, 1414
