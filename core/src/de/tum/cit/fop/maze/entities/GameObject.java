@@ -28,7 +28,20 @@ public abstract class GameObject {
     public void onTextureModeChanged() {
         // 子类可以重写此方法
     }
+    // 是否为可交互对象（默认false）
+    public boolean isInteractable() {
+        return false;
+    }
 
+    // 交互方法（默认空实现）
+    public void onInteract(Player player) {
+        // 子类可以重写此方法来实现交互逻辑
+    }
+
+    // 是否可通过（默认true）
+    public boolean isPassable() {
+        return true;
+    }
     // 碰撞检测
     public boolean collidesWith(GameObject other) {
         return this.x == other.x && this.y == other.y;

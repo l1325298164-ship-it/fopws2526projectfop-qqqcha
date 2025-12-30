@@ -8,9 +8,12 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.abilities.Ability;
+import de.tum.cit.fop.maze.abilities.AbilityManager;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.GameConstants;
+import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
@@ -24,7 +27,11 @@ public class Player extends GameObject {
     private boolean moving = false;
     private float moveTimer = 0;
     private static final float MOVE_COOLDOWN = 0.15f; // 移动间隔
-
+    // === 新增：能力系统 ===
+    private AbilityManager abilityManager;
+    private int mana = 100;
+    private int maxMana = 100;
+    private float manaRegenRate = 5.0f; // 每秒恢复5点魔法
 
 
     //朝向
@@ -63,7 +70,7 @@ public class Player extends GameObject {
     // 分数
     private int score = 0;
 
-    public Player(int x, int y) {
+    public Player(int x, int y, GameManager gameManager) {
         super(x, y);
         this.lives = GameConstants.INITIAL_PLAYER_LIVES;
 
@@ -76,7 +83,7 @@ public class Player extends GameObject {
         backAnim  = new Animation<>(0.4f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
         leftAnim  = new Animation<>(0.4f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
         rightAnim = new Animation<>(0.4f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
-
+        this.abilityManager = new AbilityManager(this, gameManager);
         Logger.gameEvent("Player spawned at " + getPositionString());
     }
 
@@ -88,7 +95,7 @@ public class Player extends GameObject {
         return moving;
     }
 
-
+    // TODO 新增：绘制能力效果
     @Override
     public void drawSprite(SpriteBatch batch) {
         if (!active || isDead) return;
@@ -132,6 +139,9 @@ public class Player extends GameObject {
         );
 
         batch.setColor(1, 1, 1, 1f);
+
+        // 绘制能力效果（在其他实体之后绘制）
+        // 这应该在专门的drawAbilities方法中调用
     }
 
     @Override
@@ -175,12 +185,48 @@ public class Player extends GameObject {
                 moving = false;
             }
         }
+
+        // === 新增：魔法恢复 ===
+        if (mana < maxMana) {
+            mana += manaRegenRate * deltaTime;
+            if (mana > maxMana) {
+                mana = maxMana;
+            }
+        }
+
+        // === 新增：更新能力管理器 ===
+        abilityManager.update(deltaTime);
     }
     //减速倍率
     public float getMoveDelayMultiplier() {
         return slowed ? 2.0f : 1.0f;
     }
 
+    // 新增：能力相关方法
+    public void useAbility(int slot) {
+        if (abilityManager.activateSlot(slot)) {
+            isMoving = false; // 使用能力时停止移动
+        }
+    }
+
+    public void upgradeAbility(String abilityId) {
+        abilityManager.upgradeAbility(abilityId);
+    }
+
+    public void unlockAbility(String abilityId, Ability ability) {
+        abilityManager.unlockAbility(abilityId, ability);
+    }
+
+    public void useMana(int amount) {
+        mana -= amount;
+        if (mana < 0) mana = 0;
+    }
+
+    // Getter方法
+    public AbilityManager getAbilityManager() { return abilityManager; }
+    public int getMana() { return mana; }
+    public int getMaxMana() { return maxMana; }
+    public float getManaPercent() { return (float)mana / maxMana; }
 
     public boolean hasKey() { return hasKey; }
     public void setHasKey(boolean hasKey) {
@@ -209,8 +255,6 @@ public class Player extends GameObject {
 
         Logger.debug("Player moved to " + getPositionString());
     }
-
-
 
     public void takeDamage(int damage) {
         if (isDead || isInvincible) return;
@@ -273,6 +317,7 @@ public class Player extends GameObject {
 
         // 重置分数
         this.score = 0;
+        this.mana = maxMana;
 
 
         Logger.debug("Player状态已重置: 生命=" + lives + ", 分数=" + score + ", 有钥匙=" + hasKey);
@@ -300,5 +345,7 @@ public class Player extends GameObject {
         Logger.debug("Player slowed for " + slowTimer + " seconds");
     }
 
-
+ public Direction getDirection() {
+        return direction;
+    }
 }
