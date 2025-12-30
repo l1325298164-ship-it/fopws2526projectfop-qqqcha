@@ -141,68 +141,67 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+
         handleInput(delta);
 
-// === 先检测是否触发传送门 ===
-        if (!waitingForPortal) {
-            Player player = gameManager.getPlayer();
-            for (ExitDoor door : gameManager.getExitDoors()) {
-                if (!door.isLocked() && player.collidesWith(door)) {
+        updatePortalCheck();
+        updateGameLogic(delta);
+        updateEffects(delta);
+        updateCamera(delta);
 
-                    float px = (door.getX() + 0.5f) * GameConstants.CELL_SIZE;
-                    float py = (door.getY() + 0.5f) * GameConstants.CELL_SIZE;
+        clearScreen();
 
-                    portalEffectManager.startExitAnimation(px, py);
-                    waitingForPortal = true;
+        renderWorld();
+        renderUI();
 
-                    // 🔥 播放传送门音效
-                    AudioManager.getInstance().play(AudioType.UI_SUCCESS);
+        handlePendingExit();
+    }
 
-                    // 🔥 停止玩家移动音效
-                    AudioManager.getInstance().stopPlayerMove();
-                    isPlayerMoving = false;
-                    break;
-                }
-            }
-        }
-
-// === 只有不在传送动画时，才更新 GameManager ===
-        if (!waitingForPortal) {
-            gameManager.update(delta);
-
-
-// 🔥 玩家移动音效控制
-        Player player = gameManager.getPlayer();
-        boolean nowMoving = player.isMoving();
-
-        if (nowMoving && !isPlayerMoving) {
-            // 开始移动
-            AudioManager.getInstance().playPlayerMove();
-            isPlayerMoving = true;
-        } else if (!nowMoving && isPlayerMoving) {
-            // 停止移动
-            AudioManager.getInstance().stopPlayerMove();
-            isPlayerMoving = false;
+    private void handlePendingExit() {
+        if (pendingExitToMenu) {
+            game.goToMenu();
         }
     }
 
+    private void clearScreen() {
+        ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
+    }
 
+    private void updateCamera(float delta) {
         cameraManager.update(delta, gameManager.getPlayer());
+    }
 
-        // === 将 GameManager 中的新 BobaBullet 注册到特效管理器 ===
-        for (EnemyBullet bullet : gameManager.getBullets()) {
-            if (bullet instanceof de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet bobaBullet) {
-                if (!bobaBullet.isManagedByEffectManager()) {
-                    bobaBulletManager.addBullet(bobaBullet);
-                }
-            }
-        }
+    private void updateEffects(float delta) {
+
+        registerNewBobaBullets();
 
         bobaBulletManager.update(delta);
         keyEffectManager.update(delta);
         portalEffectManager.update(delta);
 
-        // 钥匙特效触发
+        checkKeyPickupEffect();
+        checkPortalFinished();
+    }
+
+    private void checkPortalFinished() {
+        if (!portalEffectManager.isFinished()) return;
+
+        gameManager.completeLevelTransition();
+        cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
+
+        portalEffectManager.reset();
+        mazeRenderer.dispose();
+        mazeRenderer = new MazeRenderer(gameManager);
+
+        bobaBulletManager.clearAllBullets(false);
+        keyEffectManager = new KeyEffectManager();
+
+        playerHadKey = false;
+        waitingForPortal = false;
+        isPlayerMoving = false;
+    }
+
+    private void checkKeyPickupEffect() {
         if (!playerHadKey && gameManager.getPlayer().hasKey()) {
             Key key = gameManager.getKey();
             if (key != null) {
@@ -214,33 +213,56 @@ public class GameScreen implements Screen {
             }
             playerHadKey = true;
         }
-
-        // 关卡切换动画结束
-        if (portalEffectManager.isFinished()) {
-            gameManager.completeLevelTransition();
-            cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
-            portalEffectManager.reset();
-
-            mazeRenderer.dispose();
-            mazeRenderer = new MazeRenderer(gameManager);
-            bobaBulletManager.clearAllBullets(false);
-            keyEffectManager = new KeyEffectManager();
-            playerHadKey = false;
-            waitingForPortal = false;
-
-            // 🔥 关卡切换完成，恢复玩家移动音效状态
-            isPlayerMoving = false;
-        }
-
-        ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1);
-        renderWorld();
-        renderUI();
-
-        if (pendingExitToMenu) {
-            game.goToMenu();
-            return;
+    }
+    private void registerNewBobaBullets() {
+        for (EnemyBullet bullet : gameManager.getBullets()) {
+            if (bullet instanceof BobaBullet b && !b.isManagedByEffectManager()) {
+                bobaBulletManager.addBullet(b);
+            }
         }
     }
+
+
+    private void updateGameLogic(float delta) {
+        if (waitingForPortal) return;
+
+        gameManager.update(delta);
+
+        Player player = gameManager.getPlayer();
+        boolean nowMoving = player.isMoving();
+
+        if (nowMoving && !isPlayerMoving) {
+            AudioManager.getInstance().playPlayerMove();
+            isPlayerMoving = true;
+        } else if (!nowMoving && isPlayerMoving) {
+            AudioManager.getInstance().stopPlayerMove();
+            isPlayerMoving = false;
+        }
+    }
+
+
+    private void updatePortalCheck() {
+        if (waitingForPortal) return;
+
+        Player player = gameManager.getPlayer();
+        for (ExitDoor door : gameManager.getExitDoors()) {
+            if (!door.isLocked() && player.collidesWith(door)) {
+
+                float px = (door.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                float py = (door.getY() + 0.5f) * GameConstants.CELL_SIZE;
+
+                portalEffectManager.startExitAnimation(px, py);
+                waitingForPortal = true;
+
+                AudioManager.getInstance().play(AudioType.UI_SUCCESS);
+                AudioManager.getInstance().stopPlayerMove();
+                isPlayerMoving = false;
+                break;
+            }
+        }
+    }
+
+
 
     /* ================= 渲染 ================= */
 
@@ -417,64 +439,41 @@ public class GameScreen implements Screen {
     /* ================= 输入 ================= */
 
     private void handleInput(float delta) {
-        // 🔒 TODO关卡传送动画期间，完全锁定玩家输入 进入动画
         if (waitingForPortal) {
-            // 🔥 确保在传送动画期间玩家移动音效停止
-            if (isPlayerMoving) {
-                AudioManager.getInstance().stopPlayerMove();
-                isPlayerMoving = false;
-            }
+            stopMoveSoundIfNeeded();
             return;
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            // 🔥 播放 UI 音效
             AudioManager.getInstance().playUIClick();
-            pendingExitToMenu = true;
-            return;
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             pendingExitToMenu = true;
             return;
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
-            // 🔥 播放 UI 音效
             AudioManager.getInstance().playUIClick();
             restartGame();
             return;
         }
 
-        TextureManager tm = TextureManager.getInstance();
+        handleTextureModeSwitch();
+        handlePlayerMovement(delta);
+    }
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
-            tm.switchMode(TextureManager.TextureMode.COLOR);
-            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
-            tm.switchMode(TextureManager.TextureMode.IMAGE);
-            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
-            tm.switchMode(TextureManager.TextureMode.PIXEL);
-            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
-            tm.switchMode(TextureManager.TextureMode.MINIMAL);
-            for (ExitDoor d : gameManager.getExitDoors()) d.onTextureModeChanged();
-        }
-
+    private void handlePlayerMovement(float delta) {
         Player player = gameManager.getPlayer();
 
         inputHandler.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+
             @Override
             public void onMoveInput(int dx, int dy) {
                 int nx = player.getX() + dx;
                 int ny = player.getY() + dy;
+
                 if (gameManager.isValidMove(nx, ny)) {
                     player.move(dx, dy);
 
-                    // 🔥 播放移动音效（移动时播放单次音效，持续移动音效由render方法控制）
+                    // 🔥 播放移动音效（单次触发，持续由 render 控制）
                     if (!isPlayerMoving) {
                         AudioManager.getInstance().play(AudioType.PLAYER_MOVE);
                     }
@@ -484,13 +483,61 @@ public class GameScreen implements Screen {
                 }
             }
 
-
-
             @Override
             public float getMoveDelayMultiplier() {
                 return player.getMoveDelayMultiplier();
             }
+
+            @Override
+            public boolean onAbilityInput(int slot) {
+                return false;
+            }
+
+            @Override
+            public void onInteractInput() {
+
+            }
+
+            @Override
+            public void onMenuInput() {
+
+            }
         });
+    }
+
+
+    //for test
+    private void handleTextureModeSwitch() {
+        TextureManager tm = TextureManager.getInstance();
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
+            tm.switchMode(TextureManager.TextureMode.COLOR);
+            notifyExitDoorsTextureChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
+            tm.switchMode(TextureManager.TextureMode.IMAGE);
+            notifyExitDoorsTextureChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+            tm.switchMode(TextureManager.TextureMode.PIXEL);
+            notifyExitDoorsTextureChanged();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
+            tm.switchMode(TextureManager.TextureMode.MINIMAL);
+            notifyExitDoorsTextureChanged();
+        }
+    }
+
+    private void notifyExitDoorsTextureChanged() {
+        for (ExitDoor d : gameManager.getExitDoors()) {
+            d.onTextureModeChanged();
+        }
+    }
+    private void stopMoveSoundIfNeeded() {
+        if (isPlayerMoving) {
+            AudioManager.getInstance().stopPlayerMove();
+            isPlayerMoving = false;
+        }
     }
 
     private void restartGame() {
