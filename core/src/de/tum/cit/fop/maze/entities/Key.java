@@ -24,7 +24,24 @@ public class Key extends GameObject {
         updateTexture();
         Logger.debug("Key created at " + getPositionString());
     }
+    @Override
+    public boolean isInteractable() {
+        return active; // 只有激活状态才可交互
+    }
 
+    @Override
+    public void onInteract(Player player) {
+        if (active) {
+            collect(); // 收集钥匙
+            player.setHasKey(true);
+            Logger.gameEvent("钥匙被拾取");
+        }
+    }
+
+    @Override
+    public boolean isPassable() {
+        return true; // 钥匙可以通过
+    }
     /**
      * 更新纹理
      */

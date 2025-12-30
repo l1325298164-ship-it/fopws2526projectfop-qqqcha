@@ -89,7 +89,11 @@ public class EnemyBullet extends GameObject {
         );
         batch.setColor(1f, 1f, 1f, 1f);
     }
-
+    @Override
+    public boolean isPassable() {
+        // 子弹可以通过（不阻挡移动）
+        return true;
+    }
     @Override
     public RenderType getRenderType() {
         return RenderType.SPRITE;

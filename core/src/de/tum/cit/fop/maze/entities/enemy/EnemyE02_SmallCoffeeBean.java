@@ -2,8 +2,10 @@ package de.tum.cit.fop.maze.entities.enemy;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.utils.Logger;
 
 /**
  * 敌人 E02：小包咖啡豆
@@ -24,7 +26,18 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
 
         updateTexture();
     }
+    @Override
+    public void takeDamage(int dmg) {
+        // 咖啡豆敌人可能有特殊减伤
+        int actualDamage = dmg;
+//        if (MathUtils.random() < 0.2f) { // 20%概率格挡
+//            actualDamage = dmg / 2;
+//            Logger.debug("SmallCoffeeBean blocked half damage!");
+//        }
 
+        hp -= actualDamage;
+        // ... 其他通用处理
+    }
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
 

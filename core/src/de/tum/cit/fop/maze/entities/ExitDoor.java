@@ -28,7 +28,29 @@ public class ExitDoor extends GameObject {
         updateTexture();
         Logger.debug("ExitDoor " + doorId + " created at " + getPositionString());
     }
+    @Override
+    public boolean isInteractable() {
+        return true; // 门总是可交互的
+    }
 
+    @Override
+    public void onInteract(Player player) {
+        if (locked) {
+            if (player.hasKey()) {
+                unlock();
+                Logger.gameEvent("门已解锁");
+            } else {
+                Logger.gameEvent("门被锁住了，需要钥匙");
+            }
+        } else {
+            Logger.gameEvent("门已解锁，可以直接通过");
+        }
+    }
+
+    @Override
+    public boolean isPassable() {
+        return !locked; // 只有解锁后才能通过
+    }
     /**
      * 更新纹理
      */
