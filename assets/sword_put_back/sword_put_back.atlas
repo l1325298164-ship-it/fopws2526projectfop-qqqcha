@@ -1,0 +1,34 @@
+
+sword_put_back.png
+size: 4096, 2048
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+sword_put_back
+  rotate: false
+  xy: 2, 829
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 0
+sword_put_back
+  rotate: false
+  xy: 2, 2
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 1
+sword_put_back
+  rotate: false
+  xy: 1351, 829
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 2
+sword_put_back
+  rotate: false
+  xy: 1351, 2
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 3

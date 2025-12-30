@@ -1,0 +1,62 @@
+
+Mcombat01_right.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+Mcombat01_right
+  rotate: false
+  xy: 2, 2483
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 0
+Mcombat01_right
+  rotate: false
+  xy: 2, 1656
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 1
+Mcombat01_right
+  rotate: false
+  xy: 1351, 2483
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 2
+Mcombat01_right
+  rotate: false
+  xy: 2, 829
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 3
+Mcombat01_right
+  rotate: false
+  xy: 1351, 1656
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 4
+Mcombat01_right
+  rotate: false
+  xy: 2700, 2483
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 5
+Mcombat01_right
+  rotate: false
+  xy: 2, 2
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 6
+Mcombat01_right
+  rotate: false
+  xy: 1351, 829
+  size: 1347, 825
+  orig: 1347, 825
+  offset: 0, 0
+  index: 7
