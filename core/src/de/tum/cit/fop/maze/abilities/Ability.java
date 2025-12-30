@@ -8,22 +8,18 @@ import de.tum.cit.fop.maze.game.GameManager;
 
 public abstract class Ability {
 
-    /* ===== 基本信息 ===== */
     protected final String name;
     protected final String description;
 
-    /* ===== 状态 ===== */
+    protected final float cooldown;
+    protected final float duration;
+
     protected boolean active = false;
     protected boolean ready = true;
 
-    /* ===== 冷却 / 持续 ===== */
-    protected final float cooldown;
     protected float cooldownTimer = 0f;
-
-    protected final float duration;
     protected float durationTimer = 0f;
 
-    /* ===== 成本 / 等级 ===== */
     protected int manaCost = 0;
     protected int level = 1;
     protected int maxLevel = 5;
@@ -35,13 +31,10 @@ public abstract class Ability {
         this.duration = duration;
     }
 
-    /* ===================================================== */
-    /* ================== 生命周期模板 ===================== */
-    /* ===================================================== */
+    /* =================== 核心生命周期 =================== */
 
-    /** 外部统一调用 */
-    public final void tryActivate(Player player, GameManager gameManager) {
-        if (!canActivate(player)) return;
+    public final boolean tryActivate(Player player, GameManager gameManager) {
+        if (!canActivate(player)) return false;
 
         ready = false;
         active = true;
@@ -53,12 +46,12 @@ public abstract class Ability {
         }
 
         onActivate(player, gameManager);
+        return true;
     }
 
-    /** AbilityManager 每帧调用 */
     public void update(float delta) {
 
-        // ===== Active 持续 =====
+        // Active 阶段
         if (active) {
             durationTimer += delta;
             updateActive(delta);
@@ -70,7 +63,7 @@ public abstract class Ability {
             }
         }
 
-        // ===== 冷却 =====
+        // 冷却阶段
         if (!ready) {
             cooldownTimer += delta;
             if (cooldownTimer >= cooldown) {
@@ -80,67 +73,51 @@ public abstract class Ability {
         }
     }
 
-    /* ===================================================== */
-    /* ================== 子类只实现这些 =================== */
-    /* ===================================================== */
+    /* =================== 子类实现 =================== */
 
     protected abstract void onActivate(Player player, GameManager gameManager);
 
-    protected void updateActive(float delta) {
-        // 默认什么都不做（Dash 可以覆盖）
-    }
+    protected void updateActive(float delta) {}
 
-    protected void onDeactivate() {
-        // 默认什么都不做（Dash 可以覆盖）
-    }
+    protected void onDeactivate() {}
 
     protected abstract void onUpgrade();
 
     public abstract void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player);
 
-    /* ===================================================== */
-    /* ================== 状态判断 ========================= */
-    /* ===================================================== */
+    /* =================== 状态 =================== */
 
     public boolean canActivate(Player player) {
         return ready && player.getMana() >= manaCost;
     }
 
-    public boolean isActive() {
-        return active;
-    }
+    public boolean isActive() { return active; }
 
-    public boolean isReady() {
-        return ready;
-    }
-
-    /* ===================================================== */
-    /* ================== UI / HUD 读取 ==================== */
-    /* ===================================================== */
+    public boolean isReady() { return ready; }
 
     public float getCooldownProgress() {
-        if (cooldown <= 0) return 1f;
-        return Math.min(1f, cooldownTimer / cooldown);
+        return cooldown <= 0 ? 1f : cooldownTimer / cooldown;
     }
 
     public float getDurationProgress() {
-        if (duration <= 0) return 0f;
-        return Math.min(1f, durationTimer / duration);
+        return duration <= 0 ? 0f : durationTimer / duration;
     }
 
-    /* ===================================================== */
-    /* ================== 基本 Getter ====================== */
-    /* ===================================================== */
-
     public String getName() { return name; }
-    public String getDescription() { return description; }
+
     public int getLevel() { return level; }
-    public int getMaxLevel() { return maxLevel; }
 
     public void upgrade() {
         if (level < maxLevel) {
             level++;
             onUpgrade();
         }
+    }
+
+    public void forceReset() {
+        active = false;
+        ready = true;
+        cooldownTimer = 0f;
+        durationTimer = 0f;
     }
 }
