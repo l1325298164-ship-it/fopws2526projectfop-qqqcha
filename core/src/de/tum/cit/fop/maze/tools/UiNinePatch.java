@@ -12,7 +12,7 @@ public class UiNinePatch {
      * @param left  左边不拉伸的像素
      * @param right 右边不拉伸的像素
      * @param top   上边不拉伸的像素
-     * @param bottom下边不拉伸的像素
+     * @param
      */
     public static NinePatchDrawable fromAtlas(
             TextureAtlas atlas,

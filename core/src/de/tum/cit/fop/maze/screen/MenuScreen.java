@@ -4,164 +4,100 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.tools.ButtonFactory;
 
-/**
- * The MenuScreen class is responsible for displaying the main menu of the game.
- * It extends the LibGDX Screen class and sets up the UI components for the menu.
- */
 public class MenuScreen implements Screen {
 
     private final Stage stage;
 
-    /**
-     * Constructor for MenuScreen. Sets up the camera, viewport, stage, and UI elements.
-     *
-     * @param game The main game class, used to access global resources and methods.
-     */
     public MenuScreen(MazeRunnerGame game) {
-        var camera = new OrthographicCamera();
-        camera.zoom = 1.5f; // Set camera zoom for a closer view
 
-        Viewport viewport = new ScreenViewport(camera); // Create a viewport with the camera
-        stage = new Stage(viewport, game.getSpriteBatch()); // Create a stage for UI elements
+        // =====================================================
+        // Camera & Stage
+        // =====================================================
+        OrthographicCamera camera = new OrthographicCamera();
+        camera.zoom = 1.5f;
 
+        Viewport viewport = new ScreenViewport(camera);
+        stage = new Stage(viewport, game.getSpriteBatch());
+        Gdx.input.setInputProcessor(stage);
+
+        // =====================================================
+        // Root Layout
+        // =====================================================
         Table table = new Table();
         table.setFillParent(true);
         stage.addActor(table);
 
-// ===== Title =====
-//        // ===== Title tests =====
-//        Label test1 = new Label("ABC", game.getSkin(), "title");
-//        Label test2 = new Label("A B", game.getSkin(), "title");
-//        TextButton test3 = new TextButton("AB", game.getSkin(), "title");
-//
-//        test1.setAlignment(Align.center);
-//        test2.setAlignment(Align.center);
-//        test3.getLabel().setAlignment(Align.center);
-//
-//        table.add(test1).padBottom(10).row();
-//        table.add(test2).padBottom(10).row();
-//        table.add(test3).padBottom(40).row();
+        // =====================================================
+        // Title
+        // =====================================================
         Label title = new Label(
                 "Hello World from the Menu!",
                 game.getSkin(),
                 "title"
         );
         title.setAlignment(Align.center);
-        title.setFontScale(1.1f);   // 标题稍微大一点
+        title.setFontScale(1.1f);
 
         table.add(title)
                 .padBottom(80)
                 .row();
 
+        // =====================================================
+        // Buttons (via ButtonFactory)
+        // =====================================================
+        ButtonFactory bf = new ButtonFactory(game.getSkin());
 
-// ===== Button common config =====
-        float buttonWidth = 360f;
-        float buttonHeight = 96f;
-        float buttonFontScale = 0.8f;
-        float buttonSpacing = 20f;
+        table.add(
+                bf.create("START GAME", game::goToGame)
+        ).padBottom(20).row();
 
-// ===== Start Game Button =====
-        TextButton goToGameButton =
-                new TextButton("START GAME", game.getSkin(), "navTextButton");
+        table.add(
+                bf.create("RESET THE WORLD", game::goToPV)
+        ).padBottom(20).row();
 
-        goToGameButton.align(Align.center);
-        goToGameButton.getLabel().setAlignment(Align.center);
-        goToGameButton.getLabel().setFontScale(buttonFontScale);
-
-        table.add(goToGameButton)
-                .width(buttonWidth)
-                .height(buttonHeight)
-                .padBottom(buttonSpacing)
-                .row();
-
-        goToGameButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                game.goToGame();
-            }
-        });
-
-// ===== Reset Button =====
-        TextButton goToIntroButton =
-                new TextButton("RESET THE WORLD", game.getSkin(), "navTextButton");
-
-        goToIntroButton.align(Align.center);
-        goToIntroButton.getLabel().setAlignment(Align.center);
-        goToIntroButton.getLabel().setFontScale(buttonFontScale);
-
-        table.add(goToIntroButton)
-                .width(buttonWidth)
-                .height(buttonHeight)
-                .padBottom(buttonSpacing)
-                .row();
-
-        goToIntroButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                game.goToPV();
-            }
-        });
-
-// ===== Test Button =====
-        TextButton testButton =
-                new TextButton("TEST", game.getSkin(), "navTextButton");
-
-        testButton.align(Align.center);
-        testButton.getLabel().setAlignment(Align.center);
-        testButton.getLabel().setFontScale(buttonFontScale);
-
-        table.add(testButton)
-                .width(buttonWidth)
-                .height(buttonHeight)
-                .row();
-
+        table.add(
+                bf.create("TEST", () -> {
+                    // 这里可以以后接测试界面
+                    System.out.println("TEST button clicked");
+                })
+        ).row();
     }
 
+    // =====================================================
+    // Render & lifecycle
+    // =====================================================
     @Override
     public void render(float delta) {
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT); // Clear the screen
-        stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f)); // Update the stage
-        stage.draw(); // Draw the stage
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
+        stage.draw();
     }
 
     @Override
     public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true); // Update the stage viewport on resize
+        stage.getViewport().update(width, height, true);
     }
 
     @Override
     public void dispose() {
-        // Dispose of the stage when screen is disposed
         stage.dispose();
     }
 
     @Override
     public void show() {
-        // Set the input processor so the stage can receive input events
         Gdx.input.setInputProcessor(stage);
     }
 
-    // The following methods are part of the Screen interface but are not used in this screen.
-    @Override
-    public void pause() {
-    }
-
-    @Override
-    public void resume() {
-    }
-
-    @Override
-    public void hide() {
-    }
+    @Override public void hide() {}
+    @Override public void pause() {}
+    @Override public void resume() {}
 }

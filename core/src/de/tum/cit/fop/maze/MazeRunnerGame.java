@@ -116,6 +116,7 @@ public class MazeRunnerGame extends Game {
 
     @Override
     public void create() {
+
         spriteBatch = new SpriteBatch();
 
         // ✅ 先加载 atlas
@@ -129,6 +130,8 @@ public class MazeRunnerGame extends Game {
         );
 
         gameManager = new GameManager();
+        System.out.println("FONT = " + skin.getFont("default-font"));
+
 
         initializeSoundManager();
         goToMenu();
