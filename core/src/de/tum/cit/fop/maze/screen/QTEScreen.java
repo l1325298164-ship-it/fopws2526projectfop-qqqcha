@@ -53,6 +53,7 @@ public class QTEScreen implements Screen {
     private BitmapFont countdownFont;
     private GlyphLayout countdownLayout = new GlyphLayout();
 
+
     // =========================
     // Maze Renderer
     // =========================
