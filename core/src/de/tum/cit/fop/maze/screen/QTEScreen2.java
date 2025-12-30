@@ -35,6 +35,8 @@ public class QTEScreen2 implements Screen {
 
     private final MazeRunnerGame game;
     private final GameManager gameManager;
+    private float displayedProgressA = 0f; // 左 → 右
+    private float displayedProgressB = 0f; // 右 → 左
 
     // =========================
     // Camera（QTE 专用）
@@ -598,31 +600,30 @@ public class QTEScreen2 implements Screen {
     }
 
     private void renderProgressBar(float delta) {
+        // ===== 基础尺寸计算 =====
         barWidth = camera.viewportWidth * BAR_WIDTH_RATIO;
         barX = camera.position.x - barWidth / 2f;
         barY = camera.position.y - camera.viewportHeight / 2f + BAR_Y_OFFSET;
 
-        // 计算进度（两个玩家的总进度）
-        float target;
-        if (lockedProgress != null) {
-            target = lockedProgress;
-        } else {
-            int totalMash = mashCountA + mashCountB;
-            target = Math.min(1f, totalMash / (float) MASH_REQUIRED_TOTAL);
+        // ===== 计算总进度 =====
+        int totalMash = mashCountA + mashCountB;
+        float totalProgress = Math.min(1f, totalMash / (float) MASH_REQUIRED_TOTAL);
 
-            // 检查是否满足最低要求
-            float minA = Math.min(1f, mashCountA / (float) MASH_MINIMUM_PER_PLAYER);
-            float minB = Math.min(1f, mashCountB / (float) MASH_MINIMUM_PER_PLAYER);
-            float minProgress = Math.min(minA, minB);
-            target = Math.min(target, minProgress);
-        }
+        // 平滑显示（避免跳变）
+        displayedProgress += (totalProgress - displayedProgress) * 8f * delta;
 
-        displayedProgress += (target - displayedProgress) * 8f * delta;
+        // ===== 贡献比例（允许互相补位）=====
+        float ratioA = totalMash > 0 ? mashCountA / (float) totalMash : 0f;
+        float ratioB = totalMash > 0 ? mashCountB / (float) totalMash : 0f;
+
+        float totalWidth = barWidth * displayedProgress;
+        float widthA = totalWidth * ratioA;
+        float widthB = totalWidth * ratioB;
 
         shapeRenderer.setProjectionMatrix(camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // 1️⃣ 黑色描边
+        // ===== 1️⃣ 黑色描边 =====
         shapeRenderer.setColor(0f, 0f, 0f, 1f);
         shapeRenderer.rect(
                 barX - BAR_BORDER,
@@ -631,27 +632,60 @@ public class QTEScreen2 implements Screen {
                 BAR_HEIGHT + BAR_BORDER * 2
         );
 
-        // 2️⃣ 背景
+        // ===== 2️⃣ 背景 =====
         shapeRenderer.setColor(BAR_BG_COLOR);
         shapeRenderer.rect(barX, barY, barWidth, BAR_HEIGHT);
 
-        // 3️⃣ 填充（双色渐变）
-        if (qteState != QTEState.DONE) {
-            drawDualPlayerGradient(barX, barY, barWidth * displayedProgress);
-            drawMetalHighlight(barX, barY, barWidth * displayedProgress);
-            drawMetalEdges(barX, barY, barWidth * displayedProgress);
-
-            // 绘制玩家分隔线
-            drawPlayerSeparator(barX, barY);
+        // ===== 3️⃣ 玩家 A（左 → 右）=====
+        if (widthA > 0.5f) {
+            drawSinglePlayerBar(
+                    barX,
+                    barY,
+                    widthA,
+                    PLAYER_A_COLOR
+            );
+            drawMetalHighlight(barX, barY, widthA);
+            drawMetalEdges(barX, barY, widthA);
         }
 
-        // 4️⃣ 粒子
+        // ===== 4️⃣ 玩家 B（右 → 左）=====
+        if (widthB > 0.5f) {
+            float startX = barX + barWidth - widthB;
+            drawSinglePlayerBar(
+                    startX,
+                    barY,
+                    widthB,
+                    PLAYER_B_COLOR
+            );
+            drawMetalHighlight(startX, barY, widthB);
+            drawMetalEdges(startX, barY, widthB);
+        }
+
+        // ===== 5️⃣ 成功爆炸粒子 =====
         if (progressExploding) {
             renderExplosionParticles(delta);
         }
 
         shapeRenderer.end();
     }
+
+
+    private void drawSinglePlayerBar(float x, float y, float width, Color baseColor) {
+        int steps = 12;
+        float sliceHeight = BAR_HEIGHT / steps;
+
+        for (int i = 0; i < steps; i++) {
+            float wave = 0.5f + 0.5f * MathUtils.sin(stateTime * 3f + i);
+            shapeRenderer.setColor(
+                    baseColor.r * (0.85f + 0.15f * wave),
+                    baseColor.g * (0.85f + 0.15f * wave),
+                    baseColor.b * (0.85f + 0.15f * wave),
+                    1f
+            );
+            shapeRenderer.rect(x, y + i * sliceHeight, width, sliceHeight + 1f);
+        }
+    }
+
 
     private void drawDualPlayerGradient(float x, float y, float width) {
         int steps = 16;
