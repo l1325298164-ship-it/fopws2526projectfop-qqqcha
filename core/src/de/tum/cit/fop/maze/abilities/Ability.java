@@ -6,62 +6,106 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameManager;
 
-import java.util.List;
-
-//使用方式
-//        初始化：Player构造函数中初始化AbilityManager
-//
-//        更新：在Player.update()中调用abilityManager.update()
-//
-//        绘制：在游戏绘制阶段调用abilityManager.draw()
-//
-//        使用能力：按数字键1-4或空格键使用能力
-//
-//        升级能力：通过游戏内商店或升级系统调用upgradeAbility()
-//
-//        这个设计具有以下优点：
-//
-//        可扩展：通过继承Ability类可以轻松添加新能力
-//
-//        可升级：每级都有不同的效果增强
-//
-//        可配置：冷却时间、伤害、范围等都可以配置
-//
-//        可视化：有动画和视觉效果
-//
-//        模块化：能力逻辑与玩家逻辑分离
-
 public abstract class Ability {
-    protected String name;
-    protected String description;
-    protected boolean isActive = false;
-    protected boolean isReady = true;
-    protected float cooldown;
-    protected float currentCooldown = 0;
-    protected float duration;
-    protected float currentDuration = 0;
+
+    protected final String name;
+    protected final String description;
+
+    protected final float cooldown;
+    protected final float duration;
+
+    protected boolean active = false;
+    protected boolean ready = true;
+
+    protected float cooldownTimer = 0f;
+    protected float durationTimer = 0f;
+
     protected int manaCost = 0;
     protected int level = 1;
     protected int maxLevel = 5;
 
-    // 升级数据
-    protected int upgradeDamage = 0;
-    protected float upgradeCooldown = 0;
-    protected float upgradeRange = 0;
-    protected float upgradeDuration = 0;
-
-    public Ability(String name, String description, float cooldown, float duration) {
+    protected Ability(String name, String description, float cooldown, float duration) {
         this.name = name;
         this.description = description;
         this.cooldown = cooldown;
         this.duration = duration;
     }
 
-    public abstract void activate(Player player, GameManager gameManager);
+    /* =================== 核心生命周期 =================== */
 
-    public abstract void update(float deltaTime);
+    public final boolean tryActivate(Player player, GameManager gameManager) {
+        if (!canActivate(player)) return false;
+
+        ready = false;
+        active = true;
+        cooldownTimer = 0f;
+        durationTimer = 0f;
+
+        if (manaCost > 0) {
+            player.useMana(manaCost);
+        }
+
+        onActivate(player, gameManager);
+        return true;
+    }
+
+    public void update(float delta) {
+
+        // Active 阶段
+        if (active) {
+            durationTimer += delta;
+            updateActive(delta);
+
+            if (durationTimer >= duration) {
+                active = false;
+                durationTimer = 0f;
+                onDeactivate();
+            }
+        }
+
+        // 冷却阶段
+        if (!ready) {
+            cooldownTimer += delta;
+            if (cooldownTimer >= cooldown) {
+                ready = true;
+                cooldownTimer = cooldown;
+            }
+        }
+    }
+
+    /* =================== 子类实现 =================== */
+
+    protected abstract void onActivate(Player player, GameManager gameManager);
+
+    protected void updateActive(float delta) {}
+
+    protected void onDeactivate() {}
+
+    protected abstract void onUpgrade();
 
     public abstract void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player);
+
+    /* =================== 状态 =================== */
+
+    public boolean canActivate(Player player) {
+        return ready && player.getMana() >= manaCost;
+    }
+
+    public boolean isActive() { return active; }
+
+    public boolean isReady() { return ready; }
+
+    public float getCooldownProgress() {
+        return cooldown <= 0 ? 1f : cooldownTimer / cooldown;
+    }
+
+    public float getDurationProgress() {
+        return duration <= 0 ? 0f : durationTimer / duration;
+    }
+
+    public String getName() { return name; }
+
+    public int getLevel() { return level; }
 
     public void upgrade() {
         if (level < maxLevel) {
@@ -70,27 +114,17 @@ public abstract class Ability {
         }
     }
 
-    protected abstract void onUpgrade();
-
-    public boolean canActivate(Player player) {
-        return isReady && player.getMana() >= manaCost;
+    public void forceReset() {
+        active = false;
+        ready = true;
+        cooldownTimer = 0f;
+        durationTimer = 0f;
     }
 
-    public String getStatus() {
-        if (!isReady) {
-            return String.format("%.1f", currentCooldown);
-        }
-        return "Ready";
-    }
+    public int getManaCost() { return manaCost; }
 
-    // Getters
-    public String getName() { return name; }
+    // 可能还需要这些
     public String getDescription() { return description; }
-    public int getLevel() { return level; }
-    public int getMaxLevel() { return maxLevel; }
-    public boolean isActive() { return isActive; }
-    public boolean isReady() { return isReady; }
-    public float getCooldownPercent() {
-        return Math.min(1.0f, currentCooldown / cooldown);
-    }
+    public float getCooldown() { return cooldown; }
+    public float getDuration() { return duration; }
 }

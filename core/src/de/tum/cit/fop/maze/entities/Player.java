@@ -1,8 +1,6 @@
-// Player.java - 更新版本
 package de.tum.cit.fop.maze.entities;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -15,60 +13,95 @@ import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class Player extends GameObject {
+
     private Color color = GameConstants.PLAYER_COLOR;
+
     private boolean hasKey = false;
     private int lives;
     private int maxLives;
     private float invincibleTimer = 0;
     private boolean isInvincible = false;
+    private float invincibleTimer = 0f;
+
     private boolean isDead = false;
+
+    // ===== 移动 =====
     private boolean moving = false;
-    private float moveTimer = 0;
-    private static final float MOVE_COOLDOWN = 0.15f; // 移动间隔
-    // === 新增：能力系统 ===
+    private float moveTimer = 0f;
+    private static final float MOVE_COOLDOWN = 0.15f;
+
+    // ===== Ability System =====
     private AbilityManager abilityManager;
-    private int mana = 100;
+
+    // ===== Mana =====
+    private int mana = 100000;
     private int maxMana = 100;
-    private float manaRegenRate = 5.0f; // 每秒恢复5点魔法
+    private float manaRegenRate = 5.0f;
+
+    /* =======================================================
+       ====================== DASH ===========================
+       ======================================================= */
+
+    private boolean dashInvincible = false;
+    private float dashInvincibleTimer = 0f;
+
+    private boolean dashSpeedBoost = false;
+    private float dashSpeedTimer = 0f;
+
+    public static final float DASH_DURATION = 0.8f;
+    public static final float DASH_SPEED_MULTIPLIER = 0.4f; // delay * 0.4 = 更快
+
+    public boolean useMana(int manaCost) {
+        if (mana < manaCost) {
+            return false;
+        }
+        mana -= manaCost;
+        return true;
+    }
+
+    public void useAbility(int slot) {
+        if (isDead() || abilityManager == null) return;
+
+        Logger.debug("Player.useAbility(" + slot + ") called");
+
+        // 🔥 直接调用 AbilityManager.activateSlot
+        boolean success = abilityManager.activateSlot(slot);
+
+        if (success) {
+            Logger.debug("Ability activation successful");
+        } else {
+            Logger.debug("Ability activation failed");
+        }
+    }
+    private boolean dashJustEnded = false;
+
+    public boolean didDashJustEnd() {
+        return dashJustEnded;
+    }
 
 
-    //朝向
+    /* ======================================================= */
+
+    // ===== 朝向 =====
     public enum Direction {
         UP, DOWN, LEFT, RIGHT
     }
+
     private Direction direction = Direction.DOWN;
-//动画调整
-    float cellX = x * GameConstants.CELL_SIZE;
-    float cellY = y * GameConstants.CELL_SIZE;
 
-    float cellCenterX = cellX + GameConstants.CELL_SIZE / 2f;
-    float footY = cellY; // 脚踩在格子底边
-    float drawWidth;
-    float drawHeight; // = CELL_SIZE
-    float drawX = cellCenterX - drawWidth / 2f;
-    float drawY = footY;
-
-
-
-
-    //ani相关
+    // ===== 动画 =====
     private TextureAtlas frontAtlas, backAtlas, leftAtlas, rightAtlas;
     private Animation<TextureRegion> frontAnim, backAnim, leftAnim, rightAnim;
-
     private float stateTime = 0f;
-    public boolean isMoving = false;
+    private boolean isMovingAnim = false;
 
-
-
-    //效果
-    private float slowTimer = 0f;
+    // ===== 状态效果 =====
     private boolean slowed = false;
+    private float slowTimer = 0f;
 
-
-    // 分数
+    // ===== 分数 =====
     private int score = 0;
 
     public Player(int x, int y, GameManager gameManager) {
@@ -80,162 +113,110 @@ public class Player extends GameObject {
         backAtlas  = new TextureAtlas("player/back.atlas");
         leftAtlas  = new TextureAtlas("player/left.atlas");
         rightAtlas = new TextureAtlas("player/right.atlas");
-//帧率自己调整
+
         frontAnim = new Animation<>(0.4f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
         backAnim  = new Animation<>(0.4f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
         leftAnim  = new Animation<>(0.4f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
         rightAnim = new Animation<>(0.4f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
-        this.abilityManager = new AbilityManager(this, gameManager);
+
+        abilityManager = new AbilityManager(this, gameManager);
+
         Logger.gameEvent("Player spawned at " + getPositionString());
     }
 
-    @Override
-    public void drawShape(ShapeRenderer shapeRenderer) {
-
-    }
-    public boolean isMoving() {
-        return moving;
-    }
-
-    // TODO 新增：绘制能力效果
-    @Override
-    public void drawSprite(SpriteBatch batch) {
-        if (!active || isDead) return;
-
-        Animation<TextureRegion> currentAnim;
-
-        switch (direction) {
-            case UP:    currentAnim = backAnim; break;
-            case LEFT:  currentAnim = leftAnim; break;
-            case RIGHT: currentAnim = rightAnim; break;
-            case DOWN:
-            default:    currentAnim = frontAnim; break;
-        }
-
-        TextureRegion frame = currentAnim.getKeyFrame(stateTime, true);
-// === 缩放：高度占一格，宽度按比例 ===
-        float scale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
-        float drawWidth  = frame.getRegionWidth() * scale+10;
-        float drawHeight = GameConstants.CELL_SIZE+10;
-
-// === 脚底对齐 ===
-        float cellX = x * GameConstants.CELL_SIZE;
-        float cellY = y * GameConstants.CELL_SIZE;
-
-        float drawX = cellX + GameConstants.CELL_SIZE / 2f - drawWidth / 2f;
-        float drawY = cellY;
-
-// === 无敌闪烁 ===
-        if (isInvincible && invincibleTimer % 0.2f > 0.1f) {
-            batch.setColor(1, 1, 1, 0.7f);
-        } else {
-            batch.setColor(1, 1, 1, 1f);
-        }
-
-        batch.draw(
-                frame,
-                drawX,
-                drawY,
-                drawWidth,
-                drawHeight
-        );
-
-        batch.setColor(1, 1, 1, 1f);
-
-        // 绘制能力效果（在其他实体之后绘制）
-        // 这应该在专门的drawAbilities方法中调用
-    }
-
-    @Override
-    public RenderType getRenderType() {
-        return RenderType.SPRITE;
-    }
+    /* ====================== UPDATE ====================== */
 
 
-    public void update(float deltaTime) {
-        // ===== 动画时间（与移动速度同步）=====
+    public void update(float delta) {
+
+        // ===== 动画 =====
         float animationSpeed = 1f / getMoveDelayMultiplier();
-        stateTime += deltaTime * animationSpeed;
+        stateTime += delta * animationSpeed;
 
-        if (!isMoving) {
-            stateTime = 0f;
-        }
-        isMoving = false;
+        if (!isMovingAnim) stateTime = 0f;
+        isMovingAnim = false;
 
-        // ===== 无敌 =====
+        // ===== 普通无敌 =====
         if (isInvincible) {
-            invincibleTimer += deltaTime;
+            invincibleTimer += delta;
             if (invincibleTimer >= GameConstants.INVINCIBLE_TIME) {
                 isInvincible = false;
-                invincibleTimer = 0;
+                invincibleTimer = 0f;
+            }
+        }
+
+        // ===== Dash 无敌 =====
+        if (dashInvincible) {
+            dashInvincibleTimer += delta;
+            if (dashInvincibleTimer >= DASH_DURATION) {
+                dashInvincible = false;
+                dashInvincibleTimer = 0f;
+                dashJustEnded = true;
+            }
+        }
+
+        // ===== Dash 加速 =====
+        if (dashSpeedBoost) {
+            dashSpeedTimer += delta;
+            if (dashSpeedTimer >= DASH_DURATION) {
+                dashSpeedBoost = false;
+                dashSpeedTimer = 0f;
             }
         }
 
         // ===== 减速 =====
         if (slowed) {
-            slowTimer -= deltaTime;
+            slowTimer -= delta;
             if (slowTimer <= 0f) {
                 slowed = false;
                 slowTimer = 0f;
             }
         }
 
-        // ===== 新增：更新移动状态 =====
+        // ===== 移动冷却 =====
         if (moving) {
-            moveTimer += deltaTime;
+            moveTimer += delta;
             if (moveTimer >= MOVE_COOLDOWN) {
                 moving = false;
             }
         }
 
-        // === 新增：魔法恢复 ===
+        // ===== Mana 恢复 =====
         if (mana < maxMana) {
-            mana += manaRegenRate * deltaTime;
-            if (mana > maxMana) {
-                mana = maxMana;
-            }
+            mana += manaRegenRate * delta;
+            if (mana > maxMana) mana = maxMana;
         }
 
-        // === 新增：更新能力管理器 ===
-        abilityManager.update(deltaTime);
+        // ===== Ability =====
+        abilityManager.update(delta);
+
+        dashJustEnded = false;
     }
-    //减速倍率
+
+    /* ====================== DASH API（给 Ability 调）====================== */
+
+    public void startDash() {
+        dashInvincible = true;
+        dashSpeedBoost = true;
+        dashInvincibleTimer = 0f;
+        dashSpeedTimer = 0f;
+
+        Logger.debug("Dash started");
+    }
+
+    public boolean isDashInvincible() {
+        return dashInvincible;
+    }
+
+    /* ====================== 移动相关 ====================== */
+
     public float getMoveDelayMultiplier() {
-        return slowed ? 2.0f : 1.0f;
-    }
+        float multiplier = 1f;
 
-    // 新增：能力相关方法
-    public void useAbility(int slot) {
-        if (abilityManager.activateSlot(slot)) {
-            isMoving = false; // 使用能力时停止移动
-        }
-    }
+        if (slowed) multiplier *= 2.0f;
+        if (dashSpeedBoost) multiplier *= DASH_SPEED_MULTIPLIER;
 
-    public void upgradeAbility(String abilityId) {
-        abilityManager.upgradeAbility(abilityId);
-    }
-
-    public void unlockAbility(String abilityId, Ability ability) {
-        abilityManager.unlockAbility(abilityId, ability);
-    }
-
-    public void useMana(int amount) {
-        mana -= amount;
-        if (mana < 0) mana = 0;
-    }
-
-    // Getter方法
-    public AbilityManager getAbilityManager() { return abilityManager; }
-    public int getMana() { return mana; }
-    public int getMaxMana() { return maxMana; }
-    public float getManaPercent() { return (float)mana / maxMana; }
-
-    public boolean hasKey() { return hasKey; }
-    public void setHasKey(boolean hasKey) {
-        this.hasKey = hasKey;
-        if (hasKey) {
-            Logger.gameEvent("Player obtained the key!");
-        }
+        return multiplier;
     }
 
     public void move(int dx, int dy) {
@@ -246,29 +227,37 @@ public class Player extends GameObject {
         else if (dy > 0) direction = Direction.UP;
         else if (dy < 0) direction = Direction.DOWN;
 
-        isMoving = true;
-
-        // 🔥 新增：设置移动状态
+        isMovingAnim = true;
         moving = true;
-        moveTimer = 0;
+        moveTimer = 0f;
 
-        this.x += dx;
-        this.y += dy;
+        x += dx;
+        y += dy;
 
         Logger.debug("Player moved to " + getPositionString());
     }
 
+
+    /* ====================== 状态效果 ====================== */
+
+    /**
+     * 对玩家施加减速效果
+     * 不叠加倍率，但会刷新持续时间
+     */
+    public void applySlow(float duration) {
+        slowed = true;
+        slowTimer = Math.max(slowTimer, duration);
+    }
+    /* ====================== 受伤 ====================== */
+
     public void takeDamage(int damage) {
-        if (isDead || isInvincible) return;
+        if (isDead || isInvincible || dashInvincible) return;
 
         lives -= damage;
 
-        // 🔊 玩家受伤音效（只播一次）
         AudioManager.getInstance().play(AudioType.PLAYER_ATTACKED);
         isInvincible = true;
-        invincibleTimer = 0;
-
-        Logger.gameEvent("Player took " + damage + " damage, lives left: " + lives);
+        invincibleTimer = 0f;
 
         if (lives <= 0) {
             isDead = true;
@@ -301,23 +290,57 @@ public class Player extends GameObject {
         return maxLives;
     }
 
-    public int getLives() {
-        return lives;
+    /* ====================== 渲染 ====================== */
+
+    @Override
+    public void drawSprite(SpriteBatch batch) {
+        if (!active || isDead) return;
+
+        Animation<TextureRegion> anim = switch (direction) {
+            case UP -> backAnim;
+            case LEFT -> leftAnim;
+            case RIGHT -> rightAnim;
+            default -> frontAnim;
+        };
+
+        TextureRegion frame = anim.getKeyFrame(stateTime, true);
+
+        float scale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
+        float drawW = frame.getRegionWidth() * scale + 10;
+        float drawH = GameConstants.CELL_SIZE + 10;
+
+        float drawX = x * GameConstants.CELL_SIZE
+                + GameConstants.CELL_SIZE / 2f - drawW / 2f;
+        float drawY = y * GameConstants.CELL_SIZE;
+
+        if ((isInvincible || dashInvincible) && invincibleTimer % 0.2f > 0.1f) {
+            batch.setColor(1, 1, 1, 0.6f);
+        }
+
+        batch.draw(frame, drawX, drawY, drawW, drawH);
+        batch.setColor(1, 1, 1, 1f);
     }
 
-    public boolean isDead() {
-        return lives <= 0;
+    @Override
+    public void drawShape(ShapeRenderer shapeRenderer) {}
+
+    @Override
+    public RenderType getRenderType() {
+        return RenderType.SPRITE;
     }
 
-    // 获取分数
-    public int getScore() {
-        return score;
-    }
+    /* ====================== Getter ====================== */
 
-    // 增加分数
-    public void addScore(int points) {
-        score += points;
-        Logger.debug("Player score increased by " + points + ", total: " + score);
+    public AbilityManager getAbilityManager() { return abilityManager; }
+    public int getLives() { return lives; }
+    public boolean hasKey() { return hasKey; }
+    public void setHasKey(boolean hasKey) { this.hasKey = hasKey; }
+    public boolean isDead() { return isDead; }
+    public int getMana() {
+        return mana;
+    }
+    public boolean isMoving() {
+        return moving;
     }
 
     /**
@@ -349,30 +372,44 @@ public class Player extends GameObject {
 
         Logger.debug("Player状态已重置: 生命=" + lives + ", 分数=" + score + ", 有钥匙=" + hasKey);
     }
-
-    /**
-     * 设置玩家位置（用于重置时的重新定位）
-     */
-    public void setPosition(int x, int y) {
-        this.x = x;
-        this.y = y;
-        Logger.debug("Player位置设置为: " + getPositionString());
-    }
-
-    // 其他辅助方法
     public String getPositionString() {
         return "(" + x + ", " + y + ")";
     }
-
-    public void applySlow(float slowDuration) {
-        // 不可叠加：只刷新持续时间
-        slowed = true;
-        slowTimer = Math.max(slowTimer, slowDuration);
-
-        Logger.debug("Player slowed for " + slowTimer + " seconds");
-    }
-
- public Direction getDirection() {
+    public Direction getDirection() {
         return direction;
     }
+
+
+    public void reset() {
+        // ===== 基础状态 =====
+        this.lives = GameConstants.INITIAL_PLAYER_LIVES;
+        this.isDead = false;
+
+        // ===== 无敌 / Dash Buff =====
+        this.isInvincible = false;
+        this.invincibleTimer = 0f;
+
+        this.dashInvincible = false;
+        this.dashInvincibleTimer = 0f;
+
+        this.dashSpeedBoost = false;
+        this.dashSpeedTimer = 0f;
+
+        // ===== 移动状态 =====
+        this.moving = false;
+        this.moveTimer = 0f;
+
+        // ===== 资源 =====
+        this.mana = maxMana;
+        this.hasKey = false;
+
+        // ===== 能力系统 =====
+        if (abilityManager != null) {
+            abilityManager.reset();
+        }
+
+        Logger.debug("Player reset complete");
+    }
+
+
 }

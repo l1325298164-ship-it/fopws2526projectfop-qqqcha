@@ -25,7 +25,10 @@ public class TrapT03_TeaShards extends Trap {
     public TrapT03_TeaShards(int x, int y) {
         super(x, y);
     }
-
+    @Override
+    public boolean isPassable() {
+        return true;
+    }
     @Override
     public void update(float delta) {
         if (state == State.DAMAGING) {
