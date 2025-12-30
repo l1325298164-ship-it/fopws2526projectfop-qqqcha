@@ -141,6 +141,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+
         handleInput(delta);
 
 // === 先检测是否触发传送门 ===
@@ -466,7 +467,7 @@ public class GameScreen implements Screen {
 
         Player player = gameManager.getPlayer();
 
-        inputHandler.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+        inputHandler.update(delta, new PlayerInputHandler.InputHandlerCallback) {
             @Override
             public void onMoveInput(int dx, int dy) {
                 int nx = player.getX() + dx;

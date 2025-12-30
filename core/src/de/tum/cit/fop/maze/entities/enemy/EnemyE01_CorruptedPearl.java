@@ -2,8 +2,10 @@ package de.tum.cit.fop.maze.entities.enemy;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.utils.Logger;
 
 public class EnemyE01_CorruptedPearl extends Enemy {
 
@@ -26,6 +28,19 @@ public class EnemyE01_CorruptedPearl extends Enemy {
 
         updateTexture();
     }
+    @Override
+    public void takeDamage(int dmg) {
+        // 先调用父类的通用伤害处理
+        super.takeDamage(dmg);
+
+        // 如果有特殊逻辑，可以在这里添加
+        // 例如：受到伤害时有一定概率反击
+//        if (active && MathUtils.random() < 0.3f) { // 30%概率
+//            retaliate();
+//        }
+    }
+
+
 
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {

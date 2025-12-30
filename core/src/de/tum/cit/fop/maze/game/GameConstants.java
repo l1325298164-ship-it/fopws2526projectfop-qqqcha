@@ -27,6 +27,7 @@ public class GameConstants {
     public static final int TRAP_T03_TEA_SHARDS_COUNT = 20;
     // 泥潭总格子数（不是块数）
     public static final int TRAP_T04_MUD_COUNT = 50;
+    public static final boolean DEBUG_MODE = false;
 
 
     // 总陷阱数（= 各类型之和）

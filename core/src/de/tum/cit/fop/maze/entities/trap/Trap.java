@@ -21,4 +21,10 @@ public abstract class Trap extends GameObject {
     public boolean isActive() {
         return active;
     }
+
+    @Override
+    public boolean isPassable() {
+        // 陷阱默认不可通过
+        return false;
+    }
 }

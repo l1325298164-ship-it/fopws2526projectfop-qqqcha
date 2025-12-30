@@ -36,7 +36,15 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
 
         updateTexture();
     }
+    //------------------承伤-----------------
+    @Override
+    public void takeDamage(int dmg) {
+        // 焦糖重装兵可能有护甲
+        int armor = 0; // 减伤0点
+        int actualDamage = Math.max(0, dmg - armor);
 
+        super.takeDamage(actualDamage);
+    }
     /* ================== 渲染 ================== */
 
     @Override
