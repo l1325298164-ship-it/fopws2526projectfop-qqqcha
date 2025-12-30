@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.qte.QTEResult;
 import de.tum.cit.fop.maze.screen.*;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -130,10 +131,17 @@ public class MazeRunnerGame extends Game {
         gameManager = new GameManager();
 
         initializeSoundManager();
-        goToMenu();
+//Delete    goToMenu();
+        gotoTest();
     }
 
-
+    //Delete
+public void gotoTest(){
+        Screen old = getScreen();
+        setScreen(new QTEScreen2(this,gameManager));
+    if (old != null) old.dispose();
+    audioManager.stopAll();
+}
     public void goToPV() {
         Screen old = getScreen();
 
@@ -253,7 +261,7 @@ public class MazeRunnerGame extends Game {
         return gameManager;
     }
 
-    public void onQTEFinished(QTEScreen.QTEResult result) {
+    public void onQTEFinished(QTEResult result) {
         Screen old = getScreen();
 
         switch (stage) {
@@ -262,7 +270,7 @@ public class MazeRunnerGame extends Game {
             // QTE1 结果
             // =====================
             case QTE1 -> {
-                if (result == QTEScreen.QTEResult.SUCCESS) {
+                if (result == QTEResult.SUCCESS) {
                     stage = StoryStage.PV2_SUCCESS;
                     setScreen(new IntroScreen(
                             this,
@@ -284,7 +292,7 @@ public class MazeRunnerGame extends Game {
             // QTE2 结果
             // =====================
             case QTE2 -> {
-                if (result == QTEScreen.QTEResult.SUCCESS) {
+                if (result == QTEResult.SUCCESS) {
                     stage = StoryStage.PV3_SUCCESS;
                     setScreen(new IntroScreen(
                             this,

@@ -19,16 +19,13 @@ import de.tum.cit.fop.maze.qte.QTEMazeData;
 import de.tum.cit.fop.maze.qte.QTEMazeRenderer;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
+import de.tum.cit.fop.maze.qte.QTEResult;
 
 /**
  * 双人QTE Screen
  */
 public class QTEScreen2 implements Screen {
 
-    public enum QTEResult {
-        SUCCESS,
-        FAIL
-    }
 
     private QTEResult result = null;
 
