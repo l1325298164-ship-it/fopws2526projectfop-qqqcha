@@ -15,6 +15,7 @@ import java.util.Map;
 public class TextureManager implements Disposable {
     private static TextureManager instance;
     private Map<String, Texture> textures;
+    private Texture whitePixel;
 
 
 
@@ -37,6 +38,8 @@ public class TextureManager implements Disposable {
     public static final String ENEMY2 = "enemy2";
     public static final String ENEMY3 = "enemy3";
     public static final String ENEMY3AOE = "ENEMY3AOE";
+
+
 
 
     public static final String HEART = "heart";
@@ -374,5 +377,16 @@ public class TextureManager implements Disposable {
         textures.clear();
         textureFileMap.clear();
         instance = null;
+    }
+
+    public Texture getWhitePixel() {
+        if (whitePixel == null) {
+            Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+            pm.setColor(Color.WHITE);
+            pm.fill();
+            whitePixel = new Texture(pm);
+            pm.dispose();
+        }
+        return whitePixel;
     }
 }
