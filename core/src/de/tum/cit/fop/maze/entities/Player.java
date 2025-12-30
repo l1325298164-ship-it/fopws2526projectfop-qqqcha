@@ -21,6 +21,7 @@ public class Player extends GameObject {
     private Color color = GameConstants.PLAYER_COLOR;
     private boolean hasKey = false;
     private int lives;
+    private int maxLives;
     private float invincibleTimer = 0;
     private boolean isInvincible = false;
     private boolean isDead = false;
@@ -73,6 +74,7 @@ public class Player extends GameObject {
     public Player(int x, int y, GameManager gameManager) {
         super(x, y);
         this.lives = GameConstants.INITIAL_PLAYER_LIVES;
+        this.maxLives = GameConstants.INITIAL_PLAYER_LIVES;
 
         frontAtlas = new TextureAtlas("player/front.atlas");
         backAtlas  = new TextureAtlas("player/back.atlas");
@@ -273,6 +275,31 @@ public class Player extends GameObject {
             Logger.gameEvent("Player died");
         }
     }
+    // 🔥 新增：回复生命值 (对应 Heart / 柠檬脆波波)
+    public void heal(int amount) {
+        if (isDead) return;
+
+        this.lives += amount;
+        // 限制回血不能超过当前的上限
+        if (this.lives > this.maxLives) {
+            this.lives = this.maxLives;
+        }
+        Logger.gameEvent("Player healed by " + amount + ". Current HP: " + lives + "/" + maxLives);
+    }
+
+    // 🔥 新增：增加生命上限 (对应 HeartContainer / 焦糖核心)
+    public void increaseMaxLives(int amount) {
+        this.maxLives += amount;
+        // 增加上限的同时，顺便把增加的那部分血补上
+        this.lives += amount;
+
+        Logger.gameEvent("Max HP increased by " + amount + ". New Max: " + maxLives);
+    }
+
+    // 🔥 新增：获取最大生命值 (UI可能需要用到)
+    public int getMaxLives() {
+        return maxLives;
+    }
 
     public int getLives() {
         return lives;
@@ -304,7 +331,7 @@ public class Player extends GameObject {
         this.slowTimer = 0f;
         // 重置生命值
         this.lives = GameConstants.INITIAL_PLAYER_LIVES;
-
+        this.maxLives = GameConstants.INITIAL_PLAYER_LIVES;
         // 重置钥匙状态
         this.hasKey = false;
 
