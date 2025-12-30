@@ -118,20 +118,23 @@ public class MazeRunnerGame extends Game {
     public void create() {
         spriteBatch = new SpriteBatch();
 
-        // 1️⃣ 先加载 atlas
+        // ✅ 先加载 atlas
         TextureAtlas uiAtlas =
                 new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
 
-        // 2️⃣ 用 atlas + json 直接构造 Skin
+        // ✅ 把 atlas 注册进 Skin，再解析 json
         skin = new Skin(
                 Gdx.files.internal("ui/skinbutton.json"),
                 uiAtlas
         );
+
         gameManager = new GameManager();
 
         initializeSoundManager();
         goToMenu();
     }
+
+
 
 
     public void goToPV() {

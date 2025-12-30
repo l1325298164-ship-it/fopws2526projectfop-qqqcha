@@ -40,6 +40,18 @@ public class MenuScreen implements Screen {
         stage.addActor(table);
 
 // ===== Title =====
+//        // ===== Title tests =====
+//        Label test1 = new Label("ABC", game.getSkin(), "title");
+//        Label test2 = new Label("A B", game.getSkin(), "title");
+//        TextButton test3 = new TextButton("AB", game.getSkin(), "title");
+//
+//        test1.setAlignment(Align.center);
+//        test2.setAlignment(Align.center);
+//        test3.getLabel().setAlignment(Align.center);
+//
+//        table.add(test1).padBottom(10).row();
+//        table.add(test2).padBottom(10).row();
+//        table.add(test3).padBottom(40).row();
         Label title = new Label(
                 "Hello World from the Menu!",
                 game.getSkin(),
@@ -51,6 +63,7 @@ public class MenuScreen implements Screen {
         table.add(title)
                 .padBottom(80)
                 .row();
+
 
 // ===== Button common config =====
         float buttonWidth = 360f;
