@@ -61,6 +61,11 @@ public class GameScreen implements Screen {
 //防止崩溃
     private boolean pendingExitToMenu = false;
 
+    // Hp道具列表
+    private java.util.List<Heart> hearts;
+    private java.util.List<HeartContainer> heartContainers;
+    private java.util.List<Treasure> treasures; // 🔥 新增：宝箱列表
+
     /* ================= 渲染结构 ================= */
 
     private enum RenderItemType {
@@ -136,9 +141,148 @@ public class GameScreen implements Screen {
 
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
 
+        // 🔥 初始化并生成测试道具
+        initCollectibles();
+
         Logger.debug("GameScreen initialized");
     }
+    // 🔥 修改后：随机生成 Heart，暂时移除 HeartContainer
+    private void initCollectibles() {
+        hearts = new java.util.ArrayList<>();
+        heartContainers = new java.util.ArrayList<>(); // 初始化为空，等怪物掉落
 
+        // === 随机生成回血道具 (Heart) ===
+        // 1. 随机决定生成数量 (3 到 6 个)
+        int minCount = 3;
+        int maxCount = 6;
+        int count = com.badlogic.gdx.math.MathUtils.random(minCount, maxCount);
+
+        int spawned = 0;
+        int attempts = 0; // 防止死循环的安全计数
+
+        while (spawned < count && attempts < 100) {
+            attempts++;
+
+            // 假设地图大小大约是 15x15 或者更大，这里随机取坐标
+            // 你可以用 GameConstants.LEVEL_WIDTH 如果有的话
+            int rx = com.badlogic.gdx.math.MathUtils.random(1, 15);
+            int ry = com.badlogic.gdx.math.MathUtils.random(1, 15);
+
+            // 🔥 关键检查：这个位置必须能走 (isValidMove) 且没有其他东西
+            if (gameManager.isValidMove(rx, ry)) {
+                hearts.add(new Heart(rx, ry));
+                spawned++;
+                Logger.debug("randomly generate heart at: " + rx + ", " + ry);
+            }
+        }
+        // === 3. 生成宝箱 (Treasure) ===
+        treasures = new java.util.ArrayList<>();
+
+        // 🔥 补上这一行，防止 player 报错
+        if (gameManager.getPlayer() != null) {
+            Player player = gameManager.getPlayer(); // 定义 player 变量
+
+            // 随机生成 1-3 个宝箱
+            int chestCount = com.badlogic.gdx.math.MathUtils.random(1, 3);
+            int chestSpawned = 0;
+            attempts = 0;
+
+            while (chestSpawned < chestCount && attempts < 100) {
+                attempts++;
+                int tx = com.badlogic.gdx.math.MathUtils.random(1, 15);
+                int ty = com.badlogic.gdx.math.MathUtils.random(1, 15);
+
+                // 检查：必须是空地，且不能和玩家重叠
+                boolean overlap = (tx == player.getX() && ty == player.getY());
+
+                // 检查：不能和已生成的爱心重叠
+                for (Heart h : hearts) {
+                    if (h.getX() == tx && h.getY() == ty) {
+                        overlap = true;
+                        break; // 只有重叠了才跳出循环
+                    }
+                }
+
+                // 检查：不能和已生成的宝箱重叠 (防止两个宝箱刷在一起)
+                for (Treasure t : treasures) {
+                    if (t.getX() == tx && t.getY() == ty) {
+                        overlap = true;
+                        break;
+                    }
+                }
+
+                if (gameManager.isValidMove(tx, ty) && !overlap) {
+                    treasures.add(new Treasure(tx, ty));
+                    chestSpawned++;
+                    Logger.debug("生成宝箱在: " + tx + ", " + ty);
+                }
+            }
+
+        }
+    }
+
+    // 🔥 修复版：道具拾取检测
+    // 🔥 最终逻辑：满血保留，残血拾取
+    private void checkItemPickups() {
+        Player player = gameManager.getPlayer();
+        if (player == null) return;
+
+        // 获取玩家当前的网格坐标
+        int px = player.getX();
+        int py = player.getY();
+
+        // ==========================================
+        // 1. 检测回血道具 (Heart)
+        // ==========================================
+        java.util.Iterator<Heart> heartIter = hearts.iterator();
+        while (heartIter.hasNext()) {
+            Heart heart = heartIter.next();
+
+            // 只要坐标重合
+            if (heart.isActive() && heart.getX() == px && heart.getY() == py) {
+
+                // 🔥 核心逻辑：检查生命值
+                // 如果当前生命值 >= 最大生命值，说明满血
+                if (player.getLives() >= player.getMaxLives()) {
+                    // 直接跳过这次循环，不执行移除，也不触发效果
+                    // 效果就是：玩家踩在爱心上，但爱心还在原地不动
+                    continue;
+                }
+
+                // --- 只有不满血时，代码才会走到这里 ---
+
+                heart.onInteract(player); // 回血
+                heartIter.remove();       // 移除道具
+                AudioManager.getInstance().play(AudioType.UI_SUCCESS);
+            }
+        }
+
+        // ==========================================
+        // 2. 检测上限道具 (HeartContainer)
+        // ==========================================
+        java.util.Iterator<HeartContainer> containerIter = heartContainers.iterator();
+        while (containerIter.hasNext()) {
+            HeartContainer container = containerIter.next();
+
+            // 上限道具不需要判断满血，随时都可以吃
+            if (container.isActive() && container.getX() == px && container.getY() == py) {
+                container.onInteract(player);
+                containerIter.remove();
+                AudioManager.getInstance().play(AudioType.UI_SUCCESS);
+            }
+        }
+        // 3. 检测宝箱 (Treasure)
+        for (Treasure treasure : treasures) {
+            // 如果坐标重合，且宝箱还没开
+            if (treasure.getX() == px && treasure.getY() == py) {
+                // Treasure 内部自己会判断 isOpened，所以直接调用 onInteract 即可
+                treasure.onInteract(player);
+
+                // 注意：这里不需要 remove，也不需要播放音效
+                // (因为 Treasure 内部逻辑或者 open 方法里可以控制音效)
+            }
+        }
+    }
     @Override
     public void render(float delta) {
 
@@ -227,6 +371,8 @@ public class GameScreen implements Screen {
         if (waitingForPortal) return;
 
         gameManager.update(delta);
+        // 新增：每一帧都检查有没有捡到东西
+        checkItemPickups();
 
         Player player = gameManager.getPlayer();
         boolean nowMoving = player.isMoving();
@@ -433,6 +579,24 @@ public class GameScreen implements Screen {
         for (ExitDoor door : gameManager.getExitDoors()) {
             items.add(new RenderItem(door, 0));
         }
+        // 🔥 新增：把道具加入渲染队列
+        if (hearts != null) {
+            for (Heart h : hearts) {
+                if (h.isActive()) items.add(new RenderItem(h, 20)); // 20是层级优先级
+            }
+        }
+        if (heartContainers != null) {
+            for (HeartContainer hc : heartContainers) {
+                if (hc.isActive()) items.add(new RenderItem(hc, 20));
+            }
+        }
+        // 🔥 新增：渲染宝箱
+        if (treasures != null) {
+            for (Treasure t : treasures) {
+                // 只要是激活的都画（包括打开的和关着的）
+                if (t.isActive()) items.add(new RenderItem(t, 20));
+            }
+        }
     }
 
 
@@ -467,6 +631,10 @@ public class GameScreen implements Screen {
 
             @Override
             public void onMoveInput(int dx, int dy) {
+                // Player 类里有 isMoving() 方法，返回 true 表示处于 0.15s 的冷却期
+                if (player.isMoving()) {
+                    return; // 如果正在移动/冷却中，直接无视这次输入
+                }
                 int nx = player.getX() + dx;
                 int ny = player.getY() + dy;
 
@@ -548,6 +716,7 @@ public class GameScreen implements Screen {
         cameraManager.centerOnPlayerImmediately(gameManager.getPlayer());
         AudioManager.getInstance().stopPlayerMove();
         isPlayerMoving = false;
+        initCollectibles(); // 重开时重新生成道具
     }
 
     /* ================= 释放 ================= */
@@ -572,5 +741,12 @@ public class GameScreen implements Screen {
         portalEffectManager.dispose();
         mazeRenderer.dispose();
         Logger.debug("GameScreen disposed");
+        // 🔥 清理宝箱资源
+        if (treasures != null) {
+            for (Treasure t : treasures) {
+                t.dispose();
+            }
+            treasures.clear();
+        }
     }
 }
