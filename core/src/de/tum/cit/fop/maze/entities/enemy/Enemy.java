@@ -9,6 +9,7 @@ import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.GameObject;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 public abstract class Enemy extends GameObject {
@@ -95,7 +96,13 @@ public abstract class Enemy extends GameObject {
 
         if (hp <= 0) {
             active = false;
+            //添加死亡效果
+            onDeath();
         }
+        Logger.debug(getClass().getSimpleName() + " took " + dmg + " damage, HP: " + hp);
+    }
+
+    private void onDeath() {
     }
 
     protected void updateHitFlash(float delta) {
@@ -219,7 +226,18 @@ public abstract class Enemy extends GameObject {
         dirX = dir[0];
         dirY = dir[1];
     }
+    // ==================判断是不是可以交互或者可以通过
+    @Override
+    public boolean isInteractable() {
+        // 敌人通常不可交互（除非有特殊设计）
+        return false;
+    }
 
+    @Override
+    public boolean isPassable() {
+        // 敌人不可通过
+        return true;
+    }
     /* ================= Getter ================= */
 
     public int getCollisionDamage() {
