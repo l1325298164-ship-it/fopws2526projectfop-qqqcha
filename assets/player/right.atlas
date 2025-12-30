@@ -4,38 +4,38 @@ size: 4096, 2048
 format: RGBA8888
 filter: Linear, Linear
 repeat: none
-right
+000_right
+  rotate: false
+  xy: 609, 9
+  size: 591, 1200
+  orig: 591, 1200
+  offset: 0, 0
+  index: -1
+001_right
   rotate: false
   xy: 2, 2
-  size: 591, 1200
-  orig: 591, 1200
+  size: 605, 1207
+  orig: 605, 1207
   offset: 0, 0
-  index: 0
-right
+  index: -1
+002_right
   rotate: false
-  xy: 595, 2
+  xy: 1202, 9
   size: 591, 1200
   orig: 591, 1200
   offset: 0, 0
-  index: 1
-right
+  index: -1
+003_right
   rotate: false
-  xy: 1188, 2
+  xy: 1795, 9
   size: 591, 1200
   orig: 591, 1200
   offset: 0, 0
-  index: 2
-right
+  index: -1
+004_right
   rotate: false
-  xy: 1781, 2
+  xy: 2388, 9
   size: 591, 1200
   orig: 591, 1200
   offset: 0, 0
-  index: 3
-right
-  rotate: false
-  xy: 2374, 2
-  size: 591, 1200
-  orig: 591, 1200
-  offset: 0, 0
-  index: 4
+  index: -1

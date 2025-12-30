@@ -1,59 +1,272 @@
+
 button.png
-size:2048,512
-repeat:none
+size: 4096, 2048
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame178
+  rotate: false
+  xy: 2, 1296
+  size: 732, 732
+  orig: 732, 732
+  offset: 0, 0
+  index: -1
+frame179
+  rotate: false
+  xy: 2, 562
+  size: 732, 732
+  orig: 732, 732
+  offset: 0, 0
+  index: -1
+frame180
+  rotate: false
+  xy: 736, 1296
+  size: 732, 732
+  orig: 732, 732
+  offset: 0, 0
+  index: -1
+frame181
+  rotate: false
+  xy: 736, 562
+  size: 732, 732
+  orig: 732, 732
+  offset: 0, 0
+  index: -1
+group11
+  rotate: false
+  xy: 1470, 1818
+  size: 1100, 210
+  orig: 1100, 210
+  offset: 0, 0
+  index: -1
+group12
+  rotate: false
+  xy: 2, 138
+  size: 1100, 210
+  orig: 1100, 210
+  offset: 0, 0
+  index: -1
+group13
+  rotate: false
+  xy: 1470, 1606
+  size: 1100, 210
+  orig: 1100, 210
+  offset: 0, 0
+  index: -1
+group14
+  rotate: false
+  xy: 2, 350
+  size: 1118, 210
+  orig: 1118, 210
+  offset: 0, 0
+  index: -1
+group15
+  rotate: false
+  xy: 2171, 1234
+  size: 234, 234
+  orig: 234, 234
+  offset: 0, 0
+  index: -1
+group16
+  rotate: false
+  xy: 2171, 998
+  size: 234, 234
+  orig: 234, 234
+  offset: 0, 0
+  index: -1
 navitem
-bounds:712,400,698,104
+  rotate: false
+  xy: 1470, 1470
+  size: 1047, 134
+  orig: 1047, 134
+  offset: 0, 0
+  index: -1
 navitem (1)
-bounds:2,188,698,104
+  rotate: false
+  xy: 3635, 1894
+  size: 304, 134
+  orig: 304, 134
+  offset: 0, 0
+  index: -1
 navitem (10)
-bounds:1648,320,203,78
+  rotate: false
+  xy: 2572, 1758
+  size: 1047, 134
+  orig: 1047, 134
+  offset: 0, 0
+  index: -1
 navitem (11)
-bounds:2,2,466,78
+  rotate: false
+  xy: 3621, 1758
+  size: 304, 134
+  orig: 304, 134
+  offset: 0, 0
+  index: -1
 navitem (12)
-bounds:1617,134,203,78
+  rotate: false
+  xy: 1470, 1334
+  size: 699, 134
+  orig: 699, 134
+  offset: 0, 0
+  index: -1
 navitem (13)
-bounds:470,108,466,78
+  rotate: false
+  xy: 1470, 547
+  size: 304, 101
+  orig: 304, 101
+  offset: 0, 0
+  index: -1
 navitem (14)
-bounds:938,30,156,156
+  rotate: false
+  xy: 1470, 959
+  size: 699, 101
+  orig: 699, 101
+  offset: 0, 0
+  index: -1
 navitem (15)
-bounds:1096,30,156,156
+  rotate: false
+  xy: 2572, 1894
+  size: 1061, 134
+  orig: 1061, 134
+  offset: 0, 0
+  index: -1
 navitem (16)
-bounds:1822,8,102,102
+  rotate: false
+  xy: 3273, 1622
+  size: 304, 134
+  orig: 304, 134
+  offset: 0, 0
+  index: -1
 navitem (17)
-bounds:1795,216,102,102
+  rotate: false
+  xy: 2572, 1622
+  size: 699, 134
+  orig: 699, 134
+  offset: 0, 0
+  index: -1
 navitem (18)
-bounds:2,400,708,104
+  rotate: false
+  xy: 1776, 547
+  size: 304, 101
+  orig: 304, 101
+  offset: 0, 0
+  index: -1
 navitem (19)
-bounds:2,294,708,104
+  rotate: false
+  xy: 1470, 856
+  size: 699, 101
+  orig: 699, 101
+  offset: 0, 0
+  index: -1
 navitem (2)
-bounds:1899,244,102,102
+  rotate: false
+  xy: 1470, 1198
+  size: 699, 134
+  orig: 699, 134
+  offset: 0, 0
+  index: -1
 navitem (20)
-bounds:1412,108,203,104
+  rotate: false
+  xy: 2407, 977
+  size: 152, 152
+  orig: 152, 152
+  offset: 0, 0
+  index: -1
 navitem (21)
-bounds:712,294,466,104
+  rotate: false
+  xy: 2171, 762
+  size: 234, 234
+  orig: 234, 234
+  offset: 0, 0
+  index: -1
 navitem (22)
-bounds:1385,214,203,104
+  rotate: false
+  xy: 1122, 326
+  size: 234, 234
+  orig: 234, 234
+  offset: 0, 0
+  index: -1
 navitem (23)
-bounds:2,82,466,104
+  rotate: false
+  xy: 2407, 823
+  size: 152, 152
+  orig: 152, 152
+  offset: 0, 0
+  index: -1
 navitem (24)
-bounds:1412,28,203,78
+  rotate: false
+  xy: 2561, 977
+  size: 152, 152
+  orig: 152, 152
+  offset: 0, 0
+  index: -1
 navitem (25)
-bounds:470,28,466,78
+  rotate: false
+  xy: 1104, 90
+  size: 234, 234
+  orig: 234, 234
+  offset: 0, 0
+  index: -1
 navitem (26)
-bounds:1617,54,203,78
+  rotate: false
+  xy: 2407, 1234
+  size: 234, 234
+  orig: 234, 234
+  offset: 0, 0
+  index: -1
 navitem (27)
-bounds:1180,320,466,78
+  rotate: false
+  xy: 2561, 823
+  size: 152, 152
+  orig: 152, 152
+  offset: 0, 0
+  index: -1
 navitem (3)
-bounds:1822,112,102,102
+  rotate: false
+  xy: 2171, 659
+  size: 304, 101
+  orig: 304, 101
+  offset: 0, 0
+  index: -1
 navitem (4)
-bounds:1180,214,203,104
+  rotate: false
+  xy: 1470, 753
+  size: 699, 101
+  orig: 699, 101
+  offset: 0, 0
+  index: -1
 navitem (5)
-bounds:1412,400,466,104
+  rotate: false
+  xy: 2, 2
+  size: 1061, 134
+  orig: 1061, 134
+  offset: 0, 0
+  index: -1
 navitem (6)
-bounds:1590,214,203,104
+  rotate: false
+  xy: 3579, 1622
+  size: 304, 134
+  orig: 304, 134
+  offset: 0, 0
+  index: -1
 navitem (7)
-bounds:702,188,466,104
+  rotate: false
+  xy: 1470, 1062
+  size: 699, 134
+  orig: 699, 134
+  offset: 0, 0
+  index: -1
 navitem (8)
-bounds:1880,348,156,156
+  rotate: false
+  xy: 2407, 1131
+  size: 304, 101
+  orig: 304, 101
+  offset: 0, 0
+  index: -1
 navitem (9)
-bounds:1254,56,156,156
+  rotate: false
+  xy: 1470, 650
+  size: 699, 101
+  orig: 699, 101
+  offset: 0, 0
+  index: -1
