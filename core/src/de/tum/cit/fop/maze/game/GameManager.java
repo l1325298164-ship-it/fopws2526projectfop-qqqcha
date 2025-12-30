@@ -2,6 +2,8 @@
 package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.math.MathUtils;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
@@ -121,7 +123,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
             onPlayerMoved(newX, newY);
         } else {
             Logger.debug("移动无效: (" + newX + ", " + newY + ")");
+            playWallHitSound();
         }
+    }
+
+    private void playWallHitSound() {
+        AudioManager.getInstance().play(AudioType.PLAYER_HIT_WALL);
     }
 
     @Override
@@ -196,6 +203,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
         return true;
     }
 
+
+    public void resetEnemyDashHits() {
+        for (Enemy e : enemies) {
+            if (e != null) {
+                e.resetDashHit();
+            }
+        }
+    }
     private void onPlayerMoved(int newX, int newY) {
         // 触发移动后的事件
         checkKeyCollection();
@@ -210,16 +225,35 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
     private void handlePlayerInteraction() {
         updateInteractableObject(); // 确保有最新的交互对象
 
-        if (interactableObject != null) {
-            if (interactableObject.isInteractable()) {
-                Logger.gameEvent("与对象交互: " + interactableObject.getClass().getSimpleName());
-                interactableObject.onInteract(player);
-            } else {
-                Logger.debug("对象不可交互: " + interactableObject.getClass().getSimpleName());
-            }
-        } else {
+        if (interactableObject == null) {
             Logger.debug("没有可交互的对象");
+            return;
         }
+
+        if (!interactableObject.isInteractable()) {
+            Logger.debug("对象不可交互: " + interactableObject.getClass().getSimpleName());
+            return;
+        }
+
+        // ===== 🔥 门的特殊处理 =====
+        if (interactableObject instanceof ExitDoor door) {
+
+            if (door.isLocked()) {
+                if (player.hasKey()) {
+                    door.unlock(this);   // ⭐ 核心：门解锁 + maze 打通
+                } else {
+                    Logger.gameEvent("门被锁住了，需要钥匙");
+                }
+            } else {
+                Logger.gameEvent("门已解锁，可以直接通过");
+            }
+
+            return; // ❗ 门处理完直接返回
+        }
+
+        // ===== 其他通用交互（钥匙 / NPC / 未来物体）=====
+        Logger.gameEvent("与对象交互: " + interactableObject.getClass().getSimpleName());
+        interactableObject.onInteract(player);
     }
 
 
@@ -278,21 +312,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
             }
         }
     }
-
-    private void handleExitDoor(ExitDoor door) {
-        if (!door.isLocked()) {
-            if (currentLevel < GameConstants.MAX_LEVELS) {
-                // 进入下一关
-                isExitingLevel = true;
-                Logger.gameEvent("进入下一关...");
-                // 这里可以触发关卡切换动画
-                completeLevelTransition();
-            } else {
-                // 游戏通关
-                gameState = GameState.LEVEL_COMPLETE;
-                isGameComplete = true;
-                Logger.gameEvent("游戏通关!");
-            }
+    public void openMazeCell(int x, int y) {
+        if (maze[y][x] == 0) {
+            maze[y][x] = 1;
+            Logger.debug("Maze cell opened at (" + x + ", " + y + ")");
         }
     }
 
@@ -708,7 +731,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
     }
 
     public void update(float deltaTime) {
-        inputHandler.update(deltaTime, this);
 
         if (gameState != GameState.PLAYING|| isPaused) return;
         if (player.isDead()) {
@@ -719,6 +741,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
 
         // 更新玩家
         player.update(deltaTime);
+        // 🔥 Dash 结束 → 清敌人 Dash 命中状态
+        if (player.didDashJustEnd()) {
+            resetEnemyDashHits();
+        }
 
         // 更新陷阱
         for (Trap trap : traps) {
@@ -806,7 +832,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
 
             // 解锁所有出口门
             for (ExitDoor door : exitDoors) {
-                door.unlock();
+                door.unlock(this);
             }
             Logger.gameEvent("Key collected, all " + exitDoors.size() + " exit doors unlocked");
         }
@@ -816,12 +842,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
         for (ExitDoor exitDoor : exitDoors) {
             if (player.collidesWith(exitDoor) && !exitDoor.isLocked()) {
 
-                if (currentLevel < GameConstants.MAX_LEVELS) {
-                    initializeLevel();
-                } else {
-                    gameState = GameState.LEVEL_COMPLETE;
-                    isGameComplete = true;
-                }
+                // 只标记状态，不换关
+                isExitingLevel = true;
                 return;
             }
         }
@@ -838,21 +860,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
         }
     }
 
-    public boolean isValidMove(int x, int y) {
-        if (x < 0 || x >= GameConstants.MAZE_WIDTH ||
-                y < 0 || y >= GameConstants.MAZE_HEIGHT) {
-            return false;
-        }
 
-        // 检查是否是出口
-        for (ExitDoor exitDoor : exitDoors) {
-            if (x == exitDoor.getX() && y == exitDoor.getY()) {
-                return !exitDoor.isLocked() || player.hasKey();
-            }
-        }
-
-        return maze[y][x] == 1;
-    }
 
     public boolean isEnemyValidMove(int x, int y) {
         if (x < 0 || x >= GameConstants.MAZE_WIDTH ||
@@ -946,18 +954,27 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
         for (Enemy enemy : enemies) {
             if (enemy == null || enemy.isDead()) continue;
 
-            // 更精确的碰撞检测（使用网格坐标）
             if (player.getX() == enemy.getX() &&
                     player.getY() == enemy.getY()) {
 
-                // 获取敌人的碰撞伤害
+                // ===== Dash 撞击敌人 =====
+                if (player.isDashing() && !enemy.isHitByDash()) {
+
+                    int dashDamage = 25; // 你可以后面抽成常量 / Ability 参数
+                    enemy.takeDamage(dashDamage);
+                    enemy.markHitByDash();
+
+                    Logger.gameEvent(
+                            "Enemy hit by DASH at (" +
+                                    enemy.getX() + ", " + enemy.getY() + ")"
+                    );
+
+                    continue; // ❗ 不再反伤玩家
+                }
+
+                // ===== 普通撞敌 =====
                 int damage = enemy.getCollisionDamage();
-
-                // 对玩家造成伤害
                 player.takeDamage(damage);
-
-                // 添加击退效果（可选）
-//                applyKnockbackFromEnemy(enemy);
 
                 Logger.gameEvent(
                         "Player hit by enemy at (" +
@@ -965,10 +982,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
                                 ") for " + damage + " damage"
                 );
 
-                break; // 一次只处理一个敌人的碰撞
+                break;
             }
         }
     }
+
 
     public void setMaze(int[][] qteMaze) {
         Logger.debug("GameManager.setMaze() - using fixed QTE maze");

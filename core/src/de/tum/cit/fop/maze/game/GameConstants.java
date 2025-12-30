@@ -12,21 +12,23 @@ public class GameConstants {
 
     //奔跑参数在这里
     public static final float MOVE_DELAY_NORMAL = 0.1f;
-    public static final float MOVE_DELAY_FAST = 0.05f;
+    public static final float MOVE_DELAY_FAST = 0.1f;
 
     //enemy数量在这里
 
-    public static final int ENEMY_E01_PEARL_COUNT = 2;
-    public static final int ENEMY_E02_COFFEE_BEAN_COUNT = 2;
-    public static final int ENEMY_E03_CARAMEL_COUNT = 2;
+    public static final int ENEMY_E01_PEARL_COUNT = 10;
+    public static final int ENEMY_E02_COFFEE_BEAN_COUNT = 10;
+    public static final int ENEMY_E03_CARAMEL_COUNT = 0;
 
 // ===== Trap 精确数量（调试用） =====
 // 各类型陷阱精确数量
-    public static final int TRAP_T01_GEYSER_COUNT = 70;
-    public static final int TRAP_T02_PEARL_MINE_COUNT = 30;
-    public static final int TRAP_T03_TEA_SHARDS_COUNT = 20;
+    public static final int TRAP_T01_GEYSER_COUNT = 0;
+    public static final int TRAP_T02_PEARL_MINE_COUNT = 0;
+    public static final int TRAP_T03_TEA_SHARDS_COUNT = 0;
     // 泥潭总格子数（不是块数）
-    public static final int TRAP_T04_MUD_COUNT = 50;
+    public static final int TRAP_T04_MUD_COUNT = 0;
+
+    //test 攻击
     public static final boolean DEBUG_MODE = false;
 
 
@@ -62,7 +64,7 @@ public class GameConstants {
     public static final Color LOCKED_DOOR_COLOR = Color.RED;
 
     // 游戏相关
-    public static final int INITIAL_PLAYER_LIVES = 40;
+    public static final int INITIAL_PLAYER_LIVES = 1140;
     public static final Color HEART_COLOR = Color.RED;
 
     // 游戏事件

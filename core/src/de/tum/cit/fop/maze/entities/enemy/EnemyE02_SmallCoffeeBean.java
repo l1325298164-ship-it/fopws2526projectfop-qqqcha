@@ -28,16 +28,14 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
     }
     @Override
     public void takeDamage(int dmg) {
-        // 咖啡豆敌人可能有特殊减伤
         int actualDamage = dmg;
-//        if (MathUtils.random() < 0.2f) { // 20%概率格挡
-//            actualDamage = dmg / 2;
-//            Logger.debug("SmallCoffeeBean blocked half damage!");
-//        }
 
-        hp -= actualDamage;
-        // ... 其他通用处理
+        // 你可以在这里改伤害
+        // actualDamage = dmg / 2;
+
+        super.takeDamage(actualDamage); // ⭐ 关键
     }
+
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
 

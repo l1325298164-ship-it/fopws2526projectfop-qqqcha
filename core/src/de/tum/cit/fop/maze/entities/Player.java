@@ -36,7 +36,7 @@ public class Player extends GameObject {
     private AbilityManager abilityManager;
 
     // ===== Mana =====
-    private int mana = 100;
+    private int mana = 100000;
     private int maxMana = 100;
     private float manaRegenRate = 5.0f;
 
@@ -53,9 +53,33 @@ public class Player extends GameObject {
     public static final float DASH_DURATION = 0.8f;
     public static final float DASH_SPEED_MULTIPLIER = 0.4f; // delay * 0.4 = 更快
 
-    public void useMana(int manaCost) {
+    public boolean useMana(int manaCost) {
+        if (mana < manaCost) {
+            return false;
+        }
+        mana -= manaCost;
+        return true;
     }
 
+    public void useAbility(int slot) {
+        if (isDead() || abilityManager == null) return;
+
+        Logger.debug("Player.useAbility(" + slot + ") called");
+
+        // 🔥 直接调用 AbilityManager.activateSlot
+        boolean success = abilityManager.activateSlot(slot);
+
+        if (success) {
+            Logger.debug("Ability activation successful");
+        } else {
+            Logger.debug("Ability activation failed");
+        }
+    }
+    private boolean dashJustEnded = false;
+
+    public boolean didDashJustEnd() {
+        return dashJustEnded;
+    }
 
 
     /* ======================================================= */
@@ -126,6 +150,7 @@ public class Player extends GameObject {
             if (dashInvincibleTimer >= DASH_DURATION) {
                 dashInvincible = false;
                 dashInvincibleTimer = 0f;
+                dashJustEnded = true;
             }
         }
 
@@ -163,6 +188,8 @@ public class Player extends GameObject {
 
         // ===== Ability =====
         abilityManager.update(delta);
+
+        dashJustEnded = false;
     }
 
     /* ====================== DASH API（给 Ability 调）====================== */
@@ -209,6 +236,17 @@ public class Player extends GameObject {
         Logger.debug("Player moved to " + getPositionString());
     }
 
+
+    /* ====================== 状态效果 ====================== */
+
+    /**
+     * 对玩家施加减速效果
+     * 不叠加倍率，但会刷新持续时间
+     */
+    public void applySlow(float duration) {
+        slowed = true;
+        slowTimer = Math.max(slowTimer, duration);
+    }
     /* ====================== 受伤 ====================== */
 
     public void takeDamage(int damage) {
@@ -275,7 +313,12 @@ public class Player extends GameObject {
     public int getMana() {
         return mana;
     }
-
+    public boolean isMoving() {
+        return moving;
+    }
+    public boolean isDashing() {
+        return dashInvincible; // 现在 Dash 的唯一真状态
+    }
     public String getPositionString() {
         return "(" + x + ", " + y + ")";
     }
@@ -301,7 +344,6 @@ public class Player extends GameObject {
 
         // ===== 移动状态 =====
         this.moving = false;
-        this.isMoving = false;
         this.moveTimer = 0f;
 
         // ===== 资源 =====

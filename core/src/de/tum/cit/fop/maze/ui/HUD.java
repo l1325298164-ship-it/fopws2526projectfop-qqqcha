@@ -9,6 +9,8 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
+import de.tum.cit.fop.maze.abilities.Ability;
+import de.tum.cit.fop.maze.abilities.DashAbility;
 import de.tum.cit.fop.maze.entities.Compass;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -43,6 +45,16 @@ public class HUD {
 
     private static final int DASH_MAX_CHARGES = 2;
 
+    // ===== Mana UI =====
+    private ShapeRenderer shapeRenderer;
+
+    private static final int MANA_BAR_WIDTH = 180;
+    private static final int MANA_BAR_HEIGHT = 18;
+
+    private static final int MANA_UI_MARGIN_X = 20;
+    private static final int MANA_UI_MARGIN_Y = 100; // 在 Dash 图标上方
+
+
 
     // UI 尺寸
     private static final int DASH_ICON_SIZE = 64;
@@ -62,6 +74,7 @@ public class HUD {
         this.textureManager = TextureManager.getInstance();
         Logger.debug("HUD initialized with compass support");
         this.uiBatchForCompass = new SpriteBatch();
+        this.shapeRenderer = new ShapeRenderer();
 
         heartFull = new Texture("HUD/live_000.png");
         heartHalf = new Texture("HUD/live_001.png");
@@ -112,16 +125,76 @@ public class HUD {
             // 7. 技能图标
             renderDashIcon(uiBatch);
 
+
         } catch (Exception e) {
             Logger.error("Error rendering in-game UI", e);
         }
     }
 
+    public void renderManaBar() {
+        if (gameManager == null || gameManager.getPlayer() == null) return;
+
+        var player = gameManager.getPlayer();
+
+        float mana = player.getMana();
+        float maxMana = 100f; // 如果以后做升级，可以改成 getter
+        float percent = mana / maxMana;
+
+        float x = MANA_UI_MARGIN_X;
+        float y = MANA_UI_MARGIN_Y;
+
+        shapeRenderer.setProjectionMatrix(
+                new Matrix4().setToOrtho2D(
+                        0, 0,
+                        Gdx.graphics.getWidth(),
+                        Gdx.graphics.getHeight()
+                )
+        );
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // 背景
+        shapeRenderer.setColor(0f, 0f, 0f, 0.6f);
+        shapeRenderer.rect(x, y, MANA_BAR_WIDTH, MANA_BAR_HEIGHT);
+
+        // Mana 填充
+        shapeRenderer.setColor(0.2f, 0.5f, 1f, 0.9f);
+        shapeRenderer.rect(
+                x,
+                y,
+                MANA_BAR_WIDTH * percent,
+                MANA_BAR_HEIGHT
+        );
+
+        shapeRenderer.end();
+
+        // 边框
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.rect(x, y, MANA_BAR_WIDTH, MANA_BAR_HEIGHT);
+        shapeRenderer.end();
+
+
+    }
+
+
     private void renderDashIcon(SpriteBatch uiBatch) {
 
-        float delta = Gdx.graphics.getDeltaTime();
+        DashAbility dash = null;
+        for (Ability a : gameManager.getPlayer()
+                .getAbilityManager()
+                .getAbilities()
+                .values()) {
+            if (a instanceof DashAbility d) {
+                dash = d;
+                break;
+            }
+        }
+        if (dash == null) return;
 
-      //TODO
+        int dashCharges = dash.getCurrentCharges();
+        int maxCharges = dash.getMaxCharges();
+        float progress = dash.getCooldownProgress();
 
         int startX = DASH_UI_MARGIN_X;
         int startY = DASH_UI_MARGIN_Y;
@@ -134,19 +207,17 @@ public class HUD {
 
             boolean available = i < dashCharges;
 
-            // ===== 图标 =====
-            if (available) {
-                uiBatch.setColor(1f, 1f, 1f, 1f);
-            } else {
-                // 变灰
-                uiBatch.setColor(0.3f, 0.3f, 0.3f, 1f);
-            }
+            uiBatch.setColor(
+                    available ? 1f : 0.3f,
+                    available ? 1f : 0.3f,
+                    available ? 1f : 0.3f,
+                    1f
+            );
 
             uiBatch.draw(dashIcon, x, y, DASH_ICON_SIZE, DASH_ICON_SIZE);
 
-            // ===== 冷却遮罩（最左侧那一格）=====
+            // 冷却遮罩（当前充能槽）
             if (!available && i == dashCharges) {
-                //TODO
                 float maskHeight = DASH_ICON_SIZE * (1f - progress);
 
                 uiBatch.setColor(0f, 0f, 0f, 0.6f);
@@ -346,6 +417,7 @@ public class HUD {
         if (uiBatchForCompass != null) uiBatchForCompass.dispose();
         if (heartFull != null) heartFull.dispose();
         if (heartHalf != null) heartHalf.dispose();
+        if (shapeRenderer != null) shapeRenderer.dispose();
 
         Logger.debug("HUD disposed");
     }
