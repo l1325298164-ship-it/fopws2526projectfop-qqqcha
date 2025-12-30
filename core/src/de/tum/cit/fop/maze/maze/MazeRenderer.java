@@ -318,6 +318,7 @@ public class MazeRenderer {
         return null;
     }
 
+
     // 获取单元格大小
     public float getCellSize() {
         return GameConstants.CELL_SIZE;
