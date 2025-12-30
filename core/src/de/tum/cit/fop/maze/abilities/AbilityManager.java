@@ -1,4 +1,3 @@
-// AbilityManager.java
 package de.tum.cit.fop.maze.abilities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -30,12 +29,12 @@ public class AbilityManager {
         // 初始能力：近战攻击
         MeleeAttackAbility meleeAttack = new MeleeAttackAbility();
         abilities.put("melee", meleeAttack);
-        abilitySlots[0] = meleeAttack; // 放在第一个槽位
+        abilitySlots[0] = meleeAttack;
 
-        // 可以在这里添加更多初始能力
-        // abilities.put("dash", new DashAbility());
-        // abilities.put("fireball", new FireballAbility());
-        // abilities.put("shield", new ShieldAbility());
+        // 冲刺能力
+        DashAbility dash = new DashAbility();
+        abilities.put("dash", dash);
+        abilitySlots[1] = dash;
     }
 
     public void update(float deltaTime) {
@@ -44,8 +43,13 @@ public class AbilityManager {
             ability.update(deltaTime);
         }
 
-        // 更新激活的能力
-        activeAbilities.removeIf(ability -> !ability.isActive());
+        // 更新激活的能力列表
+        activeAbilities.clear();
+        for (Ability ability : abilities.values()) {
+            if (ability.isActive()) {
+                activeAbilities.add(ability);
+            }
+        }
     }
 
     public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer) {
@@ -57,26 +61,22 @@ public class AbilityManager {
         }
     }
 
-    public boolean activateAbility(String abilityId) {
-        Ability ability = abilities.get(abilityId);
-        if (ability != null && ability.canActivate(player)) {
-            ability.activate(player, gameManager);
-            if (ability.isActive()) {
+    public boolean activateSlot(int slot) {
+        if (slot < 0 || slot >= abilitySlots.length) return false;
+
+        Ability ability = abilitySlots[slot];
+        if (ability == null) return false;
+
+        boolean activated = ability.tryActivate(player, gameManager);
+
+        // 如果激活成功，添加到 activeAbilities
+        if (activated && ability.isActive()) {
+            if (!activeAbilities.contains(ability)) {
                 activeAbilities.add(ability);
             }
-            return true;
         }
-        return false;
-    }
 
-    public boolean activateSlot(int slot) {
-        if (slot >= 0 && slot < abilitySlots.length) {
-            Ability ability = abilitySlots[slot];
-            if (ability != null) {
-                return activateAbility(getAbilityId(ability));
-            }
-        }
-        return false;
+        return activated;
     }
 
     private String getAbilityId(Ability ability) {
@@ -118,4 +118,30 @@ public class AbilityManager {
     public Map<String, Ability> getAbilities() { return abilities; }
     public Ability[] getAbilitySlots() { return abilitySlots; }
     public List<Ability> getActiveAbilities() { return activeAbilities; }
+
+    public void reset() {
+        for (Ability ability : abilities.values()) {
+            ability.forceReset();
+        }
+        activeAbilities.clear();
+    }
+
+    public void drawActiveAbilities(SpriteBatch batch,
+                                    ShapeRenderer shapeRenderer,
+                                    Player player) {
+        for (Ability ability : activeAbilities) {
+            ability.draw(batch, shapeRenderer, player);
+        }
+    }
+
+    public Ability getAbility(int slot) {
+        if (slot >= 0 && slot < abilitySlots.length) {
+            return abilitySlots[slot];
+        }
+        return null;
+    }
+
+    public void activateAbility(int slot, Player player) {
+        activateSlot(slot);
+    }
 }

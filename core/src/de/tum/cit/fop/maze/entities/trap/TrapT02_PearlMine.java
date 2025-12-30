@@ -29,6 +29,10 @@ public class TrapT02_PearlMine extends Trap {
         super(x, y);
         this.gm = gm;
     }
+    @Override
+    public boolean isPassable() {
+        return true;
+    }
 
     @Override
     public void update(float delta) {

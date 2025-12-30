@@ -299,6 +299,8 @@ public class GameScreen implements Screen {
         renderUI();
 
         handlePendingExit();
+
+
     }
 
     private void handlePendingExit() {
@@ -476,6 +478,7 @@ public class GameScreen implements Screen {
                             door.getX() * GameConstants.CELL_SIZE,
                             door.getY() * GameConstants.CELL_SIZE
                     );
+
                 }
 
             } else { // SHAPE
@@ -494,17 +497,77 @@ public class GameScreen implements Screen {
 
         }
 
-        if (spriteBatchActive) worldBatch.end();
-        if (shapeBatchActive) shapeRenderer.end();
+        // 🔥 3. 确保所有 batch 都正确结束
+        if (shapeBatchActive) {
+            shapeRenderer.end();
+            shapeBatchActive = false;
+        }
+        if (spriteBatchActive) {
+            worldBatch.end();
+            spriteBatchActive = false;
+        }
+
+        // 🔥 4. 渲染特效（必须在能力区域之前）
         worldBatch.begin();
         bobaBulletManager.render(worldBatch);
-
         keyEffectManager.render(worldBatch);
         portalEffectManager.renderFront(worldBatch);
         worldBatch.end();
+
+        // 🔥 5. 最后绘制能力调试信息（单独使用 shapeRenderer）
+        if (GameConstants.DEBUG_MODE) {
+            renderAbilityDebugInfo();
+        }
     }
 
+    // 🔥 修改：这个函数只使用 shapeRenderer
+    private void renderAbilityDebugInfo() {
+        if (!GameConstants.DEBUG_MODE) return;
 
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // 绘制能力攻击区域
+        gameManager.getPlayer()
+                .getAbilityManager()
+                .drawActiveAbilities(
+                        null,
+                        shapeRenderer,
+                        gameManager.getPlayer()
+                );
+
+        shapeRenderer.end();
+    }
+
+    private void renderDebugInfo() {
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // 1. 绘制能力攻击区域
+        gameManager.getPlayer()
+                .getAbilityManager()
+                .drawActiveAbilities(
+                        worldBatch,
+                        shapeRenderer,
+                        gameManager.getPlayer()
+                );
+
+
+
+        shapeRenderer.end();
+
+        // 3. 绘制攻击区域的边框（可选，更清晰）
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(1f, 1f, 0f, 1f);
+
+        gameManager.getPlayer()
+                .getAbilityManager()
+                .drawActiveAbilities(
+                        worldBatch,
+                        shapeRenderer,
+                        gameManager.getPlayer()
+                );
+
+        shapeRenderer.end();
+    }
 
     private void renderUI() {
         uiBatch.begin();
@@ -512,9 +575,28 @@ public class GameScreen implements Screen {
             hud.renderGameComplete(uiBatch);
         } else {
             hud.renderInGameUI(uiBatch);
+            renderInteractHint();
         }
         uiBatch.end();
+
+        hud.renderManaBar();
     }
+
+    private void renderInteractHint() {
+        if (!gameManager.canInteract()) return;
+
+        String text = "Press [F] to interact";
+
+        float screenWidth = Gdx.graphics.getWidth();
+        float screenHeight = Gdx.graphics.getHeight();
+
+        // 屏幕下方中间
+        float x = screenWidth / 2f - 80;
+        float y = 80;
+
+        font.draw(uiBatch, text, x, y);
+    }
+
 
     /* ================= 收集渲染对象 ================= */
 
@@ -603,17 +685,47 @@ public class GameScreen implements Screen {
     /* ================= 输入 ================= */
 
     private void handleInput(float delta) {
+
+        // ===== 1. 输入系统（一帧只进一次）=====
+        inputHandler.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+
+            @Override
+            public void onMoveInput(int dx, int dy) {
+                gameManager.onMoveInput(dx, dy);
+            }
+
+            @Override
+            public float getMoveDelayMultiplier() {
+                return gameManager.getPlayer().getMoveDelayMultiplier();
+            }
+
+            @Override
+            public boolean onAbilityInput(int slot) {
+                return gameManager
+                        .getPlayer()
+                        .getAbilityManager()
+                        .activateSlot(slot);
+            }
+
+            @Override
+            public void onInteractInput() {
+                gameManager.onInteractInput();
+            }
+
+            @Override
+            public void onMenuInput() {
+                AudioManager.getInstance().playUIClick();
+                pendingExitToMenu = true;
+            }
+        });
+
+        // ===== 2. Portal 状态拦截 =====
         if (waitingForPortal) {
             stopMoveSoundIfNeeded();
             return;
         }
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            AudioManager.getInstance().playUIClick();
-            pendingExitToMenu = true;
-            return;
-        }
-
+        // ===== 3. 全局快捷键 =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             AudioManager.getInstance().playUIClick();
             restartGame();
@@ -621,11 +733,8 @@ public class GameScreen implements Screen {
         }
 
         handleTextureModeSwitch();
-        handlePlayerMovement(delta);
     }
 
-    private void handlePlayerMovement(float delta) {
-        Player player = gameManager.getPlayer();
 
         inputHandler.update(delta, new PlayerInputHandler.InputHandlerCallback() {
 
