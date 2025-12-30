@@ -62,7 +62,7 @@ public class GameConstants {
     public static final Color LOCKED_DOOR_COLOR = Color.RED;
 
     // 游戏相关
-    public static final int INITIAL_PLAYER_LIVES = 99999;
+    public static final int INITIAL_PLAYER_LIVES = 40;
     public static final Color HEART_COLOR = Color.RED;
 
     // 游戏事件
