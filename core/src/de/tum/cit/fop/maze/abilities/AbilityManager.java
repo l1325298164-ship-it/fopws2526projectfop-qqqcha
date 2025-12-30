@@ -30,13 +30,14 @@ public class AbilityManager {
         // 初始能力：近战攻击
         MeleeAttackAbility meleeAttack = new MeleeAttackAbility();
         abilities.put("melee", meleeAttack);
-        abilitySlots[0] = meleeAttack; // 放在第一个槽位
+        abilitySlots[0] = meleeAttack;
 
-        // 可以在这里添加更多初始能力
-        // abilities.put("dash", new DashAbility());
-        // abilities.put("fireball", new FireballAbility());
-        // abilities.put("shield", new ShieldAbility());
+        // 冲刺能力
+        DashAbility dash = new DashAbility();
+        abilities.put("dash", dash);
+        abilitySlots[1] = dash;
     }
+
 
     public void update(float deltaTime) {
         // 更新所有能力

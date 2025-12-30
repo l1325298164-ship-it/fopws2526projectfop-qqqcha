@@ -279,6 +279,11 @@ public class MeleeAttackAbility extends Ability {
     }
 
     @Override
+    protected void onActivate(Player player, GameManager gameManager) {
+
+    }
+
+    @Override
     public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player) {
         if (!isAttacking) return;
 

@@ -439,17 +439,62 @@ public class GameScreen implements Screen {
     /* ================= 输入 ================= */
 
     private void handleInput(float delta) {
+
+        // ===== 1. 输入系统（一帧只进一次）=====
+        inputHandler.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+
+            @Override
+            public void onMoveInput(int dx, int dy) {
+                Player player = gameManager.getPlayer();
+
+                int nx = player.getX() + dx;
+                int ny = player.getY() + dy;
+
+                if (gameManager.isValidMove(nx, ny)) {
+                    player.move(dx, dy);
+
+                    // 移动音效
+                    if (!isPlayerMoving) {
+                        AudioManager.getInstance().play(AudioType.PLAYER_MOVE);
+                        isPlayerMoving = true;
+                    }
+                } else {
+                    AudioManager.getInstance().play(AudioType.PLAYER_HIT_WALL);
+                }
+            }
+
+            @Override
+            public float getMoveDelayMultiplier() {
+                return gameManager.getPlayer().getMoveDelayMultiplier();
+            }
+
+            @Override
+            public boolean onAbilityInput(int slot) {
+                return gameManager
+                        .getPlayer()
+                        .getAbilityManager()
+                        .activateSlot(slot);
+            }
+
+            @Override
+            public void onInteractInput() {
+                // 预留：开门 / 对话 / 互动
+            }
+
+            @Override
+            public void onMenuInput() {
+                AudioManager.getInstance().playUIClick();
+                pendingExitToMenu = true;
+            }
+        });
+
+        // ===== 2. Portal 状态拦截 =====
         if (waitingForPortal) {
             stopMoveSoundIfNeeded();
             return;
         }
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            AudioManager.getInstance().playUIClick();
-            pendingExitToMenu = true;
-            return;
-        }
-
+        // ===== 3. 全局快捷键 =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             AudioManager.getInstance().playUIClick();
             restartGame();
@@ -457,53 +502,9 @@ public class GameScreen implements Screen {
         }
 
         handleTextureModeSwitch();
-        handlePlayerMovement(delta);
     }
 
-    private void handlePlayerMovement(float delta) {
-        Player player = gameManager.getPlayer();
 
-        inputHandler.update(delta, new PlayerInputHandler.InputHandlerCallback() {
-
-            @Override
-            public void onMoveInput(int dx, int dy) {
-                int nx = player.getX() + dx;
-                int ny = player.getY() + dy;
-
-                if (gameManager.isValidMove(nx, ny)) {
-                    player.move(dx, dy);
-
-                    // 🔥 播放移动音效（单次触发，持续由 render 控制）
-                    if (!isPlayerMoving) {
-                        AudioManager.getInstance().play(AudioType.PLAYER_MOVE);
-                    }
-                } else {
-                    // 🔥 撞墙音效
-                    AudioManager.getInstance().play(AudioType.PLAYER_HIT_WALL);
-                }
-            }
-
-            @Override
-            public float getMoveDelayMultiplier() {
-                return player.getMoveDelayMultiplier();
-            }
-
-            @Override
-            public boolean onAbilityInput(int slot) {
-                return false;
-            }
-
-            @Override
-            public void onInteractInput() {
-
-            }
-
-            @Override
-            public void onMenuInput() {
-
-            }
-        });
-    }
 
 
     //for test
