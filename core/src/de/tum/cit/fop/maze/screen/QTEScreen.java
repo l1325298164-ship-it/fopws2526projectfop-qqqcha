@@ -19,16 +19,14 @@ import de.tum.cit.fop.maze.qte.QTEMazeData;
 import de.tum.cit.fop.maze.qte.QTEMazeRenderer;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
+import de.tum.cit.fop.maze.qte.QTEResult;
 
 /**
  * QTE Screen（MazeRenderer + 独立 Camera）
  */
 public class QTEScreen implements Screen {
 
-    public enum QTEResult {
-        SUCCESS,
-        FAIL
-    }
+
 
     private QTEResult result = null;
     //成功失败判定时间
@@ -54,6 +52,7 @@ public class QTEScreen implements Screen {
     // =========================
     private BitmapFont countdownFont;
     private GlyphLayout countdownLayout = new GlyphLayout();
+
 
     // =========================
     // Maze Renderer
