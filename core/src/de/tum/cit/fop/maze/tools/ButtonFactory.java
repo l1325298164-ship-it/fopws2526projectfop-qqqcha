@@ -292,7 +292,6 @@ public class ButtonFactory {
                     if (playSuccessSound) {
                         audioManager.playSound(successSound.name(), 0.8f);
                     }
-
                     // ❌ 移除延迟执行，改为立即执行
                     // button.addAction(Actions.sequence(
                     //     Actions.delay(clickUpDuration * 0.3f),
