@@ -7,7 +7,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.qte.QTEResult;
 import de.tum.cit.fop.maze.screen.*;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -117,31 +116,30 @@ public class MazeRunnerGame extends Game {
 
     @Override
     public void create() {
+
         spriteBatch = new SpriteBatch();
 
-        // 1️⃣ 先加载 atlas
+        // ✅ 先加载 atlas
         TextureAtlas uiAtlas =
                 new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
 
-        // 2️⃣ 用 atlas + json 直接构造 Skin
+        // ✅ 把 atlas 注册进 Skin，再解析 json
         skin = new Skin(
                 Gdx.files.internal("ui/skinbutton.json"),
                 uiAtlas
         );
+
         gameManager = new GameManager();
+        System.out.println("FONT = " + skin.getFont("default-font"));
+
 
         initializeSoundManager();
-    goToMenu();
-//        gotoTest();
+        goToMenu();
     }
 
-//    //Delete
-//public void gotoTest(){
-//        Screen old = getScreen();
-//        setScreen(new QTEScreen2(this,gameManager));
-//    if (old != null) old.dispose();
-//    audioManager.stopAll();
-//}
+
+
+
     public void goToPV() {
         Screen old = getScreen();
 
@@ -261,7 +259,7 @@ public class MazeRunnerGame extends Game {
         return gameManager;
     }
 
-    public void onQTEFinished(QTEResult result) {
+    public void onQTEFinished(QTEScreen.QTEResult result) {
         Screen old = getScreen();
 
         switch (stage) {
@@ -270,7 +268,7 @@ public class MazeRunnerGame extends Game {
             // QTE1 结果
             // =====================
             case QTE1 -> {
-                if (result == QTEResult.SUCCESS) {
+                if (result == QTEScreen.QTEResult.SUCCESS) {
                     stage = StoryStage.PV2_SUCCESS;
                     setScreen(new IntroScreen(
                             this,
@@ -292,7 +290,7 @@ public class MazeRunnerGame extends Game {
             // QTE2 结果
             // =====================
             case QTE2 -> {
-                if (result == QTEResult.SUCCESS) {
+                if (result == QTEScreen.QTEResult.SUCCESS) {
                     stage = StoryStage.PV3_SUCCESS;
                     setScreen(new IntroScreen(
                             this,
