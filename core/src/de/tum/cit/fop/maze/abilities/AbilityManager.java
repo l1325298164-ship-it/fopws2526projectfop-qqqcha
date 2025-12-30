@@ -1,4 +1,3 @@
-// AbilityManager.java
 package de.tum.cit.fop.maze.abilities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -38,15 +37,19 @@ public class AbilityManager {
         abilitySlots[1] = dash;
     }
 
-
     public void update(float deltaTime) {
         // 更新所有能力
         for (Ability ability : abilities.values()) {
             ability.update(deltaTime);
         }
 
-        // 更新激活的能力
-        activeAbilities.removeIf(ability -> !ability.isActive());
+        // 更新激活的能力列表
+        activeAbilities.clear();
+        for (Ability ability : abilities.values()) {
+            if (ability.isActive()) {
+                activeAbilities.add(ability);
+            }
+        }
     }
 
     public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer) {
@@ -58,15 +61,22 @@ public class AbilityManager {
         }
     }
 
-
-
     public boolean activateSlot(int slot) {
         if (slot < 0 || slot >= abilitySlots.length) return false;
 
         Ability ability = abilitySlots[slot];
         if (ability == null) return false;
 
-        return ability.tryActivate(player, gameManager);
+        boolean activated = ability.tryActivate(player, gameManager);
+
+        // 如果激活成功，添加到 activeAbilities
+        if (activated && ability.isActive()) {
+            if (!activeAbilities.contains(ability)) {
+                activeAbilities.add(ability);
+            }
+        }
+
+        return activated;
     }
 
     private String getAbilityId(Ability ability) {
@@ -116,4 +126,22 @@ public class AbilityManager {
         activeAbilities.clear();
     }
 
+    public void drawActiveAbilities(SpriteBatch batch,
+                                    ShapeRenderer shapeRenderer,
+                                    Player player) {
+        for (Ability ability : activeAbilities) {
+            ability.draw(batch, shapeRenderer, player);
+        }
+    }
+
+    public Ability getAbility(int slot) {
+        if (slot >= 0 && slot < abilitySlots.length) {
+            return abilitySlots[slot];
+        }
+        return null;
+    }
+
+    public void activateAbility(int slot, Player player) {
+        activateSlot(slot);
+    }
 }

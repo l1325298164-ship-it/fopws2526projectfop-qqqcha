@@ -57,12 +57,27 @@ public class DashAbility extends Ability {
 
     @Override
     protected void onUpgrade() {}
+    // ===== Dash UI 用 Getter =====
 
-    public int getCharges() { return charges; }
+    /** 当前可用冲刺次数 */
+    public int getCurrentCharges() {
+        return charges;
+    }
 
-    public int getMaxCharges() { return MAX_CHARGES; }
+    /** 最大冲刺次数 */
+    public int getMaxCharges() {
+        return MAX_CHARGES;
+    }
 
+    /**
+     * 当前正在充能的那一格的进度（0~1）
+     * 如果已经满充能，直接返回 1
+     */
     public float getChargeProgress() {
+        if (charges >= MAX_CHARGES) {
+            return 1f;
+        }
         return chargeTimer / CHARGE_COOLDOWN;
     }
+
 }

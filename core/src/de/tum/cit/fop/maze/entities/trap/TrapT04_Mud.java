@@ -19,6 +19,10 @@ public class TrapT04_Mud extends Trap {
     public void update(float delta) {
         // 泥潭是“被动型”，不需要每帧更新
     }
+    @Override
+    public boolean isPassable() {
+        return true;
+    }
 
     @Override
     public void onPlayerStep(Player player) {

@@ -59,7 +59,20 @@ public abstract class Enemy extends GameObject {
     protected boolean isHitFlash = false;
     protected float hitFlashTimer = 0f;
     protected static final float HIT_FLASH_TIME = 0.25f;
+    //dash 相关
+    private boolean hitByDash = false;
 
+    public boolean isHitByDash() {
+        return hitByDash;
+    }
+
+    public void markHitByDash() {
+        hitByDash = true;
+    }
+
+    public void resetDashHit() {
+        hitByDash = false;
+    }
     /* ================= 方向（只允许上下左右） ================= */
 
     protected static final int[][] CARDINAL_DIRS = {

@@ -17,7 +17,10 @@ public class TrapT01_Geyser extends Trap {
         WARNING,
         ERUPTING
     }
-
+    @Override
+    public boolean isPassable() {
+        return true;
+    }
     private State state = State.IDLE;
 
     private float timer = 0f;

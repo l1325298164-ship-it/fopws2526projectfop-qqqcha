@@ -120,4 +120,11 @@ public abstract class Ability {
         cooldownTimer = 0f;
         durationTimer = 0f;
     }
+
+    public int getManaCost() { return manaCost; }
+
+    // 可能还需要这些
+    public String getDescription() { return description; }
+    public float getCooldown() { return cooldown; }
+    public float getDuration() { return duration; }
 }

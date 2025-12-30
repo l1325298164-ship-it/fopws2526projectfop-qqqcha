@@ -1,4 +1,3 @@
-// MeleeAttackAbility.java
 package de.tum.cit.fop.maze.abilities;
 
 import com.badlogic.gdx.graphics.Color;
@@ -13,12 +12,14 @@ import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MeleeAttackAbility extends Ability {
 
     /* ===== 数值 ===== */
-    private int baseDamage = 2;
+    private int baseDamage = 5;
     private int damagePerLevel = 1;
 
     /* ===== 攻击区域 ===== */
@@ -44,7 +45,6 @@ public class MeleeAttackAbility extends Ability {
 
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
-
         // 1️⃣ 计算攻击区域
         calculateAttackTiles(player);
 
@@ -52,9 +52,7 @@ public class MeleeAttackAbility extends Ability {
         dealDamage(gameManager);
 
         // 3️⃣ 播放音效
-        AudioManager.getInstance().play(AudioType.SWORD_SWING);
-
-        Logger.debug("Melee activated, tiles=" + attackTiles.size());
+        AudioManager.getInstance().play(AudioType.UI_CLICK);
     }
 
     @Override
@@ -120,22 +118,18 @@ public class MeleeAttackAbility extends Ability {
         }
     }
 
+    // 防止一次攻击多次伤害同一个对象
     private void dealDamage(GameManager gameManager) {
         int damage = baseDamage + (level - 1) * damagePerLevel;
-        int hitCount = 0;
+
+        Set<Enemy> hitEnemies = new HashSet<>();
 
         for (int[] tile : attackTiles) {
-            List<Enemy> enemies = gameManager.getEnemiesAt(tile[0], tile[1]);
-            for (Enemy enemy : enemies) {
-                if (enemy != null && !enemy.isDead()) {
+            for (Enemy enemy : gameManager.getEnemiesAt(tile[0], tile[1])) {
+                if (enemy != null && !enemy.isDead() && hitEnemies.add(enemy)) {
                     enemy.takeDamage(damage);
-                    hitCount++;
                 }
             }
-        }
-
-        if (hitCount > 0) {
-            Logger.gameEvent("Melee hit " + hitCount + " enemies");
         }
     }
 
@@ -145,10 +139,8 @@ public class MeleeAttackAbility extends Ability {
 
     @Override
     public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player) {
-
         if (!GameConstants.DEBUG_MODE) return;
 
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(DEBUG_COLOR);
 
         for (int[] tile : attackTiles) {
@@ -159,8 +151,6 @@ public class MeleeAttackAbility extends Ability {
                     GameConstants.CELL_SIZE
             );
         }
-
-        shapeRenderer.end();
     }
 
     /* ================================================= */
@@ -169,15 +159,14 @@ public class MeleeAttackAbility extends Ability {
 
     @Override
     protected void onUpgrade() {
-
         // 2级：冷却减少
         if (level == 2) {
-            Logger.debug("Melee cooldown reduced");
+            // 冷却减少逻辑
         }
 
         // 3级：范围已经生效（前方第二格）
         if (level == 3) {
-            Logger.debug("Melee range increased");
+            // 范围增加逻辑
         }
 
         // 4级：基础伤害提高
@@ -187,7 +176,7 @@ public class MeleeAttackAbility extends Ability {
 
         // 5级：你可以在这里解锁新形态
         if (level == 5) {
-            Logger.debug("Melee reached max level");
+            // 最大等级效果
         }
     }
 }

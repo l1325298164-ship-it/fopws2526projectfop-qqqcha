@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.game.GameConstants;
+import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
@@ -37,13 +38,10 @@ public class ExitDoor extends GameObject {
     public void onInteract(Player player) {
         if (locked) {
             if (player.hasKey()) {
-                unlock();
-                Logger.gameEvent("门已解锁");
+                Logger.gameEvent("尝试解锁门");
             } else {
                 Logger.gameEvent("门被锁住了，需要钥匙");
             }
-        } else {
-            Logger.gameEvent("门已解锁，可以直接通过");
         }
     }
 
@@ -71,9 +69,10 @@ public class ExitDoor extends GameObject {
     /**
      * 解锁门
      */
-    public void unlock() {
+    public void unlock(GameManager gm) {
         this.locked = false;
         updateTexture();
+        gm.openMazeCell(x, y);
         Logger.gameEvent("ExitDoor " + doorId + " unlocked at " + getPositionString());
     }
 
