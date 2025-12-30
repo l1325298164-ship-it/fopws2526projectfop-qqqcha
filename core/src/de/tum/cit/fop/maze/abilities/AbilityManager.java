@@ -58,26 +58,15 @@ public class AbilityManager {
         }
     }
 
-    public boolean activateAbility(String abilityId) {
-        Ability ability = abilities.get(abilityId);
-        if (ability != null && ability.canActivate(player)) {
-            ability.activate(player, gameManager);
-            if (ability.isActive()) {
-                activeAbilities.add(ability);
-            }
-            return true;
-        }
-        return false;
-    }
+
 
     public boolean activateSlot(int slot) {
-        if (slot >= 0 && slot < abilitySlots.length) {
-            Ability ability = abilitySlots[slot];
-            if (ability != null) {
-                return activateAbility(getAbilityId(ability));
-            }
-        }
-        return false;
+        if (slot < 0 || slot >= abilitySlots.length) return false;
+
+        Ability ability = abilitySlots[slot];
+        if (ability == null) return false;
+
+        return ability.tryActivate(player, gameManager);
     }
 
     private String getAbilityId(Ability ability) {
@@ -119,4 +108,12 @@ public class AbilityManager {
     public Map<String, Ability> getAbilities() { return abilities; }
     public Ability[] getAbilitySlots() { return abilitySlots; }
     public List<Ability> getActiveAbilities() { return activeAbilities; }
+
+    public void reset() {
+        for (Ability ability : abilities.values()) {
+            ability.forceReset();
+        }
+        activeAbilities.clear();
+    }
+
 }

@@ -279,4 +279,42 @@ public class Player extends GameObject {
     public String getPositionString() {
         return "(" + x + ", " + y + ")";
     }
+    public Direction getDirection() {
+        return direction;
+    }
+
+
+    public void reset() {
+        // ===== 基础状态 =====
+        this.lives = GameConstants.INITIAL_PLAYER_LIVES;
+        this.isDead = false;
+
+        // ===== 无敌 / Dash Buff =====
+        this.isInvincible = false;
+        this.invincibleTimer = 0f;
+
+        this.dashInvincible = false;
+        this.dashInvincibleTimer = 0f;
+
+        this.dashSpeedBoost = false;
+        this.dashSpeedTimer = 0f;
+
+        // ===== 移动状态 =====
+        this.moving = false;
+        this.isMoving = false;
+        this.moveTimer = 0f;
+
+        // ===== 资源 =====
+        this.mana = maxMana;
+        this.hasKey = false;
+
+        // ===== 能力系统 =====
+        if (abilityManager != null) {
+            abilityManager.reset();
+        }
+
+        Logger.debug("Player reset complete");
+    }
+
+
 }

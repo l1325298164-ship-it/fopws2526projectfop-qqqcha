@@ -56,49 +56,51 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
 
     public GameManager() {
         Logger.debug("GameManager initialized");
+
         exitDoors = new ArrayList<>();
         traps = new ArrayList<>();
-        inputHandler = new PlayerInputHandler(); // 初始化输入处理器
-        initializeGame();
+        enemies = new ArrayList<>();
+        bullets = new ArrayList<>();
 
+        inputHandler = new PlayerInputHandler();
+
+        initNewGame();
     }
 
-    private void initializeGame() {
-        Logger.debug("初始化游戏...");
-        // 清空之前的出口
-        exitDoors.clear();
-        traps.clear();
-        enemies.clear();
-        bullets.clear();
-
-
-        // 生成迷宫
-
+    private void initNewGame() {
         mazeGenerator = new MazeGenerator();
         maze = mazeGenerator.generateMaze();
 
-        // 生成玩家位置
-        int[] randomPos = findRandomPathPosition();
-        startX = randomPos[0];
-        startY = randomPos[1];
+        currentLevel = 1;
+        gameState = GameState.PLAYING;
+        isGameComplete = false;
+        keyCollected = false;
+        compassActive = false;
+        isPaused = false;
+
+        exitDoors.clear();
+        enemies.clear();
+        traps.clear();
+        bullets.clear();
+        key = null;
+        compass = null;
+
+        int[] pos = findRandomPathPosition();
+        startX = pos[0];
+        startY = pos[1];
 
         if (player == null) {
-            player = new Player(startX, startY,this);
+            player = new Player(startX, startY, this);
         } else {
+            player.reset();
             player.setPosition(startX, startY);
-            player.reset(); // 重置玩家状态
         }
 
-        Logger.debug("Player spawned at (" + startX + ", " + startY + ")");
-
-        // 生成游戏元素
         generateLevelElements();
 
-        // 打印迷宫用于调试
-        if (Logger.isDebugEnabled()) {
-            mazeGenerator.printMazeForDebug(maze);
-        }
+        Logger.debug("New game initialized");
     }
+
 
     // ========== 输入回调实现 ==========
 
@@ -682,35 +684,29 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
     }
 
     private void initializeLevel() {
-        // 清空出口列表
-        exitDoors.clear();
-        traps.clear();   // ⭐ 必须
-
-        // 🔥【新增】清空旧敌人和子弹
-        enemies.clear();
-        bullets.clear();
-
-        // 重新生成迷宫和物品
         maze = mazeGenerator.generateMaze();
 
-        // 生成玩家
-        int[] randomPos = findRandomPathPosition();
-        startX = randomPos[0];
-        startY = randomPos[1];
-        player.setPosition(startX, startY);
-        player.setHasKey(false);
-        player.reset();
-        Logger.debug("Level " + currentLevel + ": Player spawned at (" +
-                startX + ", " + startY + ")");
+        exitDoors.clear();
+        enemies.clear();
+        traps.clear();
+        bullets.clear();
+        key = null;
+        compass = null;
 
-        // 重新生成游戏元素
+        int[] pos = findRandomPathPosition();
+        startX = pos[0];
+        startY = pos[1];
+
+        player.reset();
+        player.setPosition(startX, startY);
+
         generateLevelElements();
 
         currentLevel++;
 
-
         Logger.gameEvent("Level " + currentLevel + " started");
     }
+
     public void update(float deltaTime) {
         inputHandler.update(deltaTime, this);
 
@@ -818,25 +814,19 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
 
     private void checkExit() {
         for (ExitDoor exitDoor : exitDoors) {
-            if (player.collidesWith(exitDoor)) {
-                if (!exitDoor.isLocked()) {
-                    // 通过出口
-                    if (currentLevel < GameConstants.MAX_LEVELS) {
-                        // 进入下一关
-                        initializeLevel();
-                    } else {
-                        // 游戏通关
-                        gameState = GameState.LEVEL_COMPLETE;
-                        isGameComplete = true;
-                        Logger.gameEvent("Game completed!");
-                    }
-                    return;
+            if (player.collidesWith(exitDoor) && !exitDoor.isLocked()) {
+
+                if (currentLevel < GameConstants.MAX_LEVELS) {
+                    initializeLevel();
                 } else {
-                    Logger.gameEvent("Exit door is locked, need key");
+                    gameState = GameState.LEVEL_COMPLETE;
+                    isGameComplete = true;
                 }
+                return;
             }
         }
     }
+
 
     // 新增方法：供 GameScreen 在动画播放完毕后调用
     public void completeLevelTransition() {
@@ -1058,16 +1048,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
         return enemiesAtPosition;
     }
     public void resetGame() {
-        Logger.debug("GameManager 重置游戏状态");
-        if (mazeGenerator == null) {
-            mazeGenerator = new MazeGenerator();
-        }
+        Logger.debug("Resetting game");
+
         maze = mazeGenerator.generateMaze();
 
         currentLevel = 1;
         gameState = GameState.PLAYING;
         isGameComplete = false;
-        gameCompleteTime = 0;
         keyCollected = false;
         compassActive = false;
         isPaused = false;
@@ -1079,21 +1066,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
         key = null;
         compass = null;
 
-        int[] randomPos = findRandomPathPosition();
-        startX = randomPos[0];
-        startY = randomPos[1];
+        int[] pos = findRandomPathPosition();
+        startX = pos[0];
+        startY = pos[1];
 
-        if (player == null) {
-            player = new Player(startX, startY, this);
-        } else {
-            player.reset();
-            player.setPosition(startX, startY);
-            player.setHasKey(false);
-        }
+        player.reset();
+        player.setPosition(startX, startY);
 
         generateLevelElements();
-        Logger.debug("游戏状态已重置");
     }
+
 
 
 
