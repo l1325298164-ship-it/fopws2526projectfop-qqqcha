@@ -133,7 +133,9 @@ public class GameManager {
             door.update(delta, this);
         }
 
+        // 🔥 修改：检查玩家是否到达出口
         checkExitReached();
+
         updateBullets(delta);
 
         bobaBulletEffectManager.addBullets(bullets);
@@ -157,10 +159,63 @@ public class GameManager {
         }
     }
 
+    // 🔥 新增：检查玩家是否到达出口
+    private void checkExitReached() {
+        Player p = player;
+
+        for (ExitDoor door : exitDoors) {
+            if (!door.isLocked() &&
+                    door.isActive() &&
+                    door.getX() == p.getX() &&
+                    door.getY() == p.getY() &&
+                    !levelTransitionInProgress) { // 🔥 防止重复触发
+
+                // 触发门动画
+                door.onPlayerStep(p);
+
+                // 开始关卡过渡
+                startLevelTransition(door);
+                return;
+            }
+        }
+    }
+
+    // 🔥 新增：开始关卡过渡
+    private void startLevelTransition(ExitDoor door) {
+        levelTransitionInProgress = true;
+        currentExitDoor = door;
+        levelTransitionTimer = 0f;
+
+        // 可选：禁用玩家输入
+        Logger.gameEvent("Level transition started at door " + door.getPositionString());
+    }
+
+    public void nextLevel() {
+        currentLevel++;
+
+        if (currentLevel > GameConstants.MAX_LEVELS) {
+            Logger.gameEvent("Game completed!");
+            return;
+        }
+
+        requestReset();
+    }
     public void requestReset() {
         pendingReset = true;
     }
 
+    public void onKeyCollected() {
+        player.setHasKey(true);
+        unlockAllExitDoors();
+        Logger.gameEvent("All exits unlocked");
+    }
+    private void unlockAllExitDoors() {
+        for (ExitDoor door : exitDoors) {
+            if (door.isLocked()) {
+                door.unlock();
+            }
+        }
+    }
     private void handleKeyLogic() {
         if (keyProcessed) return;
 
@@ -172,13 +227,13 @@ public class GameManager {
             }
         }
     }
-
-    private void unlockAllExitDoors() {
+    public boolean isExitDoorAt(int x, int y) {
         for (ExitDoor door : exitDoors) {
-            if (door.isLocked()) {
-                door.unlock();
+            if (door.getX() == x && door.getY() == y) {
+                return true;
             }
         }
+        return false;
     }
 
     private void updateBullets(float delta) {
@@ -192,7 +247,6 @@ public class GameManager {
         }
     }
 
-    /* ================= 随机生成核心 ================= */
     private void generateLevel() {
         // 🔥 只在第一次生成门
         if (exitDoors.isEmpty()) {
@@ -204,7 +258,6 @@ public class GameManager {
         generateTreasures();
         generateKeys();
     }
-
     private void generateKeys() {
         int keyCount = GameConstants.KEYCOUNT;
 
@@ -220,15 +273,6 @@ public class GameManager {
             );
             keys.add(new Key(x, y, this));
         }
-    }
-
-    public boolean isExitDoorAt(int x, int y) {
-        for (ExitDoor door : exitDoors) {
-            if (door.getX() == x && door.getY() == y) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private boolean isOccupied(int x, int y) {
@@ -274,52 +318,8 @@ public class GameManager {
         return false;
     }
 
-    private void checkExitReached() {
-        Player p = player;
 
-        for (ExitDoor door : exitDoors) {
-            if (!door.isLocked() &&
-                    door.isActive() &&
-                    door.getX() == p.getX() &&
-                    door.getY() == p.getY() &&
-                    !levelTransitionInProgress) { // 🔥 防止重复触发
-
-                // 触发门动画
-                door.onPlayerStep(p);
-
-                // 开始关卡过渡
-                startLevelTransition(door);
-                return;
-            }
-        }
-    }
-
-    // 🔥 新增：开始关卡过渡
-    private void startLevelTransition(ExitDoor door) {
-        levelTransitionInProgress = true;
-        currentExitDoor = door;
-        levelTransitionTimer = 0f;
-    }
-
-    public void nextLevel() {
-        currentLevel++;
-
-        if (currentLevel > GameConstants.MAX_LEVELS) {
-            Logger.gameEvent("Game completed!");
-            return;
-        }
-
-        requestReset();
-    }
-
-    public void onKeyCollected() {
-        player.setHasKey(true);
-        unlockAllExitDoors();
-        Logger.gameEvent("All exits unlocked");
-    }
-
-    /* ---------- Exit Doors ---------- */
-    /* ---------- Exit Doors ---------- */
+    //============EXIT DOORS===============//
     private void generateExitDoors() {
         // 🔥 清空旧的门（第一次调用时应该是空的）
         exitDoors.clear();
@@ -530,9 +530,7 @@ public class GameManager {
         // 2️⃣ 检查是否是门的位置
         for (ExitDoor door : exitDoors) {
             if (door.getX() == x && door.getY() == y) {
-                // 玩家不能移动到门上（无论是否解锁）
-                // 但可以通过其他方式（如传送、初始位置）站在门上
-                return false;
+                return !door.isLocked();
             }
         }
 
