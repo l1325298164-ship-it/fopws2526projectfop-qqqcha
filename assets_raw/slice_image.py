@@ -5,10 +5,10 @@ import random
 
 # ===== 配置区 =====
 INPUT_IMAGE = "decoration/menu_background.png"
-OUTPUT_DIR = "tiles_stage_0"
+OUTPUT_DIR = "tiles_stage_1.atlas"
 TILE = 64               # 推荐 48 / 64
-NOISE_STRENGTH = 0   # 越大越破碎（0.3~0.6）
-BLUR_RADIUS = 0     # 越大边缘越柔
+NOISE_STRENGTH = 0.4  # 越大越破碎（0.3~0.6）
+BLUR_RADIUS = 0.3     # 越大边缘越柔
 # ==================
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
