@@ -62,7 +62,7 @@ public class GameManager {
         traps.clear();
         hearts.clear();
         treasures.clear();
-        // 🔥 注意：不清空 exitDoors，只重置状态
+        // 🔥 注意：exitDoors 不清空，只重置状态
         for (ExitDoor door : exitDoors) {
             if (door != null) {
                 door.resetDoor();
@@ -109,7 +109,7 @@ public class GameManager {
                 levelTransitionInProgress = false;
                 levelTransitionTimer = 0f;
                 currentExitDoor = null;
-                requestReset();
+                nextLevel();
             }
             return;
         }
@@ -194,7 +194,10 @@ public class GameManager {
 
     /* ================= 随机生成核心 ================= */
     private void generateLevel() {
-        generateExitDoors();
+        // 🔥 只在第一次生成门
+        if (exitDoors.isEmpty()) {
+            generateExitDoors();
+        }
         generateEnemies();
         generateTraps();
         generateHearts();
@@ -203,7 +206,7 @@ public class GameManager {
     }
 
     private void generateKeys() {
-        int keyCount = 10;
+        int keyCount = GameConstants.KEYCOUNT;
 
         for (int i = 0; i < keyCount; i++) {
             int x, y;
@@ -311,16 +314,16 @@ public class GameManager {
 
     public void onKeyCollected() {
         player.setHasKey(true);
-
-        for (ExitDoor door : exitDoors) {
-            door.unlock();
-        }
-
+        unlockAllExitDoors();
         Logger.gameEvent("All exits unlocked");
     }
 
     /* ---------- Exit Doors ---------- */
+    /* ---------- Exit Doors ---------- */
     private void generateExitDoors() {
+        // 🔥 清空旧的门（第一次调用时应该是空的）
+        exitDoors.clear();
+
         for (int i = 0; i < GameConstants.EXIT_COUNT; i++) {
             int[] p = randomWallCell();
             int attempts = 0;
@@ -331,9 +334,49 @@ public class GameManager {
                 attempts++;
             }
 
-            exitDoors.add(new ExitDoor(p[0], p[1], i));
-            Logger.debug("ExitDoor created at (" + p[0] + ", " + p[1] + ")");
+            // 🔥 关键修复：根据位置智能确定门的方向
+            ExitDoor.DoorDirection direction = determineDoorDirection(p[0], p[1]);
+
+            // 🔥 使用带方向的构造函数
+            ExitDoor door = new ExitDoor(p[0], p[1], direction);
+            exitDoors.add(door);
+            Logger.debug("ExitDoor created at (" + p[0] + ", " + p[1] + ") facing " + direction);
         }
+    }
+
+    // 🔥 新增：根据迷宫结构智能确定门的方向
+    private ExitDoor.DoorDirection determineDoorDirection(int x, int y) {
+        int[][] maze = getMaze();
+        int width = maze[0].length;
+        int height = maze.length;
+
+        // 统计四个方向的通路情况
+        boolean up = y + 1 < height && maze[y + 1][x] == 1;
+        boolean down = y - 1 >= 0 && maze[y - 1][x] == 1;
+        boolean left = x - 1 >= 0 && maze[y][x - 1] == 1;
+        boolean right = x + 1 < width && maze[y][x + 1] == 1;
+
+        // 🔥 简化逻辑：优先选择有通路的方向
+        List<ExitDoor.DoorDirection> possibleDirections = new ArrayList<>();
+
+        if (up) possibleDirections.add(ExitDoor.DoorDirection.UP);
+        if (down) possibleDirections.add(ExitDoor.DoorDirection.DOWN);
+        if (left) possibleDirections.add(ExitDoor.DoorDirection.LEFT);
+        if (right) possibleDirections.add(ExitDoor.DoorDirection.RIGHT);
+
+        // 如果有可用的通路方向，随机选择一个
+        if (!possibleDirections.isEmpty()) {
+            return possibleDirections.get(random.nextInt(possibleDirections.size()));
+        }
+
+        // 🔥 如果没有相邻通路，根据位置决定（边缘的门应该有合理的朝向）
+        if (y >= height - 3) return ExitDoor.DoorDirection.DOWN;    // 靠近底部，门朝下
+        if (y <= 2) return ExitDoor.DoorDirection.UP;               // 靠近顶部，门朝上
+        if (x >= width - 3) return ExitDoor.DoorDirection.LEFT;     // 靠近右边，门朝左
+        if (x <= 2) return ExitDoor.DoorDirection.RIGHT;            // 靠近左边，门朝右
+
+        // 默认向上
+        return ExitDoor.DoorDirection.UP;
     }
 
     private boolean isValidDoorPosition(int x, int y) {
@@ -352,16 +395,6 @@ public class GameManager {
         if (y - 1 >= 0 && maze[y - 1][x] == 1) hasAdjacentPath = true;
         if (x - 1 >= 0 && maze[y][x - 1] == 1) hasAdjacentPath = true;
         if (x + 1 < width && maze[y][x + 1] == 1) hasAdjacentPath = true;
-
-        // 🔥 额外：确保玩家可以到达这个位置
-        // 检查至少有一个相邻的通路格子
-        if (!hasAdjacentPath) {
-            // 检查斜角
-            if (x - 1 >= 0 && y + 1 < height && maze[y + 1][x - 1] == 1) hasAdjacentPath = true;
-            if (x + 1 < width && y + 1 < height && maze[y + 1][x + 1] == 1) hasAdjacentPath = true;
-            if (x - 1 >= 0 && y - 1 >= 0 && maze[y - 1][x - 1] == 1) hasAdjacentPath = true;
-            if (x + 1 < width && y - 1 >= 0 && maze[y - 1][x + 1] == 1) hasAdjacentPath = true;
-        }
 
         return hasAdjacentPath;
     }
@@ -393,19 +426,6 @@ public class GameManager {
             if (x - 1 >= 0 && maze[y][x - 1] == 1) hasAdjacentPath = true;
             // 右
             if (x + 1 < width && maze[y][x + 1] == 1) hasAdjacentPath = true;
-
-            // 🔥 额外检查：确保不是完全封闭的死胡同
-            // 检查斜角方向
-            if (!hasAdjacentPath) {
-                // 左上
-                if (x - 1 >= 0 && y + 1 < height && maze[y + 1][x - 1] == 1) hasAdjacentPath = true;
-                // 右上
-                if (x + 1 < width && y + 1 < height && maze[y + 1][x + 1] == 1) hasAdjacentPath = true;
-                // 左下
-                if (x - 1 >= 0 && y - 1 >= 0 && maze[y - 1][x - 1] == 1) hasAdjacentPath = true;
-                // 右下
-                if (x + 1 < width && y - 1 >= 0 && maze[y - 1][x + 1] == 1) hasAdjacentPath = true;
-            }
 
             if (!hasAdjacentPath) continue;
 
@@ -507,10 +527,12 @@ public class GameManager {
             return false;
         }
 
-        // 2️⃣ 出口门优先判断
+        // 2️⃣ 检查是否是门的位置
         for (ExitDoor door : exitDoors) {
             if (door.getX() == x && door.getY() == y) {
-                return !door.isLocked();
+                // 玩家不能移动到门上（无论是否解锁）
+                // 但可以通过其他方式（如传送、初始位置）站在门上
+                return false;
             }
         }
 
@@ -535,10 +557,9 @@ public class GameManager {
         return levelTransitionInProgress;
     }
 
-
     /* ================= 输入 ================= */
     public void onMoveInput(int dx, int dy) {
-        if (player == null || levelTransitionInProgress) return; // 🔥 过渡期间禁用移动
+        if (player == null || levelTransitionInProgress) return;
 
         int nx = player.getX() + dx;
         int ny = player.getY() + dy;
@@ -549,24 +570,16 @@ public class GameManager {
     }
 
     public boolean onAbilityInput(int slot) {
-        if (levelTransitionInProgress) return false; // 🔥 过渡期间禁用技能
+        if (levelTransitionInProgress) return false;
         player.useAbility(slot);
         return true;
     }
 
     public void onInteractInput() {
-        if (levelTransitionInProgress) return; // 🔥 过渡期间禁用交互
+        if (levelTransitionInProgress) return;
 
         int px = player.getX();
         int py = player.getY();
-
-        // 出口
-        for (ExitDoor door : exitDoors) {
-            if (door.isInteractable() && door.getX() == px && door.getY() == py) {
-                door.onInteract(player);
-                return;
-            }
-        }
 
         // 宝箱
         for (Treasure t : treasures) {
@@ -586,7 +599,7 @@ public class GameManager {
     }
 
     private void checkAutoPickup() {
-        if (levelTransitionInProgress) return; // 🔥 过渡期间禁用自动拾取
+        if (levelTransitionInProgress) return;
 
         int px = player.getX();
         int py = player.getY();
@@ -647,6 +660,13 @@ public class GameManager {
             return false;
         }
 
+        // 🔥 出口门 = 不可走（无论是否解锁）
+        for (ExitDoor door : exitDoors) {
+            if (door.getX() == x && door.getY() == y) {
+                return false;
+            }
+        }
+
         // Trap 是否阻挡
         for (var trap : traps) {
             if (trap.getX() == x && trap.getY() == y && !trap.isPassable()) {
@@ -703,7 +723,7 @@ public class GameManager {
     }
 
     private void handlePlayerEnemyCollision() {
-        if (levelTransitionInProgress) return; // 🔥 过渡期间禁用碰撞检测
+        if (levelTransitionInProgress) return;
 
         Player player = this.player;
         if (player == null || player.isDead()) return;
@@ -721,7 +741,7 @@ public class GameManager {
     }
 
     private void handleDashHitEnemies() {
-        if (levelTransitionInProgress) return; // 🔥 过渡期间禁用Dash伤害
+        if (levelTransitionInProgress) return;
 
         Player player = this.player;
         if (player == null) return;
@@ -743,6 +763,10 @@ public class GameManager {
     public void dispose() {
         if (keyEffectManager != null) {
             keyEffectManager.dispose();
+        }
+        // 🔥 清理出口门资源
+        for (ExitDoor door : exitDoors) {
+            door.dispose();
         }
     }
 }
