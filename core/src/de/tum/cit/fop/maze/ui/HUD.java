@@ -236,21 +236,30 @@ public class HUD {
 
 
     private void renderLivesAsHearts(SpriteBatch uiBatch) {
+
+        // 🔴 关键：UI 颜色必须重置
+        uiBatch.setColor(1f, 1f, 1f, 1f);
+
         int lives = gameManager.getPlayer().getLives();
 
-        /* ---------- 1. 状态检测：是否触发抖动 ---------- */
-        if (lastLives != -1) {
-            boolean wasFull = lastLives % 10 == 0;
-            boolean isHalfNow = lives % 10 > 0 && lives % 10 <= 5;
+        /* ================= 抖动触发 ================= */
+        if (lastLives != -1 && lives < lastLives) {
+            int oldSlot = (lastLives - 1) / 10;
+            int newSlot = (lives - 1) / 10;
 
-            if (wasFull && isHalfNow) {
+            int oldInSlot = lastLives - oldSlot * 10;
+            int newInSlot = lives - newSlot * 10;
+
+            boolean wasFull = oldInSlot > 5;
+            boolean nowHalf = newInSlot <= 5;
+
+            if (oldSlot == newSlot && wasFull && nowHalf) {
                 shaking = true;
                 shakeTimer = 0f;
             }
         }
         lastLives = lives;
 
-        /* ---------- 2. 更新时间 ---------- */
         float delta = Gdx.graphics.getDeltaTime();
         if (shaking) {
             shakeTimer += delta;
@@ -259,71 +268,61 @@ public class HUD {
             }
         }
 
-        /* ---------- 3. 生命值 → 爱心数量 ---------- */
+        /* ================= 心数计算（你的规则） ================= */
         int fullHearts = lives / 10;
         int remainder = lives % 10;
 
-        boolean drawHalf = false;
-        boolean addExtraFull = false;
-
-        if (remainder > 0 && remainder <= 5) {
-            drawHalf = true;
-        } else if (remainder > 5) {
-            addExtraFull = true;
-        }
+        boolean hasHalf = remainder > 0 && remainder <= 5;
+        boolean hasExtraFull = remainder > 5;
 
         int totalHearts = fullHearts
-                + (drawHalf ? 1 : 0)
-                + (addExtraFull ? 1 : 0);
+                + (hasHalf ? 1 : 0)
+                + (hasExtraFull ? 1 : 0);
 
         totalHearts = Math.min(totalHearts, MAX_HEARTS_DISPLAY);
 
-        /* ---------- 4. 布局参数 ---------- */
+        /* ================= 布局 ================= */
         int startX = 20;
         int startY = Gdx.graphics.getHeight() - 90;
 
-        int drawnHearts = 0;
+        float shakeOffsetX =
+                shaking ? (float) Math.sin(shakeTimer * 40f) * SHAKE_AMPLITUDE : 0f;
 
-        float shakeOffsetX = 0f;
-        if (shaking) {
-            shakeOffsetX = (float) Math.sin(shakeTimer * 40f) * SHAKE_AMPLITUDE;
-        }
+        int drawn = 0;
 
-        /* ---------- 5. 画完整爱心（最后一颗可抖动） ---------- */
-        for (int i = 0; i < fullHearts && drawnHearts < totalHearts; i++) {
-            int row = drawnHearts / HEARTS_PER_ROW;
-            int col = drawnHearts % HEARTS_PER_ROW;
+        /* ================= 画满心 ================= */
+        for (int i = 0; i < fullHearts && drawn < totalHearts; i++) {
+            int row = drawn / HEARTS_PER_ROW;
+            int col = drawn % HEARTS_PER_ROW;
 
-            boolean isShakingHeart =
-                    shaking && (i == fullHearts - 1);
-
-            float offsetX = isShakingHeart ? shakeOffsetX : 0f;
+            boolean shakeThis =
+                    shaking && i == fullHearts - 1 && !hasExtraFull;
 
             uiBatch.draw(
                     heartFull,
-                    startX + col * HEART_SPACING + offsetX,
+                    startX + col * HEART_SPACING + (shakeThis ? shakeOffsetX : 0f),
                     startY - row * ROW_SPACING
             );
-            drawnHearts++;
+            drawn++;
         }
 
-        /* ---------- 6. 半颗爱心（抖动结束后才出现） ---------- */
-        if (drawHalf && !shaking && drawnHearts < totalHearts) {
-            int row = drawnHearts / HEARTS_PER_ROW;
-            int col = drawnHearts % HEARTS_PER_ROW;
+        /* ================= 半心 ================= */
+        if (hasHalf && drawn < totalHearts) {
+            int row = drawn / HEARTS_PER_ROW;
+            int col = drawn % HEARTS_PER_ROW;
 
             uiBatch.draw(
                     heartHalf,
                     startX + col * HEART_SPACING,
                     startY - row * ROW_SPACING
             );
-            drawnHearts++;
+            drawn++;
         }
 
-        /* ---------- 7. 向上取补的完整爱心 ---------- */
-        if (addExtraFull && drawnHearts < totalHearts) {
-            int row = drawnHearts / HEARTS_PER_ROW;
-            int col = drawnHearts % HEARTS_PER_ROW;
+        /* ================= 6–10 的补满心 ================= */
+        if (hasExtraFull && drawn < totalHearts) {
+            int row = drawn / HEARTS_PER_ROW;
+            int col = drawn % HEARTS_PER_ROW;
 
             uiBatch.draw(
                     heartFull,
@@ -332,6 +331,9 @@ public class HUD {
             );
         }
     }
+
+
+
 
 
 

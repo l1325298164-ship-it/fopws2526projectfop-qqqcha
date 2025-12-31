@@ -1,137 +1,114 @@
-// ExitDoor.java - 更新版本（支持多个出口）
 package de.tum.cit.fop.maze.entities;
 
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class ExitDoor extends GameObject {
-    private Color lockedColor = GameConstants.LOCKED_DOOR_COLOR;
-    private Color unlockedColor = GameConstants.DOOR_COLOR;
+    private final PortalEffectManager portalEffect = new PortalEffectManager();
+    private boolean triggered = false;
+
     private boolean locked = true;
-    private boolean isNearest = false; // 标记是否为最近的出口
-    private int doorId; // 出口ID
 
-    // 纹理管理
-    private TextureManager textureManager;
-    private Texture doorTexture;
-    private boolean needsTextureUpdate = true;
-
-    public ExitDoor(int x, int y, int doorId) {
+    public ExitDoor(int x, int y, int index) {
         super(x, y);
-        this.doorId = doorId;
-        this.textureManager = TextureManager.getInstance();
-        updateTexture();
-        Logger.debug("ExitDoor " + doorId + " created at " + getPositionString());
-    }
-    @Override
-    public boolean isInteractable() {
-        return true; // 门总是可交互的
+        this.active = true;
+
+        Logger.debug("ExitDoor created at " + getPositionString());
     }
 
-    @Override
-    public void onInteract(Player player) {
-        if (locked) {
-            if (player.hasKey()) {
-                Logger.gameEvent("尝试解锁门");
-            } else {
-                Logger.gameEvent("门被锁住了，需要钥匙");
-            }
-        }
-    }
-
-    @Override
-    public boolean isPassable() {
-        return !locked; // 只有解锁后才能通过
-    }
-    /**
-     * 更新纹理
-     */
-    private void updateTexture() {
-        doorTexture = locked ?
-            textureManager.getLockedDoorTexture() :
-            textureManager.getDoorTexture();
-        needsTextureUpdate = false;
-    }
-
-    /**
-     * 响应纹理模式切换
-     */
-    public void onTextureModeChanged() {
-        needsTextureUpdate = true;
-    }
-
-    /**
-     * 解锁门
-     */
-    public void unlock(GameManager gm) {
-        this.locked = false;
-        updateTexture();
-        gm.openMazeCell(x, y);
-        Logger.gameEvent("ExitDoor " + doorId + " unlocked at " + getPositionString());
-    }
-
-    @Override
-    public void drawShape(ShapeRenderer sr) {
-        if (!active) return;
-
-        // 最近出口高亮
-        if (isNearest && !locked) {
-            sr.setColor(Color.GOLD);
-        } else {
-            sr.setColor(locked ? lockedColor : unlockedColor);
-        }
-
-        sr.rect(
-                x * GameConstants.CELL_SIZE + 2,
-                y * GameConstants.CELL_SIZE + 2,
-                GameConstants.CELL_SIZE - 4,
-                GameConstants.CELL_SIZE - 4
-        );
-    }
-
-
-    @Override
-    public void drawSprite(SpriteBatch batch) {
-        if (!active || doorTexture == null) return;
-
-        if (needsTextureUpdate) {
-            updateTexture();
-        }
-
-        batch.draw(
-                doorTexture,
-                x * GameConstants.CELL_SIZE,
-                y * GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE+5
-        );
-    }
-
-
-    @Override
-    public RenderType getRenderType() {
-        return RenderType.SPRITE;
-    }
+    /* ================= 状态 ================= */
 
     public boolean isLocked() {
         return locked;
     }
 
-    public int getDoorId() {
-        return doorId;
+    public void unlock() {
+        locked = false;
+        Logger.gameEvent("Exit unlocked at " + getPositionString());
+    }
+    public void update(float delta, GameManager gm) {
+        portalEffect.update(delta);
+
+        if (portalEffect.isFinished()) {
+            gm.nextLevel();   // ✅ 真正推进关卡
+        }
     }
 
-    public void setNearest(boolean nearest) {
-        this.isNearest = nearest;
+    /* ================= 行为 ================= */
+
+    @Override
+    public boolean isPassable() {
+        // 🔥 关键：没钥匙前 = 墙
+        return !locked;
+    }
+    public void onPlayerStep(Player player) {
+        if (locked || triggered) return;
+
+        triggered = true;
+
+        // 🔥 启动龙卷风 + 呼吸灯
+        portalEffect.startExitAnimation(
+                x * GameConstants.CELL_SIZE,
+                y * GameConstants.CELL_SIZE
+        );
     }
 
-    public boolean isNearest() {
-        return isNearest;
+
+    @Override
+    public boolean isInteractable() {
+        return !locked;
+    }
+
+    @Override
+    public void onInteract(Player player) {
+        if (locked) return;
+
+        // 只做标记，不跳关
+        this.active = false;
+        Logger.gameEvent("Player stepped on exit at " + getPositionString());
+    }
+
+
+    /* ================= 渲染 ================= */
+
+    @Override
+    public void drawSprite(SpriteBatch batch) {
+        // 如果你用的是 MazeRenderer 墙系统，这里可以留空
+        // 出口本来就是墙的一部分
+    }
+
+    @Override
+    public RenderType getRenderType() {
+        return null;
+    }
+
+    @Override
+    public void drawShape(ShapeRenderer shapeRenderer) {
+        if (locked) return;
+
+        // 解锁后，用绿色标识可进入区域（调试用）
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0, 1, 0, 0.5f);
+        shapeRenderer.rect(
+                x * GameConstants.CELL_SIZE,
+                y * GameConstants.CELL_SIZE,
+                GameConstants.CELL_SIZE,
+                GameConstants.CELL_SIZE
+        );
+        shapeRenderer.end();
+    }
+
+    public void renderPortalFront(SpriteBatch batch) {
+        portalEffect.renderFront(batch);
+    }
+
+    public void renderPortalBack(SpriteBatch batch) {
+        portalEffect.renderBack(batch,
+                x * GameConstants.CELL_SIZE,
+                y * GameConstants.CELL_SIZE);
     }
 }
