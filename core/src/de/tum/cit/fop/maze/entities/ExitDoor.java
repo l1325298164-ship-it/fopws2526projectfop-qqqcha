@@ -9,21 +9,61 @@ import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 
+import java.util.EnumMap;
+
 public class ExitDoor extends GameObject {
+
+    // ===== 门方向枚举 =====
+    public enum DoorDirection {
+        UP, DOWN, LEFT, RIGHT
+    }
+
     private final PortalEffectManager portalEffect = new PortalEffectManager();
-    private Texture lockedTexture;
-    private Texture unlockedTexture;
+
+    // ===== 四个方向的贴图 =====
+    private final EnumMap<DoorDirection, Texture> lockedTextures = new EnumMap<>(DoorDirection.class);
+    private final EnumMap<DoorDirection, Texture> unlockedTextures = new EnumMap<>(DoorDirection.class);
+
+    // ===== 门状态 =====
+    private final DoorDirection direction;
     private boolean locked = true;
     private boolean triggered = false;
 
-    public ExitDoor(int x, int y, int index) {
+    public ExitDoor(int x, int y, DoorDirection direction) {
         super(x, y);
+        this.direction = direction;
         this.active = true;
 
-        lockedTexture = new Texture(Gdx.files.internal("Items/locked-door.png"));
-        unlockedTexture = new Texture(Gdx.files.internal("Items/door.png"));
+        // ===== 加载四个方向的锁定门贴图 =====
+        lockedTextures.put(DoorDirection.UP,
+                new Texture(Gdx.files.internal("Items/door_up_locked.png")));
+        lockedTextures.put(DoorDirection.DOWN,
+                new Texture(Gdx.files.internal("Items/door_down_locked.png")));
+        lockedTextures.put(DoorDirection.LEFT,
+                new Texture(Gdx.files.internal("Items/door_left_locked.png")));
+        lockedTextures.put(DoorDirection.RIGHT,
+                new Texture(Gdx.files.internal("Items/door_right_locked.png")));
 
-        Logger.debug("ExitDoor created at " + getPositionString());
+        // ===== 加载四个方向的解锁门贴图 =====
+        unlockedTextures.put(DoorDirection.UP,
+                new Texture(Gdx.files.internal("Items/door_up_unlocked.png")));
+        unlockedTextures.put(DoorDirection.DOWN,
+                new Texture(Gdx.files.internal("Items/door_down_unlocked.png")));
+        unlockedTextures.put(DoorDirection.LEFT,
+                new Texture(Gdx.files.internal("Items/door_left_unlocked.png")));
+        unlockedTextures.put(DoorDirection.RIGHT,
+                new Texture(Gdx.files.internal("Items/door_right_unlocked.png")));
+
+        Logger.debug("ExitDoor created at " + getPositionString() + " facing " + direction);
+    }
+
+    // 🔥 重载：兼容旧代码的构造函数（默认向上）
+    public ExitDoor(int x, int y, int index) {
+        this(x, y, DoorDirection.UP);
+    }
+
+    public DoorDirection getDirection() {
+        return direction;
     }
 
     public boolean isLocked() {
@@ -32,14 +72,11 @@ public class ExitDoor extends GameObject {
 
     public void unlock() {
         locked = false;
-        Logger.gameEvent("Exit unlocked at " + getPositionString());
+        Logger.gameEvent("Exit unlocked at " + getPositionString() + " (direction: " + direction + ")");
     }
 
     public void update(float delta, GameManager gm) {
         portalEffect.update(delta);
-
-        // 🔥 关键：不要在 update 中调用 gm.nextLevel()
-        // 让 GameManager 控制重置时机
     }
 
     @Override
@@ -75,16 +112,53 @@ public class ExitDoor extends GameObject {
         // 门后呼吸灯
         portalEffect.renderBack(batch, px, py);
 
-        Texture tex = locked ? lockedTexture : unlockedTexture;
-        if (tex == null) return;
+        // ===== 根据方向和锁状态选择贴图 =====
+        Texture tex;
+        if (locked) {
+            tex = lockedTextures.get(direction);
+        } else {
+            tex = unlockedTextures.get(direction);
+        }
 
-        // 门体 + 悬浮
+        if (tex == null) {
+            // 如果找不到贴图，使用默认
+            Logger.warning("Texture not found for door direction: " + direction + ", locked: " + locked);
+            return;
+        }
+
+        // 门体 + 悬浮效果
+        float drawWidth = GameConstants.CELL_SIZE;
+        float drawHeight = GameConstants.CELL_SIZE * 1.5f;
+
+        // 🔥 根据不同方向调整绘制位置
+        float offsetX = 0;
+        float offsetY = portalEffect.getDoorFloatOffset();
+
+        // 可以根据方向微调位置
+        switch (direction) {
+            case UP:
+                // 向上门，正常绘制
+                break;
+            case DOWN:
+                // 向下的门可能需要稍微调整位置
+                offsetY -= GameConstants.CELL_SIZE * 0.5f;
+                break;
+            case LEFT:
+                // 向左的门，旋转或调整位置
+                offsetX = -GameConstants.CELL_SIZE * 0.25f;
+                break;
+            case RIGHT:
+                // 向右的门
+                offsetX = GameConstants.CELL_SIZE * 0.25f;
+                break;
+        }
+
         batch.draw(
                 tex,
-                px,
-                py + portalEffect.getDoorFloatOffset(),
-                GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE * 1.5f
+                px + offsetX,
+                py + offsetY,
+                drawWidth,
+                drawHeight
         );
     }
 
@@ -102,12 +176,10 @@ public class ExitDoor extends GameObject {
         portalEffect.renderFront(batch);
     }
 
-    // 🔥 新增：检查动画是否正在播放
     public boolean isAnimationPlaying() {
         return portalEffect.isActive();
     }
 
-    // 🔥 新增：重置门状态
     public void resetDoor() {
         triggered = false;
         locked = true; // 重置为锁定状态
@@ -115,17 +187,27 @@ public class ExitDoor extends GameObject {
     }
 
     public void dispose() {
-        if (lockedTexture != null) lockedTexture.dispose();
-        if (unlockedTexture != null) unlockedTexture.dispose();
+        // 释放所有贴图资源
+        for (Texture tex : lockedTextures.values()) {
+            if (tex != null) tex.dispose();
+        }
+        for (Texture tex : unlockedTextures.values()) {
+            if (tex != null) tex.dispose();
+        }
         portalEffect.dispose();
     }
 
-    // ===== 给 GameScreen 用的简化版本 =====
     public void renderPortalBack(SpriteBatch batch) {
         portalEffect.renderBack(
                 batch,
                 x * GameConstants.CELL_SIZE,
                 y * GameConstants.CELL_SIZE
         );
+    }
+
+    // 🔥 新增：获取门位置字符串（包含方向信息）
+    @Override
+    public String getPositionString() {
+        return "(" + x + ", " + y + ", " + direction + ")";
     }
 }
