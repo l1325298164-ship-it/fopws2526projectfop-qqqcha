@@ -1,0 +1,83 @@
+
+E02.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame302
+  rotate: false
+  xy: 2, 3008
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame303
+  rotate: false
+  xy: 2, 2006
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame304
+  rotate: false
+  xy: 1004, 3008
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame305
+  rotate: false
+  xy: 2, 1004
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame306
+  rotate: false
+  xy: 1004, 2006
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame307
+  rotate: false
+  xy: 2006, 3008
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame308
+  rotate: false
+  xy: 2, 2
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame309
+  rotate: false
+  xy: 1004, 1004
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame310
+  rotate: false
+  xy: 2006, 2006
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame311
+  rotate: false
+  xy: 3008, 3008
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1
+frame312
+  rotate: false
+  xy: 1004, 2
+  size: 1000, 1000
+  orig: 1000, 1000
+  offset: 0, 0
+  index: -1

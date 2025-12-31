@@ -28,9 +28,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/sword_taken_right",
-                root + "/assets/sword_taken_right",
-                "sword_taken_right"
+                root + "/assets_raw/E02",
+                root + "/assets/E02",
+                "E02"
         );
 
 

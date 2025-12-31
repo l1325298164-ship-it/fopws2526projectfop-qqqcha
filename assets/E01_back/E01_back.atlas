@@ -1,0 +1,41 @@
+
+E01_back.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame287
+  rotate: false
+  xy: 2, 1675
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
+frame288
+  rotate: false
+  xy: 2, 2
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
+frame289
+  rotate: false
+  xy: 1279, 1675
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
+frame290
+  rotate: false
+  xy: 1279, 2
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
+frame291
+  rotate: false
+  xy: 2556, 1675
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
