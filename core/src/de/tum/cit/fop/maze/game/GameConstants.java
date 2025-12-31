@@ -66,6 +66,7 @@ public class GameConstants {
     // 游戏相关
     public static final int INITIAL_PLAYER_LIVES = 1140;
     public static final Color HEART_COLOR = Color.RED;
+    public static final int KEYCOUNT =2;
 
     // 游戏事件
     public static final float INVINCIBLE_TIME = 1.0f;
