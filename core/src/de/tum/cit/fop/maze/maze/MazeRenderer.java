@@ -10,477 +10,210 @@ import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.entities.ExitDoor;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MazeRenderer {
 
-    private GameManager gameManager;
-    private TextureManager textureManager;
+    private final GameManager gameManager;
+    private final TextureManager textureManager = TextureManager.getInstance();
+    private int[][] lastMazeRef = null;
 
+
+    /* ===== 地板 ===== */
     private Texture floorTexture;
+
+    /* ===== 墙 ===== */
     private TextureAtlas wallAtlas;
     private TextureRegion[] wallRegions;
-    private boolean texturesReady = false;
 
-    private static final int TOTAL_WALL_VARIANTS = 4; // 000, 001, 002, 003
-    private static final String WALL_REGION_NAME = "Wallpaper";
+    private boolean analyzed = false;
+    private final List<WallGroup> wallGroups = new ArrayList<>();
 
-    // 存储墙壁分组
-    private List<WallGroup> wallGroups = new ArrayList<>();
-    private boolean groupsAnalyzed = false;
+    /* ================================================= */
 
-    // 墙壁分组类
     public static class WallGroup {
-        public int startX, startY, length;
-        public int textureIndex; // 使用的纹理索引
+        public int startX, startY, length, textureIndex;
 
-        public WallGroup(int startX, int startY, int length, int textureIndex) {
-            this.startX = startX;
-            this.startY = startY;
-            this.length = length;
-            this.textureIndex = textureIndex;
-        }
-
-        // 检查坐标是否在这个分组内
-        public boolean contains(int x, int y) {
-            return y == startY && x >= startX && x < startX + length;
-        }
-
-        // 获取分组渲染信息
-        public void render(SpriteBatch batch, TextureRegion[] regions, float cellSize, float wallHeight, int wallOverlap) {
-            if (textureIndex < 0 || textureIndex >= regions.length) {
-                return;
-            }
-
-            TextureRegion region = regions[textureIndex];
-            if (region == null) return;
-
-            float totalWidth = length * cellSize;
-            float startXPos = startX * cellSize;
-            float startYPos = startY * cellSize - wallOverlap;
-
-            batch.draw(region, startXPos, startYPos, totalWidth, wallHeight);
-        }
-
-        @Override
-        public String toString() {
-            String textureName = "";
-            switch (textureIndex) {
-                case 0: textureName = "000(单墙)"; break;
-                case 1: textureName = "001(二连)"; break;
-                case 2: textureName = "002(三连)"; break;
-                case 3: textureName = "003(五连)"; break;
-            }
-            return String.format("墙组[%d,%d] 长度%d %s", startX, startY, length, textureName);
+        public WallGroup(int x, int y, int len, int tex) {
+            startX = x;
+            startY = y;
+            length = len;
+            textureIndex = tex;
         }
     }
 
-    public MazeRenderer(GameManager gameManager) {
-        this.gameManager = gameManager;
-        this.textureManager = TextureManager.getInstance();
+    public MazeRenderer(GameManager gm) {
+        this.gameManager = gm;
+        loadTextures();
     }
 
-    private void ensureTextures() {
-        if (!texturesReady) {
-            floorTexture = textureManager.getFloorTexture();
-            loadWallAtlas();
-            texturesReady = true;
-            Logger.debug("MazeRenderer textures loaded");
-        }
-    }
+    /* ================= 纹理加载 ================= */
 
-    private void loadWallAtlas() {
-        try {
-            String atlasPath = "Wallpaper/Wallpaper.atlas";
-            Logger.debug("尝试加载图集: " + atlasPath);
+    private void loadTextures() {
+        floorTexture = textureManager.getFloorTexture();
 
-            FileHandle file = Gdx.files.internal(atlasPath);
-            if (!file.exists()) {
-                Logger.error("图集文件不存在: " + atlasPath);
-                createFallbackRegions();
-                return;
-            }
+        FileHandle fh = Gdx.files.internal("Wallpaper/Wallpaper.atlas");
+        wallAtlas = new TextureAtlas(fh);
 
-            wallAtlas = new TextureAtlas(file);
-            initWallRegionsFromAtlas();
-            Logger.debug("图集加载成功");
+        Array<TextureAtlas.AtlasRegion> regions =
+                wallAtlas.findRegions("Wallpaper");
 
-        } catch (Exception e) {
-            Logger.error("加载墙壁图集失败: " + e.getMessage());
-            createFallbackRegions();
+        wallRegions = new TextureRegion[4];
+        for (int i = 0; i < 4; i++) {
+            wallRegions[i] = regions.get(i % regions.size);
         }
     }
 
-    private void initWallRegionsFromAtlas() {
-        if (wallAtlas == null) {
-            Logger.warning("墙壁图集为空");
-            createFallbackRegions();
-            return;
-        }
+    /* ================= 地板 ================= */
 
-        Array<TextureAtlas.AtlasRegion> allRegions = wallAtlas.findRegions(WALL_REGION_NAME);
-
-        if (allRegions.size == 0) {
-            Logger.warning("图集中没有找到名为 '" + WALL_REGION_NAME + "' 的区域");
-            createFallbackRegions();
-            return;
-        }
-
-        Logger.debug("找到 " + allRegions.size + " 个 '" + WALL_REGION_NAME + "' 区域");
-
-        wallRegions = new TextureRegion[TOTAL_WALL_VARIANTS];
-
-        // 纹理分配：
-        // 索引0: 000 - 单墙
-        // 索引1: 001 - 二连墙
-        // 索引2: 002 - 三连墙
-        // 索引3: 003 - 五连墙
-
-        for (int i = 0; i < TOTAL_WALL_VARIANTS; i++) {
-            int regionIndex = i % allRegions.size;
-            wallRegions[i] = allRegions.get(regionIndex);
-            Logger.debug("纹理索引[" + i + "] 分配图集区域[" + regionIndex + "]");
-        }
-    }
-
-    private void createFallbackRegions() {
-        wallRegions = new TextureRegion[TOTAL_WALL_VARIANTS];
-        Texture fallbackTexture = textureManager.getWallTexture();
-        for (int i = 0; i < TOTAL_WALL_VARIANTS; i++) {
-            wallRegions[i] = new TextureRegion(fallbackTexture);
-        }
-        Logger.debug("创建了 " + TOTAL_WALL_VARIANTS + " 个备用纹理区域");
-    }
-
-    // 渲染地板
     public void renderFloor(SpriteBatch batch) {
-        Texture floorTexture = TextureManager.getInstance().getFloorTexture();
+        if (floorTexture == null) return;
 
-        float width = GameConstants.MAZE_WIDTH * GameConstants.CELL_SIZE;
-        float height = GameConstants.MAZE_HEIGHT * GameConstants.CELL_SIZE;
+        float w = GameConstants.MAZE_WIDTH * GameConstants.CELL_SIZE;
+        float h = GameConstants.MAZE_HEIGHT * GameConstants.CELL_SIZE;
 
-        batch.draw(
-                floorTexture,
-                0,
-                0,
-                width,
-                height
-        );
+        batch.draw(floorTexture, 0, 0, w, h);
     }
 
-    // 分析墙壁分组
-    private void analyzeWallGroups() {
-        if (groupsAnalyzed) return;
+    /* ================= 墙分析（核心修复在这里） ================= */
 
+    private void analyze() {
         wallGroups.clear();
-        int[][] maze = gameManager.getMazeForRendering();
+
+        int[][] maze = gameManager.getMaze();
+        if (maze == null) return;
 
         for (int y = 0; y < maze.length; y++) {
-            for (int x = 0; x < maze[y].length; x++) {
+            int x = 0;
+            while (x < maze[y].length) {
 
-                if (maze[y][x] != 0) continue;
-
-                // 1️⃣ 找连续墙长度
-                int length = 1;
-                while (x + length < maze[y].length && maze[y][x + length] == 0) {
-                    length++;
+                if (!isWallCellButNotExit(x, y)) {
+                    x++;
+                    continue;
                 }
 
-                // 2️⃣ 检查这一段里有没有门
-                int doorX = -1;
-                for (ExitDoor door : gameManager.getExitDoors()) {
-                    if (door.getY() == y &&
-                            door.getX() >= x &&
-                            door.getX() < x + length) {
-                        doorX = door.getX();
-                        break;
-                    }
+                int startX = x;
+                int len = 0;
+
+                while (x < maze[y].length && isWallCellButNotExit(x, y)) {
+                    len++;
+                    x++;
                 }
 
-                if (doorX == -1) {
-                    // 🚫 没门：允许五连
-                    splitWallSegment(x, y, length);
-                } else {
-                    // 🚪 有门：断开 + 禁五连
-                    int leftLen = doorX - x;
-                    int rightLen = x + length - doorX - 1;
-
-                    if (leftLen > 0) {
-                        splitWallSegmentNoFive(x, y, leftLen);
-                    }
-                    if (rightLen > 0) {
-                        splitWallSegmentNoFive(doorX + 1, y, rightLen);
-                    }
-                }
-
-                x += length - 1; // 跳过整个连续段
+                splitWall(startX, y, len);
             }
         }
 
-        groupsAnalyzed = true;
-        Logger.debug("墙壁分组分析完成，共 " + wallGroups.size() + " 个分组");
+        analyzed = true;
     }
 
 
-    // 含门墙段：禁止生成五连（003）
-    private void splitWallSegmentNoFive(int startX, int startY, int totalLength) {
-        int remaining = totalLength;
-        int currentX = startX;
+    /**
+     * ✅ 核心判断：
+     * 是墙，并且不是出口门
+     */
+    private boolean isWallCellButNotExit(int x, int y) {
+        return gameManager.getMaze()[y][x] == 0
+                && !gameManager.isExitDoorAt(x, y);
+    }
 
-        while (remaining > 0) {
-            if (remaining >= 3) {
-                if (remaining == 4) {
-                    wallGroups.add(new WallGroup(currentX, startY, 2, 1));
-                    wallGroups.add(new WallGroup(currentX + 2, startY, 2, 1));
-                    remaining = 0;
-                } else {
-                    wallGroups.add(new WallGroup(currentX, startY, 3, 2));
-                    currentX += 3;
-                    remaining -= 3;
-                }
-            } else if (remaining >= 2) {
-                wallGroups.add(new WallGroup(currentX, startY, 2, 1));
-                currentX += 2;
-                remaining -= 2;
+    private void splitWall(int x, int y, int len) {
+        int cx = x;
+        int remain = len;
+
+        while (remain > 0) {
+            if (remain >= 5) {
+                wallGroups.add(new WallGroup(cx, y, 5, 3));
+                cx += 5;
+                remain -= 5;
+            } else if (remain == 4) {
+                wallGroups.add(new WallGroup(cx, y, 2, 1));
+                wallGroups.add(new WallGroup(cx + 2, y, 2, 1));
+                return;
+            } else if (remain >= 3) {
+                wallGroups.add(new WallGroup(cx, y, 3, 2));
+                cx += 3;
+                remain -= 3;
+            } else if (remain == 2) {
+                wallGroups.add(new WallGroup(cx, y, 2, 1));
+                return;
             } else {
-                wallGroups.add(new WallGroup(currentX, startY, 1, 0));
-                remaining = 0;
+                wallGroups.add(new WallGroup(cx, y, 1, 0));
+                return;
             }
         }
     }
 
-    private boolean hasDoorInRange(int startX, int y, int length) {
-        for (ExitDoor door : gameManager.getExitDoors()) {
-            if (door.getY() == y &&
-                    door.getX() >= startX &&
-                    door.getX() < startX + length) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-    // 智能分割墙壁段
-    private void splitWallSegment(int startX, int startY, int totalLength) {
-        int remaining = totalLength;
-        int currentX = startX;
-
-        while (remaining > 0) {
-            // 优先创建5连分组
-            if (remaining >= 5) {
-                wallGroups.add(new WallGroup(currentX, startY, 5, 3)); // 3 = 003 (五连墙)
-                currentX += 5;
-                remaining -= 5;
-            }
-            // 然后是3连
-            else if (remaining >= 3) {
-                // 特殊处理：如果剩下4个，分成2+2
-                if (remaining == 4) {
-                    wallGroups.add(new WallGroup(currentX, startY, 2, 1)); // 1 = 001 (二连墙)
-                    wallGroups.add(new WallGroup(currentX + 2, startY, 2, 1)); // 1 = 001 (二连墙)
-                    remaining = 0;
-                } else {
-                    wallGroups.add(new WallGroup(currentX, startY, 3, 2)); // 2 = 002 (三连墙)
-                    currentX += 3;
-                    remaining -= 3;
-                }
-            }
-            // 然后是2连
-            else if (remaining >= 2) {
-                wallGroups.add(new WallGroup(currentX, startY, 2, 1)); // 1 = 001 (二连墙)
-                currentX += 2;
-                remaining -= 2;
-            }
-            // 最后是单墙
-            else {
-                wallGroups.add(new WallGroup(currentX, startY, 1, 0)); // 0 = 000 (单墙)
-                remaining = 0;
-            }
-        }
-    }
-
-    // 获取所有墙壁分组
     public List<WallGroup> getWallGroups() {
-        if (!groupsAnalyzed) {
-            analyzeWallGroups();
-        }
-        return new ArrayList<>(wallGroups);
-    }
+        int[][] currentMaze = gameManager.getMaze();
 
-    // 获取纹理区域
-    public TextureRegion getWallRegion(int textureIndex) {
-        if (textureIndex >= 0 && textureIndex < wallRegions.length) {
-            return wallRegions[textureIndex];
+        // 🔥 迷宫引用变了 → 强制重新分析
+        if (!analyzed || currentMaze != lastMazeRef) {
+            analyze();
+            lastMazeRef = currentMaze;
         }
-        return null;
+
+        return wallGroups;
     }
 
 
-    // 获取单元格大小
-    public float getCellSize() {
-        return GameConstants.CELL_SIZE;
-    }
+    /* ================= 前后遮挡判断 ================= */
 
-    // 获取墙壁高度倍数
-    public float getWallHeightMultiplier() {
-        return 1.5f;
-    }
+    public boolean isWallInFrontOfAnyEntity(int wx, int wy) {
+        var p = gameManager.getPlayer();
+        if (p != null && wy > p.getY()) return true;
 
-    // 获取墙壁重叠量
-    public int getWallOverlap() {
-        return 6;
-    }
-
-    // 调试方法：获取分组详情
-    public String debugWallGroups() {
-        if (!groupsAnalyzed) {
-            analyzeWallGroups();
+        for (var e : gameManager.getEnemies()) {
+            if (e.isActive() && wy > e.getY()) return true;
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("=== 墙壁分组详情 ===\n");
-        sb.append("总分组数: ").append(wallGroups.size()).append("\n");
-
-        // 按行分组显示
-        Map<Integer, List<WallGroup>> groupsByRow = new HashMap<>();
-        for (WallGroup group : wallGroups) {
-            groupsByRow.computeIfAbsent(group.startY, k -> new ArrayList<>()).add(group);
-        }
-
-        List<Integer> sortedRows = new ArrayList<>(groupsByRow.keySet());
-        Collections.sort(sortedRows, Collections.reverseOrder()); // 从顶部到底部
-
-        for (int row : sortedRows) {
-            sb.append("行 ").append(String.format("%2d", row)).append(": ");
-            List<WallGroup> rowGroups = groupsByRow.get(row);
-            rowGroups.sort(Comparator.comparingInt(g -> g.startX));
-
-            for (WallGroup group : rowGroups) {
-                sb.append(group.toString()).append(" ");
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
-    }
-
-    // 检查单个墙壁位置是否在任何实体前面
-    public boolean isWallInFrontOfAnyEntity(int wallX, int wallY) {
-        var player = gameManager.getPlayer();
-        if (player != null && wallY > player.getY()) return true;
-
-        var key = gameManager.getKey();
-        if (key != null && key.isActive() && wallY > key.getY()) return true;
-
-        for (var door : gameManager.getExitDoors()) {
-            if (door != null && wallY > door.getY()) return true;
-        }
-
-        for (var enemy : gameManager.getEnemies()) {
-            if (enemy != null && enemy.isActive() && wallY > enemy.getY()) {
-                return true;
-            }
+        for (ExitDoor d : gameManager.getExitDoors()) {
+            if (wy > d.getY()) return true;
         }
 
         return false;
     }
 
-    public void onTextureModeChanged() {
-        texturesReady = false;
-        floorTexture = null;
-        if (wallAtlas != null) wallAtlas.dispose();
-        wallAtlas = null;
-        wallGroups.clear();
-        groupsAnalyzed = false;
-        Logger.debug("纹理模式改变，清理缓存");
-    }
+    /* ================= 墙绘制 ================= */
 
-    public void setGameManager(GameManager gameManager) {
-        this.gameManager = gameManager;
-        this.texturesReady = false;
-        this.wallGroups.clear();
-        this.groupsAnalyzed = false;
+    public void renderWallGroup(SpriteBatch batch, WallGroup g) {
+        float cs = GameConstants.CELL_SIZE;
+        float h = cs * 1.5f;
+        int overlap = 6;
 
-        // 强制重新加载纹理
-        this.floorTexture = null;
-        if (this.wallAtlas != null) {
-            this.wallAtlas.dispose();
-            this.wallAtlas = null;
-        }
+        TextureRegion base = wallRegions[g.textureIndex];
 
-        Logger.debug("MazeRenderer 游戏管理器已更新，状态已重置");
-    }
-    public void renderWallGroup(SpriteBatch batch, WallGroup group) {
-        ensureTextures();
+        float u0 = base.getU();
+        float u1 = base.getU2();
+        float v0 = base.getV();
 
-        float cellSize = getCellSize();
-        float wallHeight = cellSize * getWallHeightMultiplier();
-        int overlap = getWallOverlap();
+        float step = (u1 - u0) / g.length;
 
-        if (group.textureIndex < 0 || group.textureIndex >= wallRegions.length) {
-            return;
-        }
-
-        TextureRegion baseRegion = wallRegions[group.textureIndex];
-        if (baseRegion == null) return;
-
-        int tiles = group.length;
-
-        // region 原始尺寸
-        float u0 = baseRegion.getU();
-        float u1 = baseRegion.getU2();
-        float v0 = baseRegion.getV();
-        float v1 = baseRegion.getV2();
-
-        float uStep = (u1 - u0) / tiles;
-
-        for (int i = 0; i < tiles; i++) {
-            int x = group.startX + i;
-            int y = group.startY;
-
-            float drawX = x * cellSize;
-            float drawY = y * cellSize - overlap;
-
-            // ✂️ 取 region 的第 i 段
+        for (int i = 0; i < g.length; i++) {
             TextureRegion slice = new TextureRegion(
-                    baseRegion.getTexture(),
-                    (int) ((u0 + i * uStep) * baseRegion.getTexture().getWidth()),
-                    (int) (v0 * baseRegion.getTexture().getHeight()),
-                    (int) (uStep * baseRegion.getTexture().getWidth()),
-                    baseRegion.getRegionHeight()
+                    base.getTexture(),
+                    (int) ((u0 + i * step) * base.getTexture().getWidth()),
+                    (int) (v0 * base.getTexture().getHeight()),
+                    (int) (step * base.getTexture().getWidth()),
+                    base.getRegionHeight()
             );
 
             batch.draw(
                     slice,
-                    drawX,
-                    drawY,
-                    cellSize,
-                    wallHeight
+                    (g.startX + i) * cs,
+                    g.startY * cs - overlap,
+                    cs,
+                    h
             );
         }
     }
 
-
-    private boolean isExitDoorAt(int x, int y) {
-        for (ExitDoor door : gameManager.getExitDoors()) {
-            if (door.getX() == x && door.getY() == y) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-
     public void dispose() {
         if (wallAtlas != null) wallAtlas.dispose();
-        wallGroups.clear();
-        texturesReady = false;
-        groupsAnalyzed = false;
-        Logger.debug("MazeRenderer 已释放");
     }
-    //TODO 准备更新成Auto-Tiling
+
+
 }

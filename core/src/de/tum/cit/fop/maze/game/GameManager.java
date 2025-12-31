@@ -1,1101 +1,750 @@
-// GameManager.java
 package de.tum.cit.fop.maze.game;
 
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.math.MathUtils;
-import de.tum.cit.fop.maze.audio.AudioManager;
-import de.tum.cit.fop.maze.audio.AudioType;
+import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
+import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.entities.*;
-import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.entities.enemy.*;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
-import de.tum.cit.fop.maze.entities.enemy.EnemyBullet;
-import de.tum.cit.fop.maze.entities.enemy.EnemyE02_SmallCoffeeBean;
-import de.tum.cit.fop.maze.entities.enemy.EnemyE03_CaramelJuggernaut;
 import de.tum.cit.fop.maze.entities.trap.*;
-import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.TextureManager;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
-public class GameManager implements PlayerInputHandler.InputHandlerCallback  {
-    private GameState gameState = GameState.PLAYING;
+import static com.badlogic.gdx.math.MathUtils.random;
+import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
+
+public class GameManager {
+
+    private int[][] maze;
     private Player player;
-    private PlayerInputHandler inputHandler;
-    private Key key;
-    private List<ExitDoor> exitDoors; // 改为出口列表
-    private List<Trap> traps;
-    private List<Enemy> enemies = new ArrayList<>();
-    private List<EnemyBullet> bullets = new ArrayList<>();
+
+    private final List<Enemy> enemies = new ArrayList<>();
+    private final List<Trap> traps = new ArrayList<>();
+    private final List<Heart> hearts = new ArrayList<>();
+    private final List<Treasure> treasures = new ArrayList<>();
+    private final List<ExitDoor> exitDoors = new ArrayList<>();
+    private final Array<BobaBullet> bullets = new Array<>();
 
     private Compass compass;
-    //maze
-    private MazeGenerator mazeGenerator;
-    private int[][] maze;
-    private int lives = GameConstants.MAX_LIVES;
+    private MazeGenerator generator = new MazeGenerator();
+    private KeyEffectManager keyEffectManager;
+
+    // ===== Keys =====
+    private final List<Key> keys = new ArrayList<>();
+    private boolean keyProcessed = false;
+
+    // ===== Reset Control =====
+    private boolean pendingReset = false;
+    private boolean justReset = false;
+
+    // 🔥 新增：动画状态管理
+    private boolean levelTransitionInProgress = false;
+    private ExitDoor currentExitDoor = null;
+    private float levelTransitionTimer = 0f;
+    private static final float LEVEL_TRANSITION_DELAY = 0.5f; // 动画完成后延迟0.5秒
+
     private int currentLevel = 1;
 
-    // 玩家初始位置
-    private int startX, startY;
-
-    // 游戏完成状态
-    private boolean isGameComplete = false;
-    private float gameCompleteTime = 0;
-    private boolean keyCollected = false;
-    private boolean compassActive = false;
-    // 等待通关特效
-    private boolean isExitingLevel = false;
-
-
-
-    // === 新增：游戏状态控制 ===
-    private boolean isPaused = false;
-    private boolean canInteract = false;
-    private GameObject interactableObject = null;
-
-
+    /* ================= 生命周期 ================= */
     public GameManager() {
-        Logger.debug("GameManager initialized");
-
-        exitDoors = new ArrayList<>();
-        traps = new ArrayList<>();
-        enemies = new ArrayList<>();
-        bullets = new ArrayList<>();
-
-        inputHandler = new PlayerInputHandler();
-
-        initNewGame();
+        resetGame();
     }
 
-    private void initNewGame() {
-        mazeGenerator = new MazeGenerator();
-        maze = mazeGenerator.generateMaze();
+    private void resetGame() {
+        maze = generator.generateMaze();
 
-        currentLevel = 1;
-        gameState = GameState.PLAYING;
-        isGameComplete = false;
-        keyCollected = false;
-        compassActive = false;
-        isPaused = false;
-
-        exitDoors.clear();
         enemies.clear();
         traps.clear();
-        bullets.clear();
-        key = null;
-        compass = null;
+        hearts.clear();
+        treasures.clear();
+        // 🔥 注意：不清空 exitDoors，只重置状态
+        for (ExitDoor door : exitDoors) {
+            if (door != null) {
+                door.resetDoor();
+            }
+        }
+        keys.clear();
 
-        int[] pos = findRandomPathPosition();
-        startX = pos[0];
-        startY = pos[1];
+        int[] spawn = randomEmptyCell();
 
         if (player == null) {
-            player = new Player(startX, startY, this);
+            player = new Player(spawn[0], spawn[1], this);
         } else {
             player.reset();
-            player.setPosition(startX, startY);
+            player.setPosition(spawn[0], spawn[1]);
         }
 
-        generateLevelElements();
+        generateLevel();
 
-        Logger.debug("New game initialized");
-    }
-
-
-    // ========== 输入回调实现 ==========
-
-    @Override
-    public void onMoveInput(int dx, int dy) {
-        if (player.isDead() || isPaused) return;
-
-        // 如果正在使用能力，不能移动
-        if (!player.getAbilityManager().getActiveAbilities().isEmpty()) {
-            return;
-        }
-
-        int newX = player.getX() + dx;
-        int newY = player.getY() + dy;
-
-        if (isMoveValid(newX, newY)) {
-            player.move(dx, dy);
-            onPlayerMoved(newX, newY);
-        } else {
-            Logger.debug("移动无效: (" + newX + ", " + newY + ")");
-            playWallHitSound();
-        }
-    }
-
-    private void playWallHitSound() {
-        AudioManager.getInstance().play(AudioType.PLAYER_HIT_WALL);
-    }
-
-    @Override
-    public float getMoveDelayMultiplier() {
-        return player.getMoveDelayMultiplier();
-    }
-
-    @Override
-    public boolean onAbilityInput(int slot) {
-        if (player.isDead() || isPaused) {
-            Logger.debug("无法使用能力: 玩家死亡或游戏暂停");
-            return false;
-        }
-
-        Logger.debug("尝试使用能力槽位: " + slot);
-        player.useAbility(slot);
-        return true;
-    }
-
-    @Override
-    public void onInteractInput() {
-        if (player.isDead() || isPaused) {
-            Logger.debug("无法交互: 玩家死亡或游戏暂停");
-            return;
-        }
-
-        handlePlayerInteraction();
-    }
-
-    @Override
-    public void onMenuInput() {
-        togglePause();
-    }
-
-    private void togglePause() {
-        isPaused = !isPaused;
-        if (isPaused) {
-            gameState = GameState.PAUSED;
-            Logger.gameEvent("游戏暂停");
-        } else {
-            gameState = GameState.PLAYING;
-            Logger.gameEvent("游戏继续");
-        }
-    }
-
-    private boolean isMoveValid(int x, int y) {
-        // 边界检查
-        if (x < 0 || x >= GameConstants.MAZE_WIDTH ||
-                y < 0 || y >= GameConstants.MAZE_HEIGHT) {
-            return false;
-        }
-
-        // 墙壁检查 (0 = 墙, 1 = 通路)
-        if (maze[y][x] == 0) {
-            return false;
-        }
-
-        // 检查陷阱是否可以穿过
-        for (Trap trap : traps) {
-            if (trap.getX() == x && trap.getY() == y && !trap.isPassable()) {
-                return false;
-            }
-        }
-
-        // 检查门是否解锁
-        for (ExitDoor door : exitDoors) {
-            if (door.getX() == x && door.getY() == y) {
-                return !door.isLocked() || player.hasKey();
-            }
-        }
-
-        return true;
-    }
-
-
-    public void resetEnemyDashHits() {
-        for (Enemy e : enemies) {
-            if (e != null) {
-                e.resetDashHit();
-            }
-        }
-    }
-    private void onPlayerMoved(int newX, int newY) {
-        // 触发移动后的事件
-        checkKeyCollection();
-        checkTrapCollision();
-        checkEnemyCollision();
-        checkExit();
-
-        // 更新可交互对象
-        updateInteractableObject();
-    }
-
-    private void handlePlayerInteraction() {
-        updateInteractableObject(); // 确保有最新的交互对象
-
-        if (interactableObject == null) {
-            Logger.debug("没有可交互的对象");
-            return;
-        }
-
-        if (!interactableObject.isInteractable()) {
-            Logger.debug("对象不可交互: " + interactableObject.getClass().getSimpleName());
-            return;
-        }
-
-        // ===== 🔥 门的特殊处理 =====
-        if (interactableObject instanceof ExitDoor door) {
-
-            if (door.isLocked()) {
-                if (player.hasKey()) {
-                    door.unlock(this);   // ⭐ 核心：门解锁 + maze 打通
-                } else {
-                    Logger.gameEvent("门被锁住了，需要钥匙");
-                }
-            } else {
-                Logger.gameEvent("门已解锁，可以直接通过");
-            }
-
-            return; // ❗ 门处理完直接返回
-        }
-
-        // ===== 其他通用交互（钥匙 / NPC / 未来物体）=====
-        Logger.gameEvent("与对象交互: " + interactableObject.getClass().getSimpleName());
-        interactableObject.onInteract(player);
-    }
-
-
-    private void updateInteractableObject() {
-        canInteract = false;
-        interactableObject = null;
-
-        int playerX = player.getX();
-        int playerY = player.getY();
-
-        // 先检查玩家当前位置
-        checkTileForInteraction(playerX, playerY);
-
-        if (canInteract) return; // 如果当前位置有交互对象，优先处理
-
-        // 检查玩家面对的方向
-        Player.Direction dir = player.getDirection();
-        int checkX = playerX;
-        int checkY = playerY;
-
-        switch (dir) {
-            case UP:
-                checkY += 1;
-                break;
-            case DOWN:
-                checkY -= 1;
-                break;
-            case LEFT:
-                checkX -= 1;
-                break;
-            case RIGHT:
-                checkX += 1;
-                break;
-        }
-
-        checkTileForInteraction(checkX, checkY);
-    }
-
-    private void checkTileForInteraction(int x, int y) {
-        // 检查钥匙
-        if (key != null && key.isActive() &&
-                key.getX() == x && key.getY() == y) {
-            canInteract = true;
-            interactableObject = key;
-            Logger.debug("发现可交互钥匙");
-            return;
-        }
-
-        // 检查门
-        for (ExitDoor door : exitDoors) {
-            if (door.getX() == x && door.getY() == y) {
-                canInteract = true;
-                interactableObject = door;
-                Logger.debug("发现可交互门");
-                return;
-            }
-        }
-    }
-    public void openMazeCell(int x, int y) {
-        if (maze[y][x] == 0) {
-            maze[y][x] = 1;
-            Logger.debug("Maze cell opened at (" + x + ", " + y + ")");
-        }
-    }
-
-    private void generateLevelElements() {
-        // 生成钥匙
-        generateKey();
-
-        // 生成出口
-        generateExitDoors();
-
-        // 生成陷阱
-        generateTraps();
-
-        // 生成敌人
-        generateEnemies();
-
-        // 重置玩家钥匙状态
-        player.setHasKey(false);
-        keyCollected = false;
-
-        // 创建指南针
         compass = new Compass(player);
-        compassActive = true;
+        bullets.clear();
+        bobaBulletEffectManager.clearAllBullets(false);
+        keyEffectManager = new KeyEffectManager();
+
+        // 🔥 重置动画状态
+        levelTransitionInProgress = false;
+        currentExitDoor = null;
+        levelTransitionTimer = 0f;
+
+        Logger.gameEvent("Game reset complete");
     }
 
-    private void generateExitDoors() {
-        int attempts = 0;
-        int maxAttempts = 500;
-
-        while (exitDoors.size() < GameConstants.EXIT_COUNT && attempts < maxAttempts) {
-            int x = MathUtils.random(4, GameConstants.MAZE_WIDTH - 5);
-            int y = MathUtils.random(4, GameConstants.MAZE_HEIGHT - 5);
-            attempts++;
-
-            if (!isValidInternalDoorSpot(x, y)) continue;
-            if (isTooCloseToOtherExit(x, y, exitDoors.size())) continue;
-
-            exitDoors.add(new ExitDoor(x, y, exitDoors.size() + 1));
-            Logger.debug("Internal exit door generated at (" + x + ", " + y + ")");
-        }
-
-        Logger.gameEvent("Generated " + exitDoors.size() + " internal exit doors");
-    }
-
-    private boolean isValidInternalDoorSpot(int x, int y) {
-        // 1. 必须是墙
-        if (maze[y][x] != 0) return false;
-
-        // 2. 不能靠外 4 层（给主题墙留空间）
-        int B = 4;
-        if (x < B || y < B ||
-                x >= GameConstants.MAZE_WIDTH - B ||
-                y >= GameConstants.MAZE_HEIGHT - B) {
-            return false;
-        }
-
-        // 3. 至少一侧是通路
-        if (maze[y + 1][x] == 1) return true;
-        if (maze[y - 1][x] == 1) return true;
-        if (maze[y][x + 1] == 1) return true;
-        if (maze[y][x - 1] == 1) return true;
-
-        return false;
-    }
-
-
-    private void generateTraps() {
-
-        traps.clear();
-
-        int t01Count = GameConstants.TRAP_T01_GEYSER_COUNT;
-        int t02Count = GameConstants.TRAP_T02_PEARL_MINE_COUNT;
-        int t03Count = GameConstants.TRAP_T03_TEA_SHARDS_COUNT;
-        int t04Count = GameConstants.TRAP_T04_MUD_COUNT;
-
-        // ===== 防御性校验（防止调参炸游戏）=====
-        if (t01Count + t02Count != GameConstants.TRAP_COUNT) {
-            Logger.warning(
-                    "Trap count mismatch! T01(" + t01Count +
-                            ") + T02(" + t02Count +
-                            ") != TRAP_COUNT(" + GameConstants.TRAP_COUNT + ")"
-            );
-        }
-
-        int attempts = 0;
-        int maxAttempts = 500;
-
-        // ===== 1️⃣ 生成 T02 地雷 =====
-        while (t02Count > 0 && attempts < maxAttempts) {
-            attempts++;
-
-            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-
-            if (!isValidTrapPosition(x, y)) continue;
-
-            traps.add(new TrapT02_PearlMine(x, y, this));
-            t02Count--;
-        }
-
-        // ===== 2️⃣ 生成 T01 喷泉 =====
-        attempts = 0;
-
-        while (t01Count > 0 && attempts < maxAttempts) {
-            attempts++;
-
-            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-
-            if (!isValidTrapPosition(x, y)) continue;
-
-            traps.add(new TrapT01_Geyser(x, y, 4f));
-            t01Count--;
-        }
-
-        Logger.gameEvent(
-                "Generated traps: " +
-                        (GameConstants.TRAP_T01_GEYSER_COUNT - t01Count) + " Geyser, " +
-                        (GameConstants.TRAP_T02_PEARL_MINE_COUNT - t02Count) + " PearlMine"
-        );
-        // ===== 生成 T03 茶叶碎 =====
-        attempts = 0;
-        while (t03Count > 0 && attempts < maxAttempts) {
-            attempts++;
-
-            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-
-            if (!isValidTrapPosition(x, y)) continue;
-
-            traps.add(new TrapT03_TeaShards(x, y));
-            t03Count--;
-        }
-        // ===== 生成 T04 泥潭 =====
-        generateMudPatches(GameConstants.TRAP_T04_MUD_COUNT);
-
-
-    }
-    private void generateMudPatches(int totalMudCount) {
-
-        int remaining = totalMudCount;
-        int maxAttempts = 500;
-        int attempts = 0;
-
-        while (remaining > 0 && attempts < maxAttempts) {
-            attempts++;
-
-            // 随机决定这一块泥潭大小
-            int patchSize = MathUtils.random(
-                    GameConstants.MUD_PATCH_MIN_SIZE,
-                    GameConstants.MUD_PATCH_MAX_SIZE
-            );
-            patchSize = Math.min(patchSize, remaining);
-
-            // 随机一个起点
-            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-
-            if (!isValidTrapPosition(x, y)) continue;
-
-            // 用 BFS / 扩散方式生成这一块
-            List<int[]> patchCells = new ArrayList<>();
-            patchCells.add(new int[]{x, y});
-
-            int index = 0;
-            while (patchCells.size() < patchSize && index < patchCells.size()) {
-                int[] cell = patchCells.get(index++);
-                int cx = cell[0];
-                int cy = cell[1];
-
-                int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
-                shuffleDirections(dirs);
-
-                for (int[] d : dirs) {
-                    if (patchCells.size() >= patchSize) break;
-
-                    int nx = cx + d[0];
-                    int ny = cy + d[1];
-
-                    if (!isValidTrapPosition(nx, ny)) continue;
-
-                    boolean alreadyUsed = false;
-                    for (int[] p : patchCells) {
-                        if (p[0] == nx && p[1] == ny) {
-                            alreadyUsed = true;
-                            break;
-                        }
-                    }
-                    if (alreadyUsed) continue;
-
-                    patchCells.add(new int[]{nx, ny});
-                }
+    public void update(float delta) {
+        // 🔥 如果关卡过渡正在进行，只更新相关逻辑
+        if (levelTransitionInProgress) {
+            if (currentExitDoor != null) {
+                // 只更新当前触发的出口门
+                currentExitDoor.update(delta, this);
             }
 
-            // 真正生成 Trap
-            for (int[] cell : patchCells) {
-                traps.add(new TrapT04_Mud(cell[0], cell[1]));
-                remaining--;
-                if (remaining <= 0) break;
+            // 更新关卡过渡计时器
+            levelTransitionTimer += delta;
+            if (levelTransitionTimer >= LEVEL_TRANSITION_DELAY) {
+                // 延迟时间到，触发重置
+                levelTransitionInProgress = false;
+                levelTransitionTimer = 0f;
+                currentExitDoor = null;
+                requestReset();
+            }
+            return;
+        }
+
+        // 正常游戏逻辑
+        player.update(delta);
+
+        // ===== 修复: 使用 Iterator 遍历敌人，避免并发修改异常 =====
+        Iterator<Enemy> enemyIterator = enemies.iterator();
+        while (enemyIterator.hasNext()) {
+            Enemy e = enemyIterator.next();
+            e.update(delta, this);
+
+            if (e.isDead() || !e.isActive()) {
+                enemyIterator.remove();
             }
         }
 
-        Logger.gameEvent("Generated mud patches, total tiles: " +
-                (totalMudCount - remaining));
-    }
-
-    private void shuffleDirections(int[][] dirs) {
-        for (int i = dirs.length - 1; i > 0; i--) {
-            int j = MathUtils.random(i);
-            int[] tmp = dirs[i];
-            dirs[i] = dirs[j];
-            dirs[j] = tmp;
-        }
-    }
-
-
-
-    private boolean isValidTrapPosition(int x, int y) {
-
-        // 1. 必须是通路
-        if (maze[y][x] != 1) return false;
-
-        // 2. 不能离玩家太近
-        if (Math.abs(x - player.getX()) +
-                Math.abs(y - player.getY()) < 3) return false;
-
-        // 3. 不能和 Key 重叠
-        if (key != null && x == key.getX() && y == key.getY()) return false;
-
-        // 4. 不能和 Door 重叠
+        // 更新出口门
         for (ExitDoor door : exitDoors) {
-            if (x == door.getX() && y == door.getY()) {
-                return false;
-            }
+            door.update(delta, this);
         }
 
-        // 5. 不能和已有 Trap 重叠
-        for (Trap trap : traps) {
-            if (x == trap.getX() && y == trap.getY()) {
-                return false;
-            }
+        checkExitReached();
+        updateBullets(delta);
+
+        bobaBulletEffectManager.addBullets(bullets);
+        bobaBulletEffectManager.update(delta);
+
+        handlePlayerEnemyCollision();
+        handleDashHitEnemies();
+        checkAutoPickup();
+
+        if (keyEffectManager != null) {
+            keyEffectManager.update(delta);
         }
 
-        return true;
-    }
+        handleKeyLogic();
 
-
-    private void generateEnemies() {
-
-        // EnemyCorruptedBoba（会射 BobaBullet 的敌人）
-        generateEnemyType(
-                GameConstants.ENEMY_E01_PEARL_COUNT,
-                (x, y) -> new EnemyCorruptedBoba(x, y)
-        );
-
-        generateEnemyType(
-                GameConstants.ENEMY_E02_COFFEE_BEAN_COUNT,
-                (x, y) -> new EnemyE02_SmallCoffeeBean(x, y)
-        );
-
-        generateEnemyType(
-                GameConstants.ENEMY_E03_CARAMEL_COUNT,
-                (x, y) -> new EnemyE03_CaramelJuggernaut(x, y)
-        );
-
-        Logger.gameEvent("Generated " + enemies.size() + " enemies");
-    }
-
-
-
-    @FunctionalInterface
-    private interface EnemyFactory {
-        Enemy create(int x, int y);
-    }
-
-    private void generateEnemyType(int count, EnemyFactory factory) {
-        int attempts = 0;
-        int maxAttempts = 200;
-
-        while (count > 0 && attempts < maxAttempts) {
-            int x = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-            int y = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-            attempts++;
-
-            if (maze[y][x] != 1) continue;
-            if (Math.abs(x - player.getX()) + Math.abs(y - player.getY()) < 3) continue;
-            if (key != null && x == key.getX() && y == key.getY()) continue;
-
-            boolean overlapsDoor = false;
-            for (ExitDoor door : exitDoors) {
-                if (x == door.getX() && y == door.getY()) {
-                    overlapsDoor = true;
-                    break;
-                }
-            }
-            if (overlapsDoor) continue;
-
-            enemies.add(factory.create(x, y));
-            count--;
+        // ===== 🔥 统一重置执行点 =====
+        if (pendingReset) {
+            pendingReset = false;
+            resetGame();
+            justReset = true;
         }
     }
 
+    public void requestReset() {
+        pendingReset = true;
+    }
 
+    private void handleKeyLogic() {
+        if (keyProcessed) return;
 
+        for (Key key : keys) {
+            if (key.isCollected()) {
+                unlockAllExitDoors();
+                keyProcessed = true;
+                break;
+            }
+        }
+    }
 
+    private void unlockAllExitDoors() {
+        for (ExitDoor door : exitDoors) {
+            if (door.isLocked()) {
+                door.unlock();
+            }
+        }
+    }
 
+    private void updateBullets(float delta) {
+        for (int i = bullets.size - 1; i >= 0; i--) {
+            BobaBullet bullet = bullets.get(i);
+            bullet.update(delta, this);
 
+            if (!bullet.isActive()) {
+                bullets.removeIndex(i);
+            }
+        }
+    }
 
-    /**
-     * 检查是否太靠近其他出口
-     */
-    private boolean isTooCloseToOtherExit(int x, int y, int currentDoorIndex) {
-        int minDistance = 5; // 最小距离
+    /* ================= 随机生成核心 ================= */
+    private void generateLevel() {
+        generateExitDoors();
+        generateEnemies();
+        generateTraps();
+        generateHearts();
+        generateTreasures();
+        generateKeys();
+    }
 
-        for (int i = 0; i < currentDoorIndex; i++) {
-            ExitDoor existingDoor = exitDoors.get(i);
-            int distance = Math.abs(existingDoor.getX() - x) +
-                    Math.abs(existingDoor.getY() - y);
-            if (distance < minDistance) {
+    private void generateKeys() {
+        int keyCount = 10;
+
+        for (int i = 0; i < keyCount; i++) {
+            int x, y;
+            do {
+                x = random.nextInt(GameConstants.MAZE_WIDTH);
+                y = random.nextInt(GameConstants.MAZE_HEIGHT);
+            } while (
+                    getMazeCell(x, y) != 1 ||
+                            isOccupied(x, y) ||
+                            isExitDoorAt(x, y)
+            );
+            keys.add(new Key(x, y, this));
+        }
+    }
+
+    public boolean isExitDoorAt(int x, int y) {
+        for (ExitDoor door : exitDoors) {
+            if (door.getX() == x && door.getY() == y) {
                 return true;
             }
         }
         return false;
     }
 
-    /**
-     * 查找最近的出口
-     */
-    private ExitDoor findNearestExit() {
-        if (exitDoors.isEmpty()) {
-            return null;
+    private boolean isOccupied(int x, int y) {
+        // 玩家
+        if (player != null && player.getX() == x && player.getY() == y) {
+            return true;
         }
 
-        ExitDoor nearest = null;
-        float minDistance = Float.MAX_VALUE;
+        // 敌人
+        for (Enemy e : enemies) {
+            if (e.isActive() && e.getX() == x && e.getY() == y) {
+                return true;
+            }
+        }
+
+        // 宝箱
+        for (Treasure t : treasures) {
+            if (t.isActive() && t.getX() == x && t.getY() == y) {
+                return true;
+            }
+        }
+
+        // 爱心
+        for (Heart h : hearts) {
+            if (h.isActive() && h.getX() == x && h.getY() == y) {
+                return true;
+            }
+        }
+
+        for (Key k : keys) {
+            if (k.isActive() && k.getX() == x && k.getY() == y) {
+                return true;
+            }
+        }
+
+        // 陷阱
+        for (Trap trap : traps) {
+            if (trap.isActive() && trap.getX() == x && trap.getY() == y) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void checkExitReached() {
+        Player p = player;
 
         for (ExitDoor door : exitDoors) {
-            float distance = calculateDistance(player.getX(), player.getY(),
-                    door.getX(), door.getY());
+            if (!door.isLocked() &&
+                    door.isActive() &&
+                    door.getX() == p.getX() &&
+                    door.getY() == p.getY() &&
+                    !levelTransitionInProgress) { // 🔥 防止重复触发
 
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearest = door;
-            }
-        }
+                // 触发门动画
+                door.onPlayerStep(p);
 
-        return nearest;
-    }
-
-    /**
-     * 计算两点间的距离
-     */
-    private float calculateDistance(int x1, int y1, int x2, int y2) {
-        return (float) Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-    }
-
-    /**
-     * 查找随机路径位置
-     */
-    private int[] findRandomPathPosition() {
-        int width = maze[0].length;
-        int height = maze.length;
-        int attempts = 0;
-        int maxAttempts = 100;
-
-        while (attempts < maxAttempts) {
-            int x = MathUtils.random(1, width - 2);
-            int y = MathUtils.random(1, height - 2);
-
-            // 检查是否是通路且不是靠近边界（避免出生在死胡同）
-            if (maze[y][x] == 1) {
-                // 检查周围是否有至少2个方向可走
-                int possibleDirections = 0;
-                if (x > 0 && maze[y][x-1] == 1) possibleDirections++;
-                if (x < width-1 && maze[y][x+1] == 1) possibleDirections++;
-                if (y > 0 && maze[y-1][x] == 1) possibleDirections++;
-                if (y < height-1 && maze[y+1][x] == 1) possibleDirections++;
-
-                if (possibleDirections >= 2) {
-                    return new int[]{x, y};
-                }
-            }
-            attempts++;
-        }
-
-        // 如果找不到合适位置，返回默认位置
-        Logger.warning("Could not find suitable random position, using default");
-        return new int[]{1, 1};
-    }
-
-    private void initializeLevel() {
-        maze = mazeGenerator.generateMaze();
-
-        exitDoors.clear();
-        enemies.clear();
-        traps.clear();
-        bullets.clear();
-        key = null;
-        compass = null;
-
-        int[] pos = findRandomPathPosition();
-        startX = pos[0];
-        startY = pos[1];
-
-        player.reset();
-        player.setPosition(startX, startY);
-
-        generateLevelElements();
-
-        currentLevel++;
-
-        Logger.gameEvent("Level " + currentLevel + " started");
-    }
-
-    public void update(float deltaTime) {
-
-        if (gameState != GameState.PLAYING|| isPaused) return;
-        if (player.isDead()) {
-            gameState = GameState.GAME_OVER;
-            Logger.gameEvent("Game Over - Player died");
-            return;
-        }
-
-        // 更新玩家
-        player.update(deltaTime);
-        // 🔥 Dash 结束 → 清敌人 Dash 命中状态
-        if (player.didDashJustEnd()) {
-            resetEnemyDashHits();
-        }
-
-        // 更新陷阱
-        for (Trap trap : traps) {
-            trap.update(deltaTime);
-        }
-
-        // 检查碰撞
-        checkKeyCollection();
-        checkTrapCollision();
-
-        // 更新敌人
-        for (Enemy e : enemies) {
-            e.update(deltaTime, this);
-        }
-
-        // 检查敌人碰撞
-        checkEnemyCollision();
-
-        // 更新子弹
-        for (EnemyBullet b : bullets) {
-            b.update(deltaTime, this);
-        }
-
-        // 移除无效的敌人和子弹
-        enemies.removeIf(e -> e == null || e.isDead());
-        bullets.removeIf(b -> b == null || !b.isActive());
-
-        // 更新指南针
-        ExitDoor nearestExit = findNearestExit();
-        if (compass != null) {
-            compass.update(nearestExit);
-        }
-
-        // 更新可交互对象检测
-        updateInteractableObject();
-    }
-
-    private void checkTrapCollision() {
-        for (Trap trap : traps) {
-            if (trap.isActive() && player.collidesWith(trap)) {
-                trap.onPlayerStep(player);
-                Logger.gameEvent("Player stepped on a trap at " + trap.getPositionString());
-            }
-        }
-    }
-
-    private void generateKey() {
-        int keyX, keyY;
-        int attempts = 0;
-        int maxAttempts = 100;
-
-        do {
-            keyX = MathUtils.random(1, GameConstants.MAZE_WIDTH - 2);
-            keyY = MathUtils.random(1, GameConstants.MAZE_HEIGHT - 2);
-            attempts++;
-
-            if (attempts >= maxAttempts) {
-                Logger.error("Failed to generate key after " + maxAttempts + " attempts");
-                // 寻找第一个可用的通路位置
-                outer:
-                for (int y = 1; y < GameConstants.MAZE_HEIGHT - 1; y++) {
-                    for (int x = 1; x < GameConstants.MAZE_WIDTH - 1; x++) {
-                        if (maze[y][x] == 1 &&
-                                Math.abs(x - player.getX()) + Math.abs(y - player.getY()) >= 3) {
-                            keyX = x;
-                            keyY = y;
-                            break outer;
-                        }
-                    }
-                }
-                break;
-            }
-        } while (maze[keyY][keyX] != 1 ||
-                Math.abs(keyX - player.getX()) + Math.abs(keyY - player.getY()) < 3);
-
-        key = new Key(keyX, keyY);
-        Logger.debug("Key generated at " + key.getPositionString() + " after " + attempts + " attempts");
-    }
-
-    private void checkKeyCollection() {
-        if (key != null && key.isActive() && player.collidesWith(key)) {
-            key.collect();
-            player.setHasKey(true);
-            keyCollected = true;
-
-            // 解锁所有出口门
-            for (ExitDoor door : exitDoors) {
-                door.unlock(this);
-            }
-            Logger.gameEvent("Key collected, all " + exitDoors.size() + " exit doors unlocked");
-        }
-    }
-
-    private void checkExit() {
-        for (ExitDoor exitDoor : exitDoors) {
-            if (player.collidesWith(exitDoor) && !exitDoor.isLocked()) {
-
-                // 只标记状态，不换关
-                isExitingLevel = true;
+                // 开始关卡过渡
+                startLevelTransition(door);
                 return;
             }
         }
     }
 
+    // 🔥 新增：开始关卡过渡
+    private void startLevelTransition(ExitDoor door) {
+        levelTransitionInProgress = true;
+        currentExitDoor = door;
+        levelTransitionTimer = 0f;
+    }
 
-    // 新增方法：供 GameScreen 在动画播放完毕后调用
-    public void completeLevelTransition() {
-        isExitingLevel = false;
-        if (currentLevel < GameConstants.MAX_LEVELS) {
-            initializeLevel();
-        } else {
-            gameState = GameState.LEVEL_COMPLETE;
+    public void nextLevel() {
+        currentLevel++;
+
+        if (currentLevel > GameConstants.MAX_LEVELS) {
+            Logger.gameEvent("Game completed!");
+            return;
+        }
+
+        requestReset();
+    }
+
+    public void onKeyCollected() {
+        player.setHasKey(true);
+
+        for (ExitDoor door : exitDoors) {
+            door.unlock();
+        }
+
+        Logger.gameEvent("All exits unlocked");
+    }
+
+    /* ---------- Exit Doors ---------- */
+    private void generateExitDoors() {
+        for (int i = 0; i < GameConstants.EXIT_COUNT; i++) {
+            int[] p = randomWallCell();
+            int attempts = 0;
+
+            // 🔥 确保门的位置是有效的
+            while (!isValidDoorPosition(p[0], p[1]) && attempts < 50) {
+                p = randomWallCell();
+                attempts++;
+            }
+
+            exitDoors.add(new ExitDoor(p[0], p[1], i));
+            Logger.debug("ExitDoor created at (" + p[0] + ", " + p[1] + ")");
         }
     }
 
+    private boolean isValidDoorPosition(int x, int y) {
+        int[][] maze = getMaze();
+        int width = maze[0].length;
+        int height = maze.length;
 
+        // 必须是墙
+        if (maze[y][x] != 0) return false;
 
-    public boolean isEnemyValidMove(int x, int y) {
-        if (x < 0 || x >= GameConstants.MAZE_WIDTH ||
-                y < 0 || y >= GameConstants.MAZE_HEIGHT) {
+        // 🔥 关键：检查相邻格子是否有通路
+        boolean hasAdjacentPath = false;
+
+        // 四个主要方向
+        if (y + 1 < height && maze[y + 1][x] == 1) hasAdjacentPath = true;
+        if (y - 1 >= 0 && maze[y - 1][x] == 1) hasAdjacentPath = true;
+        if (x - 1 >= 0 && maze[y][x - 1] == 1) hasAdjacentPath = true;
+        if (x + 1 < width && maze[y][x + 1] == 1) hasAdjacentPath = true;
+
+        // 🔥 额外：确保玩家可以到达这个位置
+        // 检查至少有一个相邻的通路格子
+        if (!hasAdjacentPath) {
+            // 检查斜角
+            if (x - 1 >= 0 && y + 1 < height && maze[y + 1][x - 1] == 1) hasAdjacentPath = true;
+            if (x + 1 < width && y + 1 < height && maze[y + 1][x + 1] == 1) hasAdjacentPath = true;
+            if (x - 1 >= 0 && y - 1 >= 0 && maze[y - 1][x - 1] == 1) hasAdjacentPath = true;
+            if (x + 1 < width && y - 1 >= 0 && maze[y - 1][x + 1] == 1) hasAdjacentPath = true;
+        }
+
+        return hasAdjacentPath;
+    }
+
+    private int[] randomWallCell() {
+        int[][] maze = getMaze();
+        int width = maze[0].length;
+        int height = maze.length;
+
+        for (int attempt = 0; attempt < 1000; attempt++) {
+            int x = BORDER_THICKNESS + random.nextInt(width - BORDER_THICKNESS * 2);
+            int y = BORDER_THICKNESS + random.nextInt(height - BORDER_THICKNESS * 2);
+
+            // 1️⃣ 必须是墙
+            if (maze[y][x] != 0) continue;
+
+            // 2️⃣ 不能已经有出口门
+            if (isExitDoorAt(x, y)) continue;
+
+            // 🔥 3️⃣ 关键修复：检查相邻格子是否有通路
+            // 检查上下左右四个方向
+            boolean hasAdjacentPath = false;
+
+            // 上
+            if (y + 1 < height && maze[y + 1][x] == 1) hasAdjacentPath = true;
+            // 下
+            if (y - 1 >= 0 && maze[y - 1][x] == 1) hasAdjacentPath = true;
+            // 左
+            if (x - 1 >= 0 && maze[y][x - 1] == 1) hasAdjacentPath = true;
+            // 右
+            if (x + 1 < width && maze[y][x + 1] == 1) hasAdjacentPath = true;
+
+            // 🔥 额外检查：确保不是完全封闭的死胡同
+            // 检查斜角方向
+            if (!hasAdjacentPath) {
+                // 左上
+                if (x - 1 >= 0 && y + 1 < height && maze[y + 1][x - 1] == 1) hasAdjacentPath = true;
+                // 右上
+                if (x + 1 < width && y + 1 < height && maze[y + 1][x + 1] == 1) hasAdjacentPath = true;
+                // 左下
+                if (x - 1 >= 0 && y - 1 >= 0 && maze[y - 1][x - 1] == 1) hasAdjacentPath = true;
+                // 右下
+                if (x + 1 < width && y - 1 >= 0 && maze[y - 1][x + 1] == 1) hasAdjacentPath = true;
+            }
+
+            if (!hasAdjacentPath) continue;
+
+            return new int[]{x, y};
+        }
+
+        Logger.warning("randomWallCell fallback triggered");
+        // 🔥 改进的 fallback：找一个至少有相邻通路的墙
+        for (int y = BORDER_THICKNESS; y < height - BORDER_THICKNESS; y++) {
+            for (int x = BORDER_THICKNESS; x < width - BORDER_THICKNESS; x++) {
+                if (maze[y][x] != 0) continue;
+                if (isExitDoorAt(x, y)) continue;
+
+                // 检查相邻通路
+                if ((y + 1 < height && maze[y + 1][x] == 1) ||
+                        (y - 1 >= 0 && maze[y - 1][x] == 1) ||
+                        (x - 1 >= 0 && maze[y][x - 1] == 1) ||
+                        (x + 1 < width && maze[y][x + 1] == 1)) {
+                    return new int[]{x, y};
+                }
+            }
+        }
+
+        return new int[]{BORDER_THICKNESS, BORDER_THICKNESS};
+    }
+
+    /* ---------- Enemies ---------- */
+    private void generateEnemies() {
+        for (int i = 0; i < GameConstants.ENEMY_E01_PEARL_COUNT; i++) {
+            int[] p = randomEmptyCell();
+            enemies.add(new EnemyCorruptedBoba(p[0], p[1]));
+        }
+
+        for (int i = 0; i < GameConstants.ENEMY_E02_COFFEE_BEAN_COUNT; i++) {
+            int[] p = randomEmptyCell();
+            enemies.add(new EnemyE02_SmallCoffeeBean(p[0], p[1]));
+        }
+
+        for (int i = 0; i < GameConstants.ENEMY_E03_CARAMEL_COUNT; i++) {
+            int[] p = randomEmptyCell();
+            enemies.add(new EnemyE03_CaramelJuggernaut(p[0], p[1]));
+        }
+    }
+
+    /* ---------- Traps ---------- */
+    private void generateTraps() {
+        for (int i = 0; i < GameConstants.TRAP_T01_GEYSER_COUNT; i++) {
+            int[] p = randomEmptyCell();
+            traps.add(new TrapT01_Geyser(p[0], p[1], 3f));
+        }
+
+        for (int i = 0; i < GameConstants.TRAP_T02_PEARL_MINE_COUNT; i++) {
+            int[] p = randomEmptyCell();
+            traps.add(new TrapT02_PearlMine(p[0], p[1], this));
+        }
+
+        for (int i = 0; i < GameConstants.TRAP_T03_TEA_SHARDS_COUNT; i++) {
+            int[] p = randomEmptyCell();
+            traps.add(new TrapT03_TeaShards(p[0], p[1]));
+        }
+
+        for (int i = 0; i < GameConstants.TRAP_T04_MUD_COUNT; i++) {
+            int[] p = randomEmptyCell();
+            traps.add(new TrapT04_Mud(p[0], p[1]));
+        }
+    }
+
+    /* ---------- Hearts ---------- */
+    private void generateHearts() {
+        int count = 10;
+        for (int i = 0; i < count; i++) {
+            int[] p = randomEmptyCell();
+            hearts.add(new Heart(p[0], p[1]));
+        }
+    }
+
+    /* ---------- Treasures ---------- */
+    private void generateTreasures() {
+        int count = 5;
+        for (int i = 0; i < count; i++) {
+            int[] p = randomEmptyCell();
+            treasures.add(new Treasure(p[0], p[1]));
+        }
+    }
+
+    /* ================= 工具 ================= */
+    private int[] randomEmptyCell() {
+        int x, y;
+        do {
+            x = random(1, GameConstants.MAZE_WIDTH - 2);
+            y = random(1, GameConstants.MAZE_HEIGHT - 2);
+        } while (maze[y][x] == 0);
+        return new int[]{x, y};
+    }
+
+    public boolean canPlayerMoveTo(int x, int y) {
+        // 1️⃣ 越界
+        if (x < 0 || y < 0 || y >= maze.length || x >= maze[0].length) {
             return false;
         }
+
+        // 2️⃣ 出口门优先判断
+        for (ExitDoor door : exitDoors) {
+            if (door.getX() == x && door.getY() == y) {
+                return !door.isLocked();
+            }
+        }
+
+        // 3️⃣ 普通墙体
         return maze[y][x] == 1;
     }
 
-    public int[][] getMaze() {
-        int[][] copy = new int[maze.length][];
-        for (int i = 0; i < maze.length; i++) {
-            copy[i] = Arrays.copyOf(maze[i], maze[i].length);
-        }
-        return copy;
-    }
-
-    public int getMazeCell(int x, int y) {
-        if (isValidCoordinate(x, y)) {
-            return maze[y][x];
-        }
-        return 0;
-    }
-
-    private boolean isValidCoordinate(int x, int y) {
-        return x >= 0 && x < GameConstants.MAZE_WIDTH &&
-                y >= 0 && y < GameConstants.MAZE_HEIGHT;
-    }
-
-    // Getter methods
-    public GameState getGameState() { return gameState; }
-    public void setGameState(GameState state) { this.gameState = state; }
+    /* ================= Getter ================= */
     public Player getPlayer() { return player; }
-    public Key getKey() { return key; }
-    public boolean isGameComplete() { return isGameComplete; }
+    public int[][] getMaze() { return maze; }
+    public List<Enemy> getEnemies() { return enemies; }
+    public List<Trap> getTraps() { return traps; }
+    public List<Heart> getHearts() { return hearts; }
+    public List<Treasure> getTreasures() { return treasures; }
+    public List<ExitDoor> getExitDoors() { return exitDoors; }
+    public Compass getCompass() { return compass; }
     public int getCurrentLevel() { return currentLevel; }
-    public int getLives() { return lives; }
+    public List<Key> getKeys() { return keys; }
 
-    public List<ExitDoor> getExitDoors() {
-        return exitDoors;
+    // 🔥 新增：获取动画状态
+    public boolean isLevelTransitionInProgress() {
+        return levelTransitionInProgress;
     }
 
-    public Compass getCompass() {
-        return compass;
-    }
 
-    public List<Trap> getTraps() {
-        return traps;
-    }
+    /* ================= 输入 ================= */
+    public void onMoveInput(int dx, int dy) {
+        if (player == null || levelTransitionInProgress) return; // 🔥 过渡期间禁用移动
 
-    public List<Enemy> getEnemies() {
-        return enemies;
-    }
+        int nx = player.getX() + dx;
+        int ny = player.getY() + dy;
 
-    public List<EnemyBullet> getBullets() {
-        return bullets;
-    }
-    public boolean isPaused() { return isPaused; }
-    public boolean canInteract() { return canInteract; }
-    public GameObject getInteractableObject() { return interactableObject; }
-    public void onTextureModeChanged() {
-        if (player != null) {
-            player.onTextureModeChanged();
+        if (canPlayerMoveTo(nx, ny)) {
+            player.move(dx, dy);
         }
+    }
 
-        if (key != null) {
-            key.onTextureModeChanged();
-        }
+    public boolean onAbilityInput(int slot) {
+        if (levelTransitionInProgress) return false; // 🔥 过渡期间禁用技能
+        player.useAbility(slot);
+        return true;
+    }
 
+    public void onInteractInput() {
+        if (levelTransitionInProgress) return; // 🔥 过渡期间禁用交互
+
+        int px = player.getX();
+        int py = player.getY();
+
+        // 出口
         for (ExitDoor door : exitDoors) {
-            door.onTextureModeChanged();
+            if (door.isInteractable() && door.getX() == px && door.getY() == py) {
+                door.onInteract(player);
+                return;
+            }
         }
 
-        for (Trap trap : traps) {
-            trap.onTextureModeChanged();
+        // 宝箱
+        for (Treasure t : treasures) {
+            if (t.isInteractable() && t.getX() == px && t.getY() == py) {
+                t.onInteract(player);
+                return;
+            }
         }
 
-        Logger.gameEvent("Texture mode changed to: " +
-                TextureManager.getInstance().getCurrentMode());
+        // 爱心
+        for (Heart h : hearts) {
+            if (h.isActive() && h.getX() == px && h.getY() == py) {
+                h.onInteract(player);
+                return;
+            }
+        }
     }
 
-    public void spawnEnemy(Enemy enemy) {
-        enemies.add(enemy);
-    }
+    private void checkAutoPickup() {
+        if (levelTransitionInProgress) return; // 🔥 过渡期间禁用自动拾取
 
-    public void spawnProjectile(EnemyBullet bullet) {
-        bullets.add(bullet);
-    }
+        int px = player.getX();
+        int py = player.getY();
 
-    private void checkEnemyCollision() {
-        for (Enemy enemy : enemies) {
-            if (enemy == null || enemy.isDead()) continue;
+        // ===== 钥匙 =====
+        Iterator<Key> keyIterator = keys.iterator();
+        while (keyIterator.hasNext()) {
+            Key key = keyIterator.next();
+            if (!key.isActive()) continue;
 
-            if (player.getX() == enemy.getX() &&
-                    player.getY() == enemy.getY()) {
+            if (key.getX() == px && key.getY() == py) {
+                float effectX = key.getX() * GameConstants.CELL_SIZE;
+                float effectY = key.getY() * GameConstants.CELL_SIZE;
 
-                // ===== Dash 撞击敌人 =====
-                if (player.isDashing() && !enemy.isHitByDash()) {
-
-                    int dashDamage = 25; // 你可以后面抽成常量 / Ability 参数
-                    enemy.takeDamage(dashDamage);
-                    enemy.markHitByDash();
-
-                    Logger.gameEvent(
-                            "Enemy hit by DASH at (" +
-                                    enemy.getX() + ", " + enemy.getY() + ")"
-                    );
-
-                    continue; // ❗ 不再反伤玩家
+                if (key.getTexture() != null) {
+                    keyEffectManager.spawnKeyEffect(effectX, effectY, key.getTexture());
                 }
 
-                // ===== 普通撞敌 =====
-                int damage = enemy.getCollisionDamage();
-                player.takeDamage(damage);
-
-                Logger.gameEvent(
-                        "Player hit by enemy at (" +
-                                enemy.getX() + ", " + enemy.getY() +
-                                ") for " + damage + " damage"
-                );
-
+                key.onInteract(player);
+                keyIterator.remove();
+                onKeyCollected();
                 break;
             }
         }
-    }
 
-
-    public void setMaze(int[][] qteMaze) {
-        Logger.debug("GameManager.setMaze() - using fixed QTE maze");
-
-        // 深拷贝迷宫
-        this.maze = new int[qteMaze.length][];
-        for (int i = 0; i < qteMaze.length; i++) {
-            this.maze[i] = Arrays.copyOf(qteMaze[i], qteMaze[i].length);
-        }
-
-        // 清空内容
-        exitDoors.clear();
-        traps.clear();
-        enemies.clear();
-        bullets.clear();
-        key = null;
-        compass = null;
-
-        // 创建/重置玩家
-        int spawnX = 1;
-        int spawnY = 1;
-
-        outer:
-        for (int y = 0; y < maze.length; y++) {
-            for (int x = 0; x < maze[y].length; x++) {
-                if (maze[y][x] == 1) {
-                    spawnX = x;
-                    spawnY = y;
-                    break outer;
-                }
+        // ===== 爱心 =====
+        Iterator<Heart> heartIterator = hearts.iterator();
+        while (heartIterator.hasNext()) {
+            Heart h = heartIterator.next();
+            if (h.isActive() && h.getX() == px && h.getY() == py) {
+                h.onInteract(player);
+                heartIterator.remove();
             }
         }
 
-        if (player == null) {
-            player = new Player(spawnX, spawnY,this);
-        } else {
-            player.setPosition(spawnX, spawnY);
-            player.reset();
+        // ===== 宝箱 =====
+        Iterator<Treasure> treasureIterator = treasures.iterator();
+        while (treasureIterator.hasNext()) {
+            Treasure t = treasureIterator.next();
+            if (t.isInteractable() && t.getX() == px && t.getY() == py) {
+                t.onInteract(player);
+                treasureIterator.remove();
+            }
+        }
+    }
+
+    /**
+     * Enemy 专用移动判定
+     */
+    public boolean isEnemyValidMove(int x, int y) {
+        // 越界 = 不可走
+        if (x < 0 || y < 0 || x >= maze[0].length || y >= maze.length) {
+            return false;
         }
 
-        // 强制状态为 PLAYING
-        gameState = GameState.PLAYING;
-        isGameComplete = false;
+        // 墙 = 不可走
+        if (maze[y][x] == 0) {
+            return false;
+        }
 
-        Logger.debug("QTE maze loaded, player spawned at (" +
-                spawnX + ", " + spawnY + ")");
+        // Trap 是否阻挡
+        for (var trap : traps) {
+            if (trap.getX() == x && trap.getY() == y && !trap.isPassable()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-
-
-    // 添加的辅助方法
-    public boolean isKeyCollected() {
-        return keyCollected;
-    }
-
-    public boolean isCompassActive() {
-        return compassActive && compass != null;
-    }
-
-    // Getter methods
-    public ExitDoor getExitDoor() { return exitDoors.isEmpty() ? null : exitDoors.get(0);  }
-    public int[][] getMazeForRendering() {
-        return maze; // 直接返回引用，因为MazeRenderer只需要读取
-    }
+    /**
+     * 获取指定格子上的所有敌人
+     */
     public List<Enemy> getEnemiesAt(int x, int y) {
-        List<Enemy> enemiesAtPosition = new ArrayList<>();
+        List<Enemy> result = new ArrayList<>();
+        for (Enemy enemy : enemies) {
+            if (enemy == null) continue;
+            if (enemy.isDead()) continue;
+            if (enemy.getX() == x && enemy.getY() == y) {
+                result.add(enemy);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 获取迷宫某一格的值
+     */
+    public int getMazeCell(int x, int y) {
+        if (x < 0 || x >= GameConstants.MAZE_WIDTH ||
+                y < 0 || y >= GameConstants.MAZE_HEIGHT) {
+            return 0;
+        }
+        return maze[y][x];
+    }
+
+    /**
+     * 生成敌人子弹 / 投射物
+     */
+    public void spawnProjectile(EnemyBullet bullet) {
+        if (bullet == null) return;
+        bullets.add((BobaBullet) bullet);
+    }
+
+    public void spawnProjectile(BobaBullet bullet) {
+        if (bullet == null) return;
+        bullets.add(bullet);
+    }
+
+    // GameManager.java
+    private BobaBulletManager bobaBulletEffectManager = new BobaBulletManager();
+    public BobaBulletManager getBobaBulletEffectManager() {
+        return bobaBulletEffectManager;
+    }
+
+    private void handlePlayerEnemyCollision() {
+        if (levelTransitionInProgress) return; // 🔥 过渡期间禁用碰撞检测
+
+        Player player = this.player;
+        if (player == null || player.isDead()) return;
 
         for (Enemy enemy : enemies) {
-            if (enemy != null && !enemy.isDead()) {
-                // 检查敌人的逻辑位置是否在指定格子
-                if (enemy.getX() == x && enemy.getY() == y) {
-                    enemiesAtPosition.add(enemy);
+            if (!enemy.isActive() || enemy.isDead()) continue;
+
+            if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
+                if (player.isDashInvincible()) {
+                    continue;
                 }
+                player.takeDamage(enemy.getAttackDamage());
             }
         }
-
-        return enemiesAtPosition;
-    }
-    public void resetGame() {
-        Logger.debug("Resetting game");
-
-        maze = mazeGenerator.generateMaze();
-
-        currentLevel = 1;
-        gameState = GameState.PLAYING;
-        isGameComplete = false;
-        keyCollected = false;
-        compassActive = false;
-        isPaused = false;
-
-        exitDoors.clear();
-        enemies.clear();
-        traps.clear();
-        bullets.clear();
-        key = null;
-        compass = null;
-
-        int[] pos = findRandomPathPosition();
-        startX = pos[0];
-        startY = pos[1];
-
-        player.reset();
-        player.setPosition(startX, startY);
-
-        generateLevelElements();
     }
 
+    private void handleDashHitEnemies() {
+        if (levelTransitionInProgress) return; // 🔥 过渡期间禁用Dash伤害
 
+        Player player = this.player;
+        if (player == null) return;
+        if (!player.isDashing()) return;
 
+        for (Enemy enemy : enemies) {
+            if (!enemy.isActive() || enemy.isDead()) continue;
 
+            if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
+                enemy.takeDamage(2);
+            }
+        }
+    }
 
+    public KeyEffectManager getKeyEffectManager() {
+        return keyEffectManager;
+    }
+
+    public void dispose() {
+        if (keyEffectManager != null) {
+            keyEffectManager.dispose();
+        }
+    }
 }
