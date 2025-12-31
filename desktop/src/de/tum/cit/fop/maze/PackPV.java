@@ -8,32 +8,34 @@ public class PackPV {
 
     public static void main(String[] args) {
 
-        // === TexturePacker 配置 ===
         Settings settings = new Settings();
 
-        // 关键：允许放下 1920x1080 的大图
+        // === atlas 最大尺寸 ===
         settings.maxWidth = 4096;
         settings.maxHeight = 4096;
 
-        // 线性过滤，PV 看起来更平滑
+        // === ⭐⭐⭐ 核心修复：禁止旋转 ⭐⭐⭐ ===
+        settings.rotation = false;
+
+        // === 推荐设置 ===
         settings.filterMin = TextureFilter.Linear;
         settings.filterMag = TextureFilter.Linear;
 
-
-        // 可选：防止重名时报错（PV 序列一般安全）
         settings.alias = false;
 
-        // === 执行打包 ===
+        // 防止裁剪透明边（坐标更直观）
+        settings.stripWhitespaceX = false;
+        settings.stripWhitespaceY = false;
+
         String root = System.getProperty("user.dir");
         System.out.println("Working dir = " + root);
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/tiles_stage_0",
+                root + "/assets_raw/tiles_stage_2",
                 root + "/assets/menu_bg",
-                "tiles_stage_0"
+                "tiles_stage_2"
         );
-
 
         System.out.println("PV atlas packed successfully.");
     }
