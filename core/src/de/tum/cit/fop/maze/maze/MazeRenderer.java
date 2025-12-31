@@ -19,6 +19,8 @@ public class MazeRenderer {
 
     private final GameManager gameManager;
     private final TextureManager textureManager = TextureManager.getInstance();
+    private int[][] lastMazeRef = null;
+
 
     /* ===== 地板 ===== */
     private Texture floorTexture;
@@ -51,10 +53,8 @@ public class MazeRenderer {
     /* ================= 纹理加载 ================= */
 
     private void loadTextures() {
-        // 地板
         floorTexture = textureManager.getFloorTexture();
 
-        // 墙图集
         FileHandle fh = Gdx.files.internal("Wallpaper/Wallpaper.atlas");
         wallAtlas = new TextureAtlas(fh);
 
@@ -78,27 +78,46 @@ public class MazeRenderer {
         batch.draw(floorTexture, 0, 0, w, h);
     }
 
-    /* ================= 墙分析 ================= */
+    /* ================= 墙分析（核心修复在这里） ================= */
 
     private void analyze() {
         wallGroups.clear();
+
         int[][] maze = gameManager.getMaze();
+        if (maze == null) return;
 
         for (int y = 0; y < maze.length; y++) {
-            for (int x = 0; x < maze[y].length; x++) {
+            int x = 0;
+            while (x < maze[y].length) {
 
-                if (maze[y][x] != 0) continue;
-
-                int len = 1;
-                while (x + len < maze[y].length && maze[y][x + len] == 0) {
-                    len++;
+                if (!isWallCellButNotExit(x, y)) {
+                    x++;
+                    continue;
                 }
 
-                splitWall(x, y, len);
-                x += len - 1;
+                int startX = x;
+                int len = 0;
+
+                while (x < maze[y].length && isWallCellButNotExit(x, y)) {
+                    len++;
+                    x++;
+                }
+
+                splitWall(startX, y, len);
             }
         }
+
         analyzed = true;
+    }
+
+
+    /**
+     * ✅ 核心判断：
+     * 是墙，并且不是出口门
+     */
+    private boolean isWallCellButNotExit(int x, int y) {
+        return gameManager.getMaze()[y][x] == 0
+                && !gameManager.isExitDoorAt(x, y);
     }
 
     private void splitWall(int x, int y, int len) {
@@ -129,9 +148,17 @@ public class MazeRenderer {
     }
 
     public List<WallGroup> getWallGroups() {
-        if (!analyzed) analyze();
+        int[][] currentMaze = gameManager.getMaze();
+
+        // 🔥 迷宫引用变了 → 强制重新分析
+        if (!analyzed || currentMaze != lastMazeRef) {
+            analyze();
+            lastMazeRef = currentMaze;
+        }
+
         return wallGroups;
     }
+
 
     /* ================= 前后遮挡判断 ================= */
 
@@ -187,4 +214,6 @@ public class MazeRenderer {
     public void dispose() {
         if (wallAtlas != null) wallAtlas.dispose();
     }
+
+
 }

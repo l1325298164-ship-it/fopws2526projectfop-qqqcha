@@ -17,7 +17,7 @@ public class MazeGenerator {
     private static final int WALL_HEIGHT = 1;     // 墙高度：1格
     private static final int PATH_WIDTH = 1;      // 道路宽度：3格
     private static final int PATH_HEIGHT = 3;     // 道路高度：3格
-    private static final int BORDER_THICKNESS = 4;
+    public static final int BORDER_THICKNESS = 4;
 
 
     public MazeGenerator() {
