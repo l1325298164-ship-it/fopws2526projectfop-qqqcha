@@ -1,0 +1,53 @@
+
+E01_right.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame297
+  rotate: false
+  xy: 2, 1957
+  size: 2894, 1953
+  orig: 2894, 1953
+  offset: 0, 0
+  index: -1
+frame298
+  rotate: false
+  xy: 2, 2
+  size: 2894, 1953
+  orig: 2894, 1953
+  offset: 0, 0
+  index: -1
+
+E01_right2.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame299
+  rotate: false
+  xy: 2, 1957
+  size: 2894, 1953
+  orig: 2894, 1953
+  offset: 0, 0
+  index: -1
+frame300
+  rotate: false
+  xy: 2, 2
+  size: 2894, 1953
+  orig: 2894, 1953
+  offset: 0, 0
+  index: -1
+
+E01_right3.png
+size: 4096, 2048
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame301
+  rotate: false
+  xy: 2, 2
+  size: 2894, 1953
+  orig: 2894, 1953
+  offset: 0, 0
+  index: -1

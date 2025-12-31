@@ -1,0 +1,41 @@
+
+E01_front.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame282
+  rotate: false
+  xy: 2, 1675
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
+frame283
+  rotate: false
+  xy: 2, 2
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
+frame284
+  rotate: false
+  xy: 1279, 1675
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
+frame285
+  rotate: false
+  xy: 1279, 2
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
+frame286
+  rotate: false
+  xy: 2556, 1675
+  size: 1275, 1671
+  orig: 1275, 1671
+  offset: 0, 0
+  index: -1
