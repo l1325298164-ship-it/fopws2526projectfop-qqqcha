@@ -17,18 +17,24 @@ public class Key extends GameObject {
     private boolean collected = false;
 
     private final TextureManager textureManager;
-    private final GameManager gameManager;   // ✅ 新增
+    private final GameManager gm;   // ✅ 新增
 
     private boolean needsTextureUpdate = true;
+    public boolean playerCollectedKey;
 
     // ✅ 构造器必须传 GameManager
     public Key(int x, int y, GameManager gm) {
         super(x, y);
-        this.gameManager = gm;
+        this.gm = gm;
         this.textureManager = TextureManager.getInstance();
+
+        this.active = true;      // 🔥 必须
+        this.collected = false;  // 🔥 明确
+
         updateTexture();
         Logger.debug("Key created at " + getPositionString());
     }
+
 
     @Override
     public boolean isInteractable() {
@@ -42,7 +48,8 @@ public class Key extends GameObject {
         collect();
 
         // 🔥 唯一正确的钥匙逻辑入口
-        gameManager.onKeyCollected();
+        gm.onKeyCollected();
+        playerCollectedKey = true;
 
         Logger.gameEvent("Key picked up");
     }
@@ -109,5 +116,9 @@ public class Key extends GameObject {
 
     public Texture getTexture() {
         return  keyTexture;
+    }
+
+    public boolean isCollected() {
+        return playerCollectedKey;
     }
 }
