@@ -29,9 +29,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/Wallpaper",
-                root + "/assets/Wallpaper",
-                "Wallpaper"
+                root + "/assets_raw/tiles_stage_0",
+                root + "/assets/menu_bg",
+                "tiles_stage_0"
         );
 
 

@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
@@ -15,234 +16,209 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.menu_tile.CorruptionManager;
+import de.tum.cit.fop.maze.menu_tile.TileManager;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 
 public class MenuScreen implements Screen {
 
+    private final MazeRunnerGame game;
     private final Stage stage;
+
+    // UI
     private ImageButton musicButton;
-    private TextureAtlas atlas;
+    private TextureAtlas uiAtlas;
     private AudioManager audioManager;
     private boolean isMusicOn = true;
 
-    public MenuScreen(MazeRunnerGame game) {
-        // =====================================================
-        // Camera & Stage
-        // =====================================================
-        OrthographicCamera camera = new OrthographicCamera();
-        camera.zoom = 1.5f;
+    // 世界状态
+    private CorruptionManager corruptionManager;
+    private TileManager tileManager;
+    private int currentStage = 0;
+    private float idleTimer = 0f;
+    private int loadedTileStage = -1;
 
+
+    // 背景
+    private Texture bgCandy;
+    private Texture bgHell;
+
+    public MenuScreen(MazeRunnerGame game) {
+        this.game = game;
+
+        // ================= Camera & Stage =================
+        OrthographicCamera camera = new OrthographicCamera();
         Viewport viewport = new ScreenViewport(camera);
         stage = new Stage(viewport, game.getSpriteBatch());
         Gdx.input.setInputProcessor(stage);
 
-        // =====================================================
-        // 获取资源
-        // =====================================================
-        // 🔧 请修改这个路径为您的实际atlas路径
-        atlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
+        // ================= 资源 =================
+        uiAtlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
         audioManager = AudioManager.getInstance();
         isMusicOn = audioManager.isMusicEnabled();
 
-        // =====================================================
-        // Root Layout
-        // =====================================================
-        Table mainTable = new Table();
-        mainTable.setFillParent(true);
-        stage.addActor(mainTable);
+        bgCandy = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+        bgHell  = new Texture(Gdx.files.internal("menu_bg/bg_hell.png"));
 
-        // =====================================================
-        // Title
-        // =====================================================
-        Label title = new Label(
-                "Hello World from the Menu!",
-                game.getSkin(),
-                "title"
-        );
+        corruptionManager = new CorruptionManager();
+        tileManager = new TileManager(); // 只管 stage 1 / 2
+
+        // ================= UI =================
+        Table root = new Table();
+        root.setFillParent(true);
+        stage.addActor(root);
+
+        Label title = new Label("HELLO WORLD", game.getSkin(), "title");
         title.setAlignment(Align.center);
         title.setFontScale(1.1f);
 
-        mainTable.add(title)
-                .padBottom(80)
-                .row();
+        root.add(title).padBottom(80).row();
 
-        // =====================================================
-        // Buttons (via ButtonFactory)
-        // =====================================================
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 
-        mainTable.add(
-                bf.create("START GAME", game::goToGame)
-        ).padBottom(20).row();
+        root.add(bf.create("START GAME", game::goToGame)).padBottom(20).row();
+        root.add(bf.create("RESET THE WORLD", game::goToPV)).padBottom(20).row();
+        root.add(bf.create("CONTROLS", () -> {
+            idleTimer = 0f;
+            game.setScreen(new KeyMappingScreen(game, MenuScreen.this));
+        })).padBottom(20).row();
 
-        mainTable.add(
-                bf.create("RESET THE WORLD", game::goToPV)
-        ).padBottom(20).row();
+        root.add(bf.create("TEST", () -> {
+            corruptionManager.onUselessClick();
+            idleTimer = 0f;
+        })).row();
 
-        // 🔥 新增：CONTROLS 按钮
-        mainTable.add(
-                bf.create("CONTROLS", () -> {
-                    // 跳转到按键设置界面 (KeyMappingScreen)
-                    // 传入 MenuScreen.this 是为了让设置界面点 "Back" 能返回到这里
-                    game.setScreen(new KeyMappingScreen(game, MenuScreen.this));
-                })
-        ).padBottom(20).row();
-
-        mainTable.add(
-                bf.create("TEST", () -> {
-                    System.out.println("TEST button clicked");
-                })
-        ).row();
-
-        // =====================================================
-// 音乐开关按钮（右下角）
-// =====================================================
         createMusicButton();
 
-        Table bottomRightTable = new Table();
-        bottomRightTable.setFillParent(true);
-        bottomRightTable.bottom().right();
+        Table bottomRight = new Table();
+        bottomRight.setFillParent(true);
+        bottomRight.bottom().right();
+        bottomRight.add(musicButton).size(160).pad(20);
+        stage.addActor(bottomRight);
 
-// 获取屏幕尺寸
-        float screenWidth = Gdx.graphics.getWidth();
-        float screenHeight = Gdx.graphics.getHeight();
-
-// 设置按钮位置（从屏幕边缘往回减）
-        float buttonSize = 180f;
-        float padding = -130f;
-
-// 创建位置Table，先设置到右下角，然后往左上方移动
-        bottomRightTable.add(musicButton)
-                .size(buttonSize, buttonSize)
-                .padRight(padding)    // 距离右边30像素
-                .padBottom(padding);  // 距离底部30像素
-
-        stage.addActor(bottomRightTable);
-
-        // 初始播放音乐
         if (isMusicOn) {
             audioManager.playMusic(de.tum.cit.fop.maze.audio.AudioType.MUSIC_MENU);
         }
     }
 
-    /**
-     * 创建音乐按钮
-     */
     private void createMusicButton() {
-        // 创建图标
-        TextureRegionDrawable musicOnIcon = new TextureRegionDrawable(atlas.findRegion("frame178"));
-        TextureRegionDrawable musicOffIcon = new TextureRegionDrawable(atlas.findRegion("frame180"));
+        TextureRegionDrawable on = new TextureRegionDrawable(uiAtlas.findRegion("frame178"));
+        TextureRegionDrawable off = new TextureRegionDrawable(uiAtlas.findRegion("frame180"));
 
         ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
-        style.imageUp = isMusicOn ? musicOnIcon : musicOffIcon;
+        style.imageUp = isMusicOn ? on : off;
 
         musicButton = new ImageButton(style);
         musicButton.setTransform(true);
-
-        // 🔧 关键：设置缩放原点为按钮中心
         musicButton.setOrigin(Align.center);
 
-        // 🔧 可选：也可以显式设置原点位置
-        // musicButton.setOrigin(buttonSize/2, buttonSize/2);
-
-        // 简单动画效果
         musicButton.addListener(new com.badlogic.gdx.scenes.scene2d.InputListener() {
             @Override
-            public void enter(com.badlogic.gdx.scenes.scene2d.InputEvent event,
-                              float x, float y, int pointer,
-                              com.badlogic.gdx.scenes.scene2d.Actor fromActor) {
-                musicButton.clearActions();
-                musicButton.addAction(
-                        com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo(1.01f, 1.01f, 0.1f)
-                );
-            }
-
-            @Override
-            public void exit(com.badlogic.gdx.scenes.scene2d.InputEvent event,
-                             float x, float y, int pointer,
-                             com.badlogic.gdx.scenes.scene2d.Actor toActor) {
-                musicButton.clearActions();
-                musicButton.addAction(
-                        com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo(1f, 1f, 0.1f)
-                );
-            }
-
-            @Override
-            public boolean touchDown(com.badlogic.gdx.scenes.scene2d.InputEvent event,
-                                     float x, float y, int pointer, int buttonCode) {
-                musicButton.clearActions();
-                musicButton.addAction(
-                        com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo(0.9f, 0.9f, 0.05f)
-                );
+            public boolean touchDown(com.badlogic.gdx.scenes.scene2d.InputEvent e,
+                                     float x, float y, int p, int b) {
                 return true;
             }
 
             @Override
-            public void touchUp(com.badlogic.gdx.scenes.scene2d.InputEvent event,
-                                float x, float y, int pointer, int buttonCode) {
-                musicButton.clearActions();
-                musicButton.addAction(
-                        com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo(1f, 1f, 0.1f)
-                );
-
-                if (x >= 0 && x <= musicButton.getWidth() && y >= 0 && y <= musicButton.getHeight()) {
-                    toggleMusic();
-                }
+            public void touchUp(com.badlogic.gdx.scenes.scene2d.InputEvent e,
+                                float x, float y, int p, int b) {
+                toggleMusic();
             }
         });
     }
 
-    /**
-     * 切换音乐
-     */
     private void toggleMusic() {
         isMusicOn = !isMusicOn;
         audioManager.setMusicEnabled(isMusicOn);
+        corruptionManager.onUselessClick();
+        idleTimer = 0f;
 
-        // 更新图标
-        TextureRegionDrawable newIcon;
+        TextureRegionDrawable icon = new TextureRegionDrawable(
+                uiAtlas.findRegion(isMusicOn ? "frame178" : "frame180")
+        );
+        musicButton.getStyle().imageUp = icon;
+
         if (isMusicOn) {
-            newIcon = new TextureRegionDrawable(atlas.findRegion("frame178"));
             audioManager.playMusic(de.tum.cit.fop.maze.audio.AudioType.MUSIC_MENU);
         } else {
-            newIcon = new TextureRegionDrawable(atlas.findRegion("frame180"));
             audioManager.pauseMusic();
         }
-
-        musicButton.getStyle().imageUp = newIcon;
-
-        // 播放点击音效
-        audioManager.playUIClick();
     }
 
-    // =====================================================
-    // Render & lifecycle
-    // =====================================================
     @Override
     public void render(float delta) {
+        /// /////////////////////////////////////////////
+        System.out.println("[MenuScreen] render delta=" + delta);
+        Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
+
+        // ===== 腐化更新 =====
+        idleTimer += delta;
+        boolean idle = idleTimer > 3f;
+
+        corruptionManager.update(delta, idle);
+
+        int newStage = corruptionManager.getStage();
+
+        if (newStage != currentStage) {
+/// /////////////////////////////
+            System.out.println("[MenuScreen] Stage change: "
+                    + currentStage + " -> " + newStage);
+            currentStage = newStage;
+
+            if (currentStage > 0 && currentStage != loadedTileStage) {
+                /// //////////
+                System.out.println("[MenuScreen] loadStage(" + currentStage + ")");
+                tileManager.loadStage(currentStage);
+                loadedTileStage = currentStage;
+            }
+        }
+        if (currentStage > 0) {
+            /// ///////////////////////
+            System.out.println("[MenuScreen] calling tileManager.update()");
+            tileManager.update(delta);
+        }
+
+        // ===== 画背景 =====
+        game.getSpriteBatch().begin();
+
+        if (currentStage == 0) {
+            game.getSpriteBatch().draw(
+                    bgCandy, 0, 0,
+                    Gdx.graphics.getWidth(),
+                    Gdx.graphics.getHeight()
+            );
+        } else {
+            game.getSpriteBatch().draw(
+                    bgHell, 0, 0,
+                    Gdx.graphics.getWidth(),
+                    Gdx.graphics.getHeight()
+            );
+            tileManager.render(game.getSpriteBatch());
+        }
+
+        game.getSpriteBatch().end();
+
+        // ===== UI =====
+        stage.act(delta);
         stage.draw();
     }
 
     @Override
-    public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true);
+    public void resize(int w, int h) {
+        stage.getViewport().update(w, h, true);
     }
 
     @Override
     public void dispose() {
         stage.dispose();
-        if (atlas != null) {
-            atlas.dispose();
-        }
+        uiAtlas.dispose();
+        bgCandy.dispose();
+        bgHell.dispose();
+        tileManager.dispose();
     }
 
-    @Override
-    public void show() {
-        Gdx.input.setInputProcessor(stage);
-    }
-
+    @Override public void show() {}
     @Override public void hide() {}
     @Override public void pause() {}
     @Override public void resume() {}
