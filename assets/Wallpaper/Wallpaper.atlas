@@ -32,10 +32,3 @@ Wallpaper
   orig: 80, 80
   offset: 0, 0
   index: 0
-Wallpaper
-  rotate: false
-  xy: 890, 2
-  size: 80, 80
-  orig: 80, 80
-  offset: 0, 0
-  index: 4

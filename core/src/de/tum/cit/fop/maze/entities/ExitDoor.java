@@ -34,33 +34,44 @@ public class ExitDoor extends GameObject {
         this.direction = direction;
         this.active = true;
 
-        // ===== 加载四个方向的锁定门贴图 =====
-        lockedTextures.put(DoorDirection.UP,
-                new Texture(Gdx.files.internal("Items/door_up_locked.png")));
-        lockedTextures.put(DoorDirection.DOWN,
-                new Texture(Gdx.files.internal("Items/door_down_locked.png")));
-        lockedTextures.put(DoorDirection.LEFT,
-                new Texture(Gdx.files.internal("Items/door_left_locked.png")));
-        lockedTextures.put(DoorDirection.RIGHT,
-                new Texture(Gdx.files.internal("Items/door_right_locked.png")));
+        try {
+            // 只加载四个方向的锁定门贴图
+            lockedTextures.put(DoorDirection.UP,
+                    new Texture(Gdx.files.internal("Items/door_up_locked.png")));
+            lockedTextures.put(DoorDirection.DOWN,
+                    new Texture(Gdx.files.internal("Items/door_down_locked.png")));
+            lockedTextures.put(DoorDirection.LEFT,
+                    new Texture(Gdx.files.internal("Items/door_left_locked.png")));
+            lockedTextures.put(DoorDirection.RIGHT,
+                    new Texture(Gdx.files.internal("Items/door_right_locked.png")));
 
-        // ===== 加载四个方向的解锁门贴图 =====
-        unlockedTextures.put(DoorDirection.UP,
-                new Texture(Gdx.files.internal("Items/door_up_unlocked.png")));
-        unlockedTextures.put(DoorDirection.DOWN,
-                new Texture(Gdx.files.internal("Items/door_down_unlocked.png")));
-        unlockedTextures.put(DoorDirection.LEFT,
-                new Texture(Gdx.files.internal("Items/door_left_unlocked.png")));
-        unlockedTextures.put(DoorDirection.RIGHT,
-                new Texture(Gdx.files.internal("Items/door_right_unlocked.png")));
+            // 解锁门贴图（如果存在的话）
+            unlockedTextures.put(DoorDirection.UP,
+                    new Texture(Gdx.files.internal("Items/door_up_unlocked.png")));
+            unlockedTextures.put(DoorDirection.DOWN,
+                    new Texture(Gdx.files.internal("Items/door_down_unlocked.png")));
+            unlockedTextures.put(DoorDirection.LEFT,
+                    new Texture(Gdx.files.internal("Items/door_left_unlocked.png")));
+            unlockedTextures.put(DoorDirection.RIGHT,
+                    new Texture(Gdx.files.internal("Items/door_right_unlocked.png")));
 
-        Logger.debug("ExitDoor created at " + getPositionString() + " facing " + direction);
+            Logger.debug("ExitDoor created at (" + x + ", " + y + ") facing " + direction);
+        } catch (Exception e) {
+            Logger.error("Failed to load door textures: " + e.getMessage());
+            // 如果解锁门贴图不存在，使用锁定门贴图作为fallback
+            for (DoorDirection dir : DoorDirection.values()) {
+                Texture lockedTex = lockedTextures.get(dir);
+                if (lockedTex != null) {
+                    unlockedTextures.put(dir, lockedTex);
+                }
+            }
+        }
     }
 
-    // 🔥 重载：兼容旧代码的构造函数（默认向上）
-    public ExitDoor(int x, int y, int index) {
-        this(x, y, DoorDirection.UP);
-    }
+//    // 🔥 重载：兼容旧代码的构造函数（默认向上）
+//    public ExitDoor(int x, int y, int index) {
+//        this(x, y, DoorDirection.UP);
+//    }
 
     public DoorDirection getDirection() {
         return direction;
@@ -81,7 +92,7 @@ public class ExitDoor extends GameObject {
 
     @Override
     public boolean isPassable() {
-        return !locked;
+        return locked;
     }
 
     public void onPlayerStep(Player player) {

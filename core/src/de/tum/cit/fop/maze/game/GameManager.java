@@ -206,7 +206,7 @@ public class GameManager {
     }
 
     private void generateKeys() {
-        int keyCount = 10;
+        int keyCount = GameConstants.KEYCOUNT;
 
         for (int i = 0; i < keyCount; i++) {
             int x, y;
@@ -319,6 +319,7 @@ public class GameManager {
     }
 
     /* ---------- Exit Doors ---------- */
+    /* ---------- Exit Doors ---------- */
     private void generateExitDoors() {
         // 🔥 清空旧的门（第一次调用时应该是空的）
         exitDoors.clear();
@@ -333,10 +334,49 @@ public class GameManager {
                 attempts++;
             }
 
+            // 🔥 关键修复：根据位置智能确定门的方向
+            ExitDoor.DoorDirection direction = determineDoorDirection(p[0], p[1]);
 
-            exitDoors.add(new ExitDoor(p[0], p[1], i));
-            Logger.debug("ExitDoor created at (" + p[0] + ", " + p[1] + ")");
+            // 🔥 使用带方向的构造函数
+            ExitDoor door = new ExitDoor(p[0], p[1], direction);
+            exitDoors.add(door);
+            Logger.debug("ExitDoor created at (" + p[0] + ", " + p[1] + ") facing " + direction);
         }
+    }
+
+    // 🔥 新增：根据迷宫结构智能确定门的方向
+    private ExitDoor.DoorDirection determineDoorDirection(int x, int y) {
+        int[][] maze = getMaze();
+        int width = maze[0].length;
+        int height = maze.length;
+
+        // 统计四个方向的通路情况
+        boolean up = y + 1 < height && maze[y + 1][x] == 1;
+        boolean down = y - 1 >= 0 && maze[y - 1][x] == 1;
+        boolean left = x - 1 >= 0 && maze[y][x - 1] == 1;
+        boolean right = x + 1 < width && maze[y][x + 1] == 1;
+
+        // 🔥 简化逻辑：优先选择有通路的方向
+        List<ExitDoor.DoorDirection> possibleDirections = new ArrayList<>();
+
+        if (up) possibleDirections.add(ExitDoor.DoorDirection.UP);
+        if (down) possibleDirections.add(ExitDoor.DoorDirection.DOWN);
+        if (left) possibleDirections.add(ExitDoor.DoorDirection.LEFT);
+        if (right) possibleDirections.add(ExitDoor.DoorDirection.RIGHT);
+
+        // 如果有可用的通路方向，随机选择一个
+        if (!possibleDirections.isEmpty()) {
+            return possibleDirections.get(random.nextInt(possibleDirections.size()));
+        }
+
+        // 🔥 如果没有相邻通路，根据位置决定（边缘的门应该有合理的朝向）
+        if (y >= height - 3) return ExitDoor.DoorDirection.DOWN;    // 靠近底部，门朝下
+        if (y <= 2) return ExitDoor.DoorDirection.UP;               // 靠近顶部，门朝上
+        if (x >= width - 3) return ExitDoor.DoorDirection.LEFT;     // 靠近右边，门朝左
+        if (x <= 2) return ExitDoor.DoorDirection.RIGHT;            // 靠近左边，门朝右
+
+        // 默认向上
+        return ExitDoor.DoorDirection.UP;
     }
 
     private boolean isValidDoorPosition(int x, int y) {
@@ -487,10 +527,11 @@ public class GameManager {
             return false;
         }
 
-        // 2️⃣ 出口门优先判断 - 已解锁的门不可通过
+        // 2️⃣ 检查是否是门的位置
         for (ExitDoor door : exitDoors) {
             if (door.getX() == x && door.getY() == y) {
-                // 🔥 已解锁的门不能"走过"，但能站在上面触发动画
+                // 玩家不能移动到门上（无论是否解锁）
+                // 但可以通过其他方式（如传送、初始位置）站在门上
                 return false;
             }
         }
