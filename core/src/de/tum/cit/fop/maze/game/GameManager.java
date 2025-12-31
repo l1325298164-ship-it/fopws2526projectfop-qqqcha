@@ -10,7 +10,6 @@ import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
