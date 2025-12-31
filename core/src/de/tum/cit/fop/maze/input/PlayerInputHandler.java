@@ -4,6 +4,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.input.KeyBindingManager;
+import de.tum.cit.fop.maze.input.KeyBindingManager.GameAction;
 
 public class PlayerInputHandler {
 
@@ -41,12 +43,20 @@ public class PlayerInputHandler {
         if (moveTimer < moveDelay) return;
         moveTimer -= moveDelay;
 
+        // ... (前面的 Shift 加速逻辑保持不变)
+
         int dx = 0, dy = 0;
 
-        if (Gdx.input.isKeyPressed(Input.Keys.UP)) dy = 1;
-        else if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) dy = -1;
-        else if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) dx = -1;
-        else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) dx = 1;
+        // 🔥 修改：使用 KeyBindingManager.isPressed 来检测按键
+        if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_UP)) {
+            dy = 1;
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_DOWN)) {
+            dy = -1;
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_LEFT)) {
+            dx = -1;
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_RIGHT)) {
+            dx = 1;
+        }
 
         if (dx != 0 || dy != 0) {
             callback.onMoveInput(dx, dy);

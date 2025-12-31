@@ -14,6 +14,8 @@ import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
+import de.tum.cit.fop.maze.tools.DeveloperConsole;
+import de.tum.cit.fop.maze.input.KeyBindingManager;
 
 import java.util.*;
 
@@ -26,6 +28,7 @@ public class GameScreen implements Screen {
     private SpriteBatch batch;
     private HUD hud;
     private PlayerInputHandler input;
+    private DeveloperConsole console;
 
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
@@ -65,13 +68,26 @@ public class GameScreen implements Screen {
         hud = new HUD(gm);
 
         cam.centerOnPlayerImmediately(gm.getPlayer());
+        console = new DeveloperConsole(gm, game.getSkin());
     }
 
     @Override
     public void render(float delta) {
         /* ================= 输入 ================= */
         // 🔥 修复：只有在非关卡过渡期间才处理输入
-        if (!gm.isLevelTransitionInProgress()) {
+        /* ================= 输入 ================= */
+
+        // 1. 监听控制台开关键
+        // 如果按键没反应，请看控制台有没有打印 "尝试切换控制台..."
+        if (KeyBindingManager.getInstance().isJustPressed(KeyBindingManager.GameAction.CONSOLE)) {
+            System.out.println("检测到控制台按键，正在切换状态...");
+            console.toggle();
+        }
+
+        // 2. 只有在 [控制台关闭] 且 [非转场期间] 才允许玩家操作
+        // 🔥 修复：这里原来漏了 !console.isVisible()
+        if (!console.isVisible() && !gm.isLevelTransitionInProgress()) {
+
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
                 @Override public void onMoveInput(int dx, int dy) { gm.onMoveInput(dx, dy); }
                 @Override public float getMoveDelayMultiplier() { return gm.getPlayer().getMoveDelayMultiplier(); }
@@ -80,15 +96,17 @@ public class GameScreen implements Screen {
                 @Override public void onMenuInput() { game.goToMenu(); }
             });
 
-            // R 重置（只在非过渡期间允许）
+            // R 重置
             if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
                 gm.requestReset();
             }
         }
 
         /* ================= 更新 ================= */
-        gm.update(delta);
-        cam.update(delta, gm.getPlayer());
+        if (!console.isVisible()) {
+            gm.update(delta);
+            cam.update(delta, gm.getPlayer());
+        }
 
         /* ================= 清屏 ================= */
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
@@ -191,16 +209,23 @@ public class GameScreen implements Screen {
 
         hud.renderManaBar();
 
+        if (console != null) {
+            console.render();
+        }
+
         batch.setProjectionMatrix(cam.getCamera().combined);
     }
 
     @Override
     public void dispose() {
         maze.dispose();
+        if (console != null) console.dispose();
     }
 
     @Override
-    public void resize(int w, int h) {}
+    public void resize(int w, int h) {
+        if (console != null) console.resize(w, h);
+    }
 
     @Override
     public void pause() {}

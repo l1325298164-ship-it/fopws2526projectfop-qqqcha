@@ -79,6 +79,15 @@ public class MenuScreen implements Screen {
                 bf.create("RESET THE WORLD", game::goToPV)
         ).padBottom(20).row();
 
+        // 🔥 新增：CONTROLS 按钮
+        mainTable.add(
+                bf.create("CONTROLS", () -> {
+                    // 跳转到按键设置界面 (KeyMappingScreen)
+                    // 传入 MenuScreen.this 是为了让设置界面点 "Back" 能返回到这里
+                    game.setScreen(new KeyMappingScreen(game, MenuScreen.this));
+                })
+        ).padBottom(20).row();
+
         mainTable.add(
                 bf.create("TEST", () -> {
                     System.out.println("TEST button clicked");
