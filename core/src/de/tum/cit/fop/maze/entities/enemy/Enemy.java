@@ -209,30 +209,41 @@ public abstract class Enemy extends GameObject {
 
         if (isMoving) return;
 
+        // 只在这里统一减少冷却
         moveCooldown -= delta;
         dirCooldown -= delta;
 
+        // 到时间才换方向（一次）
         if (dirCooldown <= 0f) {
             pickRandomDir();
+            dirCooldown = changeDirInterval;
         }
 
+        // 还在移动冷却中，直接返回
         if (moveCooldown > 0f) return;
 
-        // 最多尝试 4 个正交方向
+        // 尝试当前方向 + 最多 3 次备用方向
         for (int i = 0; i < 4; i++) {
+
             int nx = x + dirX;
             int ny = y + dirY;
 
             if (gm.isEnemyValidMove(nx, ny)) {
                 startMoveTo(nx, ny);
+
+                // ✅ 只有成功移动才进入 cooldown
                 moveCooldown = moveInterval;
-                dirCooldown = changeDirInterval;
                 return;
             }
+
+            // 当前方向不通 → 换方向再试
             pickRandomDir();
         }
-        // 4 次都失败：本帧直接结束，不进 cooldown
+
+        // ❗ 4 次都失败：什么都不做
+        // 不进 moveCooldown，不重置 dirCooldown
     }
+
 
     protected void pickRandomDir() {
         int[] dir = CARDINAL_DIRS[MathUtils.random(0, CARDINAL_DIRS.length - 1)];

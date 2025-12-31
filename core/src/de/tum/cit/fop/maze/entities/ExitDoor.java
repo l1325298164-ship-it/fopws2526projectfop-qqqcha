@@ -1,137 +1,131 @@
-// ExitDoor.java - 更新版本（支持多个出口）
 package de.tum.cit.fop.maze.entities;
 
-import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class ExitDoor extends GameObject {
-    private Color lockedColor = GameConstants.LOCKED_DOOR_COLOR;
-    private Color unlockedColor = GameConstants.DOOR_COLOR;
+    private final PortalEffectManager portalEffect = new PortalEffectManager();
+    private Texture lockedTexture;
+    private Texture unlockedTexture;
     private boolean locked = true;
-    private boolean isNearest = false; // 标记是否为最近的出口
-    private int doorId; // 出口ID
+    private boolean triggered = false;
 
-    // 纹理管理
-    private TextureManager textureManager;
-    private Texture doorTexture;
-    private boolean needsTextureUpdate = true;
-
-    public ExitDoor(int x, int y, int doorId) {
+    public ExitDoor(int x, int y, int index) {
         super(x, y);
-        this.doorId = doorId;
-        this.textureManager = TextureManager.getInstance();
-        updateTexture();
-        Logger.debug("ExitDoor " + doorId + " created at " + getPositionString());
-    }
-    @Override
-    public boolean isInteractable() {
-        return true; // 门总是可交互的
-    }
+        this.active = true;
 
-    @Override
-    public void onInteract(Player player) {
-        if (locked) {
-            if (player.hasKey()) {
-                Logger.gameEvent("尝试解锁门");
-            } else {
-                Logger.gameEvent("门被锁住了，需要钥匙");
-            }
-        }
-    }
+        lockedTexture = new Texture(Gdx.files.internal("Items/locked-door.png"));
+        unlockedTexture = new Texture(Gdx.files.internal("Items/door.png"));
 
-    @Override
-    public boolean isPassable() {
-        return !locked; // 只有解锁后才能通过
-    }
-    /**
-     * 更新纹理
-     */
-    private void updateTexture() {
-        doorTexture = locked ?
-            textureManager.getLockedDoorTexture() :
-            textureManager.getDoorTexture();
-        needsTextureUpdate = false;
-    }
-
-    /**
-     * 响应纹理模式切换
-     */
-    public void onTextureModeChanged() {
-        needsTextureUpdate = true;
-    }
-
-    /**
-     * 解锁门
-     */
-    public void unlock(GameManager gm) {
-        this.locked = false;
-        updateTexture();
-        gm.openMazeCell(x, y);
-        Logger.gameEvent("ExitDoor " + doorId + " unlocked at " + getPositionString());
-    }
-
-    @Override
-    public void drawShape(ShapeRenderer sr) {
-        if (!active) return;
-
-        // 最近出口高亮
-        if (isNearest && !locked) {
-            sr.setColor(Color.GOLD);
-        } else {
-            sr.setColor(locked ? lockedColor : unlockedColor);
-        }
-
-        sr.rect(
-                x * GameConstants.CELL_SIZE + 2,
-                y * GameConstants.CELL_SIZE + 2,
-                GameConstants.CELL_SIZE - 4,
-                GameConstants.CELL_SIZE - 4
-        );
-    }
-
-
-    @Override
-    public void drawSprite(SpriteBatch batch) {
-        if (!active || doorTexture == null) return;
-
-        if (needsTextureUpdate) {
-            updateTexture();
-        }
-
-        batch.draw(
-                doorTexture,
-                x * GameConstants.CELL_SIZE,
-                y * GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE,
-                GameConstants.CELL_SIZE+5
-        );
-    }
-
-
-    @Override
-    public RenderType getRenderType() {
-        return RenderType.SPRITE;
+        Logger.debug("ExitDoor created at " + getPositionString());
     }
 
     public boolean isLocked() {
         return locked;
     }
 
-    public int getDoorId() {
-        return doorId;
+    public void unlock() {
+        locked = false;
+        Logger.gameEvent("Exit unlocked at " + getPositionString());
     }
 
-    public void setNearest(boolean nearest) {
-        this.isNearest = nearest;
+    public void update(float delta, GameManager gm) {
+        portalEffect.update(delta);
+
+        // 🔥 关键：不要在 update 中调用 gm.nextLevel()
+        // 让 GameManager 控制重置时机
     }
 
-    public boolean isNearest() {
-        return isNearest;
+    @Override
+    public boolean isPassable() {
+        return !locked;
+    }
+
+    public void onPlayerStep(Player player) {
+        if (locked || triggered) return;
+
+        triggered = true;
+        portalEffect.startExitAnimation(
+                x * GameConstants.CELL_SIZE,
+                y * GameConstants.CELL_SIZE
+        );
+    }
+
+    @Override
+    public boolean isInteractable() {
+        return false;
+    }
+
+    @Override
+    public void onInteract(Player player) {
+        // 不用
+    }
+
+    @Override
+    public void drawSprite(SpriteBatch batch) {
+        float px = x * GameConstants.CELL_SIZE;
+        float py = y * GameConstants.CELL_SIZE;
+
+        // 门后呼吸灯
+        portalEffect.renderBack(batch, px, py);
+
+        Texture tex = locked ? lockedTexture : unlockedTexture;
+        if (tex == null) return;
+
+        // 门体 + 悬浮
+        batch.draw(
+                tex,
+                px,
+                py + portalEffect.getDoorFloatOffset(),
+                GameConstants.CELL_SIZE,
+                GameConstants.CELL_SIZE * 1.5f
+        );
+    }
+
+    @Override
+    public void drawShape(ShapeRenderer shapeRenderer) {
+        // 不需要 shape
+    }
+
+    @Override
+    public RenderType getRenderType() {
+        return RenderType.SPRITE;
+    }
+
+    public void renderPortalFront(SpriteBatch batch) {
+        portalEffect.renderFront(batch);
+    }
+
+    // 🔥 新增：检查动画是否正在播放
+    public boolean isAnimationPlaying() {
+        return portalEffect.isActive();
+    }
+
+    // 🔥 新增：重置门状态
+    public void resetDoor() {
+        triggered = false;
+        locked = true; // 重置为锁定状态
+        portalEffect.reset(); // 重置特效
+    }
+
+    public void dispose() {
+        if (lockedTexture != null) lockedTexture.dispose();
+        if (unlockedTexture != null) unlockedTexture.dispose();
+        portalEffect.dispose();
+    }
+
+    // ===== 给 GameScreen 用的简化版本 =====
+    public void renderPortalBack(SpriteBatch batch) {
+        portalEffect.renderBack(
+                batch,
+                x * GameConstants.CELL_SIZE,
+                y * GameConstants.CELL_SIZE
+        );
     }
 }
