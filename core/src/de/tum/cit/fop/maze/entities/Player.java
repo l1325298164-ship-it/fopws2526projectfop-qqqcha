@@ -16,14 +16,12 @@ import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
 
-    private Color color = GameConstants.PLAYER_COLOR;
 
     private boolean hasKey = false;
     private int lives;
     private int maxLives;
     private float invincibleTimer = 0;
     private boolean isInvincible = false;
-    private float invincibleTimer = 0f;
 
     private boolean isDead = false;
 
@@ -79,6 +77,11 @@ public class Player extends GameObject {
 
     public boolean didDashJustEnd() {
         return dashJustEnded;
+    }
+
+    public void addScore(int i) {
+        score+=i;
+
     }
 
 
@@ -346,32 +349,56 @@ public class Player extends GameObject {
     /**
      * 重置玩家状态
      */
+    /**
+     * 重置玩家状态（重开关卡 / 重新开始游戏）
+     */
     public void reset() {
-        // 重置位置到初始位置（需要在GameManager中设置）
-        // 这里只重置状态，位置由GameManager负责设置
-        //避免极端情况下「重开关卡还在减速」。
-        this.slowed = false;
-        this.slowTimer = 0f;
-        // 重置生命值
+
+        // ===== 基础生命 =====
         this.lives = GameConstants.INITIAL_PLAYER_LIVES;
         this.maxLives = GameConstants.INITIAL_PLAYER_LIVES;
-        // 重置钥匙状态
-        this.hasKey = false;
-
-        // 重置无敌状态
-        this.isInvincible = false;
-        this.invincibleTimer = 0;
-
-        // 重置死亡状态
         this.isDead = false;
 
-        // 重置分数
-        this.score = 0;
+        // ===== 钥匙 =====
+        this.hasKey = false;
+
+        // ===== 无敌状态 =====
+        this.isInvincible = false;
+        this.invincibleTimer = 0f;
+
+        // ===== Dash 状态 =====
+        this.dashInvincible = false;
+        this.dashInvincibleTimer = 0f;
+
+        this.dashSpeedBoost = false;
+        this.dashSpeedTimer = 0f;
+
+        this.dashJustEnded = false;
+
+        // ===== 移动状态 =====
+        this.moving = false;
+        this.moveTimer = 0f;
+
+        // ===== 状态效果 =====
+        this.slowed = false;
+        this.slowTimer = 0f;
+
+        // ===== 资源 =====
         this.mana = maxMana;
+        this.score = 0;
 
+        // ===== 能力系统 =====
+        if (abilityManager != null) {
+            abilityManager.reset();
+        }
 
-        Logger.debug("Player状态已重置: 生命=" + lives + ", 分数=" + score + ", 有钥匙=" + hasKey);
+        Logger.debug(
+                "Player reset complete | HP=" + lives + "/" + maxLives +
+                        ", Mana=" + mana +
+                        ", Key=" + hasKey
+        );
     }
+
     public String getPositionString() {
         return "(" + x + ", " + y + ")";
     }
@@ -380,36 +407,8 @@ public class Player extends GameObject {
     }
 
 
-    public void reset() {
-        // ===== 基础状态 =====
-        this.lives = GameConstants.INITIAL_PLAYER_LIVES;
-        this.isDead = false;
-
-        // ===== 无敌 / Dash Buff =====
-        this.isInvincible = false;
-        this.invincibleTimer = 0f;
-
-        this.dashInvincible = false;
-        this.dashInvincibleTimer = 0f;
-
-        this.dashSpeedBoost = false;
-        this.dashSpeedTimer = 0f;
-
-        // ===== 移动状态 =====
-        this.moving = false;
-        this.moveTimer = 0f;
-
-        // ===== 资源 =====
-        this.mana = maxMana;
-        this.hasKey = false;
-
-        // ===== 能力系统 =====
-        if (abilityManager != null) {
-            abilityManager.reset();
-        }
-
-        Logger.debug("Player reset complete");
-    }
-
+    public boolean isDashing(){
+        return dashInvincible;
+    }// 现在 Dash 的唯一真状态
 
 }

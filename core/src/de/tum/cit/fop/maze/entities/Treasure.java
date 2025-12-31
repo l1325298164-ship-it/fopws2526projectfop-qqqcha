@@ -132,12 +132,7 @@ public class Treasure extends GameObject {
 
     @Override
     public RenderType getRenderType() {
-        // 如果是极简模式/颜色模式，或者图没加载出来，用形状渲染
-        if (textureManager.getCurrentMode() == TextureManager.TextureMode.COLOR ||
-                textureManager.getCurrentMode() == TextureManager.TextureMode.MINIMAL ||
-                closedTexture == null) {
-            return RenderType.SHAPE;
-        }
+
         return RenderType.SPRITE;
     }
 
