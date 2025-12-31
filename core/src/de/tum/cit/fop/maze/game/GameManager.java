@@ -1,7 +1,5 @@
 package de.tum.cit.fop.maze.game;
 
-import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
