@@ -181,7 +181,7 @@ public class MazeRenderer {
 
     public void renderWallGroup(SpriteBatch batch, WallGroup g) {
         float cs = GameConstants.CELL_SIZE;
-        float h = cs * 1.5f;
+        float h = cs * 2.0f;
         int overlap = 6;
 
         TextureRegion base = wallRegions[g.textureIndex];

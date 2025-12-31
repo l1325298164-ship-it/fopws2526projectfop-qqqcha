@@ -29,9 +29,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/font",
-                root + "/assets/font",
-                "font"
+                root + "/assets_raw/tiles_stage_2",
+                root + "/assets/menu_bg",
+                "tiles_stage_2"
         );
 
 
