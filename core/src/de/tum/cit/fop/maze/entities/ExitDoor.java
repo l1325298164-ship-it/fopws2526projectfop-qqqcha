@@ -29,6 +29,10 @@ public class ExitDoor extends GameObject {
     private boolean locked = true;
     private boolean triggered = false;
 
+    // 🔥 新增：解锁特效计时器
+    private float unlockEffectTimer = 0f;
+    private static final float UNLOCK_EFFECT_DURATION = 2f; // 解锁特效持续时间
+
     public ExitDoor(int x, int y, DoorDirection direction) {
         super(x, y);
         this.direction = direction;
@@ -47,13 +51,13 @@ public class ExitDoor extends GameObject {
 
             // 解锁门贴图（如果存在的话）
             unlockedTextures.put(DoorDirection.UP,
-                    new Texture(Gdx.files.internal("Items/door_up_unlocked.png")));
+                    new Texture(Gdx.files.internal("Items/door_up_locked.png")));
             unlockedTextures.put(DoorDirection.DOWN,
-                    new Texture(Gdx.files.internal("Items/door_down_unlocked.png")));
+                    new Texture(Gdx.files.internal("Items/door_down_locked.png")));
             unlockedTextures.put(DoorDirection.LEFT,
-                    new Texture(Gdx.files.internal("Items/door_left_unlocked.png")));
+                    new Texture(Gdx.files.internal("Items/door_left_locked.png")));
             unlockedTextures.put(DoorDirection.RIGHT,
-                    new Texture(Gdx.files.internal("Items/door_right_unlocked.png")));
+                    new Texture(Gdx.files.internal("Items/door_right_locked.png")));
 
             Logger.debug("ExitDoor created at (" + x + ", " + y + ") facing " + direction);
         } catch (Exception e) {
@@ -68,31 +72,33 @@ public class ExitDoor extends GameObject {
         }
     }
 
-//    // 🔥 重载：兼容旧代码的构造函数（默认向上）
-//    public ExitDoor(int x, int y, int index) {
-//        this(x, y, DoorDirection.UP);
-//    }
-
-    public DoorDirection getDirection() {
-        return direction;
-    }
 
     public boolean isLocked() {
         return locked;
     }
 
     public void unlock() {
-        locked = false;
-        Logger.gameEvent("Exit unlocked at " + getPositionString() + " (direction: " + direction + ")");
+        if (locked) {
+            locked = false;
+            unlockEffectTimer = 0f; // 🔥 重置解锁特效计时器
+            Logger.gameEvent("Exit unlocked at " + getPositionString() + " (direction: " + direction + ")");
+        }
     }
 
     public void update(float delta, GameManager gm) {
         portalEffect.update(delta);
+
+        // 🔥 更新解锁特效计时器
+        if (!locked && unlockEffectTimer < UNLOCK_EFFECT_DURATION) {
+            unlockEffectTimer += delta;
+        }
     }
 
     @Override
     public boolean isPassable() {
-        return locked;
+        // 🔥 修正：门永远不可"穿过"，但已解锁的门允许玩家站在上面触发传送
+        // 实际通行性由 GameManager.canPlayerMoveTo() 决定
+        return false;
     }
 
     public void onPlayerStep(Player player) {
@@ -137,6 +143,25 @@ public class ExitDoor extends GameObject {
             return;
         }
 
+        // 🔥 根据锁定状态设置不同的颜色效果
+        if (locked) {
+            // 锁定状态：颜色暗淡
+            batch.setColor(0.7f, 0.7f, 0.7f, 1f);
+        } else {
+            // 解锁状态：颜色鲜艳 + 解锁特效
+            if (unlockEffectTimer < UNLOCK_EFFECT_DURATION) {
+                // 🔥 解锁特效：金色闪烁
+                float alpha = (float) Math.sin(unlockEffectTimer * 10) * 0.3f + 0.7f;
+                float goldR = 1.0f;
+                float goldG = 0.8f;
+                float goldB = 0.3f;
+                batch.setColor(goldR, goldG, goldB, alpha);
+            } else {
+                // 解锁完成：正常亮色
+                batch.setColor(1f, 1f, 1f, 1f);
+            }
+        }
+
         // 门体 + 悬浮效果
         float drawWidth = GameConstants.CELL_SIZE;
         float drawHeight = GameConstants.CELL_SIZE * 1.5f;
@@ -171,6 +196,9 @@ public class ExitDoor extends GameObject {
                 drawWidth,
                 drawHeight
         );
+
+        // 🔥 恢复默认颜色
+        batch.setColor(1f, 1f, 1f, 1f);
     }
 
     @Override
@@ -194,6 +222,7 @@ public class ExitDoor extends GameObject {
     public void resetDoor() {
         triggered = false;
         locked = true; // 重置为锁定状态
+        unlockEffectTimer = 0f; // 🔥 重置解锁特效计时器
         portalEffect.reset(); // 重置特效
     }
 
@@ -220,5 +249,12 @@ public class ExitDoor extends GameObject {
     @Override
     public String getPositionString() {
         return "(" + x + ", " + y + ", " + direction + ")";
+    }
+
+    // 🔥 新增：检查玩家是否在门附近（用于可能的未来扩展）
+    public boolean isPlayerNearby(int playerX, int playerY, int range) {
+        int dx = Math.abs(playerX - this.x);
+        int dy = Math.abs(playerY - this.y);
+        return dx <= range && dy <= range;
     }
 }
