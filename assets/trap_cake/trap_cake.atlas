@@ -1,0 +1,41 @@
+
+trap_cake.png
+size: 4096, 512
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame332
+  rotate: false
+  xy: 2, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame333
+  rotate: false
+  xy: 504, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame334
+  rotate: false
+  xy: 1006, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame335
+  rotate: false
+  xy: 1508, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame336
+  rotate: false
+  xy: 2010, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1

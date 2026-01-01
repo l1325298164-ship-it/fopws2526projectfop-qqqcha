@@ -28,9 +28,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/E02",
-                root + "/assets/E02",
-                "E02"
+                root + "/assets_raw/trap_magma",
+                root + "/assets/trap_magma",
+                "trap_magma"
         );
 
 

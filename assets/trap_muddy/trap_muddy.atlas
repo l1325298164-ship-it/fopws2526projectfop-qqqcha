@@ -1,0 +1,62 @@
+
+trap_muddy.png
+size: 4096, 512
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame313
+  rotate: false
+  xy: 2, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame314
+  rotate: false
+  xy: 504, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame315
+  rotate: false
+  xy: 1006, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame316
+  rotate: false
+  xy: 1508, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame317
+  rotate: false
+  xy: 2010, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame318
+  rotate: false
+  xy: 2512, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame319
+  rotate: false
+  xy: 3014, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1
+frame320
+  rotate: false
+  xy: 3516, 2
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1

@@ -1,0 +1,111 @@
+
+trap_magma.png
+size: 4096, 1024
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame337
+  rotate: false
+  xy: 2, 480
+  size: 476, 476
+  orig: 476, 476
+  offset: 0, 0
+  index: -1
+frame338
+  rotate: false
+  xy: 2388, 3
+  size: 475, 475
+  orig: 475, 475
+  offset: 0, 0
+  index: -1
+frame339
+  rotate: false
+  xy: 480, 480
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
+frame340
+  rotate: false
+  xy: 2865, 481
+  size: 475, 475
+  orig: 475, 475
+  offset: 0, 0
+  index: -1
+frame341
+  rotate: false
+  xy: 480, 2
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
+frame342
+  rotate: false
+  xy: 957, 480
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
+frame343
+  rotate: false
+  xy: 957, 2
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
+frame344
+  rotate: false
+  xy: 1434, 480
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
+frame345
+  rotate: false
+  xy: 2865, 4
+  size: 475, 475
+  orig: 475, 475
+  offset: 0, 0
+  index: -1
+frame346
+  rotate: false
+  xy: 3342, 481
+  size: 475, 475
+  orig: 475, 475
+  offset: 0, 0
+  index: -1
+frame347
+  rotate: false
+  xy: 2, 2
+  size: 476, 476
+  orig: 476, 476
+  offset: 0, 0
+  index: -1
+frame349
+  rotate: false
+  xy: 1434, 2
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
+frame350
+  rotate: false
+  xy: 1911, 480
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
+frame351
+  rotate: false
+  xy: 1911, 2
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
+frame352
+  rotate: false
+  xy: 2388, 480
+  size: 475, 476
+  orig: 475, 476
+  offset: 0, 0
+  index: -1
