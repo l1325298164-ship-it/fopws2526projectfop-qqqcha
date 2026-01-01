@@ -135,7 +135,7 @@ public class GameManager {
 
         // 🔥 修改：检查玩家是否到达出口
         checkExitReached();
-
+        updateCompass();
         updateBullets(delta);
 
         bobaBulletEffectManager.addBullets(bullets);
@@ -157,6 +157,27 @@ public class GameManager {
             resetGame();
             justReset = true;
         }
+    }
+    private void updateCompass() {
+        if (compass == null) return;
+
+        ExitDoor nearest = null;
+        float bestDist = Float.MAX_VALUE;
+
+        for (ExitDoor door : exitDoors) {
+            if (!door.isActive()) continue;
+
+            float dx = door.getX() - player.getX();
+            float dy = door.getY() - player.getY();
+            float dist = dx * dx + dy * dy; // 不开根号，性能好
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                nearest = door;
+            }
+        }
+
+        compass.update(nearest);
     }
 
     // 🔥 新增：检查玩家是否到达出口
