@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.utils;
 
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 
 
@@ -15,10 +16,12 @@ public class CameraManager {
     private boolean useFreeTarget = false;
     private float freeTargetX;
     private float freeTargetY;
+    private final DifficultyConfig difficultyConfig;
 
 
 
-    public CameraManager() {
+    public CameraManager(DifficultyConfig difficultyConfig) {
+        this.difficultyConfig = difficultyConfig;
         camera = new OrthographicCamera();
         camera.setToOrtho(false, GameConstants.VIEWPORT_WIDTH, GameConstants.VIEWPORT_HEIGHT);
         Logger.debug("CameraManager initialized");
@@ -36,8 +39,8 @@ public class CameraManager {
         targetY = playerPixelY;
 
         // 限制相机范围，使其不超出地图边界
-        targetX = Math.max(GameConstants.MIN_CAMERA_X, Math.min(GameConstants.MAX_CAMERA_X, targetX));
-        targetY = Math.max(GameConstants.MIN_CAMERA_Y, Math.min(GameConstants.MAX_CAMERA_Y, targetY));
+        targetX = Math.max(GameConstants.VIEWPORT_WIDTH / 2, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, targetX));
+        targetY = Math.max(GameConstants.VIEWPORT_HEIGHT/2, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, targetY));
 
         // 平滑移动相机
         float currentX = camera.position.x;
@@ -65,8 +68,8 @@ public class CameraManager {
         float playerPixelY = player.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2;
 
         // 限制相机范围
-        playerPixelX = Math.max(GameConstants.MIN_CAMERA_X, Math.min(GameConstants.MAX_CAMERA_X, playerPixelX));
-        playerPixelY = Math.max(GameConstants.MIN_CAMERA_Y, Math.min(GameConstants.MAX_CAMERA_Y, playerPixelY));
+        playerPixelX = Math.max(GameConstants.VIEWPORT_WIDTH / 2, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, playerPixelX));
+        playerPixelY = Math.max(GameConstants.VIEWPORT_HEIGHT / 2, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, playerPixelY));
 
         camera.position.set(playerPixelX, playerPixelY, 0);
         camera.update();
@@ -114,10 +117,10 @@ public class CameraManager {
         targetY = freeTargetY;
 
         // 限制相机范围
-        targetX = Math.max(GameConstants.MIN_CAMERA_X,
-                Math.min(GameConstants.MAX_CAMERA_X, targetX));
-        targetY = Math.max(GameConstants.MIN_CAMERA_Y,
-                Math.min(GameConstants.MAX_CAMERA_Y, targetY));
+        targetX = Math.max(GameConstants.VIEWPORT_WIDTH / 2,
+                Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, targetX));
+        targetY = Math.max(GameConstants.VIEWPORT_HEIGHT / 2,
+                Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, targetY));
 
         float currentX = camera.position.x;
         float currentY = camera.position.y;

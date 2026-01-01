@@ -1,6 +1,8 @@
 package de.tum.cit.fop.maze.maze;
 
 
+import de.tum.cit.fop.maze.game.Difficulty;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.utils.Logger;
 
@@ -10,7 +12,7 @@ import java.util.Random;
 import java.util.Stack;
 
 public class MazeGenerator {
-    private Random random;
+    private final DifficultyConfig config;
 
     // 新的单元格配置
     private static final int WALL_WIDTH = 1;      // 墙宽度：1格
@@ -18,12 +20,15 @@ public class MazeGenerator {
     private static final int PATH_WIDTH = 1;      // 道路宽度：3格
     private static final int PATH_HEIGHT = 3;     // 道路高度：3格
     public static final int BORDER_THICKNESS = 4;
-
+    private final Random random = new Random();
+    public MazeGenerator(DifficultyConfig config) {
+        this.config = config;
+    }
 
     public MazeGenerator() {
-        random = new Random();
-        Logger.debug("MazeGenerator initialized with 3x3 paths and 1x2 walls");
+        this(DifficultyConfig.of(Difficulty.NORMAL));
     }
+
 
     public int[][] generateMaze() {
         long startTime = System.currentTimeMillis();
@@ -32,8 +37,8 @@ public class MazeGenerator {
         int cellGroupWidth = PATH_WIDTH + WALL_WIDTH;
         int cellGroupHeight = PATH_HEIGHT + WALL_HEIGHT;
 
-        int adjustedWidth = adjustSize(GameConstants.MAZE_WIDTH, cellGroupWidth);
-        int adjustedHeight = adjustSize(GameConstants.MAZE_HEIGHT, cellGroupHeight);
+        int adjustedWidth = adjustSize(config.mazeWidth, cellGroupWidth);
+        int adjustedHeight = adjustSize(config.mazeHeight, cellGroupHeight);
 
         int[][] maze = new int[adjustedHeight][adjustedWidth];
 

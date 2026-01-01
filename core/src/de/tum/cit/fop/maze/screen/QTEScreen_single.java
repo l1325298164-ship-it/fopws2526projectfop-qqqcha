@@ -24,7 +24,7 @@ import de.tum.cit.fop.maze.qte.QTEResult;
 /**
  * QTE Screen（MazeRenderer + 独立 Camera）
  */
-public class QTEScreen implements Screen {
+public class QTEScreen_single implements Screen {
 
 
 
@@ -175,7 +175,7 @@ public class QTEScreen implements Screen {
     // =========================
     // 构造函数（重点）
     // =========================
-    public QTEScreen(MazeRunnerGame game, GameManager gameManager) {
+    public QTEScreen_single(MazeRunnerGame game, GameManager gameManager) {
         this.game = game;
         this.gameManager = gameManager;
     }

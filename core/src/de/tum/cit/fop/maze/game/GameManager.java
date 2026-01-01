@@ -20,7 +20,13 @@ import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameManager {
+    private final DifficultyConfig difficultyConfig;
 
+
+
+    public DifficultyConfig getDifficultyConfig() {
+        return difficultyConfig;
+    }
     private int[][] maze;
     private Player player;
 
@@ -56,9 +62,14 @@ public class GameManager {
 
 
     /* ================= 生命周期 ================= */
-    public GameManager() {
-        resetGame();
+    public GameManager(DifficultyConfig difficultyConfig) {
+        if (difficultyConfig == null) {
+            throw new IllegalArgumentException("difficultyConfig must not be null");
+        }
+        this.difficultyConfig = difficultyConfig;
 
+        // ⚠️ 一定要在最后
+        resetGame();
     }
 
     private void resetGame() {
@@ -314,8 +325,8 @@ public class GameManager {
         for (int i = 0; i < keyCount; i++) {
             int x, y;
             do {
-                x = random.nextInt(GameConstants.MAZE_WIDTH);
-                y = random.nextInt(GameConstants.MAZE_HEIGHT);
+                x = random.nextInt(difficultyConfig.mazeWidth);
+                y = random.nextInt(difficultyConfig.mazeHeight);
             } while (
                     getMazeCell(x, y) != 1 ||
                             isOccupied(x, y) ||
@@ -374,7 +385,7 @@ public class GameManager {
         // 🔥 清空旧的门（第一次调用时应该是空的）
         exitDoors.clear();
 
-        for (int i = 0; i < GameConstants.EXIT_COUNT; i++) {
+        for (int i = 0; i < difficultyConfig.exitCount; i++) {
             int[] p = randomWallCell();
             int attempts = 0;
 
@@ -504,17 +515,17 @@ public class GameManager {
 
     /* ---------- Enemies ---------- */
     private void generateEnemies() {
-        for (int i = 0; i < GameConstants.ENEMY_E01_PEARL_COUNT; i++) {
+        for (int i = 0; i < difficultyConfig.enemyE01PearlCount; i++) {
             int[] p = randomEmptyCell();
             enemies.add(new EnemyCorruptedBoba(p[0], p[1]));
         }
 
-        for (int i = 0; i < GameConstants.ENEMY_E02_COFFEE_BEAN_COUNT; i++) {
+        for (int i = 0; i < difficultyConfig.enemyE02CoffeeBeanCount; i++) {
             int[] p = randomEmptyCell();
             enemies.add(new EnemyE02_SmallCoffeeBean(p[0], p[1]));
         }
 
-        for (int i = 0; i < GameConstants.ENEMY_E03_CARAMEL_COUNT; i++) {
+        for (int i = 0; i < difficultyConfig.enemyE03CaramelCount; i++) {
             int[] p = randomEmptyCell();
             enemies.add(new EnemyE03_CaramelJuggernaut(p[0], p[1]));
         }
@@ -522,22 +533,22 @@ public class GameManager {
 
     /* ---------- Traps ---------- */
     private void generateTraps() {
-        for (int i = 0; i < GameConstants.TRAP_T01_GEYSER_COUNT; i++) {
+        for (int i = 0; i < difficultyConfig.trapT01GeyserCount; i++) {
             int[] p = randomEmptyCell();
             traps.add(new TrapT01_Geyser(p[0], p[1], 3f));
         }
 
-        for (int i = 0; i < GameConstants.TRAP_T02_PEARL_MINE_COUNT; i++) {
+        for (int i = 0; i < difficultyConfig.trapT02PearlMineCount; i++) {
             int[] p = randomEmptyCell();
             traps.add(new TrapT02_PearlMine(p[0], p[1], this));
         }
 
-        for (int i = 0; i < GameConstants.TRAP_T03_TEA_SHARDS_COUNT; i++) {
+        for (int i = 0; i < difficultyConfig.trapT03TeaShardCount; i++) {
             int[] p = randomEmptyCell();
             traps.add(new TrapT03_TeaShards(p[0], p[1]));
         }
 
-        for (int i = 0; i < GameConstants.TRAP_T04_MUD_COUNT; i++) {
+        for (int i = 0; i < difficultyConfig.trapT04MudTileCount; i++) {
             int[] p = randomEmptyCell();
             traps.add(new TrapT04_Mud(p[0], p[1]));
         }
@@ -564,10 +575,15 @@ public class GameManager {
     /* ================= 工具 ================= */
     private int[] randomEmptyCell() {
         int x, y;
+
+        int width = maze[0].length;
+        int height = maze.length;
+
         do {
-            x = random(1, GameConstants.MAZE_WIDTH - 2);
-            y = random(1, GameConstants.MAZE_HEIGHT - 2);
+            x = random(1, width - 2);
+            y = random(1, height - 2);
         } while (maze[y][x] == 0);
+
         return new int[]{x, y};
     }
 
@@ -744,12 +760,17 @@ public class GameManager {
      * 获取迷宫某一格的值
      */
     public int getMazeCell(int x, int y) {
-        if (x < 0 || x >= GameConstants.MAZE_WIDTH ||
-                y < 0 || y >= GameConstants.MAZE_HEIGHT) {
+        if (x < 0 || y < 0) {
             return 0;
         }
+
+        if (y >= maze.length || x >= maze[0].length) {
+            return 0;
+        }
+
         return maze[y][x];
     }
+
 
     /**
      * 生成敌人子弹 / 投射物
@@ -821,4 +842,7 @@ public class GameManager {
             door.dispose();
         }
     }
+
+
+
 }
