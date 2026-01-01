@@ -14,6 +14,12 @@ import de.tum.cit.fop.maze.game.GameConstants;
  */
 public class PortalEffectManager {
     private enum State { IDLE, ACTIVE, FINISHED }
+    public enum PortalOwner {
+        DOOR,
+        PLAYER
+    }
+    private PortalOwner owner = PortalOwner.DOOR;
+
 
     private State currentState = State.IDLE;
     private PortalParticlePool particlePool;
@@ -31,6 +37,11 @@ public class PortalEffectManager {
     public PortalEffectManager() {
         this.particlePool = new PortalParticlePool();
         createGlowTexture(); // ✅ 初始化时直接生成光晕图
+    }
+    public PortalEffectManager(PortalOwner owner) {
+        this.owner = owner;
+        this.particlePool = new PortalParticlePool();
+        createGlowTexture();
     }
 
     /**
@@ -75,6 +86,14 @@ public class PortalEffectManager {
     }
 
     public void update(float delta) {
+// 🔥 PLAYER 模式：中心点必须持续更新（防止偏移）
+        if (owner == PortalOwner.PLAYER) {
+            // targetX / targetY 必须被视为“外部实时提供的中心”
+            // 不在这里改值，交由 GameManager 每帧传入
+        }
+
+
+
         timer += delta;
 
         if (currentState == State.ACTIVE) {
@@ -83,9 +102,12 @@ public class PortalEffectManager {
             }
             particlePool.update(delta, targetX, targetY);
 
-            if (!playerHidden && timer >= playerVanishTime) {
-                playerHidden = true;
+            if(owner== PortalOwner.DOOR) {
+                if (!playerHidden && timer >= playerVanishTime) {
+                    playerHidden = true;
+                }
             }
+
             if (timer >= animationDuration) {
                 currentState = State.FINISHED;
             }
@@ -162,6 +184,7 @@ public class PortalEffectManager {
     }
 
     public boolean shouldHidePlayer() {
+        if (owner == PortalOwner.PLAYER) return false;
         return currentState == State.ACTIVE && playerHidden;
     }
 
@@ -177,6 +200,52 @@ public class PortalEffectManager {
         if (glowTexture != null) glowTexture.dispose();
         particlePool.dispose();
     }
+    /**
+     * 玩家脚下的常驻特效 留着以后用
+     */
+    public void updatePlayerIdle(float delta, float x, float y, boolean isLevelTransition) {
+        this.targetX = x;
+        this.targetY = y;
+
+        timer += delta;
+
+        // 关卡过渡时 → 升级为 ACTIVE
+        if (isLevelTransition) {
+            currentState = State.ACTIVE;
+        } else {
+            currentState = State.IDLE;
+        }
+
+        // 少量粒子，避免太吵
+        if (MathUtils.randomBoolean(0.15f)) {
+            particlePool.spawnTornadoParticles(
+                    targetX,
+                    targetY,
+                    GameConstants.CELL_SIZE * 0.25f
+            );
+        }
+
+        particlePool.update(delta, targetX, targetY);
+    }
+    /**
+     * 玩家进入迷宫 / 出生时的短暂传送阵（一次性，约 1 秒）
+     */
+    public void startPlayerSpawnEffect(float x, float y) {
+        this.owner = PortalOwner.PLAYER;
+
+        this.targetX = x;
+        this.targetY = y;
+
+        this.currentState = State.ACTIVE;
+        this.timer = 0f;
+
+        // 玩家特效：不隐藏玩家
+        this.playerHidden = false;
+
+        // 🔥 关键：玩家只播 1 秒
+        this.animationDuration = 2.0f;
+        this.playerVanishTime = 999f; // 永远不会触发
+    }
 
     // 🔥【新增】重置状态方法
     public void reset() {
@@ -184,5 +253,9 @@ public class PortalEffectManager {
         this.timer = 0f;
         this.playerHidden = false;
         //particlePool.clear();
+    }
+    public void setCenter(float x, float y) {
+        this.targetX = x;
+        this.targetY = y;
     }
 }
