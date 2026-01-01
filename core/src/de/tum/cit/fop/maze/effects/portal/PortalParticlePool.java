@@ -73,7 +73,7 @@ public class PortalParticlePool {
 
         p.angle = MathUtils.random(0f, 360f) * MathUtils.degreesToRadians;
         p.radius = baseRadius * MathUtils.random(0.5f, 1.5f); // 初始散布范围
-        p.height = -10f; // 从脚底稍微下面一点生成
+        p.height = 0f; // 从脚底稍微下面一点生成
         p.speed = MathUtils.random(100f, 200f); // 上升速度很快
 
         // 初始大小
@@ -85,6 +85,8 @@ public class PortalParticlePool {
     }
 
     public void update(float delta, float centerX, float centerY) {
+
+
         for (int i = activeParticles.size - 1; i >= 0; i--) {
             PortalParticle p = activeParticles.get(i);
 
