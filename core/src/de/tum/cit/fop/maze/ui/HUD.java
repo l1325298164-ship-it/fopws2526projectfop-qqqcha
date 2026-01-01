@@ -64,6 +64,11 @@ public class HUD {
     private static final int DASH_UI_MARGIN_X = 20; // 距离左边
     private static final int DASH_UI_MARGIN_Y = 20; // 距离下边
 
+    // 🔥 [Treasure] 新增：Buff 图标
+    private Texture iconAtk;
+    private Texture iconRegen;
+    private Texture iconMana;
+
 
 
 
@@ -83,6 +88,16 @@ public class HUD {
 
 
         Logger.debug("HUD initialized with heart-based life bar");
+        // 🔥 [Treasure] 加载图标 (请确保文件名正确！)
+        try {
+            iconAtk = new Texture(Gdx.files.internal("Items/icon_atk.png"));
+            iconRegen = new Texture(Gdx.files.internal("Items/icon_regen.png"));
+            iconMana = new Texture(Gdx.files.internal("Items/icon_mana.png"));
+        } catch (Exception e) {
+            Logger.error("Buff icons not found! Please check assets/Items/ folder.");
+        }
+
+        Logger.debug("HUD initialized");
     }
 
     /**
@@ -124,6 +139,83 @@ public class HUD {
             renderCompassAsUI();
             // 7. 技能图标
             renderDashIcon(uiBatch);
+
+            // ============================================
+            // 🔥 [Treasure] 左侧 Buff 状态栏 (图标 + 大字)
+            // ============================================
+
+            de.tum.cit.fop.maze.entities.Player player = gameManager.getPlayer();
+
+            if (player != null) {
+                float startX = 20;
+                float startY = Gdx.graphics.getHeight() - 250;
+                float iconSize = 48; // 图标大小
+                float gap = 60;      // 行间距加大，防止挤在一起
+
+                // 1. 攻击 Buff (红色)
+                if (player.hasBuffAttack()) {
+                    // 画图标
+                    if (iconAtk != null) uiBatch.draw(iconAtk, startX, startY, iconSize, iconSize);
+
+                    // 画文字 (字体放大)
+                    font.getData().setScale(2.0f); // 🔥 字体放大到 2.0
+                    font.setColor(Color.RED);
+                    font.draw(uiBatch, "ATK +50%", startX + iconSize + 10, startY + 35);
+
+                    startY -= gap;
+                }
+
+                // 2. 回血 Buff (绿色)
+                if (player.hasBuffRegen()) {
+                    if (iconRegen != null) uiBatch.draw(iconRegen, startX, startY, iconSize, iconSize);
+
+                    font.getData().setScale(2.0f);
+                    font.setColor(Color.GREEN);
+                    font.draw(uiBatch, "REGEN ON", startX + iconSize + 10, startY + 35);
+
+                    startY -= gap;
+                }
+
+                // 3. 耗蓝 Buff (青色)
+                if (player.hasBuffManaEfficiency()) {
+                    if (iconMana != null) uiBatch.draw(iconMana, startX, startY, iconSize, iconSize);
+
+                    font.getData().setScale(2.0f);
+                    font.setColor(Color.CYAN);
+                    font.draw(uiBatch, "MANA -50%", startX + iconSize + 10, startY + 35);
+
+                    startY -= gap;
+                }
+
+                // ⚠️ 还原字体设置 (非常重要，否则界面其他地方会乱)
+                font.setColor(Color.WHITE);
+                font.getData().setScale(1.2f); // 还原回默认大小
+
+
+                // ============================================
+                // 🔥 [Treasure] 屏幕中央飘字 (超大字体通知)
+                // ============================================
+                String msg = player.getNotificationMessage();
+                if (msg != null && !msg.isEmpty()) {
+                    float w = Gdx.graphics.getWidth();
+                    float h = Gdx.graphics.getHeight();
+
+                    // 设置超大字体
+                    font.getData().setScale(2.5f); // 🔥 2.5倍大小
+
+                    // 阴影
+                    font.setColor(Color.BLACK);
+                    font.draw(uiBatch, msg, w / 2f - 200 + 3, h / 2f + 100 - 3);
+
+                    // 正文
+                    font.setColor(Color.YELLOW);
+                    font.draw(uiBatch, msg, w / 2f - 200, h / 2f + 100);
+
+                    // 还原
+                    font.setColor(Color.WHITE);
+                    font.getData().setScale(1.2f);
+                }
+            }
 
 
         } catch (Exception e) {
@@ -421,6 +513,11 @@ public class HUD {
         if (heartFull != null) heartFull.dispose();
         if (heartHalf != null) heartHalf.dispose();
         if (shapeRenderer != null) shapeRenderer.dispose();
+
+        // 🔥 清理 Buff 图标
+        if (iconAtk != null) iconAtk.dispose();
+        if (iconRegen != null) iconRegen.dispose();
+        if (iconMana != null) iconMana.dispose();
 
         Logger.debug("HUD disposed");
     }

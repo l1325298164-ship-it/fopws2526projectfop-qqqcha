@@ -38,6 +38,18 @@ public class Player extends GameObject {
     private int maxMana = 100000;
     private float manaRegenRate = 5.0f;
 
+    // ==========================================
+    // 🔥 [Treasure] 新增：三种唯一 Buff 状态
+    // ==========================================
+    private boolean buffAttack = false;         // 1. 攻击力 +50%
+    private boolean buffRegen = false;          // 2. 每5秒回5血
+    private boolean buffManaEfficiency = false; // 3. 耗蓝减半
+
+    // 🔥 [Treasure] 辅助变量
+    private float regenTimer = 0f;           // 回血计时器
+    private String notificationMessage = ""; // 屏幕飘字内容
+    private float notificationTimer = 0f;    // 飘字持续时间
+
     /* =======================================================
        ====================== DASH ===========================
        ======================================================= */
@@ -52,6 +64,11 @@ public class Player extends GameObject {
     public static final float DASH_SPEED_MULTIPLIER = 0.4f; // delay * 0.4 = 更快
 
     public boolean useMana(int manaCost) {
+        if (buffManaEfficiency) {
+            manaCost = manaCost / 2;
+            if (manaCost < 1) manaCost = 1;
+        }
+
         if (mana < manaCost) {
             return false;
         }
@@ -109,8 +126,10 @@ public class Player extends GameObject {
 
     public Player(int x, int y, GameManager gameManager) {
         super(x, y);
-        this.lives = GameConstants.MAX_LIVES;
-        this.maxLives = GameConstants.MAX_LIVES;
+//        this.lives = GameConstants.MAX_LIVES;
+//        this.maxLives = GameConstants.MAX_LIVES;
+          this.lives = 100000;
+          this.maxLives = 100000;
 
         frontAtlas = new TextureAtlas("player/front.atlas");
         backAtlas  = new TextureAtlas("player/back.atlas");
@@ -192,6 +211,23 @@ public class Player extends GameObject {
 
         // ===== Ability =====
         abilityManager.update(delta);
+
+        // ===== [Treasure] 自动回血逻辑 =====
+        if (buffRegen) {
+            regenTimer += delta;
+            if (regenTimer >= 5.0f) { // 每 5 秒
+                heal(5); // 回 5 点血
+                regenTimer = 0f;
+            }
+        }
+
+        // ===== [Treasure] UI通知倒计时 =====
+        if (notificationTimer > 0) {
+            notificationTimer -= delta;
+            if (notificationTimer <= 0) {
+                notificationMessage = ""; // 时间到，清空消息
+            }
+        }
 
         dashJustEnded = false;
     }
@@ -355,8 +391,11 @@ public class Player extends GameObject {
     public void reset() {
 
         // ===== 基础生命 =====
-        this.lives = GameConstants.MAX_LIVES;
-        this.maxLives = GameConstants.MAX_LIVES;
+//        this.lives = GameConstants.MAX_LIVES;
+//        this.maxLives = GameConstants.MAX_LIVES;
+        this.lives = 100000;
+        this.maxLives = 100000;
+
         this.isDead = false;
 
         // ===== 钥匙 =====
@@ -387,6 +426,13 @@ public class Player extends GameObject {
         this.mana = maxMana;
         this.score = 0;
 
+        // 🔥 [Treasure] 重置 Buff
+        this.buffAttack = false;
+        this.buffRegen = false;
+        this.buffManaEfficiency = false;
+        this.regenTimer = 0f;
+        this.notificationMessage = "";
+
         // ===== 能力系统 =====
         if (abilityManager != null) {
             abilityManager.reset();
@@ -410,5 +456,51 @@ public class Player extends GameObject {
     public boolean isDashing(){
         return dashInvincible;
     }// 现在 Dash 的唯一真状态
+
+    /* ================= [Treasure] Buff API ================= */
+
+    // 1. 激活攻击 Buff (Treasure调用)
+    public void activateAttackBuff() {
+        if (!buffAttack) {
+            buffAttack = true;
+            showNotification("Buff Acquired: ATK +50%!");
+            Logger.gameEvent("acquire ATK Buff");
+        }
+    }
+
+    // 2. 激活回血 Buff (Treasure调用)
+    public void activateRegenBuff() {
+        if (!buffRegen) {
+            buffRegen = true;
+            showNotification("Buff Acquired: Auto-Regen!");
+            Logger.gameEvent("acquire HP Buff");
+        }
+    }
+
+    // 3. 激活耗蓝 Buff (Treasure调用)
+    public void activateManaBuff() {
+        if (!buffManaEfficiency) {
+            buffManaEfficiency = true;
+            showNotification("Buff Acquired: Mana Saver (-50% Cost)!");
+            Logger.gameEvent("acquire Mana Buff");
+        }
+    }
+
+    // 显示屏幕通知
+    public void showNotification(String msg) {
+        this.notificationMessage = msg;
+        this.notificationTimer = 3.0f; // 显示3秒
+    }
+
+    // Getters (HUD调用)
+    public boolean hasBuffAttack() { return buffAttack; }
+    public boolean hasBuffRegen() { return buffRegen; }
+    public boolean hasBuffManaEfficiency() { return buffManaEfficiency; }
+    public String getNotificationMessage() { return notificationMessage; }
+
+    // 🔥 供 AbilityManager 计算伤害时调用
+    public float getDamageMultiplier() {
+        return buffAttack ? 1.5f : 1.0f;
+    }
 
 }
