@@ -6,7 +6,7 @@ import com.badlogic.gdx.graphics.Color;
 public class GameConstants {
     public static final int MAZE_WIDTH = 30;
     public static final int MAZE_HEIGHT = 30;
-    public static final int CELL_SIZE = 30;
+    public static final int CELL_SIZE = 45;
     // 新增：出口数量
     public static final int EXIT_COUNT = 3;  // 出口数量
 

@@ -3,12 +3,15 @@ package de.tum.cit.fop.maze.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -18,6 +21,8 @@ import de.tum.cit.fop.maze.tools.DeveloperConsole;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 
 import java.util.*;
+
+import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameScreen implements Screen {
 
@@ -29,6 +34,7 @@ public class GameScreen implements Screen {
     private HUD hud;
     private PlayerInputHandler input;
     private DeveloperConsole console;
+    private Texture uiTop, uiBottom, uiLeft, uiRight;
 
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
@@ -59,6 +65,14 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+        uiTop = new Texture("Wallpaper/background.png");
+        uiBottom = new Texture("Wallpaper/frontground.png");
+        uiLeft = new Texture("Wallpaper/leftground.png");
+        uiRight = new Texture("Wallpaper/rightground.png");
+//        uiTop.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+//        uiBottom.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+//        uiLeft.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+//        uiRight.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
         input = new PlayerInputHandler();
 
         batch = game.getSpriteBatch();
@@ -158,7 +172,6 @@ public class GameScreen implements Screen {
                 items.add(new Item(k, 35));
             }
         });
-
         // 排序
         items.sort(
                 Comparator
@@ -187,12 +200,25 @@ public class GameScreen implements Screen {
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
-
+        batch.begin();
+        batch.end();
         /* =========================================================
            ④ UI（正交相机）
            ========================================================= */
         renderUI();
     }
+//decoration Wall
+    private void renderMazeBorderDecorations(SpriteBatch batch) {
+        int w = Gdx.graphics.getWidth();
+        int h = Gdx.graphics.getHeight();
+        int thickness = 1000;
+
+        batch.draw(uiTop,    0, h - thickness, w, thickness);
+        batch.draw(uiBottom, 0, 0,             w, thickness);
+        batch.draw(uiLeft,   -50, 0,             thickness+400, h);
+        batch.draw(uiRight,  w - thickness-200, 0, thickness+300, h);
+    }
+
 
     private void renderUI() {
         batch.setProjectionMatrix(
@@ -204,9 +230,10 @@ public class GameScreen implements Screen {
         );
 
         batch.begin();
+        renderMazeBorderDecorations(batch);
+
         hud.renderInGameUI(batch);
         batch.end();
-
         hud.renderManaBar();
 
         if (console != null) {
