@@ -61,7 +61,7 @@ public class DifficultyConfig {
     }
 
     /* ===== 难度工厂 ===== */
-    public static DifficultyConfig of(Difficulty d) {
+    public static DifficultyConfig  of(Difficulty d) {
         return switch (d) {
 
             case EASY -> new DifficultyConfig(
@@ -114,3 +114,4 @@ public class DifficultyConfig {
         };
     }
 }
+

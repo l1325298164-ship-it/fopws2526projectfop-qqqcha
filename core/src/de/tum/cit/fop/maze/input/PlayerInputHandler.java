@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.input;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import de.tum.cit.fop.maze.game.GameConstants;
+import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.KeyBindingManager.GameAction;
@@ -32,6 +33,7 @@ public class PlayerInputHandler {
         handleAbilityInput(callback);
         handleActionInput(callback);
     }
+
 
     /* ================= 移动 ================= */
 

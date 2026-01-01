@@ -1,187 +1,163 @@
 package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
+import de.tum.cit.fop.maze.utils.CameraManager;
+import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class MazeGameTutorialScreen implements Screen {
+
     private final MazeRunnerGame game;
     private final DifficultyConfig config;
 
-    private GameManager gm;
-    private boolean tutorialCompleted = false;
-    private boolean finished = false;
-    enum TutorialStep {
-        MOVE,
-        ATTACK,
-        DASH,
-        OPEN_DOOR,
-        ESCAPE
-    }
-    private TutorialStep step = TutorialStep.MOVE;
+    private CameraManager cameraManager;
+    private SpriteBatch batch;
 
-    enum MazeGameTutorialResult {
-        SUCCESS,          // 正常完成
-        FAILURE_DEAD,     // 死亡
-        EXIT_BY_PLAYER    // 玩家点了「退出冒险」
+    private GameManager gm;
+    private boolean finished = false;
+
+    public enum MazeGameTutorialResult {
+        SUCCESS,
+        FAILURE_DEAD,
+        EXIT_BY_PLAYER
     }
 
     private boolean movedUp, movedDown, movedLeft, movedRight;
     private boolean reachedTarget = false;
 
-    // 示例：目标点（世界坐标 or tile 坐标）
-    private static final float TARGET_X = 10f;
-    private static final float TARGET_Y = 5f;
-    private static final float TARGET_RADIUS = 0.5f;
-
+    private static final float CELL_SIZE = 32f;
+    private static final int TARGET_X = 10;
+    private static final int TARGET_Y = 5;
 
     public MazeGameTutorialScreen(MazeRunnerGame game, DifficultyConfig config) {
         this.game = game;
         this.config = config;
-
-
-
     }
+
     @Override
     public void show() {
-        gm = new GameManager(config);
-
-        // 🔒 教程专属限制
+        gm = game.getGameManager();
         gm.setTutorialMode(true);
 
+        batch = game.getSpriteBatch();
+
+        cameraManager = new CameraManager(config);
+
+        // 立刻把相机拉到玩家身上
+        cameraManager.centerOnPlayerImmediately(gm.getPlayer());
     }
 
     @Override
     public void render(float delta) {
         update(delta);
-        renderGame(delta);
 
+        cameraManager.update(delta, gm.getPlayer());
+        ScreenUtils.clear(0, 0, 0, 1);
 
+        renderGame();
     }
+
     private void update(float delta) {
-        // ================= 教程用移动标记 =================
-        movedUp = false;
-        movedDown = false;
-        movedLeft = false;
-        movedRight = false;
         if (finished) return;
 
+        // === 输入 & 世界更新 ===
+        gm.getInputHandler().update(delta,gm );
         gm.update(delta);
-        // ① 检测方向输入（一次即可）
+
+        // === 教程输入判定 ===
         PlayerInputHandler input = gm.getInputHandler();
+        movedUp    |= input.hasMovedUp();
+        movedDown  |= input.hasMovedDown();
+        movedLeft  |= input.hasMovedLeft();
+        movedRight |= input.hasMovedRight();
 
-        if (input.hasMovedUp()
-                && input.hasMovedDown()
-                && input.hasMovedLeft()
-                && input.hasMovedRight()) {
-            // 上下左右已完成
-        }
-        // ② 检查是否到达目标点
-        float px = gm.getPlayer().getX();
-        float py = gm.getPlayer().getY();
+        // === 目标判定（格子级） ===
+        int px = (int) gm.getPlayer().getX();
+        int py = (int) gm.getPlayer().getY();
 
-        if (Math.abs(px - TARGET_X) < TARGET_RADIUS &&
-                Math.abs(py - TARGET_Y) < TARGET_RADIUS) {
+        if (px == TARGET_X && py == TARGET_Y) {
             reachedTarget = true;
         }
 
-        // ③ 教程完成条件
+        // === 教程完成 ===
         if (movedUp && movedDown && movedLeft && movedRight && reachedTarget) {
             finished = true;
             game.onTutorialFinished(this);
         }
 
-
-
-        if (checkTutorialComplete()) {
-            finished = true;
-            game.onTutorialFinished(this);
-        }
+        // === 玩家死亡 ===
         if (gm.isPlayerDead()) {
             finished = true;
             game.onTutorialFailed(this, MazeGameTutorialResult.FAILURE_DEAD);
         }
+    }
 
-        switch (step) {
-            case MOVE -> {
-                if (playerMovedOnce) {
-                    step = TutorialStep.ATTACK;
-                    showTip("按 空格 攻击敌人");
+    private void renderGame() {
+        OrthographicCamera cam = cameraManager.getCamera();
+        batch.setProjectionMatrix(cam.combined);
+
+        batch.begin();
+
+        // ===== 迷宫（白色） =====
+        batch.setColor(1, 1, 1, 1);
+        int[][] maze = gm.getMaze();
+        for (int y = 0; y < maze.length; y++) {
+            for (int x = 0; x < maze[0].length; x++) {
+                if (maze[y][x] == 1) {
+                    batch.draw(
+                            TextureManager.getInstance().getWhitePixel(),
+                            x * CELL_SIZE,
+                            y * CELL_SIZE,
+                            CELL_SIZE,
+                            CELL_SIZE
+                    );
                 }
-            }
-            case ATTACK -> {
-                if (enemyKilled) {
-                    step = TutorialStep.DASH;
-                }
-            }
-            case DASH -> {
-                if (dashUsed) {
-                    step = TutorialStep.OPEN_DOOR;
-                }
-            }
-            case OPEN_DOOR -> {
-                if (doorOpened) {
-                    step = TutorialStep.ESCAPE;
-                }
-            }
-            case ESCAPE -> {
-                tutorialCompleted = true;
             }
         }
-        if (exitButtonPressed) {
-            finished = true;
-            game.onTutorialFailed(this, MazeGameTutorialResult.EXIT_BY_PLAYER);
+
+        // ===== 目标点（绿色） =====
+        batch.setColor(0, 1, 0, 1);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                TARGET_X * CELL_SIZE,
+                TARGET_Y * CELL_SIZE,
+                CELL_SIZE,
+                CELL_SIZE
+        );
+
+        // ===== 玩家（白色） =====
+        batch.setColor(0, 1, 1, 1);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                gm.getPlayer().getX() * CELL_SIZE,
+                gm.getPlayer().getY() * CELL_SIZE,
+                CELL_SIZE,
+                CELL_SIZE
+        );
+        batch.setColor(1, 1, 1, 1);
+
+        batch.end();
+    }
+
+    @Override
+    public void resize(int width, int height) {
+        if (cameraManager != null) {
+            cameraManager.resize(width, height);
         }
     }
-    public void onTutorialFinished(MazeGameTutorialScreen screen) {
-        // ✅ 教程完成 → 推进剧情
-        setScreen(new PV4Screen(this, /* fromTutorial = true */));
-    }
 
-    public void onTutorialFailed(
-            MazeGameTutorialScreen screen,
-            MazeGameTutorialResult result
-    ) {
-        switch (result) {
-            case FAILURE_DEAD, EXIT_BY_PLAYER -> {
-                // ❌ 不推进剧情
-                setScreen(new ChapterSelectScreen(this));
-            }
-        }
-    }
-
-    private boolean checkTutorialComplete() {
-        // 👇 你以后所有教程判定都写在这里
-        return tutorialCompleted;
-    }
-
-    private void renderGame(float delta) {
-        // 复用 GameScreen 的渲染逻辑（你可以 copy 或抽工具类）
-    }
-    @Override
-    public void resize(int w, int h) {
-
-    }
-
-    @Override
-    public void pause() {
-
-    }
-
-    @Override
-    public void resume() {
-
-    }
-
-    @Override
-    public void hide() {
-
-    }
+    @Override public void pause() {}
+    @Override public void resume() {}
+    @Override public void hide() {}
 
     @Override
     public void dispose() {
-
+        // SpriteBatch 由 MazeRunnerGame 管
     }
 }

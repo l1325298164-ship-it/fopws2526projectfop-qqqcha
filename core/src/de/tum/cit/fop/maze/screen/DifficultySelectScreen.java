@@ -66,8 +66,8 @@ public class DifficultySelectScreen implements Screen {
 
 
         root.add(bf.create("BACK", () ->
-                game.setScreen(backScreen)
-        ))
+                        game.setScreen(backScreen)
+                ))
                 .width(550)
                 .height(100);
 

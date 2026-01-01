@@ -20,7 +20,7 @@ import java.util.List;
 import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
-public class GameManager {
+public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final DifficultyConfig difficultyConfig;
 
 
@@ -76,7 +76,7 @@ public class GameManager {
     }
 
     private void resetGame() {
-        maze = generator.generateMaze();
+        maze = generator.generateMaze(difficultyConfig);
 
 
         enemies.clear();
@@ -636,6 +636,11 @@ public class GameManager {
         }
     }
 
+    @Override
+    public float getMoveDelayMultiplier() {
+        return 1.0f;
+    }
+
     public boolean onAbilityInput(int slot) {
         if (levelTransitionInProgress) return false;
         player.useAbility(slot);
@@ -663,6 +668,11 @@ public class GameManager {
                 return;
             }
         }
+    }
+
+    @Override
+    public void onMenuInput() {
+
     }
 
     private void checkAutoPickup() {
@@ -853,5 +863,18 @@ public class GameManager {
 
     public PlayerInputHandler getInputHandler() {
         return  inputHandler;
+    }
+    //给教学用的
+    private boolean tutorialMode = false;
+    public void setTutorialMode(boolean tutorialMode) {
+        this.tutorialMode = tutorialMode;
+    }
+
+    public boolean isTutorialMode() {
+        return tutorialMode;
+    }
+
+    public boolean isPlayerDead() {
+        return player != null && player.isDead();
     }
 }

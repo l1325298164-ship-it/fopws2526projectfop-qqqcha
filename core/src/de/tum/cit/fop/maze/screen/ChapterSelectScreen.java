@@ -6,13 +6,13 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.game.Difficulty;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
 
 /**
- * Mode Choice Menu（临时占位版）
- * 后续可以换成真正 UI
+ * Chapter / Difficulty Select Screen（流程版）
  */
 public class ChapterSelectScreen implements Screen {
-    //TODO难度切换界面 （开启新篇章）
 
     private final MazeRunnerGame game;
     private SpriteBatch batch;
@@ -23,22 +23,45 @@ public class ChapterSelectScreen implements Screen {
 
     @Override
     public void show() {
-        batch = new SpriteBatch();
+        // ⚠️ 建议：用 game 的 batch，而不是 new
+        batch = game.getSpriteBatch();
     }
 
     @Override
     public void render(float delta) {
         ScreenUtils.clear(0, 0, 0.2f, 1);
 
+        handleInput();
+
         batch.begin();
-        // 现在什么都不画，先跑流程
+        // TODO: 后续在这里画 UI 文本
         batch.end();
-//start the chapter
-        onChapterSelected(chapter) {
-            game.startChapter(chapter);
+    }
+
+    private void handleInput() {
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
+            startChapter(Difficulty.EASY);
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
+            startChapter(Difficulty.NORMAL);
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
+            startChapter(Difficulty.HARD);
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            game.goToMenu();
         }
     }
-    public void onChapterSelected(){}
+
+
+    private void startChapter(Difficulty difficulty) {
+        game.startNewGame(difficulty);  // ⭐ 关键：在这里更新 difficultyConfig + GameManager
+        game.advanceStory();            // 推进到 MAZE_GAME
+    }
 
     @Override public void resize(int width, int height) {}
     @Override public void pause() {}
@@ -47,6 +70,6 @@ public class ChapterSelectScreen implements Screen {
 
     @Override
     public void dispose() {
-        batch.dispose();
+        // SpriteBatch 由 MazeRunnerGame 管
     }
 }

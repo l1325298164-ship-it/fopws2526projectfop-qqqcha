@@ -66,7 +66,7 @@ public class GameScreen implements Screen {
         }
     }
     //CHAPTER!
-    private final ChapterContext chapterContext;
+//    private final ChapterContext chapterContext;
 
 
 
@@ -120,18 +120,34 @@ public class GameScreen implements Screen {
         if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress()) {
 
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
-                @Override public void onMoveInput(int dx, int dy) { gm.onMoveInput(dx, dy); }
-                @Override public float getMoveDelayMultiplier() { return gm.getPlayer().getMoveDelayMultiplier(); }
-                @Override public boolean onAbilityInput(int slot) { return gm.onAbilityInput(slot); }
-                @Override public void onInteractInput() { gm.onInteractInput(); }
-                @Override public void onMenuInput() { togglePause(); }
-            });
 
-            // R 重置
-            if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
-                gm.requestReset();
-            }
+                @Override
+                public void onMoveInput(int dx, int dy) {
+                    gm.onMoveInput(dx, dy);
+                }
+
+                @Override
+                public float getMoveDelayMultiplier() {
+                    return gm.getPlayer().getMoveDelayMultiplier();
+                }
+
+                @Override
+                public boolean onAbilityInput(int slot) {
+                    return gm.onAbilityInput(slot);
+                }
+
+                @Override
+                public void onInteractInput() {
+                    gm.onInteractInput();
+                }
+
+                @Override
+                public void onMenuInput() {
+                    togglePause();
+                }
+            });
         }
+
 
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {

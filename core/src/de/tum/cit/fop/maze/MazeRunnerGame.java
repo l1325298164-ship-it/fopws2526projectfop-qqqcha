@@ -37,7 +37,19 @@ public class MazeRunnerGame extends Game {
         this.gameManager = new GameManager(this.difficultyConfig);
     }
 
+    public void onTutorialFailed(
+            MazeGameTutorialScreen tutorial,
+            MazeGameTutorialScreen.MazeGameTutorialResult result
+    ) {
+        // ❌ 教程失败或退出：不存档、不推进剧情
+        stage = StoryStage.MAIN_MENU;
+        setScreen(new MenuScreen(this));
+    }
 
+    public enum PV4Result {
+        START,
+        EXIT
+    }
 
     public enum StoryStage {
         PV1,
@@ -61,6 +73,7 @@ public class MazeRunnerGame extends Game {
     private StoryStage stage = StoryStage.PV1;
     // ⚠️ advanceStory 永远不会存档
     public void advanceStory() {
+        Logger.debug("advanceStory called, stage = " + stage);
         Screen old = getScreen();
 
         switch (stage) {
@@ -368,6 +381,10 @@ public class MazeRunnerGame extends Game {
         if (old != null) old.dispose();
     }
 
+    private void saveProgress() {
+        // TODO: 以后真正写存档逻辑
+        Logger.debug("Progress saved (PV4 confirmation)");
+    }
 
 
 //
@@ -376,6 +393,5 @@ public class MazeRunnerGame extends Game {
 //        setScreen(new GameScreen(this, ctx));
 //    }
 }
-
 
 
