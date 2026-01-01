@@ -65,6 +65,15 @@ public class GameScreen implements Screen {
             type = Type.ENTITY;
         }
     }
+    //CHAPTER!
+    private final ChapterContext chapterContext;
+
+
+
+
+
+
+
 
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
         this.game = game;

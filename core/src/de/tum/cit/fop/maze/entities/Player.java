@@ -10,6 +10,7 @@ import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
@@ -85,6 +86,8 @@ public class Player extends GameObject {
     public int getScore() {
         return this.score;
     }
+
+
 
 
     /* ======================================================= */

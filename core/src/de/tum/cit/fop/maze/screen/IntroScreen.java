@@ -41,9 +41,13 @@ public class IntroScreen implements Screen {
 
     private static final float FRAME_DURATION = 1.0f;
 
+    private boolean exited = false;
+
+
     public enum PVExit {
-        NEXT_STAGE,
-        TO_MENU
+        NEXT_STAGE,   // PV1–PV3
+        TO_MENU,      // 失败
+        PV4_CHOICE    // ❗最终确认
     }
 
     public IntroScreen(MazeRunnerGame game, String atlasPath, String regionName, PVExit exitType) {
@@ -150,12 +154,20 @@ public class IntroScreen implements Screen {
 
     // 🔥 7. 你的 handleExit 方法 (处理跳转逻辑)
     private void handleExit() {
+        if (exited) return;
+        exited = true;
+
+
         switch (exitType) {
-            case NEXT_STAGE -> game.nextStage();
+            case NEXT_STAGE -> game.advanceStory();
             case TO_MENU -> game.goToMenu();
+            case PV4_CHOICE -> {
+                // 什么都不做，等玩家点按钮
+            }
         }
     }
-
+//game.onPV4Choice(PV4Result.START);
+//game.onPV4Choice(PV4Result.EXIT);
     @Override
     public void dispose() {
         if (pvAtlas != null) pvAtlas.dispose();

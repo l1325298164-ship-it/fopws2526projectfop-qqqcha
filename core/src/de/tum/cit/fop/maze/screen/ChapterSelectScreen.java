@@ -38,6 +38,7 @@ public class ChapterSelectScreen implements Screen {
             game.startChapter(chapter);
         }
     }
+    public void onChapterSelected(){}
 
     @Override public void resize(int width, int height) {}
     @Override public void pause() {}

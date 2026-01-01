@@ -9,6 +9,7 @@ import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.entities.trap.*;
+import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 
@@ -40,6 +41,7 @@ public class GameManager {
     private Compass compass;
     private MazeGenerator generator = new MazeGenerator();
     private KeyEffectManager keyEffectManager;
+    private PlayerInputHandler inputHandler;
 
     // ===== Keys =====
     private final List<Key> keys = new ArrayList<>();
@@ -63,6 +65,7 @@ public class GameManager {
 
     /* ================= 生命周期 ================= */
     public GameManager(DifficultyConfig difficultyConfig) {
+        this.inputHandler = new PlayerInputHandler();
         if (difficultyConfig == null) {
             throw new IllegalArgumentException("difficultyConfig must not be null");
         }
@@ -846,5 +849,9 @@ public class GameManager {
 
     public String getScore() {
         return String.valueOf(player.getScore());
+    }
+
+    public PlayerInputHandler getInputHandler() {
+        return  inputHandler;
     }
 }
