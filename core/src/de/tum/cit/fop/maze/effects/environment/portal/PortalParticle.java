@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.effects.portal;
+package de.tum.cit.fop.maze.effects.environment.portal;
 
 import com.badlogic.gdx.math.Vector2;
 

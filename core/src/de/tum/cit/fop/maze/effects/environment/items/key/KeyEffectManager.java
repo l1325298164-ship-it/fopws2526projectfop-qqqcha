@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.effects.key;
+package de.tum.cit.fop.maze.effects.environment.items.key;
 
 
 import com.badlogic.gdx.graphics.Texture;

@@ -1,9 +1,9 @@
 package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.utils.Array;
-import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
-import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
-import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
+import de.tum.cit.fop.maze.effects.Enemy.boba.BobaBulletManager;
+import de.tum.cit.fop.maze.effects.environment.items.key.KeyEffectManager;
+import de.tum.cit.fop.maze.effects.environment.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
