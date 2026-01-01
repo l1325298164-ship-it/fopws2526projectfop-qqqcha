@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.effects.boba;
+package de.tum.cit.fop.maze.effects.Enemy.boba;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;

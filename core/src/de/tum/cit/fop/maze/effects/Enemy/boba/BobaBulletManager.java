@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.effects.boba;
+package de.tum.cit.fop.maze.effects.Enemy.boba;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
