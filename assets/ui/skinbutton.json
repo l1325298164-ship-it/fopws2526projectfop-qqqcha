@@ -14,18 +14,24 @@
   "com.badlogic.gdx.scenes.scene2d.ui.Button$ButtonStyle": {
     "navButton": {
       "up": "navitem",
-      "down": "navitem (1)",
+      "down": "navitem",
+      "checked": "navitem",
+      "disabled": "navitem"
+    },
+    "navButton18": {
+      "up": "navitem (18)",
+      "down": "navitem (18)",
       "checked": "navitem (18)",
-      "disabled": "navitem (19)"
+      "disabled": "navitem (18)"
     }
   },
 
   "com.badlogic.gdx.scenes.scene2d.ui.TextButton$TextButtonStyle": {
     "default": {
       "up": "navitem",
-      "down": "navitem (1)",
-      "checked": "navitem (18)",
-      "disabled": "navitem (19)",
+      "down": "navitem",
+      "checked": "navitem",
+      "disabled": "navitem",
       "font": "default-font",
       "fontColor": "WHITE",
       "downFontColor": "GRAY",
@@ -34,9 +40,9 @@
 
     "navTextButton": {
       "up": "navitem",
-      "down": "navitem (1)",
-      "checked": "navitem (18)",
-      "disabled": "navitem (19)",
+      "down": "navitem",
+      "checked": "navitem",
+      "disabled": "navitem",
       "font": "default-font",
       "fontColor": "WHITE",
       "downFontColor": "GRAY",
@@ -45,11 +51,21 @@
 
     "title": {
       "up": "navitem",
-      "down": "navitem (1)",
-      "checked": "navitem (18)",
-      "disabled": "navitem (19)",
+      "down": "navitem",
+      "checked": "navitem",
+      "disabled": "navitem",
       "font": "default-font",
       "fontColor": "WHITE"
+    },
+    "navButton18": {
+      "up": "navitem (18)",
+      "down": "navitem (18)",
+      "checked": "navitem (18)",
+      "disabled": "navitem (18)",
+      "font": "default-font",
+      "fontColor": "WHITE",
+      "downFontColor": "GRAY",
+      "disabledFontColor": "GRAY"
     }
   },
 

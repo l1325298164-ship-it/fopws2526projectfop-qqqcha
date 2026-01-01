@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
@@ -27,6 +28,7 @@ import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 public class GameScreen implements Screen {
 
     private final MazeRunnerGame game;
+    private final DifficultyConfig difficultyConfig;
     private GameManager gm;
     private MazeRenderer maze;
     private CameraManager cam;
@@ -59,8 +61,9 @@ public class GameScreen implements Screen {
         }
     }
 
-    public GameScreen(MazeRunnerGame game) {
+    public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
         this.game = game;
+        this.difficultyConfig = difficultyConfig;
     }
 
     @Override
@@ -76,9 +79,9 @@ public class GameScreen implements Screen {
         input = new PlayerInputHandler();
 
         batch = game.getSpriteBatch();
-        gm = new GameManager();
-        maze = new MazeRenderer(gm);
-        cam = new CameraManager();
+        gm = new GameManager(difficultyConfig);
+        maze = new MazeRenderer(gm,difficultyConfig);
+        cam = new CameraManager(difficultyConfig);
         hud = new HUD(gm);
 
         cam.centerOnPlayerImmediately(gm.getPlayer());
