@@ -9,7 +9,10 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -49,6 +52,8 @@ public class MenuScreen implements Screen {
     private TextureAtlas uiAtlas;
     private AudioManager audioManager;
     private boolean isMusicOn = true;
+    private float BUTTON_WIDTH  = 800f; //按钮大小统一，字体在buttonFactory改
+    private float BUTTON_HEIGHT = 80f;
 
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
@@ -89,25 +94,50 @@ public class MenuScreen implements Screen {
         root.setFillParent(true);
         stage.addActor(root);
 
-        Label title = new Label("HELLO WORLD", game.getSkin(), "title");
+        Label title = new Label("QQ Cha", game.getSkin(), "title");
         title.setAlignment(Align.center);
-        title.setFontScale(1.1f);
-        root.add(title).padBottom(80).row();
+        title.setFontScale(2.1f);
+        root.add(title).padBottom(16).row();
+        Label title2 = new Label("Reset to Origin", game.getSkin(), "title");
+        title2.setAlignment(Align.center);
+        title2.setFontScale(1.1f);
+        root.add(title2).padBottom(80).row();
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
-        root.add(bf.create("START GAME", game::goToGame)).padBottom(20).row();
-        root.add(bf.create("RESET THE WORLD", game::goToPV)).padBottom(20).row();
+        root.add(bf.create("START GAME", game::goToGame))
+                .width(BUTTON_WIDTH)
+                .height(BUTTON_HEIGHT)
+                .padBottom(18)
+                .row();
+        root.add(bf.create("RESET THE WORLD", game::goToPV))
+                .width(BUTTON_WIDTH)
+                .height(BUTTON_HEIGHT)
+                .padBottom(20)
+                .row();
+        root.add(bf.create("DIFFICULTY", () ->
+                game.setScreen(new DifficultySelectScreen(game, this))))
+                .width(BUTTON_WIDTH)
+                .height(BUTTON_HEIGHT)
+                .padBottom(20)
+                .row();
         root.add(bf.create("CONTROLS", () ->
                 game.setScreen(new KeyMappingScreen(game, this))
-        )).padBottom(20).row();
-        root.add(bf.create("TEST", () -> {})).row();
+        ))
+                .width(BUTTON_WIDTH)
+                .height(BUTTON_HEIGHT)
+                .padBottom(20)
+                .row();
+        root.add(bf.create("TEST", () -> {}))
+                .width(BUTTON_WIDTH)
+                .height(BUTTON_HEIGHT)
+                .row();
 
         createMusicButton();
 
         Table bottomRight = new Table();
         bottomRight.setFillParent(true);
         bottomRight.bottom().right();
-        bottomRight.add(musicButton).size(160).pad(20);
+        bottomRight.add(musicButton).size(100).padRight(40).padBottom(20);
         stage.addActor(bottomRight);
 
         if (isMusicOn) {
@@ -221,29 +251,62 @@ public class MenuScreen implements Screen {
     // ================= 音乐按钮 =================
 
     private void createMusicButton() {
-        TextureRegionDrawable on = new TextureRegionDrawable(uiAtlas.findRegion("frame178"));
+        TextureRegionDrawable on  = new TextureRegionDrawable(uiAtlas.findRegion("frame178"));
         TextureRegionDrawable off = new TextureRegionDrawable(uiAtlas.findRegion("frame180"));
 
+        // ⭐ hover / down 用同一张，靠 scale / color 提示
         ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
-        style.imageUp = isMusicOn ? on : off;
+        style.imageUp   = isMusicOn ? on : off;
+        style.imageOver = isMusicOn ? on : off;
+        style.imageDown = isMusicOn ? on : off;
 
         musicButton = new ImageButton(style);
+
+        musicButton.setTransform(true);
         musicButton.setOrigin(Align.center);
 
+        // 👉 手动加 hover 效果（和你 ButtonFactory 思路一致）
         musicButton.addListener(new com.badlogic.gdx.scenes.scene2d.InputListener() {
+
+            
+            public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
+                musicButton.clearActions();
+                updateOriginToCenter(musicButton);
+                musicButton.addAction(
+                        Actions.scaleTo(1.1f, 1.1f, 0.12f)
+                );
+            }
+
             @Override
-            public boolean touchDown(com.badlogic.gdx.scenes.scene2d.InputEvent e,
-                                     float x, float y, int p, int b) {
+            public void exit(InputEvent event, float x, float y, int pointer, Actor toActor) {
+                musicButton.clearActions();
+                updateOriginToCenter(musicButton);
+                musicButton.addAction(
+                        Actions.scaleTo(1f, 1f, 0.12f)
+                );
+            }
+
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                updateOriginToCenter(musicButton);
+                musicButton.setScale(0.95f);
                 return true;
             }
 
             @Override
-            public void touchUp(com.badlogic.gdx.scenes.scene2d.InputEvent e,
-                                float x, float y, int p, int b) {
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                updateOriginToCenter(musicButton);
+                musicButton.setScale(1.1f);
                 toggleMusic();
             }
         });
     }
+
+    private void updateOriginToCenter(Actor actor) {
+        actor.setOrigin(actor.getWidth() * 0.5f, actor.getHeight() * 0.5f);
+    }
+
+
 
     private void toggleMusic() {
         isMusicOn = !isMusicOn;
@@ -281,7 +344,9 @@ public class MenuScreen implements Screen {
         bgHellTex.dispose();
     }
 
-    @Override public void show() {}
+    @Override public void show() {
+        Gdx.input.setInputProcessor(stage);
+    }
     @Override public void hide() {}
     @Override public void pause() {}
     @Override public void resume() {}

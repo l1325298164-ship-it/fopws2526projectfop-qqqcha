@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.entities.ExitDoor;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -18,6 +19,7 @@ import java.util.List;
 public class MazeRenderer {
 
     private final GameManager gameManager;
+    private final DifficultyConfig difficultyConfig;
     private final TextureManager textureManager = TextureManager.getInstance();
     private int[][] lastMazeRef = null;
 
@@ -45,8 +47,9 @@ public class MazeRenderer {
         }
     }
 
-    public MazeRenderer(GameManager gm) {
+    public MazeRenderer(GameManager gm, DifficultyConfig difficultyConfig) {
         this.gameManager = gm;
+        this.difficultyConfig = difficultyConfig;
         loadTextures();
     }
 
@@ -72,8 +75,8 @@ public class MazeRenderer {
     public void renderFloor(SpriteBatch batch) {
         if (floorTexture == null) return;
 
-        float w = GameConstants.MAZE_WIDTH * GameConstants.CELL_SIZE;
-        float h = GameConstants.MAZE_HEIGHT * GameConstants.CELL_SIZE;
+        float w = difficultyConfig.mazeWidth * GameConstants.CELL_SIZE;
+        float h = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;
 
         batch.draw(floorTexture, 0, 0, w, h);
     }

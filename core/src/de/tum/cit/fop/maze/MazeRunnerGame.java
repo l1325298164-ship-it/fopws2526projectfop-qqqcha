@@ -6,6 +6,8 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import de.tum.cit.fop.maze.game.Difficulty;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.qte.QTEResult;
 import de.tum.cit.fop.maze.screen.*;
@@ -26,6 +28,14 @@ public class MazeRunnerGame extends Game {
     private Skin skin;
     private AudioManager audioManager;  // 添加音效管理器字段
     private GameManager gameManager;
+    private DifficultyConfig difficultyConfig;
+
+    public void startNewGame(Difficulty difficulty) {
+        Logger.debug("Start new game with difficulty = " + difficulty);
+        this.difficultyConfig = DifficultyConfig.of(difficulty);
+        this.gameManager = new GameManager(this.difficultyConfig);
+    }
+
 
     public enum StoryStage {
         PV1,
@@ -57,7 +67,7 @@ public class MazeRunnerGame extends Game {
             // =====================
             case PV1 -> {
                 stage = StoryStage.QTE1;
-                setScreen(new QTEScreen(this, gameManager));
+                setScreen(new QTEScreen_single(this, gameManager));
             }
 
             // ⚠️ QTE1 不在这里处理
@@ -68,7 +78,7 @@ public class MazeRunnerGame extends Game {
             // =====================
             case PV2_SUCCESS -> {
                 stage = StoryStage.QTE2;
-                setScreen(new QTEScreen2(this, gameManager));
+                setScreen(new QTEScreen_double(this, gameManager));
             }
 
             case PV2_FAIL, PV3_FAIL -> {
@@ -81,7 +91,7 @@ public class MazeRunnerGame extends Game {
             // =====================
             case PV3_SUCCESS -> {
                 stage = StoryStage.MAZE_GAME1;
-                setScreen(new GameScreen(this));
+                setScreen(new GameScreen(this,difficultyConfig));
             }
 
             // =====================
@@ -102,7 +112,7 @@ public class MazeRunnerGame extends Game {
 
             case MODE_MENU -> {
                 stage = StoryStage.MAZE_GAME;
-                setScreen(new GameScreen(this));
+                setScreen(new GameScreen(this,difficultyConfig));
             }
 
             default -> {
@@ -117,7 +127,8 @@ public class MazeRunnerGame extends Game {
 
     @Override
     public void create() {
-
+        this.difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
+        this.gameManager = new GameManager( this.difficultyConfig);
         spriteBatch = new SpriteBatch();
 
         // ✅ 先加载 atlas
@@ -130,7 +141,6 @@ public class MazeRunnerGame extends Game {
                 uiAtlas
         );
 
-        gameManager = new GameManager();
         System.out.println("FONT = " + skin.getFont("default-font"));
 
 
@@ -159,7 +169,7 @@ public class MazeRunnerGame extends Game {
         Screen old = getScreen();
         Logger.debug("TextureManager CONSTRUCTOR");
         //临时更改为pv播放
-        setScreen(new GameScreen(this));
+        setScreen(new GameScreen(this,difficultyConfig));
         if (old != null) old.dispose();
         // 切换到游戏屏幕时确保音乐继续播放
         if (audioManager != null) {
@@ -312,7 +322,7 @@ public class MazeRunnerGame extends Game {
 
         if (old != null) old.dispose();
     }
-    public void onMaze_Game1Finished(MazeGame1 Game) {
+    public void onMaze_Game1Finished(MazeGame_tutorial Game) {
         Screen old = getScreen();
 
         switch (stage) {
@@ -321,7 +331,7 @@ public class MazeRunnerGame extends Game {
             // Game 结果
             // =====================
 //            case MAZE_GAME1 -> {
-//                if (result == MazeGame1.GameResult.SUCCESS) {
+//                if (result == MazeGame_tutorial.GameResult.SUCCESS) {
 //                    stage = StoryStage.PV2_SUCCESS;
 //                    setScreen(new IntroScreen(
 //                            this,

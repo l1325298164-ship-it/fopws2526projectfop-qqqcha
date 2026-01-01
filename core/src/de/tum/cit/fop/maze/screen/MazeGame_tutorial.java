@@ -1,6 +1,6 @@
 package de.tum.cit.fop.maze.screen;
 
-public class MazeGame1 {
+public class MazeGame_tutorial {
     public enum GameResult{
         SUCCESS,
         FAILURE_DEAD,

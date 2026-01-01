@@ -61,6 +61,7 @@ public class IntroScreen implements Screen {
 
     @Override
     public void show() {
+
         Gdx.app.debug("IntroScreen", "Loading PV: " + regionName);
         try {
             // 加载背景图 (羊皮纸卷轴)

@@ -24,7 +24,7 @@ import de.tum.cit.fop.maze.qte.QTEResult;
 /**
  * 双人QTE Screen
  */
-public class QTEScreen2 implements Screen {
+public class QTEScreen_double implements Screen {
 
 
     private QTEResult result = null;
@@ -174,7 +174,7 @@ public class QTEScreen2 implements Screen {
 
     private float barX, barY, barWidth;
 
-    public QTEScreen2(MazeRunnerGame game, GameManager gameManager) {
+    public QTEScreen_double(MazeRunnerGame game, GameManager gameManager) {
         this.game = game;
         this.gameManager = gameManager;
     }
