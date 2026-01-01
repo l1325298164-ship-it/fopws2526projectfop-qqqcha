@@ -29,7 +29,7 @@ public class MazeRunnerGame extends Game {
     private AudioManager audioManager;  // 添加音效管理器字段
     private GameManager gameManager;
     private DifficultyConfig difficultyConfig;
-
+    private GameScreen activeGameScreen;
     public void startNewGame(Difficulty difficulty) {
         Logger.debug("Start new game with difficulty = " + difficulty);
         this.difficultyConfig = DifficultyConfig.of(difficulty);
@@ -106,7 +106,7 @@ public class MazeRunnerGame extends Game {
 
             case PV4 -> {
                 stage = StoryStage.MODE_MENU;
-                setScreen(new ModeChoiceMenuScreen(this));
+                setScreen(new ChapterSelectScreen(this));
             }
 
 
@@ -176,7 +176,17 @@ public class MazeRunnerGame extends Game {
             audioManager.resumeMusic();
         }
     }
+    public void setActiveGameScreen(GameScreen gs) {
+        this.activeGameScreen = gs;
+    }
 
+    public boolean hasRunningGame() {
+        return activeGameScreen != null;
+    }
+
+    public void resumeGame() {
+        setScreen(activeGameScreen);
+    }
     public void goToMenu() {
         Screen old = getScreen();
         setScreen(new MenuScreen(this));

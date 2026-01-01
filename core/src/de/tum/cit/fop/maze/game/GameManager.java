@@ -844,5 +844,7 @@ public class GameManager {
     }
 
 
-
+    public String getScore() {
+        return String.valueOf(player.getScore());
+    }
 }

@@ -1,12 +1,10 @@
 package de.tum.cit.fop.maze.entities;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import de.tum.cit.fop.maze.abilities.Ability;
 import de.tum.cit.fop.maze.abilities.AbilityManager;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
@@ -82,6 +80,10 @@ public class Player extends GameObject {
     public void addScore(int i) {
         score+=i;
 
+    }
+
+    public int getScore() {
+        return this.score;
     }
 
 

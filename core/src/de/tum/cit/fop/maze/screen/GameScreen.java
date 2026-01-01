@@ -7,7 +7,11 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
@@ -16,15 +20,12 @@ import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
+import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.tools.DeveloperConsole;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
-
 import java.util.*;
-
-import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
-
 public class GameScreen implements Screen {
 
     private final MazeRunnerGame game;
@@ -37,6 +38,10 @@ public class GameScreen implements Screen {
     private PlayerInputHandler input;
     private DeveloperConsole console;
     private Texture uiTop, uiBottom, uiLeft, uiRight;
+//PAUSE
+    private boolean paused = false;
+    private Stage pauseStage;
+    private boolean pauseUIInitialized = false;
 
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
@@ -83,7 +88,7 @@ public class GameScreen implements Screen {
         maze = new MazeRenderer(gm,difficultyConfig);
         cam = new CameraManager(difficultyConfig);
         hud = new HUD(gm);
-
+        game.setActiveGameScreen(this);
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
     }
@@ -103,14 +108,14 @@ public class GameScreen implements Screen {
 
         // 2. 只有在 [控制台关闭] 且 [非转场期间] 才允许玩家操作
         // 🔥 修复：这里原来漏了 !console.isVisible()
-        if (!console.isVisible() && !gm.isLevelTransitionInProgress()) {
+        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress()) {
 
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
                 @Override public void onMoveInput(int dx, int dy) { gm.onMoveInput(dx, dy); }
                 @Override public float getMoveDelayMultiplier() { return gm.getPlayer().getMoveDelayMultiplier(); }
                 @Override public boolean onAbilityInput(int slot) { return gm.onAbilityInput(slot); }
                 @Override public void onInteractInput() { gm.onInteractInput(); }
-                @Override public void onMenuInput() { game.goToMenu(); }
+                @Override public void onMenuInput() { togglePause(); }
             });
 
             // R 重置
@@ -120,7 +125,7 @@ public class GameScreen implements Screen {
         }
 
         /* ================= 更新 ================= */
-        if (!console.isVisible()) {
+        if (!paused &&!console.isVisible()) {
             gm.update(delta);
             cam.update(delta, gm.getPlayer());
         }
@@ -220,8 +225,74 @@ public class GameScreen implements Screen {
            ④ UI（正交相机）
            ========================================================= */
         renderUI();
+
+        if (paused) {
+            if (!pauseUIInitialized) {
+                initPauseUI();
+            }
+
+            Gdx.input.setInputProcessor(pauseStage);
+
+            pauseStage.act(delta);
+            pauseStage.draw();
+            return; // ⛔ 非常重要：不要再继续渲染后面的逻辑
+        }
     }
-//decoration Wall
+
+    private void togglePause() {
+        paused = !paused;
+
+        if (paused) {
+            // ⏸ 进入暂停：输入交给 Pause UI
+            if (pauseStage == null) {
+                initPauseUI();
+            }
+            Gdx.input.setInputProcessor(pauseStage);
+        } else {
+            // ▶ 继续游戏：把输入还给游戏
+            Gdx.input.setInputProcessor(null);
+            // 如果你后面有 Stage 输入（比如 HUD），这里再换成对应的
+        }
+
+        Gdx.app.log("GameScreen", paused ? "Paused" : "Resumed");
+    }
+    private void initPauseUI() {
+        pauseStage = new Stage(new ScreenViewport());
+        Table root = new Table();
+        root.setFillParent(true);
+        pauseStage.addActor(root);
+
+        root.add(new Label("PAUSED", game.getSkin(), "title"))
+                .padBottom(40).row();
+
+        ButtonFactory bf = new ButtonFactory(game.getSkin());
+
+        root.add(bf.create("RESUME", this::togglePause))
+                .width(400).height(80).padBottom(20).row();
+
+        root.add(bf.create("SETTINGS", () -> {
+                    // TODO: 打开设置界面（之后单独做）
+                }))
+                .width(400).height(80).padBottom(20).row();
+
+        root.add(bf.create("BACK TO MENU", () -> {
+                    game.goToMenu();
+                }))
+                .width(400).height(80).padBottom(40).row();
+
+        root.add(new Label(
+                "Score: " + gm.getScore(),
+                game.getSkin()
+        ));
+
+        pauseUIInitialized = true;
+        if (game.hasRunningGame()) {
+            root.add(bf.create("CONTINUE", game::resumeGame));
+        }
+    }
+
+
+    //decoration Wall
     private void renderMazeBorderDecorations(SpriteBatch batch) {
         int w = Gdx.graphics.getWidth();
         int h = Gdx.graphics.getHeight();
