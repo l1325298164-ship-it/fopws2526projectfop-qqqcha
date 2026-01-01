@@ -68,8 +68,9 @@ public class GameConstants {
     public static final Color HEART_COLOR = Color.RED;
     public static final int KEYCOUNT =2;
 
+
     // 游戏事件
-    public static final float INVINCIBLE_TIME = 1.0f;
+    public static final float INVINCIBLE_TIME = 3.0f;
 
     // 游戏规则
     public static final int MAX_LIVES = 3;

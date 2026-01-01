@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.game;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
+import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
@@ -50,13 +51,19 @@ public class GameManager {
 
     private int currentLevel = 1;
 
+    //effect to player
+    private PortalEffectManager playerSpawnPortal;
+
+
     /* ================= 生命周期 ================= */
     public GameManager() {
         resetGame();
+
     }
 
     private void resetGame() {
         maze = generator.generateMaze();
+
 
         enemies.clear();
         traps.clear();
@@ -78,6 +85,13 @@ public class GameManager {
             player.reset();
             player.setPosition(spawn[0], spawn[1]);
         }
+        // 🔥 玩家出生传送阵（一次性）
+        float px = player.getX() * GameConstants.CELL_SIZE;
+        float py = player.getY() * GameConstants.CELL_SIZE;
+
+        playerSpawnPortal = new PortalEffectManager(PortalEffectManager.PortalOwner.PLAYER);
+        playerSpawnPortal.startPlayerSpawnEffect(px, py);
+
 
         generateLevel();
 
@@ -95,7 +109,22 @@ public class GameManager {
     }
 
     public void update(float delta) {
-        // 🔥 如果关卡过渡正在进行，只更新相关逻辑
+
+
+        // 🔥 强制修正粒子中心
+        if (playerSpawnPortal != null) {
+            float cx = (player.getX() + 0.5f) * GameConstants.CELL_SIZE;
+            float cy = (player.getY() + 0.15f) * GameConstants.CELL_SIZE;
+
+            playerSpawnPortal.setCenter(cx, cy);
+            playerSpawnPortal.update(delta);
+
+            if (playerSpawnPortal.isFinished()) {
+                playerSpawnPortal.dispose();
+                playerSpawnPortal = null;
+            }
+        }
+                // 🔥 如果关卡过渡正在进行，只更新相关逻辑
         if (levelTransitionInProgress) {
             if (currentExitDoor != null) {
                 // 只更新当前触发的出口门
@@ -778,6 +807,10 @@ public class GameManager {
     public KeyEffectManager getKeyEffectManager() {
         return keyEffectManager;
     }
+    public PortalEffectManager getPlayerSpawnPortal() {
+        return playerSpawnPortal;
+    }
+
 
     public void dispose() {
         if (keyEffectManager != null) {
