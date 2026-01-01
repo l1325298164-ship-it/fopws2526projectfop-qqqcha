@@ -21,7 +21,7 @@ public enum AudioType {
     UI_CLICK("sounds/sfx/ui/click01.wav", AudioCategory.UI, false, 0.6f, false, true),
     UI_SUCCESS("sounds/sfx/ui/enter-next-level.ogg", AudioCategory.UI, false, 0.8f, false, true),
     UI_FAILURE("sounds/sfx/ui/game-failure.wav", AudioCategory.UI, false, 0.8f, false, true),
-    UI_HIT_DAZZLE("sounds/sfx/ui/hit-dazzle.wav", AudioCategory.UI, false, 1.0f, false, true),
+    UI_HIT_DAZZLE("sounds/sfx/ui/click02.wav", AudioCategory.UI, false, 1.0f, false, true),
     UI_THROW_ATTACK("sounds/sfx/ui/throw-attack.wav", AudioCategory.UI, false, 1.0f, false, true),
     SWORD_SWING("sounds/sfx/ui/throw-attack.wav", AudioCategory.UI, false, 1.0f, false, true);
 //revision |||| sword
