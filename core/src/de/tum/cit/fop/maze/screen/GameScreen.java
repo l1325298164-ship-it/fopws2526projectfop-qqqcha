@@ -136,7 +136,18 @@ public class GameScreen implements Screen {
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
         batch.end();
+/* =========================================================
+   玩家脚下传送阵（Portal Effect）
+   ========================================================= */
+        batch.begin();
+        if (gm.getPlayerSpawnPortal() != null) {
+            float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
+            float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
 
+            gm.getPlayerSpawnPortal().renderBack(batch, px, py);
+            gm.getPlayerSpawnPortal().renderFront(batch);
+        }
+        batch.end();
         /* =========================================================
            ② 世界实体排序渲染
            ========================================================= */

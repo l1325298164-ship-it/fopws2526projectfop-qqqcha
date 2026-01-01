@@ -35,7 +35,7 @@ public class Player extends GameObject {
 
     // ===== Mana =====
     private int mana = 100000;
-    private int maxMana = 100;
+    private int maxMana = 100000;
     private float manaRegenRate = 5.0f;
 
     /* =======================================================
@@ -315,7 +315,7 @@ public class Player extends GameObject {
         float drawX = x * GameConstants.CELL_SIZE
                 + GameConstants.CELL_SIZE / 2f - drawW / 2f;
         float drawY = y * GameConstants.CELL_SIZE;
-
+//TODO 需要把受伤和无敌分开，现在受伤会更新无敌，防止帧数太高被杀掉了
         if ((isInvincible || dashInvincible) && invincibleTimer % 0.2f > 0.1f) {
             batch.setColor(1, 1, 1, 0.6f);
         }
@@ -363,7 +363,7 @@ public class Player extends GameObject {
         this.hasKey = false;
 
         // ===== 无敌状态 =====
-        this.isInvincible = false;
+        this.isInvincible = true;
         this.invincibleTimer = 0f;
 
         // ===== Dash 状态 =====

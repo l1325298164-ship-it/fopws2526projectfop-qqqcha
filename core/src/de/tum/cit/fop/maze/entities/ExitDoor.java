@@ -106,8 +106,8 @@ public class ExitDoor extends GameObject {
 
         triggered = true;
         portalEffect.startExitAnimation(
-                x * GameConstants.CELL_SIZE,
-                y * GameConstants.CELL_SIZE
+                (x + 0.5f) * GameConstants.CELL_SIZE,
+                (y + 0.5f) * GameConstants.CELL_SIZE
         );
     }
 
