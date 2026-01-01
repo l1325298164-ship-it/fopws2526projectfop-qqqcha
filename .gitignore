@@ -1,3 +1,8 @@
+# 忽略根目录的 assets 文件夹
+/assets/
+/assets_raw/
+
+
 .gradle
 **/build/
 !src/**/build/
