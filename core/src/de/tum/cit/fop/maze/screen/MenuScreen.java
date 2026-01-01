@@ -1,10 +1,14 @@
 package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.*;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.FrameBuffer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -15,234 +19,269 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
+import de.tum.cit.fop.maze.tools.PerlinNoise;
 
 public class MenuScreen implements Screen {
 
-    private final Stage stage;
+    private final MazeRunnerGame game;
+    private boolean changeEnabled = false;
+
+    // ===== 渲染 =====
+    private SpriteBatch batch;
+    private Stage stage;
+    private FrameBuffer fbo;
+
+    private float time = 0f;
+    private float corruption = 0f;
+    private float noiseSeedX;
+    private float noiseSeedY;
+
+    // ===== 背景（用 TextureRegion）=====
+    private Texture bgCandyTex;
+    private Texture bgHellTex;
+    private TextureRegion bgCandy;
+    private TextureRegion bgHell;
+
+    // ===== UI =====
     private ImageButton musicButton;
-    private TextureAtlas atlas;
+    private TextureAtlas uiAtlas;
     private AudioManager audioManager;
     private boolean isMusicOn = true;
 
     public MenuScreen(MazeRunnerGame game) {
-        // =====================================================
-        // Camera & Stage
-        // =====================================================
-        OrthographicCamera camera = new OrthographicCamera();
-        camera.zoom = 1.5f;
+        this.game = game;
+        noiseSeedX = MathUtils.random(0f, 1000f);
+        noiseSeedY = MathUtils.random(0f, 1000f);
+        batch = new SpriteBatch();
 
+        // ===== FBO =====
+        fbo = new FrameBuffer(
+                Pixmap.Format.RGBA8888,
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight(),
+                false
+        );
+
+        // ===== Stage =====
+        OrthographicCamera camera = new OrthographicCamera();
         Viewport viewport = new ScreenViewport(camera);
-        stage = new Stage(viewport, game.getSpriteBatch());
+        stage = new Stage(viewport, batch);
         Gdx.input.setInputProcessor(stage);
 
-        // =====================================================
-        // 获取资源
-        // =====================================================
-        // 🔧 请修改这个路径为您的实际atlas路径
-        atlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
+        // ===== 资源 =====
+        uiAtlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
         audioManager = AudioManager.getInstance();
         isMusicOn = audioManager.isMusicEnabled();
 
-        // =====================================================
-        // Root Layout
-        // =====================================================
-        Table mainTable = new Table();
-        mainTable.setFillParent(true);
-        stage.addActor(mainTable);
+        bgCandyTex = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+        bgHellTex  = new Texture(Gdx.files.internal("menu_bg/bg_hell.png"));
 
-        // =====================================================
-        // Title
-        // =====================================================
-        Label title = new Label(
-                "Hello World from the Menu!",
-                game.getSkin(),
-                "title"
-        );
+        // ⭐ 关键：在“源头”翻转一次
+        bgCandy = new TextureRegion(bgCandyTex);
+        bgHell  = new TextureRegion(bgHellTex);
+        bgCandy.flip(false, true);
+        bgHell.flip(false, true);
+
+        // ===== UI =====
+        Table root = new Table();
+        root.setFillParent(true);
+        stage.addActor(root);
+
+        Label title = new Label("HELLO WORLD", game.getSkin(), "title");
         title.setAlignment(Align.center);
         title.setFontScale(1.1f);
+        root.add(title).padBottom(80).row();
 
-        mainTable.add(title)
-                .padBottom(80)
-                .row();
-
-        // =====================================================
-        // Buttons (via ButtonFactory)
-        // =====================================================
         ButtonFactory bf = new ButtonFactory(game.getSkin());
+        root.add(bf.create("START GAME", game::goToGame)).padBottom(20).row();
+        root.add(bf.create("RESET THE WORLD", game::goToPV)).padBottom(20).row();
+        root.add(bf.create("CONTROLS", () ->
+                game.setScreen(new KeyMappingScreen(game, this))
+        )).padBottom(20).row();
+        root.add(bf.create("TEST", () -> {})).row();
 
-        mainTable.add(
-                bf.create("START GAME", game::goToGame)
-        ).padBottom(20).row();
-
-        mainTable.add(
-                bf.create("RESET THE WORLD", game::goToPV)
-        ).padBottom(20).row();
-
-        // 🔥 新增：CONTROLS 按钮
-        mainTable.add(
-                bf.create("CONTROLS", () -> {
-                    // 跳转到按键设置界面 (KeyMappingScreen)
-                    // 传入 MenuScreen.this 是为了让设置界面点 "Back" 能返回到这里
-                    game.setScreen(new KeyMappingScreen(game, MenuScreen.this));
-                })
-        ).padBottom(20).row();
-
-        mainTable.add(
-                bf.create("TEST", () -> {
-                    System.out.println("TEST button clicked");
-                })
-        ).row();
-
-        // =====================================================
-// 音乐开关按钮（右下角）
-// =====================================================
         createMusicButton();
 
-        Table bottomRightTable = new Table();
-        bottomRightTable.setFillParent(true);
-        bottomRightTable.bottom().right();
+        Table bottomRight = new Table();
+        bottomRight.setFillParent(true);
+        bottomRight.bottom().right();
+        bottomRight.add(musicButton).size(160).pad(20);
+        stage.addActor(bottomRight);
 
-// 获取屏幕尺寸
-        float screenWidth = Gdx.graphics.getWidth();
-        float screenHeight = Gdx.graphics.getHeight();
-
-// 设置按钮位置（从屏幕边缘往回减）
-        float buttonSize = 180f;
-        float padding = -130f;
-
-// 创建位置Table，先设置到右下角，然后往左上方移动
-        bottomRightTable.add(musicButton)
-                .size(buttonSize, buttonSize)
-                .padRight(padding)    // 距离右边30像素
-                .padBottom(padding);  // 距离底部30像素
-
-        stage.addActor(bottomRightTable);
-
-        // 初始播放音乐
         if (isMusicOn) {
             audioManager.playMusic(de.tum.cit.fop.maze.audio.AudioType.MUSIC_MENU);
         }
+
     }
 
-    /**
-     * 创建音乐按钮
-     */
+    // ================= 渲染 =================
+
+    @Override
+    public void render(float delta) {
+        //临时调试R按下看情况
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            changeEnabled=!changeEnabled;
+        }
+        if(changeEnabled) {
+
+
+            time += delta;
+            corruption = Math.min(1f, corruption + delta * 0.15f);
+
+            int w = Gdx.graphics.getWidth();
+            int h = Gdx.graphics.getHeight();
+
+            // ===== ① 渲染到 FBO =====
+            fbo.begin();
+            Gdx.gl.glClearColor(0, 0, 0, 1);
+            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+            batch.begin();
+
+            // 糖果世界（整张）
+            batch.draw(bgCandy, 0, 0, w, h);
+
+            // 地狱侵蚀（连续空间）
+            int step = 4;
+            for (int x = 0; x < w; x += step) {
+                for (int y = 0; y < h; y += step) {
+
+                    float n = PerlinNoise.noise(
+                            x * 0.004f,
+                            y * 0.004f + time * 0.2f
+                    );
+
+                    if (n < corruption) {
+                        batch.draw(
+                                bgHell.getTexture(),
+                                x, y,
+                                step, step,
+                                x / (float) w,
+                                y / (float) h,
+                                (x + step) / (float) w,
+                                (y + step) / (float) h
+                        );
+                    } else if (n < corruption + 0.08f) {
+
+                        float drip = PerlinNoise.noise(
+                                x * 0.01f,
+                                y * 0.02f - time * 0.6f
+                        );
+
+                        float alpha = MathUtils.clamp((corruption + 0.08f - n) / 0.08f, 0f, 1f);
+
+                        batch.setColor(1f, 0.6f, 0.8f, alpha * 0.6f);
+
+                        batch.draw(
+                                bgCandy,          // ⭐ 用糖果图“拉伸”
+                                x,
+                                y - drip * 6f,    // ⭐ 微微往下流
+                                step,
+                                step + drip * 8f
+                        );
+
+                        batch.setColor(Color.WHITE);
+                    }
+
+
+                }
+            }
+
+            batch.end();
+            fbo.end();
+
+            // ===== ② FBO → 屏幕（不再翻转）=====
+            Gdx.gl.glClearColor(0, 0, 0, 1);
+            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+            Texture fboTex = fbo.getColorBufferTexture();
+
+            batch.begin();
+            batch.draw(fboTex, 0, 0, w, h);
+            batch.end();
+        }
+        else if(!changeEnabled) {
+
+            batch.begin();
+            batch.draw(
+                    bgCandyTex,
+                    0, 0,
+                    Gdx.graphics.getWidth(),
+                    Gdx.graphics.getHeight()
+            );
+            batch.end();
+        }
+        // ===== ③ UI =====
+        stage.act(delta);
+        stage.draw();
+    }
+
+    // ================= 音乐按钮 =================
+
     private void createMusicButton() {
-        // 创建图标
-        TextureRegionDrawable musicOnIcon = new TextureRegionDrawable(atlas.findRegion("frame178"));
-        TextureRegionDrawable musicOffIcon = new TextureRegionDrawable(atlas.findRegion("frame180"));
+        TextureRegionDrawable on = new TextureRegionDrawable(uiAtlas.findRegion("frame178"));
+        TextureRegionDrawable off = new TextureRegionDrawable(uiAtlas.findRegion("frame180"));
 
         ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
-        style.imageUp = isMusicOn ? musicOnIcon : musicOffIcon;
+        style.imageUp = isMusicOn ? on : off;
 
         musicButton = new ImageButton(style);
-        musicButton.setTransform(true);
-
-        // 🔧 关键：设置缩放原点为按钮中心
         musicButton.setOrigin(Align.center);
 
-        // 🔧 可选：也可以显式设置原点位置
-        // musicButton.setOrigin(buttonSize/2, buttonSize/2);
-
-        // 简单动画效果
         musicButton.addListener(new com.badlogic.gdx.scenes.scene2d.InputListener() {
             @Override
-            public void enter(com.badlogic.gdx.scenes.scene2d.InputEvent event,
-                              float x, float y, int pointer,
-                              com.badlogic.gdx.scenes.scene2d.Actor fromActor) {
-                musicButton.clearActions();
-                musicButton.addAction(
-                        com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo(1.01f, 1.01f, 0.1f)
-                );
-            }
-
-            @Override
-            public void exit(com.badlogic.gdx.scenes.scene2d.InputEvent event,
-                             float x, float y, int pointer,
-                             com.badlogic.gdx.scenes.scene2d.Actor toActor) {
-                musicButton.clearActions();
-                musicButton.addAction(
-                        com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo(1f, 1f, 0.1f)
-                );
-            }
-
-            @Override
-            public boolean touchDown(com.badlogic.gdx.scenes.scene2d.InputEvent event,
-                                     float x, float y, int pointer, int buttonCode) {
-                musicButton.clearActions();
-                musicButton.addAction(
-                        com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo(0.9f, 0.9f, 0.05f)
-                );
+            public boolean touchDown(com.badlogic.gdx.scenes.scene2d.InputEvent e,
+                                     float x, float y, int p, int b) {
                 return true;
             }
 
             @Override
-            public void touchUp(com.badlogic.gdx.scenes.scene2d.InputEvent event,
-                                float x, float y, int pointer, int buttonCode) {
-                musicButton.clearActions();
-                musicButton.addAction(
-                        com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo(1f, 1f, 0.1f)
-                );
-
-                if (x >= 0 && x <= musicButton.getWidth() && y >= 0 && y <= musicButton.getHeight()) {
-                    toggleMusic();
-                }
+            public void touchUp(com.badlogic.gdx.scenes.scene2d.InputEvent e,
+                                float x, float y, int p, int b) {
+                toggleMusic();
             }
         });
     }
 
-    /**
-     * 切换音乐
-     */
     private void toggleMusic() {
         isMusicOn = !isMusicOn;
         audioManager.setMusicEnabled(isMusicOn);
 
-        // 更新图标
-        TextureRegionDrawable newIcon;
+        musicButton.getStyle().imageUp =
+                new TextureRegionDrawable(uiAtlas.findRegion(
+                        isMusicOn ? "frame178" : "frame180"
+                ));
+
         if (isMusicOn) {
-            newIcon = new TextureRegionDrawable(atlas.findRegion("frame178"));
             audioManager.playMusic(de.tum.cit.fop.maze.audio.AudioType.MUSIC_MENU);
         } else {
-            newIcon = new TextureRegionDrawable(atlas.findRegion("frame180"));
             audioManager.pauseMusic();
         }
-
-        musicButton.getStyle().imageUp = newIcon;
-
-        // 播放点击音效
-        audioManager.playUIClick();
     }
 
-    // =====================================================
-    // Render & lifecycle
-    // =====================================================
-    @Override
-    public void render(float delta) {
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
-        stage.draw();
-    }
+    // ================= 生命周期 =================
 
     @Override
-    public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true);
+    public void resize(int w, int h) {
+        stage.getViewport().update(w, h, true);
+
+        if (fbo != null) fbo.dispose();
+        fbo = new FrameBuffer(Pixmap.Format.RGBA8888, w, h, false);
     }
 
     @Override
     public void dispose() {
         stage.dispose();
-        if (atlas != null) {
-            atlas.dispose();
-        }
+        batch.dispose();
+        fbo.dispose();
+        uiAtlas.dispose();
+        bgCandyTex.dispose();
+        bgHellTex.dispose();
     }
 
-    @Override
-    public void show() {
-        Gdx.input.setInputProcessor(stage);
-    }
-
+    @Override public void show() {}
     @Override public void hide() {}
     @Override public void pause() {}
     @Override public void resume() {}
