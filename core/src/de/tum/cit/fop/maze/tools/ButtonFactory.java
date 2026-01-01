@@ -212,7 +212,10 @@ public class ButtonFactory {
      */
     public TextButton create(String text, Runnable onClick,
                              boolean playClickSound, boolean playSuccessSound) {
+
+
         TextButton button = new TextButton(text, skin, "navTextButton");
+        button.getLabel().setFontScale(0.7f);//全局更改字体大小
         button.pad(18f, 60f, 18f, 60f);
 
         // 启用变换，设置原点为中心
@@ -230,16 +233,22 @@ public class ButtonFactory {
             public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
                 isOver[0] = true;
 
-                // 播放悬停声音
-                if (enableHoverSound && pointer == -1) { // pointer == -1 表示鼠标
+                if (enableHoverSound && pointer == -1) {
                     audioManager.playSound(hoverSound.name(), 0.6f);
                 }
 
-                // 只有在未按下状态才执行 hover 动画
                 if (!isPressed[0]) {
-                    performHoverAnimation(button);
+                    resetToBase(button); // ✅ 关键
+                    button.setScale(hoverScale);
+                    button.setColor(
+                            hoverBrightness,
+                            hoverBrightness,
+                            hoverBrightness,
+                            1f
+                    );
                 }
             }
+
 
             @Override
             public void exit(InputEvent event, float x, float y, int pointer, Actor toActor) {
@@ -256,56 +265,70 @@ public class ButtonFactory {
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int buttonCode) {
                 isPressed[0] = true;
 
-                // 播放点击声音（按下瞬间）
                 if (enableClickSound && playClickSound) {
-                    audioManager.playUIClick(); // 使用专用的UI点击方法
+                    audioManager.playUIClick();
                 }
 
-                // 立即执行点击动画（按下瞬间）
-                performClickDownAnimation(button);
+                // ✅【核心修复】按下前，强制回到 BASE
+                resetToBase(button);
 
-                return true; // 返回 true 表示处理了这个事件
+                // ✅ 再进入 PRESSED（绝对不会叠加）
+                button.setScale(clickScale);
+                button.setColor(0.9f, 0.9f, 0.9f, 1f);
+
+                return true;
             }
+
 
             @Override
             public void touchUp(InputEvent event, float x, float y, int pointer, int buttonCode) {
                 boolean wasPressed = isPressed[0];
                 isPressed[0] = false;
 
-                // 检查是否是有效点击
                 boolean isValidClick = wasPressed &&
                         x >= 0 && x <= button.getWidth() &&
                         y >= 0 && y <= button.getHeight();
 
-                // 立即执行释放动画
-                if (isOver[0]) {
-                    // 鼠标还在按钮上，执行弹起动画到hover状态
-                    performClickUpToHoverAnimation(button);
-                } else {
-                    // 鼠标已离开，执行弹起动画到普通状态
-                    performClickUpToNormalAnimation(button);
-                }
+                resetToBase(button); // ✅ 先回 BASE
 
-                // 执行点击回调
+                if (isOver[0]) {
+                    // 松开后还在按钮上 → HOVER
+                    button.setScale(hoverScale);
+                    button.setColor(
+                            hoverBrightness,
+                            hoverBrightness,
+                            hoverBrightness,
+                            1f
+                    );
+                }
+                // else：已经是 NORMAL（BASE），不用再设
+
                 if (onClick != null && isValidClick) {
-                    // 播放成功音效（如果需要）
                     if (playSuccessSound) {
                         audioManager.playSound(successSound.name(), 0.8f);
                     }
-                    // ❌ 移除延迟执行，改为立即执行
-                    // button.addAction(Actions.sequence(
-                    //     Actions.delay(clickUpDuration * 0.3f),
-                    //     Actions.run(onClick)
-                    // ));
-
-                    // ✅ 改为立即执行回调
                     onClick.run();
                 }
             }
+
         });
 
         return button;
     }
+//强制回基准状态
+    private void resetToBase(TextButton button) {
+        button.clearActions();
+        button.setScale(1f);
+        button.setColor(Color.WHITE);
+    }
+
+
+
+
+
+
+
+
 
     // ========== 动画方法 ==========
 

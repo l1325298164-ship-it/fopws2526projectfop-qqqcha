@@ -109,8 +109,8 @@ public class Player extends GameObject {
 
     public Player(int x, int y, GameManager gameManager) {
         super(x, y);
-        this.lives = GameConstants.INITIAL_PLAYER_LIVES;
-        this.maxLives = GameConstants.INITIAL_PLAYER_LIVES;
+        this.lives = GameConstants.MAX_LIVES;
+        this.maxLives = GameConstants.MAX_LIVES;
 
         frontAtlas = new TextureAtlas("player/front.atlas");
         backAtlas  = new TextureAtlas("player/back.atlas");
@@ -355,8 +355,8 @@ public class Player extends GameObject {
     public void reset() {
 
         // ===== 基础生命 =====
-        this.lives = GameConstants.INITIAL_PLAYER_LIVES;
-        this.maxLives = GameConstants.INITIAL_PLAYER_LIVES;
+        this.lives = GameConstants.MAX_LIVES;
+        this.maxLives = GameConstants.MAX_LIVES;
         this.isDead = false;
 
         // ===== 钥匙 =====
