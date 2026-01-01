@@ -1,10 +1,14 @@
 package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.FrameBuffer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -15,23 +19,30 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.tools.PerlinNoise;
 
 public class MenuScreen implements Screen {
 
     private final MazeRunnerGame game;
+    private boolean changeEnabled = false;
 
     // ===== 渲染 =====
     private SpriteBatch batch;
     private Stage stage;
+    private FrameBuffer fbo;
 
     private float time = 0f;
     private float corruption = 0f;
+    private float noiseSeedX;
+    private float noiseSeedY;
 
-    // ===== 资源 =====
-    private Texture bgCandy;
-    private Texture bgHell;
+    // ===== 背景（用 TextureRegion）=====
+    private Texture bgCandyTex;
+    private Texture bgHellTex;
+    private TextureRegion bgCandy;
+    private TextureRegion bgHell;
 
     // ===== UI =====
     private ImageButton musicButton;
@@ -41,8 +52,17 @@ public class MenuScreen implements Screen {
 
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
-
+        noiseSeedX = MathUtils.random(0f, 1000f);
+        noiseSeedY = MathUtils.random(0f, 1000f);
         batch = new SpriteBatch();
+
+        // ===== FBO =====
+        fbo = new FrameBuffer(
+                Pixmap.Format.RGBA8888,
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight(),
+                false
+        );
 
         // ===== Stage =====
         OrthographicCamera camera = new OrthographicCamera();
@@ -55,8 +75,14 @@ public class MenuScreen implements Screen {
         audioManager = AudioManager.getInstance();
         isMusicOn = audioManager.isMusicEnabled();
 
-        bgCandy = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
-        bgHell  = new Texture(Gdx.files.internal("menu_bg/bg_hell.png"));
+        bgCandyTex = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+        bgHellTex  = new Texture(Gdx.files.internal("menu_bg/bg_hell.png"));
+
+        // ⭐ 关键：在“源头”翻转一次
+        bgCandy = new TextureRegion(bgCandyTex);
+        bgHell  = new TextureRegion(bgHellTex);
+        bgCandy.flip(false, true);
+        bgHell.flip(false, true);
 
         // ===== UI =====
         Table root = new Table();
@@ -87,85 +113,110 @@ public class MenuScreen implements Screen {
         if (isMusicOn) {
             audioManager.playMusic(de.tum.cit.fop.maze.audio.AudioType.MUSIC_MENU);
         }
+
     }
 
     // ================= 渲染 =================
 
     @Override
     public void render(float delta) {
+        //临时调试R按下看情况
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            changeEnabled=!changeEnabled;
+        }
+        if(changeEnabled) {
 
-        time += delta;
-        corruption = Math.min(1f, corruption + delta * 0.15f);
 
-        Gdx.gl.glClearColor(0, 0, 0, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+            time += delta;
+            corruption = Math.min(1f, corruption + delta * 0.15f);
 
-        batch.begin();
+            int w = Gdx.graphics.getWidth();
+            int h = Gdx.graphics.getHeight();
 
-        // ===== ① 先画糖果世界（整张，清楚）=====
-        batch.draw(
-                bgCandy,
-                0, 0,
-                Gdx.graphics.getWidth(),
-                Gdx.graphics.getHeight()
-        );
+            // ===== ① 渲染到 FBO =====
+            fbo.begin();
+            Gdx.gl.glClearColor(0, 0, 0, 1);
+            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // ===== ② 再在腐化区域画地狱（按区域采样）=====
-        int cell = 32; // 可调：32 / 48 / 64
-        int cols = Gdx.graphics.getWidth()  / cell + 1;
-        int rows = Gdx.graphics.getHeight() / cell + 1;
+            batch.begin();
 
-        int screenW = Gdx.graphics.getWidth();
-        int screenH = Gdx.graphics.getHeight();
+            // 糖果世界（整张）
+            batch.draw(bgCandy, 0, 0, w, h);
 
-        for (int x = 0; x < cols; x++) {
-            for (int y = 0; y < rows; y++) {
+            // 地狱侵蚀（连续空间）
+            int step = 4;
+            for (int x = 0; x < w; x += step) {
+                for (int y = 0; y < h; y += step) {
 
-                float n = PerlinNoise.noise(
-                        x * 0.15f,
-                        y * 0.15f + time * 0.2f
-                );
-
-                if (n < corruption) {
-
-                    // ⭐ 实际绘制尺寸（处理最后一列 / 行）
-                    float drawW = Math.min(cell, screenW - x * cell);
-                    float drawH = Math.min(cell, screenH - y * cell);
-
-                    if (drawW <= 0 || drawH <= 0) continue;
-
-                    // ⭐ 对应 UV（Y 轴已翻转）
-                    int texW = bgHell.getWidth();
-                    int texH = bgHell.getHeight();
-
-                    float u1 = (x * cell) / (float) screenW;
-                    float u2 = (x * cell + drawW) / (float) screenW;
-
-// ⭐ 用“纹理高度”来算 V（并翻转）
-                    float v2 = 1f - (y * cell) / (float) texH;
-                    float v1 = 1f - (y * cell + drawH) / (float) texH;
-
-                    batch.draw(
-                            bgHell,
-                            x * cell,
-                            y * cell,
-                            drawW,
-                            drawH,
-                            u1, v1,
-                            u2, v2
+                    float n = PerlinNoise.noise(
+                            x * 0.004f,
+                            y * 0.004f + time * 0.2f
                     );
+
+                    if (n < corruption) {
+                        batch.draw(
+                                bgHell.getTexture(),
+                                x, y,
+                                step, step,
+                                x / (float) w,
+                                y / (float) h,
+                                (x + step) / (float) w,
+                                (y + step) / (float) h
+                        );
+                    } else if (n < corruption + 0.08f) {
+
+                        float drip = PerlinNoise.noise(
+                                x * 0.01f,
+                                y * 0.02f - time * 0.6f
+                        );
+
+                        float alpha = MathUtils.clamp((corruption + 0.08f - n) / 0.08f, 0f, 1f);
+
+                        batch.setColor(1f, 0.6f, 0.8f, alpha * 0.6f);
+
+                        batch.draw(
+                                bgCandy,          // ⭐ 用糖果图“拉伸”
+                                x,
+                                y - drip * 6f,    // ⭐ 微微往下流
+                                step,
+                                step + drip * 8f
+                        );
+
+                        batch.setColor(Color.WHITE);
+                    }
+
+
                 }
             }
+
+            batch.end();
+            fbo.end();
+
+            // ===== ② FBO → 屏幕（不再翻转）=====
+            Gdx.gl.glClearColor(0, 0, 0, 1);
+            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+            Texture fboTex = fbo.getColorBufferTexture();
+
+            batch.begin();
+            batch.draw(fboTex, 0, 0, w, h);
+            batch.end();
         }
+        else if(!changeEnabled) {
 
-
-        batch.end();
-
-        // ===== UI =====
+            batch.begin();
+            batch.draw(
+                    bgCandyTex,
+                    0, 0,
+                    Gdx.graphics.getWidth(),
+                    Gdx.graphics.getHeight()
+            );
+            batch.end();
+        }
+        // ===== ③ UI =====
         stage.act(delta);
         stage.draw();
     }
-
 
     // ================= 音乐按钮 =================
 
@@ -177,7 +228,6 @@ public class MenuScreen implements Screen {
         style.imageUp = isMusicOn ? on : off;
 
         musicButton = new ImageButton(style);
-        musicButton.setTransform(true);
         musicButton.setOrigin(Align.center);
 
         musicButton.addListener(new com.badlogic.gdx.scenes.scene2d.InputListener() {
@@ -216,15 +266,19 @@ public class MenuScreen implements Screen {
     @Override
     public void resize(int w, int h) {
         stage.getViewport().update(w, h, true);
+
+        if (fbo != null) fbo.dispose();
+        fbo = new FrameBuffer(Pixmap.Format.RGBA8888, w, h, false);
     }
 
     @Override
     public void dispose() {
         stage.dispose();
         batch.dispose();
+        fbo.dispose();
         uiAtlas.dispose();
-        bgCandy.dispose();
-        bgHell.dispose();
+        bgCandyTex.dispose();
+        bgHellTex.dispose();
     }
 
     @Override public void show() {}
