@@ -564,12 +564,27 @@ public class GameManager {
     }
 
     /* ---------- Treasures ---------- */
+    /* ---------- Treasures ---------- */
     private void generateTreasures() {
-        int count = 5;
-        for (int i = 0; i < count; i++) {
-            int[] p = randomEmptyCell();
-            treasures.add(new Treasure(p[0], p[1]));
+        // 🔥 [Treasure] 智能生成 3 个宝箱
+        int targetCount = 3;
+        int spawned = 0;
+        int attempts = 0;
+
+        while (spawned < targetCount && attempts < 200) {
+            attempts++;
+            int[] p = randomEmptyCell(); // 获取一个空地坐标
+            int tx = p[0];
+            int ty = p[1];
+
+            // 1. 检查是否已被占用 (isOccupied 已经包含了玩家、敌人、陷阱和其他宝箱)
+            // randomEmptyCell 已经保证不是墙壁，所以只需要检查物体重叠
+            if (isOccupied(tx, ty)) continue;
+
+            treasures.add(new Treasure(tx, ty));
+            spawned++;
         }
+        Logger.debug("Generated " + spawned + " treasures.");
     }
 
     /* ================= 工具 ================= */
@@ -699,13 +714,18 @@ public class GameManager {
             }
         }
 
-        // ===== 宝箱 =====
+        // ===== 宝箱 (Treasure) =====
         Iterator<Treasure> treasureIterator = treasures.iterator();
         while (treasureIterator.hasNext()) {
             Treasure t = treasureIterator.next();
+
+            // 只要玩家踩上去，并且宝箱还没开
             if (t.isInteractable() && t.getX() == px && t.getY() == py) {
+                // 触发开箱逻辑 (Player.java 会获得 Buff)
                 t.onInteract(player);
-                treasureIterator.remove();
+
+                // ⚠️ 注意：宝箱打开后不移除 (remove)，因为它要变成开箱状态留在原地
+                // 所以这里不需要 treasureIterator.remove();
             }
         }
     }
@@ -840,6 +860,10 @@ public class GameManager {
         // 🔥 清理出口门资源
         for (ExitDoor door : exitDoors) {
             door.dispose();
+        }
+        // 🔥 [Treasure] 清理宝箱资源
+        for (Treasure t : treasures) {
+            t.dispose();
         }
     }
 
