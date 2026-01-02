@@ -1,21 +1,25 @@
 package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 
 /**
- * Chapter / Difficulty Select Screen（流程版）
+ * Chapter Select Screen
  */
 public class ChapterSelectScreen implements Screen {
 
     private final MazeRunnerGame game;
-    private SpriteBatch batch;
+    private Stage stage;
 
     public ChapterSelectScreen(MazeRunnerGame game) {
         this.game = game;
@@ -23,53 +27,68 @@ public class ChapterSelectScreen implements Screen {
 
     @Override
     public void show() {
-        // ⚠️ 建议：用 game 的 batch，而不是 new
-        batch = game.getSpriteBatch();
+        stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
+        Gdx.input.setInputProcessor(stage);
+
+        Table table = new Table();
+        table.setFillParent(true);
+        table.center();
+
+        // 重放序幕按钮
+        TextButton introButton = new TextButton("Replay Prologue", game.getSkin());
+        introButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                game.replayPrologue();
+
+                DifficultyConfig config = DifficultyConfig.of(Difficulty.EASY);
+                game.setScreen(new GameScreen(game, config)); // 确保跳转到游戏界面
+            }
+        });
+
+        TextButton chapterOneButton = new TextButton("Chapter 1", game.getSkin());
+        chapterOneButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+
+                Difficulty difficulty = Difficulty.NORMAL;
+                DifficultyConfig config = DifficultyConfig.of(difficulty);
+
+                game.startNewGame(difficulty);
+                game.advanceStory();
+                game.setScreen(new GameScreen(game, config));
+            }
+        });
+
+
+        // 布局
+        table.add(introButton).width(320).height(64).padBottom(24);
+        table.row();
+        table.add(chapterOneButton).width(320).height(64);
+
+        stage.addActor(table);
     }
 
     @Override
     public void render(float delta) {
-        ScreenUtils.clear(0, 0, 0.2f, 1);
+        Gdx.gl.glClearColor(0, 0, 0.2f, 1);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        handleInput();
-
-        batch.begin();
-        // TODO: 后续在这里画 UI 文本
-        batch.end();
+        stage.act(delta);
+        stage.draw();
     }
 
-    private void handleInput() {
-
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
-            startChapter(Difficulty.EASY);
-        }
-
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
-            startChapter(Difficulty.NORMAL);
-        }
-
-        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
-            startChapter(Difficulty.HARD);
-        }
-
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.goToMenu();
-        }
+    @Override
+    public void resize(int width, int height) {
+        stage.getViewport().update(width, height, true);
     }
 
-
-    private void startChapter(Difficulty difficulty) {
-        game.startNewGame(difficulty);  // ⭐ 关键：在这里更新 difficultyConfig + GameManager
-        game.advanceStory();            // 推进到 MAZE_GAME
-    }
-
-    @Override public void resize(int width, int height) {}
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
 
     @Override
     public void dispose() {
-        // SpriteBatch 由 MazeRunnerGame 管
+        stage.dispose();
     }
 }

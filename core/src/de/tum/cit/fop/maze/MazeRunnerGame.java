@@ -11,7 +11,6 @@ import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.qte.QTEResult;
 import de.tum.cit.fop.maze.screen.*;
-import de.tum.cit.fop.maze.tools.ChapterContext;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 // 添加 Audio的导入
@@ -45,6 +44,12 @@ public class MazeRunnerGame extends Game {
         stage = StoryStage.MAIN_MENU;
         setScreen(new MenuScreen(this));
     }
+
+    public void replayPrologue() {
+        stage = StoryStage.PV1;   // ✅ 回到第一段剧情
+        advanceStory();
+    }
+
 
     public enum PV4Result {
         START,
@@ -163,7 +168,6 @@ public class MazeRunnerGame extends Game {
         initializeSoundManager();
         goToMenu();
     }
-
 
 
 
