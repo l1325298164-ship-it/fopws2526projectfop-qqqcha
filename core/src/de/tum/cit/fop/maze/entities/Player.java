@@ -451,7 +451,8 @@ public class Player extends GameObject {
     public Direction getDirection() {
         return direction;
     }
-
+//新增读档使用getter
+public int getScore() { return score; }
 
     public boolean isDashing(){
         return dashInvincible;
@@ -501,6 +502,31 @@ public class Player extends GameObject {
     // 🔥 供 AbilityManager 计算伤害时调用
     public float getDamageMultiplier() {
         return buffAttack ? 1.5f : 1.0f;
+    }
+
+    // ================= 💾 读档专用 Setters =================
+
+    // 恢复分数
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    // 恢复生命值状态
+    public void setHealthStatus(int currentLives, int maxLives) {
+        this.maxLives = maxLives;
+        this.lives = currentLives;
+    }
+
+    // 恢复魔法值
+    public void setMana(int mana) {
+        this.mana = mana;
+    }
+
+    // 恢复 Buff 状态 (静默恢复，不显示飘字通知)
+    public void setBuffs(boolean attack, boolean regen, boolean manaEfficiency) {
+        this.buffAttack = attack;
+        this.buffRegen = regen;
+        this.buffManaEfficiency = manaEfficiency;
     }
 
 }

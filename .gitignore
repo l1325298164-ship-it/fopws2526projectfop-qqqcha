@@ -204,3 +204,4 @@ $RECYCLE.BIN/
 
 ### Include gradle-wrapper
 !gradle/wrapper/gradle-wrapper.jar
+/assets/

@@ -119,6 +119,43 @@ public class GameManager {
         Logger.gameEvent("Game reset complete");
     }
 
+    /**
+     * 📂 从存档加载游戏
+     * 逻辑：设置层级 -> 重置场景(生成新地图) -> 覆盖玩家数据
+     */
+    public void loadFromSave(GameSaveData data) {
+        if (data == null) {
+            Logger.error("Cannot load from null data!");
+            return;
+        }
+
+        // 1. 恢复游戏进度
+        this.currentLevel = data.currentLevel;
+
+        // 2. 重置场景
+        // 这会生成当前层级 (currentLevel) 的新迷宫，并将 player 重置为初始状态
+        resetGame();
+
+        // 3. 强行覆盖玩家状态 (Restore Player State)
+        if (player != null) {
+            // 恢复基础属性
+            player.setScore(data.score);
+            player.setHealthStatus(data.lives, data.maxLives);
+            player.setMana(data.mana);
+            player.setHasKey(data.hasKey);
+
+            // 恢复 Buff 状态
+            player.setBuffs(data.buffAttack, data.buffRegen, data.buffManaEfficiency);
+
+            // 恢复钥匙逻辑 (如果玩家身上有钥匙，需要确保门的逻辑同步)
+            if (data.hasKey) {
+                unlockAllExitDoors();
+            }
+        }
+
+        Logger.gameEvent("Game Loaded from Save: Level " + currentLevel);
+    }
+
     public void update(float delta) {
 
 
