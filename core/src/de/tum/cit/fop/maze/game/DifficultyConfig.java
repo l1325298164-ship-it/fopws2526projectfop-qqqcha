@@ -24,7 +24,7 @@ public class DifficultyConfig {
     public final float enemyDamageMultiplier;
 
     /* ===== 构造器（私有，强制走工厂） ===== */
-    private DifficultyConfig(
+    public DifficultyConfig(
             int mazeWidth,
             int mazeHeight,
             int exitCount,

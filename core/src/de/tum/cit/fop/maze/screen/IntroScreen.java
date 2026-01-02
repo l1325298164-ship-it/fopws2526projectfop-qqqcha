@@ -111,29 +111,21 @@ public class IntroScreen implements Screen {
                 () -> game.onPV4Choice(MazeRunnerGame.PV4Result.START)
         );
 
-        TextButton exitButton = buttonFactory.createSilent(
-                "Back to Menu",
-                () -> game.onPV4Choice(MazeRunnerGame.PV4Result.EXIT)
-        );
 
-        float buttonWidth = 420f;
+
+        float buttonWidth = 600f;
         float buttonHeight = 110f;
 
         startButton.setSize(buttonWidth, buttonHeight);
-        exitButton.setSize(buttonWidth, buttonHeight);
 
         startButton.setPosition(
                 (WORLD_WIDTH - buttonWidth) / 2,
                 WORLD_HEIGHT * 0.28f
         );
 
-        exitButton.setPosition(
-                (WORLD_WIDTH - buttonWidth) / 2,
-                WORLD_HEIGHT * 0.18f
-        );
+
 
         stage.addActor(startButton);
-        stage.addActor(exitButton);
     }
 
     @Override

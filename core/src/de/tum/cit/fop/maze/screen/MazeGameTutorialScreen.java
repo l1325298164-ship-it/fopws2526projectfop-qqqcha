@@ -99,7 +99,7 @@ public class MazeGameTutorialScreen implements Screen {
         java.util.List<int[]> reachablePoints = new java.util.ArrayList<>();
 
         // 最短距离要求：至少离玩家3格远
-        final int MIN_DISTANCE = 3;
+        final int MIN_DISTANCE = 10;
         // 最大距离限制：避免太远
         final int MAX_DISTANCE = 10;
 
