@@ -159,4 +159,6 @@ public class CameraManager {
     }
 
 
+    public void update(float delta, Player player) {
+    }
 }

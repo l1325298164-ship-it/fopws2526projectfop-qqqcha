@@ -155,7 +155,6 @@ public class GameScreen implements Screen {
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {
             gm.update(delta);
-            cam.update(delta, gm.getPlayer());
         }
 
         /* ================= 清屏 ================= */
