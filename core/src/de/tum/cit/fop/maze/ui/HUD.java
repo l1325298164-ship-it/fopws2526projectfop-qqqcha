@@ -182,7 +182,7 @@ public class HUD {
 
                     font.getData().setScale(2.0f);
                     font.setColor(Color.CYAN);
-                    font.draw(uiBatch, "MANA -50%", startX + iconSize + 10, startY + 35);
+                    font.draw(uiBatch, "MANA COST -50%", startX + iconSize + 10, startY + 35);
 
                     startY -= gap;
                 }
