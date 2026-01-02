@@ -1,0 +1,133 @@
+
+cat_front.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame353
+  rotate: false
+  xy: 2, 1940
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+frame354
+  rotate: false
+  xy: 2, 2
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+
+cat_front2.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame355
+  rotate: false
+  xy: 2, 1940
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+frame356
+  rotate: false
+  xy: 2, 2
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+
+cat_front3.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame357
+  rotate: false
+  xy: 2, 1940
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+frame358
+  rotate: false
+  xy: 2, 2
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+
+cat_front4.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame359
+  rotate: false
+  xy: 2, 1940
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+frame360
+  rotate: false
+  xy: 2, 2
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+
+cat_front5.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame361
+  rotate: false
+  xy: 2, 1940
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+frame363
+  rotate: false
+  xy: 2, 2
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+
+cat_front6.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame364
+  rotate: false
+  xy: 2, 1940
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+frame365
+  rotate: false
+  xy: 2, 2
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1
+
+cat_front7.png
+size: 4096, 2048
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame366
+  rotate: false
+  xy: 2, 2
+  size: 2148, 1936
+  orig: 2148, 1936
+  offset: 0, 0
+  index: -1

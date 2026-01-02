@@ -1,0 +1,41 @@
+
+player2_left.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame398
+  rotate: false
+  xy: 2, 2528
+  size: 1936, 1261
+  orig: 1936, 1261
+  offset: 0, 0
+  index: -1
+frame399
+  rotate: false
+  xy: 2, 1265
+  size: 1936, 1261
+  orig: 1936, 1261
+  offset: 0, 0
+  index: -1
+frame400
+  rotate: false
+  xy: 1940, 2528
+  size: 1936, 1261
+  orig: 1936, 1261
+  offset: 0, 0
+  index: -1
+frame401
+  rotate: false
+  xy: 2, 2
+  size: 1936, 1261
+  orig: 1936, 1261
+  offset: 0, 0
+  index: -1
+frame402
+  rotate: false
+  xy: 1940, 1265
+  size: 1936, 1261
+  orig: 1936, 1261
+  offset: 0, 0
+  index: -1

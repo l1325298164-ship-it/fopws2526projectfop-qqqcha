@@ -1,0 +1,34 @@
+
+E03_right.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame367
+  rotate: false
+  xy: 2, 2406
+  size: 1168, 1200
+  orig: 1168, 1200
+  offset: 0, 0
+  index: -1
+frame368
+  rotate: false
+  xy: 2, 1204
+  size: 1168, 1200
+  orig: 1168, 1200
+  offset: 0, 0
+  index: -1
+frame369
+  rotate: false
+  xy: 1172, 2406
+  size: 1168, 1200
+  orig: 1168, 1200
+  offset: 0, 0
+  index: -1
+frame370
+  rotate: false
+  xy: 2, 2
+  size: 1168, 1200
+  orig: 1168, 1200
+  offset: 0, 0
+  index: -1

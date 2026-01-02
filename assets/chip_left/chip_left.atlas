@@ -1,0 +1,62 @@
+
+chip_left.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+01
+  rotate: false
+  xy: 1047, 2122
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+02
+  rotate: false
+  xy: 2, 2122
+  size: 1043, 1058
+  orig: 1043, 1058
+  offset: 0, 0
+  index: -1
+03
+  rotate: false
+  xy: 2, 2
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+04
+  rotate: false
+  xy: 1047, 1062
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+05
+  rotate: false
+  xy: 2091, 2122
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+06
+  rotate: false
+  xy: 1046, 2
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+07
+  rotate: false
+  xy: 2, 1062
+  size: 1043, 1058
+  orig: 1043, 1058
+  offset: 0, 0
+  index: -1
+08
+  rotate: false
+  xy: 2091, 1062
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1

@@ -28,9 +28,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/trap_magma",
-                root + "/assets/trap_magma",
-                "trap_magma"
+                root + "/assets_raw/chip_back",
+                root + "/assets/chip_back",
+                "chip_back"
         );
 
 
