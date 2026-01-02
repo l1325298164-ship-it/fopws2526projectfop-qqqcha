@@ -34,18 +34,6 @@ public class ChapterSelectScreen implements Screen {
         table.setFillParent(true);
         table.center();
 
-        // 重放序幕按钮
-        TextButton introButton = new TextButton("Replay Prologue", game.getSkin());
-        introButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.replayPrologue();
-
-                DifficultyConfig config = DifficultyConfig.of(Difficulty.EASY);
-                game.setScreen(new GameScreen(game, config)); // 确保跳转到游戏界面
-            }
-        });
-
         TextButton chapterOneButton = new TextButton("Chapter 1", game.getSkin());
         chapterOneButton.addListener(new ClickListener() {
             @Override
@@ -60,12 +48,9 @@ public class ChapterSelectScreen implements Screen {
             }
         });
 
-
         // 布局
-        table.add(introButton).width(320).height(64).padBottom(24);
-        table.row();
         table.add(chapterOneButton).width(320).height(64);
-
+        table.row();
         stage.addActor(table);
     }
 

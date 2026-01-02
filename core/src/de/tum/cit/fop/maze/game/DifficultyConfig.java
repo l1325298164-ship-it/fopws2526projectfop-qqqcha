@@ -111,6 +111,21 @@ public class DifficultyConfig {
                     1.4f,
                     1.3f
             );
+            case TUTORIAL -> new DifficultyConfig(
+                    /* 地图 */
+                    40, 40, 1,
+
+                    /* 敌人 */
+                    0, 0, 0,
+
+                    /* 陷阱 */
+                    0, 0, 0, 0,
+
+                    /* 战斗 */
+                    5,
+                    1.4f,
+                    1.3f
+            );
         };
     }
 }
