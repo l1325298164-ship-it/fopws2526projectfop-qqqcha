@@ -29,13 +29,32 @@ public class MazeRunnerGame extends Game {
     private AudioManager audioManager;  // 添加音效管理器字段
     private GameManager gameManager;
     private DifficultyConfig difficultyConfig;
-
+    private GameScreen activeGameScreen;
     public void startNewGame(Difficulty difficulty) {
         Logger.debug("Start new game with difficulty = " + difficulty);
         this.difficultyConfig = DifficultyConfig.of(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig);
     }
 
+    public void onTutorialFailed(
+            MazeGameTutorialScreen tutorial,
+            MazeGameTutorialScreen.MazeGameTutorialResult result
+    ) {
+        // ❌ 教程失败或退出：不存档、不推进剧情
+        stage = StoryStage.MAIN_MENU;
+        setScreen(new MenuScreen(this));
+    }
+
+    public void replayPrologue() {
+        stage = StoryStage.PV1;   // ✅ 回到第一段剧情
+        advanceStory();
+    }
+
+
+    public enum PV4Result {
+        START,
+        EXIT
+    }
 
     public enum StoryStage {
         PV1,
@@ -48,7 +67,7 @@ public class MazeRunnerGame extends Game {
         PV3_SUCCESS,
         PV3_FAIL,   // ❗失败后不再推进
 
-        MAZE_GAME1,
+        MAZE_GAME_TUTORIAL,
         PV4,
         MODE_MENU,
         MAZE_GAME,
@@ -57,7 +76,9 @@ public class MazeRunnerGame extends Game {
 
 
     private StoryStage stage = StoryStage.PV1;
-    public void nextStage() {
+    // ⚠️ advanceStory 永远不会存档
+    public void advanceStory() {
+        Logger.debug("advanceStory called, stage = " + stage);
         Screen old = getScreen();
 
         switch (stage) {
@@ -90,23 +111,23 @@ public class MazeRunnerGame extends Game {
             // 第三段（分支）
             // =====================
             case PV3_SUCCESS -> {
-                stage = StoryStage.MAZE_GAME1;
-                setScreen(new GameScreen(this,difficultyConfig));
+                stage = StoryStage.MAZE_GAME_TUTORIAL;
+                setScreen(new MazeGameTutorialScreen(this,difficultyConfig));
             }
 
             // =====================
             // Maze → Menu → 正式游戏
             // =====================
-            case MAZE_GAME1 -> {
+            case MAZE_GAME_TUTORIAL -> {
                 stage = StoryStage.PV4;
                 setScreen(new IntroScreen(this, "pv/4/pv_4.atlas",
                         "pv_4",
-                        IntroScreen.PVExit.NEXT_STAGE));
+                        IntroScreen.PVExit.PV4_CHOICE));
             }
 
             case PV4 -> {
                 stage = StoryStage.MODE_MENU;
-                setScreen(new ModeChoiceMenuScreen(this));
+                setScreen(new ChapterSelectScreen(this));
             }
 
 
@@ -150,7 +171,6 @@ public class MazeRunnerGame extends Game {
 
 
 
-
     public void goToPV() {
         Screen old = getScreen();
 
@@ -176,7 +196,17 @@ public class MazeRunnerGame extends Game {
             audioManager.resumeMusic();
         }
     }
+    public void setActiveGameScreen(GameScreen gs) {
+        this.activeGameScreen = gs;
+    }
 
+    public boolean hasRunningGame() {
+        return activeGameScreen != null;
+    }
+
+    public void resumeGame() {
+        setScreen(activeGameScreen);
+    }
     public void goToMenu() {
         Screen old = getScreen();
         setScreen(new MenuScreen(this));
@@ -322,61 +352,50 @@ public class MazeRunnerGame extends Game {
 
         if (old != null) old.dispose();
     }
-    public void onMaze_Game1Finished(MazeGame_tutorial Game) {
+
+
+    public void onTutorialFinished(MazeGameTutorialScreen tutorial) {
+        if (stage == StoryStage.MAZE_GAME_TUTORIAL) {
+            stage = StoryStage.PV4;
+            setScreen(new IntroScreen(
+                    this,
+                    "pv/4/pv_4.atlas",
+                    "pv_4",
+                    IntroScreen.PVExit.PV4_CHOICE
+            ));
+        }
+    }
+
+
+
+    public void onPV4Choice(PV4Result result) {
+        if (stage != StoryStage.PV4) return;
+
         Screen old = getScreen();
 
-        switch (stage) {
-
-            // =====================
-            // Game 结果
-            // =====================
-//            case MAZE_GAME1 -> {
-//                if (result == MazeGame_tutorial.GameResult.SUCCESS) {
-//                    stage = StoryStage.PV2_SUCCESS;
-//                    setScreen(new IntroScreen(
-//                            this,
-//                            "pv/2/pv_2.atlas",
-//                            "pv_2",IntroScreen.PVExit.NEXT_STAGE
-//                    ));
-//                } else {
-//                    // ❌ 失败：直接进失败 PV
-//                    stage = StoryStage.PV2_FAIL;
-//                    setScreen(new IntroScreen(
-//                            this,
-//                            "pv/5/pre1.atlas",
-//                            "pre1",IntroScreen.PVExit.TO_MENU
-//                    ));
-//                }
-//            }
-
-            // =====================
-            // QTE2 结果
-            // =====================
-//            case QTE2 -> {
-//                if (result == QTEScreen.QTEResult.SUCCESS) {
-//                    stage = StoryStage.PV3_SUCCESS;
-//                    setScreen(new IntroScreen(
-//                            this,
-//                            "pv/5/pre1.atlas",
-//                            "pre1",IntroScreen.PVExit.NEXT_STAGE
-//                    ));
-//                } else {
-//                    // ❌ 失败：直接进失败 PV
-//                    stage = StoryStage.PV3_FAIL;
-//                    setScreen(new IntroScreen(
-//                            this,
-//                            "pv/5/pre1.atlas",
-//                            "pre1",IntroScreen.PVExit.TO_MENU
-//                    ));
-//                }
-//            }
+        if (result == PV4Result.START) {
+            saveProgress();              // ✅唯一一次
+            stage = StoryStage.MODE_MENU;
+            setScreen(new ChapterSelectScreen(this));
+        } else {
+            stage = StoryStage.MAIN_MENU;
+            setScreen(new MenuScreen(this));
         }
 
         if (old != null) old.dispose();
     }
 
+    private void saveProgress() {
+        // TODO: 以后真正写存档逻辑
+        Logger.debug("Progress saved (PV4 confirmation)");
+    }
 
+
+//
+//    public void startChapter(Chapter chapter) {
+//        ChapterContext ctx = new ChapterContext(chapter);
+//        setScreen(new GameScreen(this, ctx));
+//    }
 }
-
 
 

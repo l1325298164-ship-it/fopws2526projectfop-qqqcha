@@ -12,25 +12,21 @@ import java.util.Random;
 import java.util.Stack;
 
 public class MazeGenerator {
-    private final DifficultyConfig config;
 
     // 新的单元格配置
     private static final int WALL_WIDTH = 1;      // 墙宽度：1格
     private static final int WALL_HEIGHT = 1;     // 墙高度：1格
     private static final int PATH_WIDTH = 1;      // 道路宽度：3格
     private static final int PATH_HEIGHT = 3;     // 道路高度：3格
-    public static final int BORDER_THICKNESS = 4;
+    public static final int BORDER_THICKNESS = 6;
     private final Random random = new Random();
-    public MazeGenerator(DifficultyConfig config) {
-        this.config = config;
-    }
 
     public MazeGenerator() {
-        this(DifficultyConfig.of(Difficulty.NORMAL));
+
     }
 
 
-    public int[][] generateMaze() {
+    public int[][] generateMaze(DifficultyConfig config) {
         long startTime = System.currentTimeMillis();
 
         // 计算调整后的尺寸

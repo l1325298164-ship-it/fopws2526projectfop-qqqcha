@@ -24,7 +24,7 @@ public class DifficultyConfig {
     public final float enemyDamageMultiplier;
 
     /* ===== 构造器（私有，强制走工厂） ===== */
-    private DifficultyConfig(
+    public DifficultyConfig(
             int mazeWidth,
             int mazeHeight,
             int exitCount,
@@ -61,7 +61,7 @@ public class DifficultyConfig {
     }
 
     /* ===== 难度工厂 ===== */
-    public static DifficultyConfig of(Difficulty d) {
+    public static DifficultyConfig  of(Difficulty d) {
         return switch (d) {
 
             case EASY -> new DifficultyConfig(
@@ -111,6 +111,22 @@ public class DifficultyConfig {
                     1.4f,
                     1.3f
             );
+            case TUTORIAL -> new DifficultyConfig(
+                    /* 地图 */
+                    40, 40, 1,
+
+                    /* 敌人 */
+                    0, 0, 0,
+
+                    /* 陷阱 */
+                    0, 0, 0, 0,
+
+                    /* 战斗 */
+                    5,
+                    1.4f,
+                    1.3f
+            );
         };
     }
 }
+

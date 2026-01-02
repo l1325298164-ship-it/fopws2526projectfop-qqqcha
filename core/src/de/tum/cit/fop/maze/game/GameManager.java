@@ -9,6 +9,7 @@ import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.entities.trap.*;
+import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 
@@ -19,7 +20,7 @@ import java.util.List;
 import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
-public class GameManager {
+public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final DifficultyConfig difficultyConfig;
 
 
@@ -40,6 +41,7 @@ public class GameManager {
     private Compass compass;
     private MazeGenerator generator = new MazeGenerator();
     private KeyEffectManager keyEffectManager;
+    private PlayerInputHandler inputHandler;
 
     // ===== Keys =====
     private final List<Key> keys = new ArrayList<>();
@@ -63,6 +65,7 @@ public class GameManager {
 
     /* ================= 生命周期 ================= */
     public GameManager(DifficultyConfig difficultyConfig) {
+        this.inputHandler = new PlayerInputHandler();
         if (difficultyConfig == null) {
             throw new IllegalArgumentException("difficultyConfig must not be null");
         }
@@ -73,7 +76,7 @@ public class GameManager {
     }
 
     private void resetGame() {
-        maze = generator.generateMaze();
+        maze = generator.generateMaze(difficultyConfig);
 
 
         enemies.clear();
@@ -648,6 +651,11 @@ public class GameManager {
         }
     }
 
+    @Override
+    public float getMoveDelayMultiplier() {
+        return 1.0f;
+    }
+
     public boolean onAbilityInput(int slot) {
         if (levelTransitionInProgress) return false;
         player.useAbility(slot);
@@ -675,6 +683,11 @@ public class GameManager {
                 return;
             }
         }
+    }
+
+    @Override
+    public void onMenuInput() {
+
     }
 
     private void checkAutoPickup() {
@@ -868,5 +881,24 @@ public class GameManager {
     }
 
 
+    public String getScore() {
+        return String.valueOf(player.getScore());
+    }
 
+    public PlayerInputHandler getInputHandler() {
+        return  inputHandler;
+    }
+    //给教学用的
+    private boolean tutorialMode = false;
+    public void setTutorialMode(boolean tutorialMode) {
+        this.tutorialMode = tutorialMode;
+    }
+
+    public boolean isTutorialMode() {
+        return tutorialMode;
+    }
+
+    public boolean isPlayerDead() {
+        return player != null && player.isDead();
+    }
 }

@@ -3,11 +3,18 @@ package de.tum.cit.fop.maze.input;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import de.tum.cit.fop.maze.game.GameConstants;
+import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.KeyBindingManager.GameAction;
 
 public class PlayerInputHandler {
+    // ================= 教程用移动标记 =================
+    private boolean movedUp = false;
+    private boolean movedDown = false;
+    private boolean movedLeft = false;
+    private boolean movedRight = false;
+
 
     private float moveTimer = 0f;
     private float abilityCooldownTimer = 0f;
@@ -26,6 +33,7 @@ public class PlayerInputHandler {
         handleAbilityInput(callback);
         handleActionInput(callback);
     }
+
 
     /* ================= 移动 ================= */
 
@@ -46,6 +54,22 @@ public class PlayerInputHandler {
         // ... (前面的 Shift 加速逻辑保持不变)
 
         int dx = 0, dy = 0;
+
+        //tutorial
+        if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_UP)) {
+            dy = 1;
+            movedUp = true;              // ✅
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_DOWN)) {
+            dy = -1;
+            movedDown = true;            // ✅
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_LEFT)) {
+            dx = -1;
+            movedLeft = true;            // ✅
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_RIGHT)) {
+            dx = 1;
+            movedRight = true;           // ✅
+        }
+
 
         // 🔥 修改：使用 KeyBindingManager.isPressed 来检测按键
         if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_UP)) {
@@ -115,4 +139,26 @@ public class PlayerInputHandler {
         void onInteractInput();
         void onMenuInput();
     }
+    //reset the tutorial
+    public void resetTutorialMoveFlags() {
+        movedUp = movedDown = movedLeft = movedRight = false;
+    }
+
+    // ================= 教程查询接口 =================
+    public boolean hasMovedUp() {
+        return movedUp;
+    }
+
+    public boolean hasMovedDown() {
+        return movedDown;
+    }
+
+    public boolean hasMovedLeft() {
+        return movedLeft;
+    }
+
+    public boolean hasMovedRight() {
+        return movedRight;
+    }
+
 }

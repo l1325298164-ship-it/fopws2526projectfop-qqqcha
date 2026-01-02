@@ -26,6 +26,15 @@ public class CameraManager {
         camera.setToOrtho(false, GameConstants.VIEWPORT_WIDTH, GameConstants.VIEWPORT_HEIGHT);
         Logger.debug("CameraManager initialized");
     }
+    //for tutorial
+    private boolean clampToMap = true;
+    private boolean tutorialMode = false;
+    public void setClampToMap(boolean enabled) {
+        this.clampToMap = enabled;
+    }
+    public void setTutorialMode(boolean tutorial) {
+        this.tutorialMode = tutorial;
+    }
 
     public void update(float deltaTime, Player player) {
         if (player == null) return;
@@ -37,11 +46,11 @@ public class CameraManager {
         // 设置相机目标位置为玩家位置
         targetX = playerPixelX;
         targetY = playerPixelY;
-
-        // 限制相机范围，使其不超出地图边界
-        targetX = Math.max(GameConstants.VIEWPORT_WIDTH / 2, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, targetX));
-        targetY = Math.max(GameConstants.VIEWPORT_HEIGHT/2, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, targetY));
-
+        if (clampToMap) {
+            // 限制相机范围，使其不超出地图边界
+            targetX = Math.max(GameConstants.VIEWPORT_WIDTH / 2, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, targetX));
+            targetY = Math.max(GameConstants.VIEWPORT_HEIGHT / 2, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, targetY));
+        }
         // 平滑移动相机
         float currentX = camera.position.x;
         float currentY = camera.position.y;
@@ -66,11 +75,11 @@ public class CameraManager {
 
         float playerPixelX = player.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2;
         float playerPixelY = player.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2;
-
-        // 限制相机范围
-        playerPixelX = Math.max(GameConstants.VIEWPORT_WIDTH / 2, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, playerPixelX));
-        playerPixelY = Math.max(GameConstants.VIEWPORT_HEIGHT / 2, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, playerPixelY));
-
+        if (clampToMap) {
+            // 限制相机范围
+            playerPixelX = Math.max(GameConstants.VIEWPORT_WIDTH / 2, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, playerPixelX));
+            playerPixelY = Math.max(GameConstants.VIEWPORT_HEIGHT / 2, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, playerPixelY));
+        }
         camera.position.set(playerPixelX, playerPixelY, 0);
         camera.update();
 
