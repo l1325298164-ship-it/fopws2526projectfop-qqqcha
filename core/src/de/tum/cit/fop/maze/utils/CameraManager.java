@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
+import de.tum.cit.fop.maze.game.GameManager;
 
 
 
@@ -12,6 +13,7 @@ public class CameraManager {
     private OrthographicCamera camera;
     private float targetX, targetY;
     private float smoothSpeed = 5.0f; // 相机跟随的平滑度
+    private float baseZoom = 1.0f;
     // ===== QTE / 自由目标支持 =====
     private boolean useFreeTarget = false;
     private float freeTargetX;
@@ -25,6 +27,7 @@ public class CameraManager {
         camera = new OrthographicCamera();
         camera.setToOrtho(false, GameConstants.VIEWPORT_WIDTH, GameConstants.VIEWPORT_HEIGHT);
         Logger.debug("CameraManager initialized");
+        this.baseZoom = camera.zoom;
     }
     //for tutorial
     private boolean clampToMap = true;
@@ -36,8 +39,19 @@ public class CameraManager {
         this.tutorialMode = tutorial;
     }
 
-    public void update(float deltaTime, Player player) {
+    public void update(float deltaTime, Player player, GameManager gm) {
         if (player == null) return;
+
+        // ==========================================
+        // 🔥 [Console] 动态缩放逻辑
+        // ==========================================
+        float zoomMult = 1.0f;
+        if (gm != null) {
+            // 读取 "cam_zoom" 变量，如果没有设过默认是 1.0
+            zoomMult = gm.getVariable("cam_zoom");
+        }
+        // 设置实际缩放 = 基础值 * 倍率
+        camera.zoom = baseZoom * zoomMult;
 
         // 计算玩家在像素坐标中的位置
         float playerPixelX = player.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2;

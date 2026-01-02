@@ -12,11 +12,11 @@ import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
+import java.util.HashMap;
+import java.util.Map;
 import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
@@ -42,6 +42,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private MazeGenerator generator = new MazeGenerator();
     private KeyEffectManager keyEffectManager;
     private PlayerInputHandler inputHandler;
+
+    private Map<String, Float> gameVariables;
 
     // ===== Keys =====
     private final List<Key> keys = new ArrayList<>();
@@ -76,6 +78,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     private void resetGame() {
+        gameVariables = new HashMap<>();
+        // 默认值：速度 1.0，受伤倍率 1.0，相机缩放 1.0
+        gameVariables.put("speed_mult", 1.0f);
+        gameVariables.put("dmg_taken", 1.0f);
+        gameVariables.put("cam_zoom", 1.0f);
+        gameVariables.put("time_scale", 1.0f);
+
         maze = generator.generateMaze(difficultyConfig);
 
 
@@ -878,6 +887,26 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         for (Treasure t : treasures) {
             t.dispose();
         }
+    }
+    /* ================= [Console] 变量操作 API ================= */
+
+    /**
+     * 设置游戏变量 (给控制台调用)
+     * 例如: gm.setVariable("speed_mult", 2.0f);
+     */
+    public void setVariable(String key, float value) {
+        if (gameVariables == null) gameVariables = new HashMap<>();
+        gameVariables.put(key, value);
+        Logger.debug("Console Variable Set: " + key + " = " + value);
+    }
+
+    /**
+     * 获取游戏变量 (给 Player/Camera 调用)
+     * 如果没有设置过，默认返回 1.0
+     */
+    public float getVariable(String key) {
+        if (gameVariables == null) return 1.0f;
+        return gameVariables.getOrDefault(key, 1.0f);
     }
 
 

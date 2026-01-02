@@ -25,7 +25,11 @@ import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.tools.DeveloperConsole;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
+
 import java.util.*;
+
+import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
+
 public class GameScreen implements Screen {
 
     private final MazeRunnerGame game;
@@ -148,7 +152,6 @@ public class GameScreen implements Screen {
             });
         }
 
-
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {
             gm.update(delta);
@@ -165,6 +168,22 @@ public class GameScreen implements Screen {
         batch.begin();
         maze.renderFloor(batch);
 
+        /* ================= 更新 ================= */
+        if (!console.isVisible()) {
+
+            // 🔥 [Console] 获取时间流速变量 (默认 1.0)
+            // 如果你在控制台输入 set time_scale 0.5，游戏就会变成慢动作
+            float timeScale = gm.getVariable("time_scale");
+
+            // 计算“真实”经过的游戏时间
+            float gameDelta = delta * timeScale;
+
+            // 把变速后的时间传给 gm 和 cam
+            gm.update(gameDelta);
+
+            // 注意：这里需要把 gameDelta 传进去，这样相机的跟随速度也会随时间变慢
+            cam.update(gameDelta, gm.getPlayer(), gm);
+        }
         // 🔥 关键修复：使用防御性副本避免 ConcurrentModificationException
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));

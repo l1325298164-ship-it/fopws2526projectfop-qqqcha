@@ -49,6 +49,7 @@ public class DeveloperConsole {
     private void setupSelfContainedUI() {
         // 1. 准备基础资源 (字体 & 纯色纹理)
         font = new BitmapFont(); // 使用 LibGDX 默认字体 (Arial)
+        font.getData().setScale(2.0f);
 
         // 生成半透明黑色背景
         Pixmap p = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
@@ -98,7 +99,7 @@ public class DeveloperConsole {
 
         // 布局
         consoleTable.add(scrollPane).expandX().fillX().height(300).pad(5).row();
-        consoleTable.add(inputField).expandX().fillX().height(30).pad(5).row();
+        consoleTable.add(inputField).expandX().fillX().height(50).pad(5).row();
 
         rootTable.add(consoleTable).growX().top();
         stage.addActor(rootTable);
@@ -148,6 +149,49 @@ public class DeveloperConsole {
                     }
                     log("Killed " + count + " enemies.");
                     break;
+                // 🔥 修改：set 指令加入数值验证
+                case "set":
+                    if (parts.length < 3) {
+                        log("Usage: set <variable> <value>");
+                    } else {
+                        try {
+                            String key = parts[1].toLowerCase(); // 转小写，防止大小写不一致
+                            float val = Float.parseFloat(parts[2]);
+
+                            // 🛑 安全检查逻辑
+                            if (key.equals("cam_zoom")) {
+                                if (val <= 0) {
+                                    log("Error: cam_zoom must be positive."); // 必须是正数 (>0)
+                                    break; // 终止执行
+                                }
+                            } else if (key.equals("time_scale")) {
+                                if (val < 0) {
+                                    log("Error: time_scale cannot be negative."); // 不能是负数 (>=0)
+                                    break; // 终止执行
+                                }
+                            }
+
+                            // 检查通过，执行设置
+                            gameManager.setVariable(key, val);
+                            log("Set " + key + " to " + val);
+
+                        } catch (NumberFormatException e) {
+                            log("Invalid number format.");
+                        }
+                    }
+                    break;
+
+                // 🔥 新增：查看变量 (例如 get cam_zoom)
+                case "get":
+                    if (parts.length < 2) {
+                        log("Usage: get <variable>");
+                    } else {
+                        String key = parts[1];
+                        float val = gameManager.getVariable(key);
+                        log(key + " = " + val);
+                    }
+                    break;
+
                 default:
                     log("Unknown command.");
                     break;
