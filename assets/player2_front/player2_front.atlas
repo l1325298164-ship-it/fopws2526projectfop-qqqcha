@@ -1,0 +1,41 @@
+
+player2_front.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame387
+  rotate: false
+  xy: 2, 1460
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1
+frame388
+  rotate: false
+  xy: 2, 2
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1
+frame389
+  rotate: false
+  xy: 943, 1460
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1
+frame390
+  rotate: false
+  xy: 943, 2
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1
+frame392
+  rotate: false
+  xy: 1884, 1460
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1

@@ -1,0 +1,41 @@
+
+player2_back.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame383
+  rotate: false
+  xy: 2, 1460
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1
+frame384
+  rotate: false
+  xy: 2, 2
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1
+frame385
+  rotate: false
+  xy: 943, 1460
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1
+frame386
+  rotate: false
+  xy: 943, 2
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1
+frame391
+  rotate: false
+  xy: 1884, 1460
+  size: 939, 1456
+  orig: 939, 1456
+  offset: 0, 0
+  index: -1

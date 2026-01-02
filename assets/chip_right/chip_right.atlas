@@ -1,0 +1,62 @@
+
+chip_right.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame515
+  rotate: false
+  xy: 1047, 2122
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+frame516
+  rotate: false
+  xy: 2, 2
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+frame517
+  rotate: false
+  xy: 2, 2122
+  size: 1043, 1058
+  orig: 1043, 1058
+  offset: 0, 0
+  index: -1
+frame518
+  rotate: false
+  xy: 1047, 1062
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+frame519
+  rotate: false
+  xy: 2091, 2122
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+frame520
+  rotate: false
+  xy: 2, 1062
+  size: 1043, 1058
+  orig: 1043, 1058
+  offset: 0, 0
+  index: -1
+frame521
+  rotate: false
+  xy: 1046, 2
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1
+frame522
+  rotate: false
+  xy: 2091, 1062
+  size: 1042, 1058
+  orig: 1042, 1058
+  offset: 0, 0
+  index: -1

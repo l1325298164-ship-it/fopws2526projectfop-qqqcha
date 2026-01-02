@@ -1,0 +1,115 @@
+
+player2_attack_front.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame433
+  rotate: false
+  xy: 2, 1535
+  size: 1588, 1531
+  orig: 1588, 1531
+  offset: 0, 0
+  index: -1
+frame435
+  rotate: false
+  xy: 2, 2
+  size: 1587, 1531
+  orig: 1587, 1531
+  offset: 0, 0
+  index: -1
+frame436
+  rotate: false
+  xy: 1591, 2
+  size: 1587, 1531
+  orig: 1587, 1531
+  offset: 0, 0
+  index: -1
+frame443
+  rotate: false
+  xy: 1592, 1535
+  size: 1588, 1531
+  orig: 1588, 1531
+  offset: 0, 0
+  index: -1
+
+player2_attack_front2.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame434
+  rotate: false
+  xy: 2, 1535
+  size: 1588, 1530
+  orig: 1588, 1530
+  offset: 0, 0
+  index: -1
+frame437
+  rotate: false
+  xy: 2, 2
+  size: 1587, 1531
+  orig: 1587, 1531
+  offset: 0, 0
+  index: -1
+frame442
+  rotate: false
+  xy: 1592, 1535
+  size: 1588, 1530
+  orig: 1588, 1530
+  offset: 0, 0
+  index: -1
+frame444
+  rotate: false
+  xy: 1591, 2
+  size: 1587, 1531
+  orig: 1587, 1531
+  offset: 0, 0
+  index: -1
+
+player2_attack_front3.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame432
+  rotate: false
+  xy: 2, 1535
+  size: 1587, 1530
+  orig: 1587, 1530
+  offset: 0, 0
+  index: -1
+frame438
+  rotate: false
+  xy: 2, 2
+  size: 1586, 1531
+  orig: 1586, 1531
+  offset: 0, 0
+  index: -1
+frame439
+  rotate: false
+  xy: 1591, 1535
+  size: 1587, 1530
+  orig: 1587, 1530
+  offset: 0, 0
+  index: -1
+frame441
+  rotate: false
+  xy: 1590, 3
+  size: 1587, 1530
+  orig: 1587, 1530
+  offset: 0, 0
+  index: -1
+
+player2_attack_front4.png
+size: 2048, 2048
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame440
+  rotate: false
+  xy: 2, 2
+  size: 1586, 1530
+  orig: 1586, 1530
+  offset: 0, 0
+  index: -1
