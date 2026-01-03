@@ -28,9 +28,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/chip_back",
-                root + "/assets/chip_back",
-                "chip_back"
+                root + "/assets_raw/cat_nokey",
+                root + "/assets/cat_nokey",
+                "cat_nokey"
         );
 
 
