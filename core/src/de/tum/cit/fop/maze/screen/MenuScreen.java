@@ -22,6 +22,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.tools.PerlinNoise;
@@ -109,7 +110,7 @@ public class MenuScreen implements Screen {
                 .height(BUTTON_HEIGHT)
                 .padBottom(18)
                 .row();
-        root.add(bf.create("RESET THE WORLD", game::goToPV))
+        root.add(bf.create("RESET THE WORLD", game::startStoryWithLoading))
                 .width(BUTTON_WIDTH)
                 .height(BUTTON_HEIGHT)
                 .padBottom(20)
@@ -127,7 +128,7 @@ public class MenuScreen implements Screen {
                 .height(BUTTON_HEIGHT)
                 .padBottom(20)
                 .row();
-        root.add(bf.create("TEST", () -> {}))
+        root.add(bf.create("EXIT", game::exitGame))
                 .width(BUTTON_WIDTH)
                 .height(BUTTON_HEIGHT)
                 .row();
@@ -336,18 +337,27 @@ public class MenuScreen implements Screen {
 
     @Override
     public void dispose() {
-        stage.dispose();
-        batch.dispose();
+        if (stage != null) {
+            stage.dispose();
+        }
         fbo.dispose();
         uiAtlas.dispose();
         bgCandyTex.dispose();
         bgHellTex.dispose();
     }
 
+
     @Override public void show() {
-        Gdx.input.setInputProcessor(stage);
+        game.getSoundManager().playMusic(AudioType.MUSIC_MENU);Gdx.input.setInputProcessor(stage);
+        game.getSoundManager().warmUpMusic(AudioType.PV_1);
+
+
     }
     @Override public void hide() {}
     @Override public void pause() {}
     @Override public void resume() {}
+
+
+
+
 }

@@ -49,7 +49,7 @@ public class ChapterSelectScreen implements Screen {
         });
 
         // 布局
-        table.add(chapterOneButton).width(320).height(64);
+        table.add(chapterOneButton).width(520).height(64);
         table.row();
         stage.addActor(table);
     }

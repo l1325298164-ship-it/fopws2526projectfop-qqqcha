@@ -32,9 +32,9 @@ public class PackPV {
 
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/tiles_stage_2",
-                root + "/assets/menu_bg",
-                "tiles_stage_2"
+                root + "/assets_raw/pv/4",
+                root + "/assets/pv/4",
+                "PV_4"
         );
 
         System.out.println("PV atlas packed successfully.");

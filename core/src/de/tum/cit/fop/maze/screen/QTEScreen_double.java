@@ -886,7 +886,6 @@ public class QTEScreen_double implements Screen {
         this.result = result;
 
         Gdx.app.postRunnable(() -> {
-            game.onQTEFinished(result);
         });
     }
 

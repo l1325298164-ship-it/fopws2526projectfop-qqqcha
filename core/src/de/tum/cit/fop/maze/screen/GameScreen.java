@@ -310,7 +310,7 @@ public class GameScreen implements Screen {
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 
-        root.add(bf.create("RESUME", this::togglePause))
+        root.add(bf.create("continue", this::togglePause))
                 .width(400).height(80).padBottom(20).row();
 
         root.add(bf.create("SETTINGS", () -> {
@@ -330,7 +330,7 @@ public class GameScreen implements Screen {
 
         pauseUIInitialized = true;
         if (game.hasRunningGame()) {
-            root.add(bf.create("CONTINUE", game::resumeGame));
+            root.add(bf.create("RESET the MAZE", game::resumeGame));
         }
     }
 

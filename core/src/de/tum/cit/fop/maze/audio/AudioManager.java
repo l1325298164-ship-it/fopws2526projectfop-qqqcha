@@ -165,7 +165,12 @@ public class AudioManager implements Disposable {
             return null;
         }
     }
-
+    public void warmUpMusic(AudioType type) {
+        loadMusic(type.name());   // ⭐ 只加载，不播放
+    }
+    public void warmUpMusic(String id) {
+        loadMusic(id);
+    }
     // ==================== 播放控制 ====================
 
     /**

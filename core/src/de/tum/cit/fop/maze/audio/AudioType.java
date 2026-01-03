@@ -13,6 +13,13 @@ public enum AudioType {
     PLAYER_GET_KEY("sounds/sfx/player/get-key.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
     PLAYER_HIT_WALL("sounds/sfx/player/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
     PLAYER_ATTACKED("sounds/sfx/player/attacked01.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
+    // === PV ===
+    PV_1("sounds/pv/PV1_bgm.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_2("sounds/pv/PV_2_.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_3("sounds/pv/PV_3_.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_4("sounds/pv/PV_4_.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+
+
 
     // === 敌人音效 ===
     ENEMY_ATTACKED("sounds/sfx/enemy/attacked01.wav", AudioCategory.ENEMY, false, 0.8f, false, false),
