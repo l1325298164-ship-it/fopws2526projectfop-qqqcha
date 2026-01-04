@@ -446,10 +446,10 @@ public class GameScreen implements Screen {
         int h = Gdx.graphics.getHeight();
         int thickness = 1000;
 
-        batch.draw(uiTop,    0, h - thickness, w, thickness);
-        batch.draw(uiBottom, 0, 0,             w, thickness);
-        batch.draw(uiLeft,   -50, 0,             thickness+400, h);
-        batch.draw(uiRight,  w - thickness-200, 0, thickness+300, h);
+        batch.draw(uiTop,    0, h - thickness+490, w, thickness-120);
+        batch.draw(uiBottom, 0, 0-300,             w, thickness-120);
+        batch.draw(uiLeft,   -600, 0,             thickness-220, h);
+        batch.draw(uiRight,  w - thickness+810, 0, thickness-220, h);
     }
 
 
