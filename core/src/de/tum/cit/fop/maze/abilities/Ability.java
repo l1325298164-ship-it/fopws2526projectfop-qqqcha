@@ -127,4 +127,8 @@ public abstract class Ability {
     public String getDescription() { return description; }
     public float getCooldown() { return cooldown; }
     public float getDuration() { return duration; }
+
+    public void activate(Player player, GameManager gameManager) {
+
+    }
 }

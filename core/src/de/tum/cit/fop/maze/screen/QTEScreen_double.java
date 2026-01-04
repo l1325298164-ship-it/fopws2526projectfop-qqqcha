@@ -12,7 +12,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.effects.environment.key.QTE.QTERippleManager;
+import de.tum.cit.fop.maze.effects.QTE.QTERippleManager;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.qte.QTEMazeData;

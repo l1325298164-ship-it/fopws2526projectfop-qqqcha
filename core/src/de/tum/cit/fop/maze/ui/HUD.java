@@ -273,7 +273,7 @@ public class HUD {
     private void renderDashIcon(SpriteBatch uiBatch) {
 
         DashAbility dash = null;
-        for (Ability a : gameManager.getPlayer()
+        for (Object a : gameManager.getPlayer()
                 .getAbilityManager()
                 .getAbilities()
                 .values()) {

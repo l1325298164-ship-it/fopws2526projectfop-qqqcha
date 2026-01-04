@@ -1,40 +1,49 @@
 package de.tum.cit.fop.maze.entities.trap;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
+import de.tum.cit.fop.maze.game.GameManager;
 
 public class TrapT03_TeaShards extends Trap {
-
-    private enum State {
-        IDLE,
-        DAMAGING
-    }
-
-    private State state = State.IDLE;
-
-    /* ===== 参数 ===== */
-    private static final int DAMAGE = 5;
-    private static final float DAMAGE_INTERVAL = 0.5f; // 1 秒 2 次
-    private static final float SLOW_DURATION = 2.0f;
-
-    private float damageTimer = 0f;
+    private final int damage = 1;
 
     public TrapT03_TeaShards(int x, int y) {
         super(x, y);
     }
-    @Override
-    public boolean isPassable() {
-        return true;
-    }
+
     @Override
     public void update(float delta) {
-        if (state == State.DAMAGING) {
-            damageTimer -= delta;
-            if (damageTimer < 0f) {
-                damageTimer = 0f;
+
+    }
+
+    @Override
+    public void drawShape(ShapeRenderer shapeRenderer) {
+
+    }
+
+    @Override
+    public void drawSprite(SpriteBatch batch) {
+
+    }
+
+    @Override
+    public RenderType getRenderType() {
+        return null;
+    }
+
+    @Override
+    public void update(float delta, GameManager gameManager) {
+        Player player = gameManager.getPlayer();
+        if (player.getX() == x && player.getY() == y) {
+            player.takeDamage(damage);
+
+            // 🔥 触发飞溅特效 (概率触发以免过于密集)
+            if (Math.random() < 0.3 && gameManager.getTrapEffectManager() != null) {
+                float cx = (x + 0.5f) * GameConstants.CELL_SIZE;
+                float cy = (y + 0.5f) * GameConstants.CELL_SIZE;
+                gameManager.getTrapEffectManager().spawnTeaShards(cx, cy);
             }
         }
     }
@@ -42,41 +51,5 @@ public class TrapT03_TeaShards extends Trap {
     @Override
     public void onPlayerStep(Player player) {
 
-        // 只有主角有效（Enemy 不触发）
-        state = State.DAMAGING;
-
-        // ===== 扣血（按频率）=====
-        if (damageTimer <= 0f) {
-            player.takeDamage(DAMAGE);
-            damageTimer = DAMAGE_INTERVAL;
-        }
-
-        // ===== 减速（不可叠加，但刷新时间）=====
-        player.applySlow(SLOW_DURATION);
-    }
-
-    /* ================= 渲染 ================= */
-
-    @Override
-    public void drawShape(ShapeRenderer sr) {
-        if (!active) return;
-
-        float size = GameConstants.CELL_SIZE;
-        float px = x * size;
-        float py = y * size;
-
-        // 地刺：深绿偏黄
-        sr.setColor(new Color(0.1f, 0.6f, 0.2f, 1f));
-        sr.rect(px, py, size, size);
-    }
-
-    @Override
-    public void drawSprite(SpriteBatch batch) {
-        // Shape 足够
-    }
-
-    @Override
-    public RenderType getRenderType() {
-        return RenderType.SHAPE;
     }
 }

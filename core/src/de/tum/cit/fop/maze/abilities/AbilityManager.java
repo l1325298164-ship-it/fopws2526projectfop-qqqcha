@@ -1,147 +1,112 @@
 package de.tum.cit.fop.maze.abilities;
 
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.abilities.interfaces.*;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.utils.Logger;
 
-import java.util.ArrayList;
+// 🔥 新增导入
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class AbilityManager {
-    private Map<String, Ability> abilities = new HashMap<>();
-    private List<Ability> activeAbilities = new ArrayList<>();
-    private Player player;
-    private GameManager gameManager;
-
-    // 能力槽位
-    private Ability[] abilitySlots = new Ability[4]; // 4个能力槽
+    private final Player player;
+    private final GameManager gameManager;
+    private Ability[] abilities;
 
     public AbilityManager(Player player, GameManager gameManager) {
         this.player = player;
         this.gameManager = gameManager;
-        initializeAbilities();
+        this.abilities = new Ability[4];
+
+        // 绑定默认技能
+        abilities[0] = new MeleeAttackAbility();
+        abilities[1] = new DashAbility();
+        // abilities[2] = new FireballAbility(); // 示例
+        // abilities[3] = new HealAbility();     // 示例
     }
 
-    private void initializeAbilities() {
-        // 初始能力：近战攻击
-        MeleeAttackAbility meleeAttack = new MeleeAttackAbility();
-        abilities.put("melee", meleeAttack);
-        abilitySlots[0] = meleeAttack;
-
-        // 冲刺能力
-        DashAbility dash = new DashAbility();
-        abilities.put("dash", dash);
-        abilitySlots[1] = dash;
-    }
-
-    public void update(float deltaTime) {
-        // 更新所有能力
-        for (Ability ability : abilities.values()) {
-            ability.update(deltaTime);
-        }
-
-        // 更新激活的能力列表
-        activeAbilities.clear();
-        for (Ability ability : abilities.values()) {
-            if (ability.isActive()) {
-                activeAbilities.add(ability);
-            }
-        }
-    }
-
-    public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer) {
-        // 绘制所有激活的能力效果
-        for (Ability ability : abilities.values()) {
-            if (ability.isActive()) {
-                ability.draw(batch, shapeRenderer, player);
-            }
+    public void update(float delta) {
+        for (Ability ability : abilities) {
+            if (ability != null) ability.update(delta);
         }
     }
 
     public boolean activateSlot(int slot) {
-        if (slot < 0 || slot >= abilitySlots.length) return false;
-
-        Ability ability = abilitySlots[slot];
+        if (slot < 0 || slot >= abilities.length) return false;
+        Ability ability = abilities[slot];
         if (ability == null) return false;
 
-        boolean activated = ability.tryActivate(player, gameManager);
-
-        // 如果激活成功，添加到 activeAbilities
-        if (activated && ability.isActive()) {
-            if (!activeAbilities.contains(ability)) {
-                activeAbilities.add(ability);
-            }
+        // 简单的耗蓝检查示例 (具体逻辑看 Ability 内部实现)
+        if (!(ability instanceof MeleeAttackAbility) && !(ability instanceof DashAbility)) {
+            if (!player.useMana(20)) return false;
         }
 
-        return activated;
-    }
+        if (ability.canActivate(player)) {
+            ability.activate(player, gameManager);
 
-    private String getAbilityId(Ability ability) {
-        for (Map.Entry<String, Ability> entry : abilities.entrySet()) {
-            if (entry.getValue() == ability) {
-                return entry.getKey();
-            }
+            // 触发特效
+            playAbilityEffect(slot);
+
+            Logger.debug("Used ability in slot " + slot);
+            return true;
         }
-        return null;
+        return false;
     }
 
-    public void upgradeAbility(String abilityId) {
-        Ability ability = abilities.get(abilityId);
-        if (ability != null) {
-            ability.upgrade();
+    // 播放技能特效
+    private void playAbilityEffect(int slot) {
+        if (gameManager.getCombatEffectManager() == null) return;
+
+        float px = player.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+        float py = player.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+
+        float angle = 0f;
+        switch(player.getDirection()) {
+            case RIGHT: angle = 0f; break;
+            case UP:    angle = 90f; break;
+            case LEFT:  angle = 180f; break;
+            case DOWN:  angle = 270f; break;
+        }
+
+        switch (slot) {
+            case 0: // 普攻 -> 挥砍
+                gameManager.getCombatEffectManager().spawnSlash(px, py, angle, 1);
+                break;
+            case 1: // Dash
+                break;
+            case 2: // 技能3 -> 模拟火球
+                gameManager.getCombatEffectManager().spawnFire(px, py);
+                break;
+            case 3: // 技能4 -> 模拟治疗
+                gameManager.getCombatEffectManager().spawnHeal(px, py);
+                break;
         }
     }
-
-    public void unlockAbility(String abilityId, Ability ability) {
-        if (!abilities.containsKey(abilityId)) {
-            abilities.put(abilityId, ability);
-            // 自动放入第一个空槽位
-            for (int i = 0; i < abilitySlots.length; i++) {
-                if (abilitySlots[i] == null) {
-                    abilitySlots[i] = ability;
-                    break;
-                }
-            }
-        }
-    }
-
-    public void equipAbility(String abilityId, int slot) {
-        if (slot >= 0 && slot < abilitySlots.length) {
-            abilitySlots[slot] = abilities.get(abilityId);
-        }
-    }
-
-    // Getters
-    public Map<String, Ability> getAbilities() { return abilities; }
-    public Ability[] getAbilitySlots() { return abilitySlots; }
-    public List<Ability> getActiveAbilities() { return activeAbilities; }
 
     public void reset() {
-        for (Ability ability : abilities.values()) {
-            ability.forceReset();
-        }
-        activeAbilities.clear();
+        // 如果有状态重置逻辑写在这里
     }
 
-    public void drawActiveAbilities(SpriteBatch batch,
-                                    ShapeRenderer shapeRenderer,
-                                    Player player) {
-        for (Ability ability : activeAbilities) {
-            ability.draw(batch, shapeRenderer, player);
-        }
-    }
-
+    // 获取单个技能 (HUD调用)
     public Ability getAbility(int slot) {
-        if (slot >= 0 && slot < abilitySlots.length) {
-            return abilitySlots[slot];
-        }
-        return null;
+        if (slot < 0 || slot >= abilities.length) return null;
+        return abilities[slot];
     }
 
-    public void activateAbility(int slot, Player player) {
-        activateSlot(slot);
+    /**
+     * 🔥 修复的方法：获取所有技能的 Map
+     * Key: Slot Index (Integer)
+     * Value: Ability Object
+     */
+    public Map<Object, Object> getAbilities() {
+        Map<Object, Object> map = new HashMap<>();
+        for (int i = 0; i < abilities.length; i++) {
+            if (abilities[i] != null) {
+                map.put(i, abilities[i]);
+            }
+        }
+        return map;
     }
 }

@@ -2,91 +2,101 @@ package de.tum.cit.fop.maze.effects.Player;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.game.GameConstants;
 
 /**
- * 冲刺残影特效
- * 原理：记录历史位置队列，渲染半透明的玩家纹理
+ * 冲刺残影特效管理器
  */
 public class PlayerTrailManager {
 
     private static class Ghost {
-        float x, y;
+        float x, y; // 玩家的格子坐标
         float alpha;
-        float rotation; // 如果之后玩家有旋转，这里也要存
-        // 甚至可以存 TextureRegion 如果有动画帧
+        TextureRegion region; // 记录生成时的那个瞬间的动画帧
 
-        public Ghost(float x, float y) {
+        public Ghost(float x, float y, TextureRegion region) {
             this.x = x;
             this.y = y;
+            this.region = region;
             this.alpha = 1.0f;
         }
     }
 
     private Array<Ghost> ghosts = new Array<>();
     private float spawnTimer = 0;
-    private final float SPAWN_INTERVAL = 0.05f; // 每0.05秒生成一个残影
+    private final float SPAWN_INTERVAL = 0.05f; // 残影生成间隔
 
     // 配置参数
-    private boolean isEnabled = false;
     private Color trailColor = new Color(0.3f, 0.8f, 1.0f, 1f); // 青蓝色残影
 
-    public void update(float delta, float playerX, float playerY, boolean isDashing) {
+    /**
+     * 更新残影逻辑
+     * @param delta 时间增量
+     * @param playerX 玩家格子X
+     * @param playerY 玩家格子Y
+     * @param isDashing 是否正在冲刺
+     * @param currentFrame 当前玩家显示的动画帧（关键！）
+     */
+    public void update(float delta, float playerX, float playerY, boolean isDashing, TextureRegion currentFrame) {
         // 1. 生成逻辑
         if (isDashing) {
             spawnTimer += delta;
             if (spawnTimer >= SPAWN_INTERVAL) {
                 spawnTimer = 0;
-                ghosts.add(new Ghost(playerX, playerY));
+                // 只有当有有效帧时才生成
+                if (currentFrame != null) {
+                    ghosts.add(new Ghost(playerX, playerY, currentFrame));
+                }
             }
         } else {
-            // 如果不在冲刺，立即重置计时器，保证下次冲刺立刻出残影
-            spawnTimer = SPAWN_INTERVAL;
+            spawnTimer = SPAWN_INTERVAL; // 重置，保证下次冲刺立刻出残影
         }
 
         // 2. 更新残影（淡出）
         for (int i = ghosts.size - 1; i >= 0; i--) {
             Ghost g = ghosts.get(i);
-            g.alpha -= delta * 2.0f; // 0.5秒内消失 (1.0 / 0.5 = 2.0)
+            g.alpha -= delta * 3.0f; // 消失速度 (数值越大消失越快)
             if (g.alpha <= 0) {
                 ghosts.removeIndex(i);
             }
         }
     }
 
-    public void render(SpriteBatch batch, Texture playerTexture) {
-        if (ghosts.size == 0 || playerTexture == null) return;
+    public void render(SpriteBatch batch) {
+        if (ghosts.size == 0) return;
 
-        // 保存旧的混合模式和颜色
+        // 保存旧状态
         int srcFunc = batch.getBlendSrcFunc();
         int dstFunc = batch.getBlendDstFunc();
         Color oldColor = batch.getColor();
 
-        // 使用加法混合 (Additive)，让残影看起来像光影
+        // 使用加法混合 (Additive Blending) 让残影发光
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
 
         for (Ghost g : ghosts) {
-            // 颜色插值：随着 alpha 降低，颜色也可以稍微变化（可选）
-            batch.setColor(trailColor.r, trailColor.g, trailColor.b, g.alpha * 0.6f);
+            if (g.region == null) continue;
 
-            // 注意坐标转换：Manager里通常存的是格子坐标，需要转像素
-            float drawX = g.x * GameConstants.CELL_SIZE;
+            batch.setColor(trailColor.r, trailColor.g, trailColor.b, g.alpha * 0.5f);
+
+            // 🔥 核心：复刻 Player.drawSprite 中的位置和缩放算法
+            // 确保残影和玩家本体大小、位置完全一致
+            float scale = (float) GameConstants.CELL_SIZE / g.region.getRegionHeight();
+            float drawW = g.region.getRegionWidth() * scale + 10;
+            float drawH = GameConstants.CELL_SIZE + 10;
+
+            float drawX = g.x * GameConstants.CELL_SIZE
+                    + GameConstants.CELL_SIZE / 2f - drawW / 2f;
             float drawY = g.y * GameConstants.CELL_SIZE;
 
-            // 假设 GameConstants.CELL_SIZE 就是纹理大小，如果不是需要调整
-            batch.draw(playerTexture, drawX, drawY, GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
+            batch.draw(g.region, drawX, drawY, drawW, drawH);
         }
 
         // 恢复状态
         batch.setColor(oldColor);
         batch.setBlendFunction(srcFunc, dstFunc);
-    }
-
-    public void setTrailColor(float r, float g, float b) {
-        trailColor.set(r, g, b, 1f);
     }
 
     public void dispose() {

@@ -10,6 +10,7 @@ import de.tum.cit.fop.maze.abilities.Ability;
 import de.tum.cit.fop.maze.abilities.AbilityManager;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager; // 导入残影管理器
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -62,6 +63,9 @@ public class Player extends GameObject {
 
     public static final float DASH_DURATION = 0.8f;
     public static final float DASH_SPEED_MULTIPLIER = 0.4f; // delay * 0.4 = 更快
+
+    // 🔥 新增：残影管理器
+    private PlayerTrailManager trailManager;
 
     public boolean useMana(int manaCost) {
         if (buffManaEfficiency) {
@@ -128,8 +132,8 @@ public class Player extends GameObject {
         super(x, y);
 //        this.lives = GameConstants.MAX_LIVES;
 //        this.maxLives = GameConstants.MAX_LIVES;
-          this.lives = 100000;
-          this.maxLives = 100000;
+        this.lives = 100000;
+        this.maxLives = 100000;
 
         frontAtlas = new TextureAtlas("player/front.atlas");
         backAtlas  = new TextureAtlas("player/back.atlas");
@@ -142,6 +146,9 @@ public class Player extends GameObject {
         rightAnim = new Animation<>(0.4f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
 
         abilityManager = new AbilityManager(this, gameManager);
+
+        // 🔥 初始化残影管理器
+        trailManager = new PlayerTrailManager();
 
         Logger.gameEvent("Player spawned at " + getPositionString());
     }
@@ -157,6 +164,21 @@ public class Player extends GameObject {
 
         if (!isMovingAnim) stateTime = 0f;
         isMovingAnim = false;
+
+        // 🔥 更新残影逻辑
+        // 获取当前动画帧
+        Animation<TextureRegion> currentAnim = switch (direction) {
+            case UP -> backAnim;
+            case LEFT -> leftAnim;
+            case RIGHT -> rightAnim;
+            default -> frontAnim;
+        };
+        TextureRegion currentFrame = currentAnim.getKeyFrame(stateTime, true);
+
+        // 更新残影 (传入 dashSpeedBoost 作为是否冲刺的判断依据)
+        if (trailManager != null) {
+            trailManager.update(delta, this.x, this.y, dashSpeedBoost, currentFrame);
+        }
 
         // ===== 普通无敌 =====
         if (isInvincible) {
@@ -335,6 +357,11 @@ public class Player extends GameObject {
     public void drawSprite(SpriteBatch batch) {
         if (!active || isDead) return;
 
+        // 🔥 新增：先画残影（在底层）
+        if (trailManager != null) {
+            trailManager.render(batch);
+        }
+
         Animation<TextureRegion> anim = switch (direction) {
             case UP -> backAnim;
             case LEFT -> leftAnim;
@@ -438,6 +465,11 @@ public class Player extends GameObject {
             abilityManager.reset();
         }
 
+        // 🔥 重置残影
+        if (trailManager != null) {
+            trailManager.dispose();
+        }
+
         Logger.debug(
                 "Player reset complete | HP=" + lives + "/" + maxLives +
                         ", Mana=" + mana +
@@ -451,8 +483,8 @@ public class Player extends GameObject {
     public Direction getDirection() {
         return direction;
     }
-//新增读档使用getter
-public int getScore() { return score; }
+    //新增读档使用getter
+    public int getScore() { return score; }
 
     public boolean isDashing(){
         return dashInvincible;

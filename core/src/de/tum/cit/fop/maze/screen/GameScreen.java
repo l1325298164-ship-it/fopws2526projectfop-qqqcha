@@ -3,27 +3,29 @@ package de.tum.cit.fop.maze.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
+import de.tum.cit.fop.maze.tools.DeveloperConsole;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
-import de.tum.cit.fop.maze.tools.DeveloperConsole;
-import de.tum.cit.fop.maze.input.KeyBindingManager;
 
-import java.util.*;
-
-import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class GameScreen implements Screen {
 
@@ -33,6 +35,7 @@ public class GameScreen implements Screen {
     private MazeRenderer maze;
     private CameraManager cam;
     private SpriteBatch batch;
+    private ShapeRenderer shapeRenderer;
     private HUD hud;
     private PlayerInputHandler input;
     private DeveloperConsole console;
@@ -47,18 +50,8 @@ public class GameScreen implements Screen {
         MazeRenderer.WallGroup wall;
         GameObject entity;
 
-        Item(MazeRenderer.WallGroup w, Type t) {
-            wall = w;
-            y = w.startY;
-            type = t;
-        }
-
-        Item(GameObject e, int p) {
-            entity = e;
-            y = e.getY();
-            priority = p;
-            type = Type.ENTITY;
-        }
+        Item(MazeRenderer.WallGroup w, Type t) { wall = w; y = w.startY; type = t; }
+        Item(GameObject e, int p) { entity = e; y = e.getY(); priority = p; type = Type.ENTITY; }
     }
 
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
@@ -72,15 +65,12 @@ public class GameScreen implements Screen {
         uiBottom = new Texture("Wallpaper/frontground.png");
         uiLeft = new Texture("Wallpaper/leftground.png");
         uiRight = new Texture("Wallpaper/rightground.png");
-//        uiTop.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiBottom.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiLeft.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiRight.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-        input = new PlayerInputHandler();
 
+        input = new PlayerInputHandler();
         batch = game.getSpriteBatch();
+        shapeRenderer = new ShapeRenderer();
         gm = new GameManager(difficultyConfig);
-        maze = new MazeRenderer(gm,difficultyConfig);
+        maze = new MazeRenderer(gm, difficultyConfig);
         cam = new CameraManager(difficultyConfig);
         hud = new HUD(gm);
 
@@ -90,21 +80,9 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        /* ================= 输入 ================= */
-        // 🔥 修复：只有在非关卡过渡期间才处理输入
-        /* ================= 输入 ================= */
+        if (KeyBindingManager.getInstance().isJustPressed(KeyBindingManager.GameAction.CONSOLE)) console.toggle();
 
-        // 1. 监听控制台开关键
-        // 如果按键没反应，请看控制台有没有打印 "尝试切换控制台..."
-        if (KeyBindingManager.getInstance().isJustPressed(KeyBindingManager.GameAction.CONSOLE)) {
-            System.out.println("检测到控制台按键，正在切换状态...");
-            console.toggle();
-        }
-
-        // 2. 只有在 [控制台关闭] 且 [非转场期间] 才允许玩家操作
-        // 🔥 修复：这里原来漏了 !console.isVisible()
         if (!console.isVisible() && !gm.isLevelTransitionInProgress()) {
-
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
                 @Override public void onMoveInput(int dx, int dy) { gm.onMoveInput(dx, dy); }
                 @Override public float getMoveDelayMultiplier() { return gm.getPlayer().getMoveDelayMultiplier(); }
@@ -112,148 +90,119 @@ public class GameScreen implements Screen {
                 @Override public void onInteractInput() { gm.onInteractInput(); }
                 @Override public void onMenuInput() { game.goToMenu(); }
             });
-
-            // R 重置
-            if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
-                gm.requestReset();
-            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.R)) gm.requestReset();
         }
 
-        /* ================= 更新 ================= */
         if (!console.isVisible()) {
             gm.update(delta);
             cam.update(delta, gm.getPlayer());
         }
 
-        /* ================= 清屏 ================= */
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
         batch.setProjectionMatrix(cam.getCamera().combined);
 
         /* =========================================================
-           ① 地板 + 门背后呼吸光（Portal Back）
+           Phase 1: SpriteBatch - 渲染地板
            ========================================================= */
         batch.begin();
         maze.renderFloor(batch);
 
-        // 🔥 关键修复：使用防御性副本避免 ConcurrentModificationException
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
-        batch.end();
-/* =========================================================
-   玩家脚下传送阵（Portal Effect）
-   ========================================================= */
-        batch.begin();
+
         if (gm.getPlayerSpawnPortal() != null) {
             float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
             float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
-
             gm.getPlayerSpawnPortal().renderBack(batch, px, py);
             gm.getPlayerSpawnPortal().renderFront(batch);
         }
-        batch.end();
-        /* =========================================================
-           ② 世界实体排序渲染
-           ========================================================= */
-        List<Item> items = new ArrayList<>();
 
-        // 墙壁
+        batch.end(); // 🛑 暂停 SpriteBatch
+
+        /* =========================================================
+           Phase 1.5: ShapeRenderer - 渲染陷阱实体 (地雷、泥潭)
+           ========================================================= */
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+        shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+
+        // 1. 先画陷阱实体 (泥潭底座、芋圆地雷)
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        for (Trap trap : gm.getTraps()) {
+            trap.drawShape(shapeRenderer);
+        }
+        shapeRenderer.end(); // ✅ 必须先结束这一次 begin
+
+        // 2. 再画陷阱特效 (泥潭气泡、爆炸火花) - 它们内部有自己的 begin/end
+        if (gm.getTrapEffectManager() != null) {
+            gm.getTrapEffectManager().render(shapeRenderer);
+        }
+
+        /* =========================================================
+           Phase 2: SpriteBatch - 渲染遮挡物体 (墙壁、人物、敌人)
+           ========================================================= */
+        batch.begin(); // ▶️ 重启 SpriteBatch
+
+        List<Item> items = new ArrayList<>();
         for (var wg : maze.getWallGroups()) {
             boolean front = maze.isWallInFrontOfAnyEntity(wg.startX, wg.startY);
             items.add(new Item(wg, front ? Type.WALL_FRONT : Type.WALL_BEHIND));
         }
-
-        // 🔥 玩家始终渲染（不会被隐藏）
         items.add(new Item(gm.getPlayer(), 100));
-
-        // 🔥 修复：为所有实体集合创建防御性副本
-        List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
-        enemiesCopy.forEach(e -> items.add(new Item(e, 50)));
-
-        // 再次使用 exitDoorsCopy（而不是原始集合）
+        gm.getEnemies().forEach(e -> items.add(new Item(e, 50)));
         exitDoorsCopy.forEach(d -> items.add(new Item(d, 45)));
+        gm.getHearts().forEach(h -> { if (h.isActive()) items.add(new Item(h, 30)); });
+        gm.getTreasures().forEach(t -> items.add(new Item(t, 20)));
+        gm.getKeys().forEach(k -> { if (k.isActive()) items.add(new Item(k, 35)); });
 
-        List<Heart> heartsCopy = new ArrayList<>(gm.getHearts());
-        heartsCopy.forEach(h -> {
-            if (h.isActive()) items.add(new Item(h, 30));
-        });
+        items.sort(Comparator.comparingDouble((Item i) -> -i.y)
+                .thenComparingInt(i -> i.type.ordinal())
+                .thenComparingInt(i -> i.priority));
 
-        List<Treasure> treasuresCopy = new ArrayList<>(gm.getTreasures());
-        treasuresCopy.forEach(t -> items.add(new Item(t, 20)));
-
-        List<Key> keysCopy = new ArrayList<>(gm.getKeys());
-        keysCopy.forEach(k -> {
-            if (k.isActive()) {
-                items.add(new Item(k, 35));
-            }
-        });
-        // 排序
-        items.sort(
-                Comparator
-                        .comparingDouble((Item i) -> -i.y)
-                        .thenComparingInt(i -> i.type.ordinal())
-                        .thenComparingInt(i -> i.priority)
-        );
-
-        // 渲染
-        batch.begin();
         for (Item it : items) {
-            if (it.wall != null) {
-                maze.renderWallGroup(batch, it.wall);
-            } else {
-                it.entity.drawSprite(batch);
-            }
+            if (it.wall != null) maze.renderWallGroup(batch, it.wall);
+            else it.entity.drawSprite(batch);
         }
-        batch.end();
 
-        /* =========================================================
-           ③ 门前龙卷风粒子（Portal Front）
-           ========================================================= */
-        batch.begin();
-        // 🔥 使用防御性副本
         exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
-        batch.begin();
-        batch.end();
+
         /* =========================================================
-           ④ UI（正交相机）
+           Phase 3: ShapeRenderer - 渲染顶层特效 (光效、刀光)
+           ========================================================= */
+        // 1. 物品收集特效
+        if (gm.getItemEffectManager() != null) {
+            gm.getItemEffectManager().render(shapeRenderer);
+        }
+
+        // 2. 战斗特效 (最上层)
+        if (gm.getCombatEffectManager() != null) {
+            gm.getCombatEffectManager().render(shapeRenderer);
+        }
+
+        /* =========================================================
+           Phase 4: UI
            ========================================================= */
         renderUI();
     }
-//decoration Wall
-    private void renderMazeBorderDecorations(SpriteBatch batch) {
-        int w = Gdx.graphics.getWidth();
-        int h = Gdx.graphics.getHeight();
-        int thickness = 1000;
-
-        batch.draw(uiTop,    0, h - thickness, w, thickness);
-        batch.draw(uiBottom, 0, 0,             w, thickness);
-        batch.draw(uiLeft,   -50, 0,             thickness+400, h);
-        batch.draw(uiRight,  w - thickness-200, 0, thickness+300, h);
-    }
-
 
     private void renderUI() {
-        batch.setProjectionMatrix(
-                new Matrix4().setToOrtho2D(
-                        0, 0,
-                        Gdx.graphics.getWidth(),
-                        Gdx.graphics.getHeight()
-                )
-        );
-
+        batch.setProjectionMatrix(new Matrix4().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
         batch.begin();
-        renderMazeBorderDecorations(batch);
-
+        int w = Gdx.graphics.getWidth();
+        int h = Gdx.graphics.getHeight();
+        int t = 1000;
+        batch.draw(uiTop, 0, h - t, w, t);
+        batch.draw(uiBottom, 0, 0, w, t);
+        batch.draw(uiLeft, -50, 0, t+400, h);
+        batch.draw(uiRight, w - t - 200, 0, t+300, h);
         hud.renderInGameUI(batch);
         batch.end();
         hud.renderManaBar();
-
-        if (console != null) {
-            console.render();
-        }
-
+        if (console != null) console.render();
         batch.setProjectionMatrix(cam.getCamera().combined);
     }
 
@@ -261,19 +210,11 @@ public class GameScreen implements Screen {
     public void dispose() {
         maze.dispose();
         if (console != null) console.dispose();
+        if (shapeRenderer != null) shapeRenderer.dispose();
     }
 
-    @Override
-    public void resize(int w, int h) {
-        if (console != null) console.resize(w, h);
-    }
-
-    @Override
-    public void pause() {}
-
-    @Override
-    public void resume() {}
-
-    @Override
-    public void hide() {}
+    @Override public void resize(int w, int h) { if (console != null) console.resize(w, h); }
+    @Override public void pause() {}
+    @Override public void resume() {}
+    @Override public void hide() {}
 }

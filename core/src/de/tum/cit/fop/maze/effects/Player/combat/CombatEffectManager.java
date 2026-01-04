@@ -4,7 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Array;
-import de.tum.cit.fop.maze.effects.combat.instances.*;
+import de.tum.cit.fop.maze.effects.Player.combat.CombatParticleSystem;
 import de.tum.cit.fop.maze.effects.Player.combat.instances.*;
 
 import java.util.Iterator;
