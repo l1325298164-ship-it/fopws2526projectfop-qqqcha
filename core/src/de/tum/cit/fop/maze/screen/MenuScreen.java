@@ -90,6 +90,7 @@ public class MenuScreen implements Screen {
         bgCandy.flip(false, true);
         bgHell.flip(false, true);
 
+
         // ===== UI =====
         Table root = new Table();
         root.setFillParent(true);
