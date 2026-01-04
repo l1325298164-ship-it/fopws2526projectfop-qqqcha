@@ -444,7 +444,6 @@ public class HUD {
         uiBatchForCompass.setProjectionMatrix(uiMatrix);
 
         uiBatchForCompass.begin();
-        System.out.println("print the compass");
         compass.drawAsUI(uiBatchForCompass);
         uiBatchForCompass.end();
     }

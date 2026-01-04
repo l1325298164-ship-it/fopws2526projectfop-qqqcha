@@ -15,14 +15,32 @@ import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
 
+//move
+// ===== 连续移动坐标 =====
+private float worldX;
+    private float worldY;
+
+    private float targetX;
+    private float targetY;
+
+    private boolean isMovingContinuous = false;
+
 
     private boolean hasKey = false;
     private int lives;
     private int maxLives;
-    private float invincibleTimer = 0;
-    private boolean isInvincible = false;
 
     private boolean isDead = false;
+//判定效果重新设计
+// ===== 受伤无敌（i-frame）=====
+private boolean damageInvincible = false;
+    private float damageInvincibleTimer = 0f;
+    private static final float DAMAGE_INVINCIBLE_TIME = 0.6f;
+
+    // ===== 受击闪烁（仅视觉）=====
+    private boolean hitFlash = false;
+    private float hitFlashTimer = 0f;
+    private static final float HIT_FLASH_TIME = 0.25f;
 
     // ===== 移动 =====
     private boolean moving = false;
@@ -90,6 +108,42 @@ public class Player extends GameObject {
         }
     }
     private boolean dashJustEnded = false;
+    public boolean onPushedBy(PushSource source, int dx, int dy, GameManager gm) {
+
+        int strength = source.getPushStrength();
+
+        int targetX = x + dx * strength;
+        int targetY = y + dy * strength;
+
+        if (!gm.canPlayerMoveTo(targetX, targetY)) {
+            // 推不动：可以选择受伤 / 硬直 / 死亡
+            takeDamage(1);//推不动扣血 移动墙扣血
+            return false;
+        }
+
+        setPosition(targetX, targetY);
+        enterHitStun(0.1f);
+
+        return true;
+    }
+    @Override
+    public void setPosition(int x, int y) {
+        super.setPosition(x, y);
+        this.worldX = x;
+        this.worldY = y;
+        this.targetX = x;
+        this.targetY = y;
+        this.isMovingContinuous = false;
+    }
+
+
+    private float hitStunTimer = 0f;
+    private boolean inHitStun = false;
+
+    private void enterHitStun(float duration) {
+        inHitStun = true;
+        hitStunTimer = duration;
+    }
 
     public boolean didDashJustEnd() {
         return dashJustEnded;
@@ -103,6 +157,7 @@ public class Player extends GameObject {
     public int getScore() {
         return this.score;
     }
+
 
 
 
@@ -135,6 +190,11 @@ public class Player extends GameObject {
 //        this.maxLives = GameConstants.MAX_LIVES;
           this.lives = 100000;
           this.maxLives = 100000;
+        this.worldX = x;
+        this.worldY = y;
+        this.targetX = x;
+        this.targetY = y;
+
 
         frontAtlas = new TextureAtlas("player/front.atlas");
         backAtlas  = new TextureAtlas("player/back.atlas");
@@ -155,7 +215,13 @@ public class Player extends GameObject {
 
 
     public void update(float delta) {
-
+        if (inHitStun) {
+            hitStunTimer -= delta;
+            if (hitStunTimer <= 0f) {
+                inHitStun = false;
+            }
+            return; // ⛔ 本帧不处理移动 / 能力
+        }
         // ===== 动画 =====
         float animationSpeed = 1f / getMoveDelayMultiplier();
         stateTime += delta * animationSpeed;
@@ -163,16 +229,26 @@ public class Player extends GameObject {
         if (!isMovingAnim) stateTime = 0f;
         isMovingAnim = false;
 
-        // ===== 普通无敌 =====
-        if (isInvincible) {
-            invincibleTimer += delta;
-            if (invincibleTimer >= GameConstants.INVINCIBLE_TIME) {
-                isInvincible = false;
-                invincibleTimer = 0f;
+        // ===== 无敌 =====
+        // 1️⃣ 受伤无敌（i-frame）
+        if (damageInvincible) {
+            damageInvincibleTimer += delta;
+            if (damageInvincibleTimer >= DAMAGE_INVINCIBLE_TIME) {
+                damageInvincible = false;
+                damageInvincibleTimer = 0f;
             }
         }
 
-        // ===== Dash 无敌 =====
+// 2️⃣ 受击闪烁（纯视觉）
+        if (hitFlash) {
+            hitFlashTimer += delta;
+            if (hitFlashTimer >= HIT_FLASH_TIME) {
+                hitFlash = false;
+                hitFlashTimer = 0f;
+            }
+        }
+
+// 3️⃣ Dash 无敌（技能）
         if (dashInvincible) {
             dashInvincibleTimer += delta;
             if (dashInvincibleTimer >= DASH_DURATION) {
@@ -181,6 +257,8 @@ public class Player extends GameObject {
                 dashJustEnded = true;
             }
         }
+
+
 
         // ===== Dash 加速 =====
         if (dashSpeedBoost) {
@@ -235,6 +313,40 @@ public class Player extends GameObject {
         }
 
         dashJustEnded = false;
+//连续移动
+        if (isMovingContinuous) {
+
+            float dx = targetX - worldX;
+            float dy = targetY - worldY;
+
+            float distSq = dx * dx + dy * dy;
+            if (distSq < 0.0001f) {
+                // 到达
+                worldX = targetX;
+                worldY = targetY;
+                x = (int) targetX;
+                y = (int) targetY;
+                isMovingContinuous = false;
+            } else {
+                float dist = (float) Math.sqrt(distSq);
+
+                // ⭐ 玩家速度：格 / 秒
+                float speed = 1f / MOVE_COOLDOWN;
+                float step = speed * delta;
+
+                if (step >= dist) {
+                    worldX = targetX;
+                    worldY = targetY;
+                    x = (int) targetX;
+                    y = (int) targetY;
+                    isMovingContinuous = false;
+                } else {
+                    worldX += dx / dist * step;
+                    worldY += dy / dist * step;
+                }
+            }
+        }
+
     }
 
     /* ====================== DASH API（给 Ability 调）====================== */
@@ -264,8 +376,10 @@ public class Player extends GameObject {
     }
 
     public void move(int dx, int dy) {
-        if (isDead) return;
+        if (isDead || isMovingContinuous) return;
 
+        int nx = x + dx;
+        int ny = y + dy;
         if (dx > 0) direction = Direction.RIGHT;
         else if (dx < 0) direction = Direction.LEFT;
         else if (dy > 0) direction = Direction.UP;
@@ -275,10 +389,12 @@ public class Player extends GameObject {
         moving = true;
         moveTimer = 0f;
 
-        x += dx;
-        y += dy;
+        targetX = nx;
+        targetY = ny;
+        isMovingContinuous = true;
 
-        Logger.debug("Player moved to " + getPositionString());
+        Logger.debug("Player start move to (" + targetX + "," + targetY + ")");
+
     }
 
 
@@ -295,19 +411,25 @@ public class Player extends GameObject {
     /* ====================== 受伤 ====================== */
 
     public void takeDamage(int damage) {
-        if (isDead || isInvincible || dashInvincible) return;
-
+        if (isDead || damageInvincible || dashInvincible) return;
+        if (damage <= 0) return;
         lives -= damage;
-
         AudioManager.getInstance().play(AudioType.PLAYER_ATTACKED);
-        isInvincible = true;
-        invincibleTimer = 0f;
+
+        // ⭐ 受伤无敌（防秒杀）
+        damageInvincible = true;
+        damageInvincibleTimer = 0f;
+
+        // ⭐ 受击闪烁（视觉）
+        hitFlash = true;
+        hitFlashTimer = 0f;
 
         if (lives <= 0) {
             isDead = true;
             Logger.gameEvent("Player died");
         }
     }
+
     // 🔥 新增：回复生命值 (对应 Heart / 柠檬脆波波)
     public void heal(int amount) {
         if (isDead) return;
@@ -353,16 +475,25 @@ public class Player extends GameObject {
         float drawW = frame.getRegionWidth() * scale + 10;
         float drawH = GameConstants.CELL_SIZE + 10;
 
-        float drawX = x * GameConstants.CELL_SIZE
+        float drawX = worldX * GameConstants.CELL_SIZE
                 + GameConstants.CELL_SIZE / 2f - drawW / 2f;
-        float drawY = y * GameConstants.CELL_SIZE;
-//TODO 需要把受伤和无敌分开，现在受伤会更新无敌，防止帧数太高被杀掉了
-        if ((isInvincible || dashInvincible) && invincibleTimer % 0.2f > 0.1f) {
-            batch.setColor(1, 1, 1, 0.6f);
+        float drawY = worldY * GameConstants.CELL_SIZE;
+
+        if (hitFlash && hitFlashTimer % 0.1f > 0.05f) {
+            batch.setColor(1f, 1f, 1f, 0.6f);
+        } else if (dashInvincible && dashInvincibleTimer % 0.1f > 0.05f) {
+            // Dash 无敌闪烁（可选不同风格）
+            batch.setColor(0.8f, 0.9f, 1f, 0.7f);
+        } else {
+            batch.setColor(1f, 1f, 1f, 1f);
         }
 
+        // ⭐⭐⭐ 真正画出来的关键一行 ⭐⭐⭐
         batch.draw(frame, drawX, drawY, drawW, drawH);
-        batch.setColor(1, 1, 1, 1f);
+
+        // 重置颜色（防止污染后续渲染）
+        batch.setColor(1f, 1f, 1f, 1f);
+
     }
 
     @Override
@@ -405,10 +536,6 @@ public class Player extends GameObject {
 
         // ===== 钥匙 =====
         this.hasKey = false;
-
-        // ===== 无敌状态 =====
-        this.isInvincible = true;
-        this.invincibleTimer = 0f;
 
         // ===== Dash 状态 =====
         this.dashInvincible = false;
@@ -507,5 +634,15 @@ public class Player extends GameObject {
     public float getDamageMultiplier() {
         return buffAttack ? 1.5f : 1.0f;
     }
+
+
+
+
+    public float getMoveSpeed() {
+        // MOVE_COOLDOWN 表示「走一格需要多少秒」
+        // 所以速度 = 1 / cooldown 防止除数为0
+        return Math.max(0.01f, 1f / MOVE_COOLDOWN);
+    }
+
 
 }

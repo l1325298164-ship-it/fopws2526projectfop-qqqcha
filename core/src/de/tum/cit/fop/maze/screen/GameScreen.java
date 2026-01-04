@@ -3,17 +3,23 @@ package de.tum.cit.fop.maze.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.entities.*;
+import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
+import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -25,12 +31,16 @@ import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.tools.DeveloperConsole;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
+import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.*;
 
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameScreen implements Screen {
+    private Viewport worldViewport;
+    private Stage uiStage;
+
 
     private final MazeRunnerGame game;
     private final DifficultyConfig difficultyConfig;
@@ -42,7 +52,9 @@ public class GameScreen implements Screen {
     private PlayerInputHandler input;
     private DeveloperConsole console;
     private Texture uiTop, uiBottom, uiLeft, uiRight;
-//PAUSE
+    private ShapeRenderer shapeRenderer = new ShapeRenderer();
+
+    //PAUSE
     private boolean paused = false;
     private Stage pauseStage;
     private boolean pauseUIInitialized = false;
@@ -86,6 +98,8 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+
+
         uiTop = new Texture("Wallpaper/background.png");
         uiBottom = new Texture("Wallpaper/frontground.png");
         uiLeft = new Texture("Wallpaper/leftground.png");
@@ -100,6 +114,15 @@ public class GameScreen implements Screen {
         gm = new GameManager(difficultyConfig);
         maze = new MazeRenderer(gm,difficultyConfig);
         cam = new CameraManager(difficultyConfig);
+        float mazeW = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;
+        float mazeH = difficultyConfig.mazeWidth * GameConstants.CELL_SIZE;
+
+        worldViewport = new FitViewport(
+                GameConstants.CAMERA_VIEW_WIDTH,
+                GameConstants.CAMERA_VIEW_HEIGHT,
+                cam.getCamera()
+        );
+        uiStage = new Stage(new ScreenViewport(), batch);
         hud = new HUD(gm);
         game.setActiveGameScreen(this);
         cam.centerOnPlayerImmediately(gm.getPlayer());
@@ -108,6 +131,26 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+
+        // ===== DEBUG CAMERA ZOOM =====
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F6)) {
+
+            if (!cam.isDebugZoom()) {
+                cam.setDebugZoom(5f); // 超广角
+                Logger.debug("DEBUG CAMERA: Wide view enabled");
+            } else {
+                cam.clearDebugZoom(); // 恢复正常
+                Logger.debug("DEBUG CAMERA: Normal view restored");
+            }
+        }
+
+
+
+
+
+        worldViewport.apply();
+        batch.setProjectionMatrix(cam.getCamera().combined);
+
         /* ================= 输入 ================= */
         // 🔥 修复：只有在非关卡过渡期间才处理输入
         /* ================= 输入 ================= */
@@ -212,6 +255,10 @@ public class GameScreen implements Screen {
 
         // 🔥 玩家始终渲染（不会被隐藏）
         items.add(new Item(gm.getPlayer(), 100));
+        if (gm.getCat() != null) {
+            items.add(new Item(gm.getCat(), 95)); // 比玩家略低
+        }
+
 
         // 🔥 修复：为所有实体集合创建防御性副本
         List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
@@ -227,6 +274,9 @@ public class GameScreen implements Screen {
 
         List<Treasure> treasuresCopy = new ArrayList<>(gm.getTreasures());
         treasuresCopy.forEach(t -> items.add(new Item(t, 20)));
+// 🔥 新增：动态障碍物（移动墙）
+        List<DynamicObstacle> obstaclesCopy = new ArrayList<>(gm.getObstacles());
+        obstaclesCopy.forEach(o -> items.add(new Item(o, 40)));
 
         List<Key> keysCopy = new ArrayList<>(gm.getKeys());
         keysCopy.forEach(k -> {
@@ -262,8 +312,61 @@ public class GameScreen implements Screen {
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
-        batch.begin();
-        batch.end();
+        /* =========================================================
+   DEBUG：迷宫范围 / Camera 视野 / MovingWall 位置
+   ========================================================= */
+        if (Logger.isDebugEnabled()) {
+
+            // ⚠️ ShapeRenderer 必须使用和 world 一样的投影矩阵
+            shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+
+            float cs = GameConstants.CELL_SIZE;
+
+            /* ===== 1️⃣ 迷宫整体边界（红色） ===== */
+            int mazeWidth  = difficultyConfig.mazeWidth;
+            int mazeHeight = difficultyConfig.mazeHeight;
+
+            shapeRenderer.setColor(1, 0, 0, 1); // 红色
+            shapeRenderer.rect(
+                    0,
+                    0,
+                    mazeWidth * cs,
+                    mazeHeight * cs
+            );
+
+            /* ===== 2️⃣ Camera 实际可视范围（黄色） ===== */
+            OrthographicCamera camera = cam.getCamera();
+
+            float camLeft   = camera.position.x - camera.viewportWidth  / 2f;
+            float camBottom = camera.position.y - camera.viewportHeight / 2f;
+
+            shapeRenderer.setColor(1, 1, 0, 1); // 黄色
+            shapeRenderer.rect(
+                    camLeft,
+                    camBottom,
+                    camera.viewportWidth,
+                    camera.viewportHeight
+            );
+
+            /* ===== 3️⃣ 所有 MovingWall 的 world 位置（蓝色十字） ===== */
+            shapeRenderer.setColor(0, 0, 1, 1); // 蓝色
+
+            for (DynamicObstacle o : gm.getObstacles()) {
+                if (o instanceof MovingWall mw) {
+
+                    float wx = mw.getWorldX() * cs + cs / 2f;
+                    float wy = mw.getWorldY() * cs + cs / 2f;
+
+                    shapeRenderer.line(wx - 10, wy, wx + 10, wy);
+                    shapeRenderer.line(wx, wy - 10, wx, wy + 10);
+                }
+            }
+
+            shapeRenderer.end();
+        }
+
         /* =========================================================
            ④ UI（正交相机）
            ========================================================= */
@@ -280,6 +383,8 @@ public class GameScreen implements Screen {
             pauseStage.draw();
             return; // ⛔ 非常重要：不要再继续渲染后面的逻辑
         }
+
+
     }
 
     private void togglePause() {
@@ -349,13 +454,19 @@ public class GameScreen implements Screen {
 
 
     private void renderUI() {
-        batch.setProjectionMatrix(
-                new Matrix4().setToOrtho2D(
-                        0, 0,
-                        Gdx.graphics.getWidth(),
-                        Gdx.graphics.getHeight()
-                )
-        );
+        uiStage.getViewport().apply();
+        batch.setProjectionMatrix(uiStage.getCamera().combined);
+
+        batch.begin();
+        renderMazeBorderDecorations(batch);
+        hud.renderInGameUI(batch);
+        batch.end();
+
+        hud.renderManaBar();
+
+        uiStage.act(Gdx.graphics.getDeltaTime());
+        uiStage.draw();
+
 
         batch.begin();
         renderMazeBorderDecorations(batch);
@@ -379,8 +490,21 @@ public class GameScreen implements Screen {
 
     @Override
     public void resize(int w, int h) {
-        if (console != null) console.resize(w, h);
+        worldViewport.update(w, h, true);
+
+        if (uiStage != null) {
+            uiStage.getViewport().update(w, h, true);
+        }
+
+        if (pauseStage != null) {
+            pauseStage.getViewport().update(w, h, true);
+        }
+
+        if (console != null) {
+            console.resize(w, h);
+        }
     }
+
 
     @Override
     public void pause() {}

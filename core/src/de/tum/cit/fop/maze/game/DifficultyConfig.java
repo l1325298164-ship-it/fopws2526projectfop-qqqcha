@@ -12,16 +12,18 @@ public class DifficultyConfig {
     public final int enemyE02CoffeeBeanCount;
     public final int enemyE03CaramelCount;
 
+
     /* ===== 陷阱数量 ===== */
     public final int trapT01GeyserCount;
     public final int trapT02PearlMineCount;
     public final int trapT03TeaShardCount;
     public final int trapT04MudTileCount;
-
+    public int enemyE04ShellCount;
     /* ===== 战斗参数 ===== */
     public final int initialLives;
     public final float enemyHpMultiplier;
     public final float enemyDamageMultiplier;
+
 
     /* ===== 构造器（私有，强制走工厂） ===== */
     public DifficultyConfig(
@@ -32,6 +34,7 @@ public class DifficultyConfig {
             int enemyE01PearlCount,
             int enemyE02CoffeeBeanCount,
             int enemyE03CaramelCount,
+            int enemyE04ShellCount,
 
             int trapT01GeyserCount,
             int trapT02PearlMineCount,
@@ -49,6 +52,7 @@ public class DifficultyConfig {
         this.enemyE01PearlCount = enemyE01PearlCount;
         this.enemyE02CoffeeBeanCount = enemyE02CoffeeBeanCount;
         this.enemyE03CaramelCount = enemyE03CaramelCount;
+        this.enemyE04ShellCount = enemyE04ShellCount;
 
         this.trapT01GeyserCount = trapT01GeyserCount;
         this.trapT02PearlMineCount = trapT02PearlMineCount;
@@ -66,10 +70,10 @@ public class DifficultyConfig {
 
             case EASY -> new DifficultyConfig(
                     /* 地图 */
-                    20, 20, 1,
+                    40, 40, 1,
 
                     /* 敌人 */
-                    4, 2, 0,
+                    4, 2, 0,0,
 
                     /* 陷阱 */
                     0, 0, 0, 0,
@@ -82,10 +86,10 @@ public class DifficultyConfig {
 
             case NORMAL -> new DifficultyConfig(
                     /* 地图 */
-                    30, 30, 3,
+                    50, 50, 3,
 
                     /* 敌人 */
-                    8, 6, 2,
+                    8, 6, 2,0,
 
                     /* 陷阱 */
                     2, 1, 1, 10,
@@ -98,10 +102,10 @@ public class DifficultyConfig {
 
             case HARD -> new DifficultyConfig(
                     /* 地图 */
-                    40, 40, 4,
+                    100, 100, 4,
 
                     /* 敌人 */
-                    12, 10, 6,
+                    12, 10, 6,1,
 
                     /* 陷阱 */
                     4, 3, 3, 20,
@@ -116,7 +120,7 @@ public class DifficultyConfig {
                     40, 40, 1,
 
                     /* 敌人 */
-                    0, 0, 0,
+                    0, 0, 0,0,
 
                     /* 陷阱 */
                     0, 0, 0, 0,
