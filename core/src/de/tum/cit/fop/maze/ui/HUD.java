@@ -219,7 +219,7 @@ public class HUD {
 
 
         } catch (Exception e) {
-            Logger.error("Error rendering in-game UI", e);
+            Logger.debug("HUD failed");
         }
     }
 

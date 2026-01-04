@@ -69,7 +69,6 @@ public class MazeGenerator {
         cleanupSmallWalls(maze);
 
         long endTime = System.currentTimeMillis();
-        Logger.performance("3x3 Maze generated in " + (endTime - startTime) + "ms");
         Logger.debug("Maze generation completed - Size: " + adjustedWidth + "x" + adjustedHeight);
         Logger.debug("Configuration - Path: " + PATH_WIDTH + "x" + PATH_HEIGHT +
             ", Wall: " + WALL_WIDTH + "x" + WALL_HEIGHT);

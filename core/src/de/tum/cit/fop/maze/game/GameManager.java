@@ -116,11 +116,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             player.reset();
             player.setPosition(spawn[0], spawn[1]);
         }
-        cat = new CatFollower(player,this);
+        cat = null;  // 默认没有小猫
+        if (difficultyConfig.difficulty == Difficulty.HARD) {
+            fogSystem = new FogSystem();
+        } else {
+            fogSystem = null;
+        }
         // 🔥 玩家出生传送阵（一次性）
         float px = player.getX() * GameConstants.CELL_SIZE;
         float py = player.getY() * GameConstants.CELL_SIZE;
-        fogSystem = new FogSystem();
+
 
         playerSpawnPortal = new PortalEffectManager(PortalEffectManager.PortalOwner.PLAYER);
         playerSpawnPortal.startPlayerSpawnEffect(px, py);
@@ -142,8 +147,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void update(float delta) {
-
-
         // 🔥 强制修正粒子中心
         if (playerSpawnPortal != null) {
             float cx = (player.getX() + 0.5f) * GameConstants.CELL_SIZE;
@@ -178,8 +181,19 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         // 正常游戏逻辑
         player.update(delta);
-        if (cat != null) {
-            cat.update(delta);
+        boolean fogOn = fogSystem != null && fogSystem.isActive();
+
+// Hard + 雾 → 启用猫
+        if (difficultyConfig.difficulty == Difficulty.HARD) {
+            if (fogOn) {
+                if (cat == null)
+                    cat = new CatFollower(player, this);
+                cat.update(delta);   // ★ 必须添加
+            } else {
+                cat = null;
+            }
+        } else {
+            cat = null;
         }
         if (fogSystem != null) {
             fogSystem.update(delta);

@@ -22,6 +22,7 @@ import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -87,16 +88,14 @@ public class GameScreen implements Screen {
 //    private final ChapterContext chapterContext;
 
 
-
-
-
-
-
-
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
-        fogSystem = new FogSystem();
+        if (difficultyConfig.difficulty == Difficulty.HARD) {
+            fogSystem = new FogSystem();
+        } else {
+            fogSystem = null;
+        }
     }
 
     @Override
@@ -211,7 +210,7 @@ public class GameScreen implements Screen {
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {
             gm.update(delta);
-            fogSystem.update(delta);
+            if (fogSystem != null) fogSystem.update(delta);
 
         }
 
@@ -242,18 +241,7 @@ public class GameScreen implements Screen {
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
         batch.end();
-/* =========================================================
-   玩家脚下传送阵（Portal Effect）
-   ========================================================= */
-        batch.begin();
-        if (gm.getPlayerSpawnPortal() != null) {
-            float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
-            float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
 
-            gm.getPlayerSpawnPortal().renderBack(batch, px, py);
-            gm.getPlayerSpawnPortal().renderFront(batch);
-        }
-        batch.end();
         /* =========================================================
            ② 世界实体排序渲染
            ========================================================= */
@@ -324,18 +312,39 @@ public class GameScreen implements Screen {
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
+/* =========================================================
+   玩家脚下传送阵（Portal Effect）
+   ========================================================= */
+        batch.begin();
+        if (gm.getPlayerSpawnPortal() != null) {
+            float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
+            float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
 
+            gm.getPlayerSpawnPortal().renderBack(batch, px, py);
+            gm.getPlayerSpawnPortal().renderFront(batch);
+        }
+        batch.end();
 // ===== 雾（一定在这里）=====
         batch.begin();
-        fogSystem.render(
-                batch,
-                camLeft,
-                camBottom,
-                camWidth,
-                camHeight,
-                gm.getCat().getWorldX(),
-                gm.getCat().getWorldY()
-        );
+        float fogX, fogY;
+
+        CatFollower cat = gm.getCat();
+        if (cat != null) {
+            fogX = cat.getWorldX();
+            fogY = cat.getWorldY();
+        } else {
+            fogX = gm.getPlayer().getWorldX();  // 让雾跟玩家走
+            fogY = gm.getPlayer().getWorldY();
+        }
+
+        if (fogSystem != null) {
+            fogSystem.render(
+                    batch,
+                    camLeft, camBottom, camWidth, camHeight,
+                    gm.getCat() != null ? gm.getCat().getWorldX() : gm.getPlayer().getWorldX(),
+                    gm.getCat() != null ? gm.getCat().getWorldY() : gm.getPlayer().getWorldY()
+            );
+        }
         batch.end();
 
 
