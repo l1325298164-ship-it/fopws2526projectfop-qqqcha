@@ -1,0 +1,10 @@
+Character/Enemy1.png
+Character/mainCharacter.png
+Items/key_1.gif
+Walls/wall_1.png
+Walls/wall_2.png
+Walls/wall_3.png
+floor/780.jpg
+floor/floor_temp.webp
+libgdx.png
+sprite.jpg

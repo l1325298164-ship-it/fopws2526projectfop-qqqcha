@@ -1,0 +1,184 @@
+
+pv.png
+size: 4096, 4096
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+pv1
+  rotate: false
+  xy: 2, 2340
+  size: 2752, 1536
+  orig: 2752, 1536
+  offset: 0, 0
+  index: 0
+pv1
+  rotate: false
+  xy: 2, 802
+  size: 2752, 1536
+  orig: 2752, 1536
+  offset: 0, 0
+  index: 1
+pv1
+  rotate: false
+  xy: 2, 2
+  size: 3188, 798
+  orig: 3188, 798
+  offset: 0, 0
+  index: 8
+pv1
+  rotate: false
+  xy: 2756, 3287
+  size: 1300, 589
+  orig: 1300, 589
+  offset: 0, 0
+  index: 6
+pv1
+  rotate: false
+  xy: 2756, 2749
+  size: 1304, 536
+  orig: 1304, 536
+  offset: 0, 0
+  index: 3
+pv1
+  rotate: false
+  xy: 2756, 2223
+  size: 1289, 524
+  orig: 1289, 524
+  offset: 0, 0
+  index: 7
+pv1
+  rotate: false
+  xy: 2756, 1657
+  size: 1113, 564
+  orig: 1113, 564
+  offset: 0, 0
+  index: 9
+pv1
+  rotate: false
+  xy: 2756, 1060
+  size: 1051, 595
+  orig: 1051, 595
+  offset: 0, 0
+  index: 10
+pv1
+  rotate: false
+  xy: 3192, 489
+  size: 612, 569
+  orig: 612, 569
+  offset: 0, 0
+  index: 4
+
+pv2.png
+size: 4096, 2048
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+pv1
+  rotate: false
+  xy: 2, 2
+  size: 2752, 1536
+  orig: 2752, 1536
+  offset: 0, 0
+  index: 2
+pv1
+  rotate: false
+  xy: 2756, 980
+  size: 1049, 558
+  orig: 1049, 558
+  offset: 0, 0
+  index: 11
+pv1
+  rotate: false
+  xy: 2756, 369
+  size: 915, 609
+  orig: 915, 609
+  offset: 0, 0
+  index: 5
+
+pv3.png
+size: 1024, 1024
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+pv2
+  rotate: false
+  xy: 2, 463
+  size: 739, 523
+  orig: 739, 523
+  offset: 0, 0
+  index: 1
+pv2
+  rotate: false
+  xy: 2, 2
+  size: 512, 459
+  orig: 512, 459
+  offset: 0, 0
+  index: 0
+
+pv4.png
+size: 4096, 1024
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+pv3
+  rotate: false
+  xy: 2, 2
+  size: 1200, 896
+  orig: 1200, 896
+  offset: 0, 0
+  index: 2
+pv3
+  rotate: false
+  xy: 1204, 140
+  size: 779, 758
+  orig: 779, 758
+  offset: 0, 0
+  index: 0
+pv3
+  rotate: false
+  xy: 1985, 529
+  size: 798, 369
+  orig: 798, 369
+  offset: 0, 0
+  index: 1
+
+pv5.png
+size: 4096, 1024
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+pv4
+  rotate: false
+  xy: 2, 124
+  size: 724, 893
+  orig: 724, 893
+  offset: 0, 0
+  index: 4
+pv4
+  rotate: false
+  xy: 728, 445
+  size: 1024, 572
+  orig: 1024, 572
+  offset: 0, 0
+  index: 0
+pv4
+  rotate: false
+  xy: 1754, 451
+  size: 697, 566
+  orig: 697, 566
+  offset: 0, 0
+  index: 1
+pv4
+  rotate: false
+  xy: 2453, 537
+  size: 690, 480
+  orig: 690, 480
+  offset: 0, 0
+  index: 3
+pv4
+  rotate: false
+  xy: 2, 2
+  size: 217, 120
+  orig: 217, 120
+  offset: 0, 0
+  index: 2
