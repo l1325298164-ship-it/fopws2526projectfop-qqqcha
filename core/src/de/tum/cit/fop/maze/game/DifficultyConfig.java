@@ -22,6 +22,7 @@ public class DifficultyConfig {
     public final int initialLives;
     public final float enemyHpMultiplier;
     public final float enemyDamageMultiplier;
+    public final int keyCount;
 
     /* ===== 构造器（私有，强制走工厂） ===== */
     public DifficultyConfig(
@@ -40,7 +41,8 @@ public class DifficultyConfig {
 
             int initialLives,
             float enemyHpMultiplier,
-            float enemyDamageMultiplier
+            float enemyDamageMultiplier,
+            int keyCount
     ) {
         this.mazeWidth = mazeWidth;
         this.mazeHeight = mazeHeight;
@@ -58,6 +60,7 @@ public class DifficultyConfig {
         this.initialLives = initialLives;
         this.enemyHpMultiplier = enemyHpMultiplier;
         this.enemyDamageMultiplier = enemyDamageMultiplier;
+        this.keyCount = keyCount;
     }
 
     /* ===== 难度工厂 ===== */
@@ -77,7 +80,8 @@ public class DifficultyConfig {
                     /* 战斗 */
                     5,
                     0.7f,
-                    0.6f
+                    0.6f,
+                    2
             );
 
             case NORMAL -> new DifficultyConfig(
@@ -93,7 +97,8 @@ public class DifficultyConfig {
                     /* 战斗 */
                     3,
                     1.0f,
-                    1.0f
+                    1.0f,
+                    1
             );
 
             case HARD -> new DifficultyConfig(
@@ -109,7 +114,8 @@ public class DifficultyConfig {
                     /* 战斗 */
                     2,
                     1.4f,
-                    1.3f
+                    1.3f,
+                    1
             );
             case TUTORIAL -> new DifficultyConfig(
                     /* 地图 */
@@ -124,7 +130,24 @@ public class DifficultyConfig {
                     /* 战斗 */
                     5,
                     1.4f,
-                    1.3f
+                    1.3f,
+                    2
+            );
+            case ENDLESS -> new DifficultyConfig(
+                    /* 地图 */
+                    40, 40, 0,
+
+                    /* 敌人 */
+                    7, 5, 4,
+
+                    /* 陷阱 */
+                    10, 5, 3, 2,
+
+                    /* 战斗 */
+                    400,
+                    1.4f,
+                    1.3f,
+                    0
             );
         };
     }

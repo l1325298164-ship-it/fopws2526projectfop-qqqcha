@@ -332,7 +332,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         generateKeys();
     }
     private void generateKeys() {
-        int keyCount = GameConstants.KEYCOUNT;
+        int keyCount = difficultyConfig.keyCount;
 
         for (int i = 0; i < keyCount; i++) {
             int x, y;

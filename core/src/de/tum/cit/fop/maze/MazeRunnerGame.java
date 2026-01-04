@@ -68,18 +68,44 @@ public class MazeRunnerGame extends Game {
     public void startNewGame(Difficulty difficulty) {
         Logger.debug("Start new game with difficulty = " + difficulty);
 
-        // 重建配置 & GameManager
-        this.difficultyConfig = DifficultyConfig.of(difficulty);
+        // 🔥 创建配置 - 根据难度调整生命值
+        this.difficultyConfig = createDifficultyConfig(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig);
 
         // ⚠️ 新游戏必须清掉旧的运行态
         this.activeGameScreen = null;
 
-        // 从剧情开头开始（或你想直接进游戏也可以）
+        // 🔥 修改：如果是无尽模式，直接进入游戏
+        if (difficulty == Difficulty.ENDLESS) {
+            System.out.println("🎮 直接进入无尽模式");
+            setScreen(new EndlessScreen(this, difficultyConfig));
+            return; // 直接返回，不进入剧情流程
+        }
+
+        // 否则，从剧情开头开始（或你想直接进游戏也可以）
         this.stage = StoryStage.STORY_BEGIN;
         setScreen(new StoryLoadingScreen(this));
     }
 
+    // 🔥 新增：创建配置的方法
+    private DifficultyConfig createDifficultyConfig(Difficulty difficulty) {
+        // 先获取基础配置
+        DifficultyConfig baseConfig = DifficultyConfig.of(difficulty);
+
+        // 🔥 对于无尽模式，我们需要重新创建配置对象
+        if (difficulty == Difficulty.ENDLESS) {
+            // 创建一个新的配置对象，继承无尽模式的设置但生命值为200
+            return new DifficultyConfig(
+                    40, 40, 0,           // 地图
+                    1, 1, 1,            // 敌人
+                    10, 5, 3, 2,        // 陷阱
+                    200,                // 🔥 生命值改为200
+                    1.4f, 1.3f, 0       // 其他参数
+            );
+        }
+
+        return baseConfig;
+    }
 
     public enum PV4Result {
         START,
