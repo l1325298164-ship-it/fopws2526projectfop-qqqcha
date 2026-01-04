@@ -1,0 +1,48 @@
+
+other.png
+size: 4096, 2048
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+frame166
+  rotate: false
+  xy: 1798, 1414
+  size: 1833, 486
+  orig: 1833, 486
+  offset: 0, 0
+  index: -1
+frame167
+  rotate: false
+  xy: 2, 2
+  size: 1101, 1215
+  orig: 1101, 1215
+  offset: 0, 0
+  index: -1
+frame168
+  rotate: false
+  xy: 3368, 185
+  size: 357, 1227
+  orig: 357, 1227
+  offset: 0, 0
+  index: -1
+frame169
+  rotate: false
+  xy: 2, 1219
+  size: 1794, 681
+  orig: 1794, 681
+  offset: 0, 0
+  index: -1
+frame171
+  rotate: false
+  xy: 1105, 89
+  size: 792, 1128
+  orig: 792, 1128
+  offset: 0, 0
+  index: -1
+frame97
+  rotate: false
+  xy: 1899, 569
+  size: 1467, 843
+  orig: 1467, 843
+  offset: 0, 0
+  index: -1

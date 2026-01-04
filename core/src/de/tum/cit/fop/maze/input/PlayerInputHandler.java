@@ -1,0 +1,164 @@
+package de.tum.cit.fop.maze.input;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import de.tum.cit.fop.maze.game.GameConstants;
+import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.input.KeyBindingManager;
+import de.tum.cit.fop.maze.input.KeyBindingManager.GameAction;
+
+public class PlayerInputHandler {
+    // ================= 教程用移动标记 =================
+    private boolean movedUp = false;
+    private boolean movedDown = false;
+    private boolean movedLeft = false;
+    private boolean movedRight = false;
+
+
+    private float moveTimer = 0f;
+    private float abilityCooldownTimer = 0f;
+
+    private static final float ABILITY_COOLDOWN = 0.1f;
+
+    public PlayerInputHandler() {
+        Logger.debug("PlayerInputHandler initialized");
+    }
+
+    public void update(float delta, InputHandlerCallback callback) {
+        moveTimer += delta;
+        abilityCooldownTimer -= delta;
+
+        handleMovementInput(delta, callback);
+        handleAbilityInput(callback);
+        handleActionInput(callback);
+    }
+
+
+    /* ================= 移动 ================= */
+
+    private void handleMovementInput(float delta, InputHandlerCallback callback) {
+
+        boolean running =
+                Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) ||
+                        Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
+
+        float moveDelay = (running
+                ? GameConstants.MOVE_DELAY_FAST
+                : GameConstants.MOVE_DELAY_NORMAL)
+                * callback.getMoveDelayMultiplier();
+
+        if (moveTimer < moveDelay) return;
+        moveTimer -= moveDelay;
+
+        // ... (前面的 Shift 加速逻辑保持不变)
+
+        int dx = 0, dy = 0;
+
+        //tutorial
+        if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_UP)) {
+            dy = 1;
+            movedUp = true;              // ✅
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_DOWN)) {
+            dy = -1;
+            movedDown = true;            // ✅
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_LEFT)) {
+            dx = -1;
+            movedLeft = true;            // ✅
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_RIGHT)) {
+            dx = 1;
+            movedRight = true;           // ✅
+        }
+
+
+        // 🔥 修改：使用 KeyBindingManager.isPressed 来检测按键
+        if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_UP)) {
+            dy = 1;
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_DOWN)) {
+            dy = -1;
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_LEFT)) {
+            dx = -1;
+        } else if (KeyBindingManager.getInstance().isPressed(GameAction.MOVE_RIGHT)) {
+            dx = 1;
+        }
+
+        if (dx != 0 || dy != 0) {
+            callback.onMoveInput(dx, dy);
+        }
+    }
+
+    /* ================= 技能 ================= */
+
+    private void handleAbilityInput(InputHandlerCallback callback) {
+        if (abilityCooldownTimer > 0) return;
+
+        boolean used = false;
+
+        // Slot 0 - 普通攻击
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)
+                || Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
+            used = callback.onAbilityInput(0);
+        }
+        // Slot 1 - Dash（Shift 单点）
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.SHIFT_LEFT)
+                || Gdx.input.isKeyJustPressed(Input.Keys.SHIFT_RIGHT)
+                || Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
+            used = callback.onAbilityInput(1);
+        }
+        // Slot 2 / 3
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
+            used = callback.onAbilityInput(2);
+        }
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) {
+            used = callback.onAbilityInput(3);
+        }
+
+        if (used) {
+            abilityCooldownTimer = ABILITY_COOLDOWN;
+        }
+    }
+
+    /* ================= 其他 ================= */
+
+    private void handleActionInput(InputHandlerCallback callback) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+            callback.onInteractInput();
+        }
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            callback.onMenuInput();
+        }
+    }
+
+    /* ================= 回调接口 ================= */
+
+    public interface InputHandlerCallback {
+        void onMoveInput(int dx, int dy);
+        float getMoveDelayMultiplier();
+        boolean onAbilityInput(int slot);
+        void onInteractInput();
+        void onMenuInput();
+    }
+    //reset the tutorial
+    public void resetTutorialMoveFlags() {
+        movedUp = movedDown = movedLeft = movedRight = false;
+    }
+
+    // ================= 教程查询接口 =================
+    public boolean hasMovedUp() {
+        return movedUp;
+    }
+
+    public boolean hasMovedDown() {
+        return movedDown;
+    }
+
+    public boolean hasMovedLeft() {
+        return movedLeft;
+    }
+
+    public boolean hasMovedRight() {
+        return movedRight;
+    }
+
+}
