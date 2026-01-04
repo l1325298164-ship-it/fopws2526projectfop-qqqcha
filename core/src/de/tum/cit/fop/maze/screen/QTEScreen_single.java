@@ -26,8 +26,6 @@ import de.tum.cit.fop.maze.qte.QTEResult;
  */
 public class QTEScreen_single implements Screen {
 
-
-
     private QTEResult result = null;
     //成功失败判定时间
     private static final float QTE_TIME_LIMIT = 30.0f;
@@ -121,7 +119,7 @@ public class QTEScreen_single implements Screen {
     private float successTargetX;
 
     // =========================
-    // de.tum.cit.fop.maze.entities.trap.Trap（QTE 陷阱）
+    // Trap（QTE 陷阱）
     // =========================
     private int trapGridX;
     private int trapGridY;
@@ -173,7 +171,7 @@ public class QTEScreen_single implements Screen {
     private float barWidth;
 
     // =========================
-    // 构造函数（重点）
+    // 构造函数
     // =========================
     public QTEScreen_single(MazeRunnerGame game, GameManager gameManager) {
         this.game = game;
@@ -189,17 +187,17 @@ public class QTEScreen_single implements Screen {
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
 
-        // 🔥【新增】初始化波纹管理器
+        // 🔥 初始化波纹管理器 (会生成贴图)
         rippleManager = new QTERippleManager();
 
-        // 👉 引导字体（先用默认，后期可换 TTF）
+        // 引导字体
         hintFont = new BitmapFont();
         hintFont.setUseIntegerPositions(false);
         hintFont.getData().setScale(0.3f);
         hintFont.setColor(1f, 0.9f, 0.95f, 1f);
 
-        //倒计时字体
-        countdownFont = new BitmapFont(); // 先用默认
+        // 倒计时字体
+        countdownFont = new BitmapFont();
         countdownFont.setUseIntegerPositions(false);
         countdownFont.getData().setScale(0.9f);
         countdownFont.setColor(0f, 0f, 0f, 1f);
@@ -209,18 +207,16 @@ public class QTEScreen_single implements Screen {
 
         cellSize = GameConstants.CELL_SIZE;
 
-        // QTE 专用紧张镜头（只看 4x4 格子）
+        // QTE 专用镜头
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 4* cellSize, 4 * cellSize);
 
-        // MazeRenderer：直接用传进来的 GameManager
+        // MazeRenderer
         mazeRenderer = new QTEMazeRenderer();
-
-        // 设置迷宫尺寸（重要！）
         int[][] maze = QTEMazeData.MAZE2;
         mazeRenderer.setMazeDimensions(maze[0].length, maze.length);
 
-        // 更新玩家世界坐标（使用倒置后的y坐标）
+        // 更新玩家坐标
         updatePlayerWorldPos();
 
         camera.position.set(
@@ -229,8 +225,6 @@ public class QTEScreen_single implements Screen {
                 0
         );
         camera.update();
-
-        System.out.println("QTE GameManager = " + gameManager);
 
         // 动画
         Array<TextureRegion> frames = new Array<>();
@@ -244,9 +238,7 @@ public class QTEScreen_single implements Screen {
                 new com.badlogic.gdx.graphics.Texture("qte/player_escape.png")
         );
 
-        // =========================
-        // QTE de.tum.cit.fop.maze.entities.trap.Trap - 固定在玩家初始位置
-        // =========================
+        // 陷阱图片 (目前还是旧图)
         trapRegion = new TextureRegion(
                 new com.badlogic.gdx.graphics.Texture("qte/trap.png")
         );
@@ -259,30 +251,27 @@ public class QTEScreen_single implements Screen {
     }
 
     // =========================================================
-    // 坐标更新方法
+    // 坐标更新
     // =========================================================
 
     private void updatePlayerWorldPos() {
         playerWorldX = playerGridX * cellSize;
-        // 使用倒置后的y坐标
         playerWorldY = mazeRenderer.getInvertedWorldY(playerGridY);
     }
 
     // =========================================================
-    // 渲染方法
+    // 渲染方法 (Entity)
     // =========================================================
 
     private void drawTrap() {
         if (trapRegion == null) return;
-        // 放大比例
-        float scale = 3.4f; // 放大陷阱
+        float scale = 3.4f;
         float scaledSize = cellSize * scale;
-        float offset = (cellSize - scaledSize) / 2f; // 居中偏移
-        // 始终绘制在初始位置，但尺寸放大
+        float offset = (cellSize - scaledSize) / 2f;
         batch.draw(
                 trapRegion,
-                trapWorldX + offset,    // X位置居中
-                trapWorldY + offset,    // Y位置居中
+                trapWorldX + offset,
+                trapWorldY + offset,
                 scaledSize,
                 scaledSize
         );
@@ -298,37 +287,11 @@ public class QTEScreen_single implements Screen {
             wobbleX = MathUtils.sin(stateTime * 6f) * wobble;
             wobbleY = MathUtils.cos(stateTime * 5f) * wobble * 0.5f;
         } else if (qteState == QTEState.SUCCESS_MOVE) {
-            // 移动时添加特效
             float moveEffect = MathUtils.sin(stateTime * 20f) * 0.15f;
             wobbleY = moveEffect;
             tintColor = new Color(1f, 1f, 0.7f, 1f); // 金色
 
-            // 移动时轻微变大
             float scale = 1f + MathUtils.sin(stateTime * 15f) * 0.1f;
-            batch.setColor(tintColor);
-
-            float renderX = playerWorldX;
-            float renderY = mazeRenderer.getInvertedWorldY(playerGridY);
-            float offset = (cellSize - cellSize * scale) / 2f;
-
-            TextureRegion frame = escapeFrame; // 移动时使用逃脱帧
-
-            batch.draw(
-                    frame,
-                    renderX + offset,
-                    renderY + offset,
-                    cellSize * scale,
-                    cellSize * scale
-            );
-
-            batch.setColor(1f, 1f, 1f, 1f);
-            return; // 提前返回，不使用下面的通用绘制
-        } else if (qteState == QTEState.SUCCESS_STAY) {
-            // 停留状态：使用逃脱帧，轻微呼吸效果
-            float breathe = MathUtils.sin(stateTime * 3f) * 0.05f;
-            float scale = 1f + breathe;
-            tintColor = new Color(0.9f, 1f, 0.9f, 1f); // 淡绿色
-
             batch.setColor(tintColor);
 
             float renderX = playerWorldX;
@@ -344,7 +307,27 @@ public class QTEScreen_single implements Screen {
             );
 
             batch.setColor(1f, 1f, 1f, 1f);
-            return; // 提前返回
+            return;
+        } else if (qteState == QTEState.SUCCESS_STAY) {
+            float breathe = MathUtils.sin(stateTime * 3f) * 0.05f;
+            float scale = 1f + breathe;
+            tintColor = new Color(0.9f, 1f, 0.9f, 1f);
+
+            batch.setColor(tintColor);
+            float renderX = playerWorldX;
+            float renderY = mazeRenderer.getInvertedWorldY(playerGridY);
+            float offset = (cellSize - cellSize * scale) / 2f;
+
+            batch.draw(
+                    escapeFrame,
+                    renderX + offset,
+                    renderY + offset,
+                    cellSize * scale,
+                    cellSize * scale
+            );
+
+            batch.setColor(1f, 1f, 1f, 1f);
+            return;
         }
 
         TextureRegion frame =
@@ -355,28 +338,20 @@ public class QTEScreen_single implements Screen {
         float renderX = playerWorldX + wobbleX;
         float renderY = mazeRenderer.getInvertedWorldY(playerGridY) + wobbleY;
 
-        batch.draw(
-                frame,
-                renderX,
-                renderY,
-                cellSize,
-                cellSize
-        );
+        batch.draw(frame, renderX, renderY, cellSize, cellSize);
     }
 
-    //提示词
     private void renderPressSpaceHint() {
         if (qteState != QTEState.ACTIVE) return;
 
         String text = "PRESS  SPACE";
         hintLayout.setText(hintFont, text);
 
-        // 🌬 呼吸动画（alpha）
         float pulse = 0.6f + 0.4f * MathUtils.sin(stateTime * 4f);
         hintFont.setColor(0.1f, 0.1f, 0.1f, pulse);
 
         float textX = camera.position.x - hintLayout.width / 2f;
-        float textY = barY + BAR_HEIGHT + 9f; // 文字位置在进度条上方
+        float textY = barY + BAR_HEIGHT + 9f;
 
         batch.begin();
         hintFont.draw(batch, hintLayout, textX, textY);
@@ -391,16 +366,10 @@ public class QTEScreen_single implements Screen {
         if (qteState == QTEState.SUCCESS_START) {
             successFreezeTimer += delta;
             if (successFreezeTimer >= 0.5f) {
-                // 进入角色移动阶段
                 qteState = QTEState.SUCCESS_MOVE;
-                Logger.debug("QTE -> SUCCESS_MOVE (开始移动动画)");
-
                 successTimer = 0f;
                 successStartX = playerWorldX;
-                successTargetX = (playerGridX + 1) * cellSize; // 向右移动3格
-
-                Logger.debug("移动动画开始: 从 " + playerGridX + " 到 " + (playerGridX + 1) +
-                        ", 持续时间: " + SUCCESS_DURATION + "秒");
+                successTargetX = (playerGridX + 1) * cellSize;
             }
             return;
         }
@@ -409,32 +378,21 @@ public class QTEScreen_single implements Screen {
             successTimer += delta;
             float t = Math.min(successTimer / SUCCESS_DURATION, 1f);
 
-//            // 使用缓动效果
-//            t = 1f - (float)Math.pow(1f - t, 3); // easeOutCubic
-
-            // 更新世界坐标
             playerWorldX = MathUtils.lerp(successStartX, successTargetX, t);
 
             if (t >= 1f) {
-                // 移动动画完成，更新网格坐标
                 playerGridX += 1;
                 playerWorldX = successTargetX;
                 updatePlayerWorldPos();
 
-                Logger.debug("移动动画完成! 新位置: (" + playerGridX + ", " + playerGridY + ")");
-
-                // 重要：不要立即结束QTE，让玩家在新位置停留一会儿
-                // 添加一个短暂的停留时间
                 qteState = QTEState.SUCCESS_STAY;
                 successStayTimer = 0f;
-                Logger.debug("QTE -> SUCCESS_STAY (停留展示)");
             }
         }
 
-        // 处理停留状态
         if (qteState == QTEState.SUCCESS_STAY) {
             successStayTimer += delta;
-            if (successStayTimer >= 0.8f) { // 停留0.8秒
+            if (successStayTimer >= 0.8f) {
                 finishQTE(QTEResult.SUCCESS);
             }
         }
@@ -444,10 +402,9 @@ public class QTEScreen_single implements Screen {
     // 主渲染方法
     // =========================================================
 
-    // 在QTEScreen中修改主渲染方法（最终方案）
     @Override
     public void render(float delta) {
-        // 🔥【新增】波纹逻辑更新
+        // 更新波纹逻辑
         if (rippleManager != null) {
             rippleManager.update(delta);
         }
@@ -457,19 +414,14 @@ public class QTEScreen_single implements Screen {
         updateSuccess(delta);
 
         stateTime += delta * animationSpeed;
-
-        // 更新玩家世界坐标
         updatePlayerWorldPos();
 
-        // 相机跟随 - 添加平滑效果
+        // 相机跟随
         float targetX = playerWorldX + cellSize / 2f;
         float targetY = playerWorldY + cellSize / 2f;
-
-        // 平滑跟随（移动时更快跟随）
         float followSpeed = (qteState == QTEState.SUCCESS_MOVE) ? 10f : 5f;
         camera.position.x += (targetX - camera.position.x) * followSpeed * delta;
         camera.position.y += (targetY - camera.position.y) * followSpeed * delta;
-
         camera.update();
 
         Gdx.gl.glClearColor(0, 0, 0, 1);
@@ -480,52 +432,35 @@ public class QTEScreen_single implements Screen {
         batch.begin();
 
         int[][] maze = QTEMazeData.MAZE2;
-
-        // 渲染地板
         mazeRenderer.renderFloor(batch, maze);
 
-        // 按行从下往上渲染
-        // 从最下面一行开始（y=0），到最上面一行（y=maze.length-1）
         for (int y = 0; y < maze.length; y++) {
-            // 渲染这一行的所有墙壁
             for (int x = 0; x < maze[y].length; x++) {
-                if (maze[y][x] == 0) { // 墙壁
+                if (maze[y][x] == 0) {
                     mazeRenderer.renderWall(batch, x, y);
                 }
             }
-
-            // 如果这一行是玩家所在的行，渲染陷阱和玩家
             if (y == playerGridY) {
-                // 先渲染这一行中玩家左边的墙壁
                 for (int x = 0; x < playerGridX; x++) {
-                    if (maze[y][x] == 0) {
-                        mazeRenderer.renderWall(batch, x, y);
-                    }
+                    if (maze[y][x] == 0) mazeRenderer.renderWall(batch, x, y);
                 }
-
-                // 渲染陷阱（在玩家位置）
                 drawTrap();
-
-                // 渲染玩家
                 drawPlayer();
-
-                // 渲染这一行中玩家右边的墙壁
                 for (int x = playerGridX + 1; x < maze[y].length; x++) {
-                    if (maze[y][x] == 0) {
-                        mazeRenderer.renderWall(batch, x, y);
-                    }
+                    if (maze[y][x] == 0) mazeRenderer.renderWall(batch, x, y);
                 }
             }
         }
-
         batch.end();
 
-        // 2️⃣ 渲染波纹特效（在背景之上，UI之下）
-        // 🔥【新增】调整层级：波纹先画，会被后面的 UI 黑框盖住中心
-        shapeRenderer.setProjectionMatrix(camera.combined);
+        // 2️⃣ 渲染波纹特效 (使用 SpriteBatch 加法混合)
+        // 🔥【重要修改】现在使用 batch 而不是 shapeRenderer
+        batch.setProjectionMatrix(camera.combined);
+        batch.begin();
         if (rippleManager != null) {
-            rippleManager.render(shapeRenderer);
+            rippleManager.render(batch);
         }
+        batch.end();
 
         // 3️⃣ 渲染 UI（进度条、文字）
         renderProgressBar(delta);
@@ -534,7 +469,7 @@ public class QTEScreen_single implements Screen {
     }
 
     // =========================================================
-    // 进度条渲染（保持不变）
+    // 进度条渲染
     // =========================================================
 
     private void renderProgressBar(float delta) {
@@ -548,11 +483,10 @@ public class QTEScreen_single implements Screen {
 
         displayedProgress += (target - displayedProgress) * 8f * delta;
 
-        // ===== 唯一 begin =====
         shapeRenderer.setProjectionMatrix(camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // 1️⃣ 黑色描边
+        // 1. 描边
         shapeRenderer.setColor(0f, 0f, 0f, 1f);
         shapeRenderer.rect(
                 barX - BAR_BORDER,
@@ -561,18 +495,18 @@ public class QTEScreen_single implements Screen {
                 BAR_HEIGHT + BAR_BORDER * 2
         );
 
-        // 2️⃣ 背景
+        // 2. 背景
         shapeRenderer.setColor(BAR_BG_COLOR);
         shapeRenderer.rect(barX, barY, barWidth, BAR_HEIGHT);
 
-        // 3️⃣ 填充（渐变）
+        // 3. 填充
         if (qteState != QTEState.DONE) {
             drawCandyGradient(barX, barY, barWidth * displayedProgress);
             drawMetalHighlight(barX, barY, barWidth * displayedProgress);
             drawMetalEdges(barX, barY, barWidth * displayedProgress);
         }
 
-        // 4️⃣ 粒子
+        // 4. 粒子
         if (progressExploding) {
             renderExplosionParticles(delta);
         }
@@ -581,11 +515,8 @@ public class QTEScreen_single implements Screen {
     }
 
     private void drawMetalEdges(float x, float y, float width) {
-        // 上边缘亮
         shapeRenderer.setColor(1f, 1f, 1f, 0.18f);
         shapeRenderer.rect(x, y + BAR_HEIGHT - 1f, width, 1f);
-
-        // 下边缘暗
         shapeRenderer.setColor(0f, 0f, 0f, 0.15f);
         shapeRenderer.rect(x, y, width, 1f);
     }
@@ -593,7 +524,6 @@ public class QTEScreen_single implements Screen {
     private void drawCandyGradient(float x, float y, float width) {
         int steps = 16;
         float sliceHeight = BAR_HEIGHT / steps;
-
         for (int i = 0; i < steps; i++) {
             float t = i / (float) (steps - 1);
             float wave = 0.5f + 0.5f * MathUtils.sin(stateTime * 3f + t * 6f);
@@ -603,14 +533,8 @@ public class QTEScreen_single implements Screen {
                     MathUtils.lerp(BAR_PINK.b, BAR_YELLOW.b, wave),
                     1f
             );
-
             shapeRenderer.setColor(c);
-            shapeRenderer.rect(
-                    x,
-                    y + i * sliceHeight,
-                    width,
-                    sliceHeight + 1f
-            );
+            shapeRenderer.rect(x, y + i * sliceHeight, width, sliceHeight + 1f);
         }
     }
 
@@ -626,7 +550,6 @@ public class QTEScreen_single implements Screen {
         float barX = camera.position.x - barWidth / 2f;
         float barY = camera.position.y - camera.viewportHeight / 2f + BAR_Y_OFFSET;
 
-        // 🎯 粒子中心 = 进度条中心
         float cx = barX + barWidth * displayedProgress;
         float cy = barY + BAR_HEIGHT / 2f;
 
@@ -634,21 +557,17 @@ public class QTEScreen_single implements Screen {
             ProgressParticle p = new ProgressParticle();
             p.x = cx;
             p.y = cy;
-
             float angle = MathUtils.random(0f, 360f);
             float speed = MathUtils.random(40f, 90f);
-
             p.vx = MathUtils.cosDeg(angle) * speed;
             p.vy = MathUtils.sinDeg(angle) * speed;
             p.life = MathUtils.random(0.5f, 0.8f);
-
             p.color = new Color(
                     MathUtils.random(0.6f, 1f),
                     MathUtils.random(0.6f, 1f),
                     MathUtils.random(0.6f, 1f),
                     1f
             );
-
             particles.add(p);
         }
     }
@@ -657,12 +576,10 @@ public class QTEScreen_single implements Screen {
         for (int i = particles.size - 1; i >= 0; i--) {
             ProgressParticle p = particles.get(i);
             p.life -= delta;
-
             if (p.life <= 0) {
                 particles.removeIndex(i);
                 continue;
             }
-
             p.x += p.vx * delta;
             p.y += p.vy * delta;
             p.vy -= 110 * delta;
@@ -674,37 +591,33 @@ public class QTEScreen_single implements Screen {
                     p.color.b * sparkle,
                     p.color.a * p.life
             );
-
             shapeRenderer.circle(p.x, p.y, 0.7f);
         }
     }
 
     // =========================================================
-    // QTE 逻辑（保持不变）
+    // QTE 逻辑
     // =========================================================
 
     private void updateQTE(float delta) {
         if (qteState != QTEState.ACTIVE) return;
 
-        // 总时间限制
         qteTimer += delta;
         if (qteTimer >= QTE_TIME_LIMIT) {
             finishQTE(QTEResult.FAIL);
             return;
         }
 
-        // 连打
         mashTimer += delta;
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             mashCount++;
 
-            // 🔥【新增】播放波纹特效
+            // 播放波纹特效
             if (rippleManager != null) {
-                // 计算进度条中心点（黑框的几何中心）
+                // 在进度条中心生成
                 float centerX = barX + barWidth / 2f;
                 float centerY = barY + BAR_HEIGHT / 2f;
-
                 rippleManager.spawnRipple(centerX, centerY);
             }
         }
@@ -721,27 +634,18 @@ public class QTEScreen_single implements Screen {
 
     private void enterSuccessStart() {
         if (qteState != QTEState.ACTIVE) return;
-
         qteState = QTEState.SUCCESS_START;
-        Logger.debug("QTE -> " + qteState);
-
         lockedProgress = 1f;
         displayedProgress = 1f;
-
         progressExploding = true;
         spawnProgressExplosion();
-
         successFreezeTimer = 0f;
-        Logger.debug("ENTER SUCCESS_START, displayedProgress=" + displayedProgress);
     }
 
     private void finishQTE(QTEResult result) {
         if (qteState == QTEState.DONE) return;
-
         qteState = QTEState.DONE;
-        Logger.debug("QTE -> DONE, 最终位置: (" + playerGridX + ", " + playerGridY + ")");
         this.result = result;
-
         Gdx.app.postRunnable(() -> {
             game.onQTEFinished(result);
         });
@@ -749,93 +653,48 @@ public class QTEScreen_single implements Screen {
 
     private void updatePrepare(float delta) {
         if (qteState != QTEState.PREPARE) return;
-
         prepareTimer += delta;
         if (prepareTimer >= PREPARE_DURATION) {
-            // 倒计时结束，正式开始 QTE
             qteState = QTEState.ACTIVE;
             prepareTimer = 0f;
-
-            // 清空所有 QTE 相关状态，确保"干净开局"
             qteTimer = 0f;
             mashCount = 0;
             mashTimer = 0f;
             displayedProgress = 0f;
-
-            Logger.debug("QTE -> ACTIVE");
         }
     }
 
     private void renderPrepareText() {
         if (qteState != QTEState.PREPARE) return;
-
         String text;
         int second = 3 - (int) prepareTimer;
-
         switch (second) {
-            case 3:
-                text = "GET";
-                break;
-            case 2:
-                text = "READY";
-                break;
-            default:
-                text = "GO!";
-                break;
+            case 3: text = "GET"; break;
+            case 2: text = "READY"; break;
+            default: text = "GO!"; break;
         }
-
         countdownLayout.setText(countdownFont, text);
-
-        // 中央 + 轻微缩放呼吸
         float pulse = 0.85f + 0.15f * MathUtils.sin(stateTime * 6f);
         countdownFont.setColor(0f, 0f, 0f, pulse);
-
         float x = camera.position.x - countdownLayout.width / 2f;
         float y = camera.position.y + countdownLayout.height / 2f;
-
         batch.begin();
         countdownFont.draw(batch, countdownLayout, x, y);
         batch.end();
     }
 
-    // =========================================================
-    // 其他生命周期方法
-    // =========================================================
-
-    @Override
-    public void resize(int width, int height) {}
-
-    @Override
-    public void pause() {}
-
-    @Override
-    public void resume() {}
-
-    @Override
-    public void hide() {}
+    @Override public void resize(int width, int height) {}
+    @Override public void pause() {}
+    @Override public void resume() {}
+    @Override public void hide() {}
 
     @Override
     public void dispose() {
-        if (batch != null) {
-            batch.dispose();
-            batch = null;
-        }
-        if (shapeRenderer != null) {
-            shapeRenderer.dispose();
-            shapeRenderer = null;
-        }
-        if (hintFont != null) {
-            hintFont.dispose();
-            hintFont = null;
-        }
-        if (countdownFont != null) {
-            countdownFont.dispose();
-            countdownFont = null;
-        }
-        // 🔥【新增】清理波纹管理器
-        if (rippleManager != null) {
-            rippleManager.dispose();
-            rippleManager = null;
-        }
+        if (batch != null) batch.dispose();
+        if (shapeRenderer != null) shapeRenderer.dispose();
+        if (hintFont != null) hintFont.dispose();
+        if (countdownFont != null) countdownFont.dispose();
+        // 清理波纹管理器
+        if (rippleManager != null) rippleManager.dispose();
     }
 }
