@@ -128,25 +128,25 @@ public class MazeRunnerGame extends Game {
 
     private void buildStoryPipeline() {
         // ⭐ 预热 PV（一次性）
-        PVAnimationCache.get("pv/2/pre1.atlas", "pre1");
-        PVAnimationCache.get("pv/2/pre1.atlas", "pre1");
-        PVAnimationCache.get("pv/2/pre1.atlas", "pre1");
+        PVAnimationCache.get("pv/1/PV_1.atlas", "PV_1");
+        PVAnimationCache.get("pv/2/PV_2.atlas", "PV_2");
+        PVAnimationCache.get("pv/3/PV_3.atlas", "PV_3");
         storyPipeline = new PVPipeline(this, List.of(
                 new PVNode(
-                        "pv/2/pre1.atlas",
-                        "pre1",
+                        "pv/1/PV_1.atlas",
+                        "PV_1",
                         AudioType.PV_1,
                         IntroScreen.PVExit.NEXT_STAGE
                 ),
                 new PVNode(
-                        "pv/2/pre1.atlas",
-                        "pre1",
+                        "pv/2/PV_2.atlas",
+                        "PV_2",
                         AudioType.PV_2,
                         IntroScreen.PVExit.NEXT_STAGE
                 ),
                 new PVNode(
-                        "pv/2/pre1.atlas",
-                        "pre1",
+                        "pv/3/PV_3.atlas",
+                        "PV_3",
                         AudioType.PV_3,
                         IntroScreen.PVExit.NEXT_STAGE
                 )
@@ -185,7 +185,7 @@ public class MazeRunnerGame extends Game {
                 stage = StoryStage.PV4;
 
                 Animation<TextureRegion> pv4 =
-                        PVAnimationCache.get("pv/2/pre1.atlas", "pre1");
+                        PVAnimationCache.get("pv/4/PV_4.atlas", "PV_4");
 
                 setScreen(new IntroScreen(
                         this,

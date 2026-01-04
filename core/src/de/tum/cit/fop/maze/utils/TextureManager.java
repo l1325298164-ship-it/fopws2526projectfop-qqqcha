@@ -6,6 +6,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.utils.Disposable;
 import de.tum.cit.fop.maze.game.GameConstants;
 
@@ -16,6 +17,7 @@ public class TextureManager implements Disposable {
     private static TextureManager instance;
     private Map<String, Texture> textures;
     private Texture whitePixel;
+
 
 
 
@@ -38,6 +40,7 @@ public class TextureManager implements Disposable {
     public static final String ENEMY2 = "enemy2";
     public static final String ENEMY3 = "enemy3";
     public static final String ENEMY3AOE = "ENEMY3AOE";
+    public static final String CAT= "cat";
 
 
 
@@ -53,14 +56,22 @@ public class TextureManager implements Disposable {
     private Map<TextureMode, Map<String, String>> textureFileMap;
     private TextureMode currentMode = TextureMode.IMAGE; // 默认纯色模式
 
+
+    private TextureAtlas wallAtlas;
+
+
     private TextureManager() {
         textures = new HashMap<>();
         textureFileMap = new HashMap<>();
+        loadWallAtlas();
 
         // 初始化各模式的图片映射
         initializeTextureMappings();
 
         Logger.debug("TextureManager initialized, mode: " + currentMode);
+    }
+    private void loadWallAtlas() {
+        wallAtlas = new TextureAtlas(Gdx.files.internal("Wallpaper/Wallpaper.atlas"));
     }
 
     public static TextureManager getInstance() {
@@ -68,6 +79,10 @@ public class TextureManager implements Disposable {
             instance = new TextureManager();
         }
         return instance;
+    }
+
+    public TextureAtlas getWallAtlas() {
+        return wallAtlas;
     }
 
     /**
@@ -91,9 +106,8 @@ public class TextureManager implements Disposable {
         imageMode.put(ENEMY3, "Character/Enemy3.png");
         imageMode.put(ENEMY3AOE, "Character/Enemy3AOE.png");
         imageMode.put(TRAP, "qte/trap.png"); // 路径示例
-
-
-        imageMode.put(KEY, "Items/key_1.gif");
+        imageMode.put(CAT, "Items/heart.png");
+        imageMode.put(KEY, "Items/key_1.png");
 
 
 
@@ -327,11 +341,16 @@ public class TextureManager implements Disposable {
         return getTexture(ENEMY3AOE);
     }
 
-
+    public Texture getEnemy4ShellTexture() {
+        return getTexture(ENEMY3);
+    }
     public Texture getHeartTexture() {
         return getTexture(HEART);
     }
+    public Texture getCatTexture() {
+        return getTexture(CAT);
 
+    }
     /**
      * 获取当前模式
      */

@@ -66,10 +66,10 @@ public class StoryLoadingScreen implements Screen {
         createBlurFbo(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         // ===== 异步加载 PV =====
-        queuePV("pv/2/pre1.atlas");
-//        queuePV("pv/2/PV_2.atlas");
-//        queuePV("pv/3/PV_3.atlas");
-//        queuePV("pv/4/PV_4.atlas");
+        queuePV("pv/1/PV_1.atlas");
+        queuePV("pv/2/PV_2.atlas");
+        queuePV("pv/3/PV_3.atlas");
+        queuePV("pv/4/PV_4.atlas");
     }
 
     // ======================================================

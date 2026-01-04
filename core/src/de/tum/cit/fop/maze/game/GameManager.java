@@ -5,6 +5,8 @@ import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
+import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
+import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
@@ -37,11 +39,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final List<Treasure> treasures = new ArrayList<>();
     private final List<ExitDoor> exitDoors = new ArrayList<>();
     private final Array<BobaBullet> bullets = new Array<>();
+    private List<DynamicObstacle> obstacles = new ArrayList<>();
 
     private Compass compass;
     private MazeGenerator generator = new MazeGenerator();
     private KeyEffectManager keyEffectManager;
     private PlayerInputHandler inputHandler;
+    // ===== Cat Follower =====
+    private CatFollower cat;
 
     private Map<String, Float> gameVariables;
 
@@ -108,13 +113,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             player.reset();
             player.setPosition(spawn[0], spawn[1]);
         }
+        cat = new CatFollower(player,this);
         // 🔥 玩家出生传送阵（一次性）
         float px = player.getX() * GameConstants.CELL_SIZE;
         float py = player.getY() * GameConstants.CELL_SIZE;
 
         playerSpawnPortal = new PortalEffectManager(PortalEffectManager.PortalOwner.PLAYER);
         playerSpawnPortal.startPlayerSpawnEffect(px, py);
-
+        obstacles = new ArrayList<>();
 
         generateLevel();
 
@@ -168,6 +174,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         // 正常游戏逻辑
         player.update(delta);
+        if (cat != null) {
+            cat.update(delta);
+        }
 
         // ===== 修复: 使用 Iterator 遍历敌人，避免并发修改异常 =====
         Iterator<Enemy> enemyIterator = enemies.iterator();
@@ -189,7 +198,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         checkExitReached();
         updateCompass();
         updateBullets(delta);
-
+        for (DynamicObstacle o : obstacles) {
+            o.update(delta, this);
+        }
         bobaBulletEffectManager.addBullets(bullets);
         bobaBulletEffectManager.update(delta);
 
@@ -330,7 +341,39 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         generateHearts();
         generateTreasures();
         generateKeys();
+
+        generateMovingWalls();
     }
+
+    private void generateMovingWalls() {
+        obstacles.clear();  // 确保清空旧的
+
+        int sx, sy, ex, ey;
+
+        // 找一个横向通路
+        do {
+            sx = random.nextInt(difficultyConfig.mazeWidth - 10);
+            sy = random.nextInt(difficultyConfig.mazeHeight);
+            ex = sx + 5;   // 让它向右走 5 格
+            ey = sy;
+        } while (!isWalkableLine(sx, sy, ex, ey));
+
+        MovingWall wall = new MovingWall(sx, sy, ex, ey, MovingWall.WallType.SINGLE);
+        obstacles.add(wall);
+
+        // 添加调试日志
+        Logger.debug("MovingWall created: (" + sx + "," + sy + ") -> (" + ex + "," + ey + ")");
+    }
+
+    private boolean isWalkableLine(int sx, int sy, int ex, int ey) {
+        if (sy != ey) return false; // 只做水平路径
+        for (int x = sx; x <= ex; x++) {
+            if (maze[sy][x] != 1) return false;
+        }
+        return true;
+    }
+
+
     private void generateKeys() {
         int keyCount = GameConstants.KEYCOUNT;
 
@@ -540,6 +583,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         for (int i = 0; i < difficultyConfig.enemyE03CaramelCount; i++) {
             int[] p = randomEmptyCell();
             enemies.add(new EnemyE03_CaramelJuggernaut(p[0], p[1]));
+        }
+//待会更改
+        for (int i = 0; i < difficultyConfig.enemyE04ShellCount; i++) {
+            int[] p = randomEmptyCell();
+            enemies.add(new EnemyE04_CrystallizedCaramelShell(p[0], p[1]));
         }
     }
 
@@ -862,6 +910,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (!enemy.isActive() || enemy.isDead()) continue;
 
             if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
+                enemy.markHitByDash();   // ⭐ E04关键
                 enemy.takeDamage(2);
             }
         }
@@ -930,4 +979,63 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public boolean isPlayerDead() {
         return player != null && player.isDead();
     }
+
+    public boolean isObstacleValidMove(int nx, int ny) {
+
+        // ① 越界直接不行
+        if (nx < 0 || ny < 0 ||
+                ny >= maze.length ||
+                nx >= maze[0].length) {
+            return false;
+        }
+
+        // ② 静态迷宫墙不能进
+        if (maze[ny][nx] == 0) {
+            return false;
+        }
+
+        // ③ 出口门：障碍物不能进（防止堵死关卡）
+        for (ExitDoor door : exitDoors) {
+            if (door.getX() == nx && door.getY() == ny) {
+                return false;
+            }
+        }
+
+        // ④ 敌人不能被占格（包括 E04）
+        for (Enemy e : enemies) {
+            if (e.isActive() &&
+                    e.getX() == nx &&
+                    e.getY() == ny) {
+                return false;
+            }
+        }
+
+        // ⑤ 其他动态障碍物不能重叠
+        for (DynamicObstacle o : obstacles) {
+            if (o.getX() == nx && o.getY() == ny) {
+                return false;
+            }
+        }
+
+        /*
+         * ⚠️ 注意：
+         * 玩家不在这里拦截
+         *
+         * 因为：
+         * - 玩家是否被“推走”
+         * - 是否能让路
+         * - 是否受伤 / 硬直
+         *
+         * 这些都属于【交互逻辑】
+         * 而不是【占格合法性】
+         */
+
+        return true;
+    }
+
+    public List<DynamicObstacle> getObstacles() { return obstacles; }
+    public CatFollower getCat() {
+        return cat;
+    }
+
 }

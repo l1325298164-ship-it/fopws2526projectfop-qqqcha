@@ -19,13 +19,22 @@ public class CameraManager {
     private float freeTargetX;
     private float freeTargetY;
     private final DifficultyConfig difficultyConfig;
+    private boolean debugForceZoomEnabled = false;
+    private float debugForcedZoom = 1.0f;
 
+    public void setDebugZoom(float zoom) {
+        debugForcedZoom = zoom;
+        debugForceZoomEnabled = true;
+    }
+
+    public void clearDebugZoom() {
+        debugForceZoomEnabled = false;
+    }
 
 
     public CameraManager(DifficultyConfig difficultyConfig) {
         this.difficultyConfig = difficultyConfig;
         camera = new OrthographicCamera();
-        camera.setToOrtho(false, GameConstants.VIEWPORT_WIDTH, GameConstants.VIEWPORT_HEIGHT);
         Logger.debug("CameraManager initialized");
         this.baseZoom = camera.zoom;
     }
@@ -51,7 +60,12 @@ public class CameraManager {
             zoomMult = gm.getVariable("cam_zoom");
         }
         // 设置实际缩放 = 基础值 * 倍率
-        camera.zoom = baseZoom * zoomMult;
+        if (debugForceZoomEnabled) {
+            camera.zoom = debugForcedZoom;
+        } else {
+            camera.zoom = baseZoom * zoomMult;  // 原来的
+        }
+
 
         // 计算玩家在像素坐标中的位置
         float playerPixelX = player.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2;
@@ -62,8 +76,8 @@ public class CameraManager {
         targetY = playerPixelY;
         if (clampToMap) {
             // 限制相机范围，使其不超出地图边界
-            targetX = Math.max(GameConstants.VIEWPORT_WIDTH / 2, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, targetX));
-            targetY = Math.max(GameConstants.VIEWPORT_HEIGHT / 2, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, targetY));
+            targetX = Math.max(camera.viewportWidth / 2f, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - camera.viewportWidth / 2f, targetX));
+            targetY = Math.max(camera.viewportHeight / 2f, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - camera.viewportHeight / 2f, targetY));
         }
         // 平滑移动相机
         float currentX = camera.position.x;
@@ -91,8 +105,8 @@ public class CameraManager {
         float playerPixelY = player.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2;
         if (clampToMap) {
             // 限制相机范围
-            playerPixelX = Math.max(GameConstants.VIEWPORT_WIDTH / 2, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, playerPixelX));
-            playerPixelY = Math.max(GameConstants.VIEWPORT_HEIGHT / 2, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, playerPixelY));
+            playerPixelX = Math.max(camera.viewportWidth / 2f, Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - camera.viewportWidth / 2f, playerPixelX));
+            playerPixelY = Math.max(camera.viewportHeight / 2f, Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - camera.viewportHeight / 2f, playerPixelY));
         }
         camera.position.set(playerPixelX, playerPixelY, 0);
         camera.update();
@@ -140,10 +154,10 @@ public class CameraManager {
         targetY = freeTargetY;
 
         // 限制相机范围
-        targetX = Math.max(GameConstants.VIEWPORT_WIDTH / 2,
-                Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_WIDTH / 2, targetX));
-        targetY = Math.max(GameConstants.VIEWPORT_HEIGHT / 2,
-                Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - GameConstants.VIEWPORT_HEIGHT / 2, targetY));
+        targetX = Math.max(camera.viewportWidth / 2f,
+                Math.min(difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - camera.viewportWidth / 2f, targetX));
+        targetY = Math.max(camera.viewportHeight / 2f,
+                Math.min(difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - camera.viewportHeight / 2f, targetY));
 
         float currentX = camera.position.x;
         float currentY = camera.position.y;
@@ -161,4 +175,9 @@ public class CameraManager {
 
     public void update(float delta, Player player) {
     }
+
+    public boolean isDebugZoom() {
+        return debugForceZoomEnabled;
+    }
+
 }

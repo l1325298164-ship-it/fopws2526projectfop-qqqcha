@@ -29,7 +29,7 @@ public abstract class Enemy extends GameObject {
     protected float detectRange;
 
     // 行为节奏（实例级）
-    protected float moveInterval = 0.25f;
+    protected float moveInterval = 0.35f;
     protected float changeDirInterval = 1.5f;
     /* ================= 尺寸 ================= */
 
@@ -172,28 +172,29 @@ public abstract class Enemy extends GameObject {
 
         float dx = targetX - worldX;
         float dy = targetY - worldY;
-        float dist2 = dx * dx + dy * dy;
 
-        if (dist2 < 1e-6f) {
+        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        if (dist < 1e-4f) {
             worldX = targetX;
             worldY = targetY;
             isMoving = false;
             return;
         }
 
-        float dist = (float) Math.sqrt(dist2);
-        float step = moveSpeed * delta;
+        // ⭐ 用 moveInterval 反推速度
+        float speed = 1f / moveInterval; // 格 / 秒
+        float step = speed * delta;
 
         if (step >= dist) {
             worldX = targetX;
             worldY = targetY;
             isMoving = false;
-            return;
+        } else {
+            worldX += (dx / dist) * step;
+            worldY += (dy / dist) * step;
         }
-
-        worldX += (dx / dist) * step;
-        worldY += (dy / dist) * step;
     }
+
 
     protected void startMoveTo(int nx, int ny) {
         x = nx;

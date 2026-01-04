@@ -14,8 +14,8 @@ public final class GameConstants {
     /* ===== 玩家 ===== */
     public static final int MAX_LIVES = 999;
     public static final float INVINCIBLE_TIME = 3.0f;
-    public static final float MOVE_DELAY_NORMAL = 0.06f;
-    public static final float MOVE_DELAY_FAST = 0.1f;
+    public static final float MOVE_DELAY_NORMAL = 0.18f;
+    public static final float MOVE_DELAY_FAST = 0.12f;
 
     /* ===== 游戏进程 ===== */
     public static final int MAX_LEVELS = 5;
@@ -32,6 +32,24 @@ public final class GameConstants {
 
     /* ===== Debug ===== */
     public static final boolean DEBUG_MODE = false;
+
+//    ====World constants====
+    // 当前迷宫生成尺寸（可变）
+    public static final int MAZE_COLS = 25;
+    public static final int MAZE_ROWS = 15;
+
+    // 世界最大尺寸（设计上限）
+    public static final int WORLD_COLS = 64;
+    public static final int WORLD_ROWS = 64;
+
+    public static final float WORLD_WIDTH  = WORLD_COLS * CELL_SIZE;
+    public static final float WORLD_HEIGHT = WORLD_ROWS * CELL_SIZE;
+    // camera
+    public static final float CAMERA_COLS = 20f;
+    public static final float CAMERA_ROWS = 12f;
+
+    public static final float CAMERA_VIEW_WIDTH  = CAMERA_COLS * CELL_SIZE;
+    public static final float CAMERA_VIEW_HEIGHT = CAMERA_ROWS * CELL_SIZE;
 
     private GameConstants() {}
 }

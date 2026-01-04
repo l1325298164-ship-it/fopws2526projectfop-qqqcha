@@ -4,12 +4,9 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
@@ -39,10 +36,6 @@ public class MazeGameTutorialScreen implements Screen {
     private static final int MAZE_HEIGHT = 20;
     private static final float CELL_SIZE = 32f;
 
-
-    // === Maze render offset (用于居中) ===
-    private float mazeOffsetX;
-    private float mazeOffsetY;
     // Fixed simple maze (0=path, 1=wall)
     private final int[][] fixedMaze = {
             {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
@@ -77,17 +70,6 @@ public class MazeGameTutorialScreen implements Screen {
     private boolean upPressed, downPressed, leftPressed, rightPressed;
     private float upTimer, downTimer, leftTimer, rightTimer;
 
-    //for bgm
-    // === Tutorial Audio Timers ===
-    private float tutorialTimer = 0f;
-    private float idleTimer = 0f;
-
-    // === Audio trigger flags ===
-    private boolean idlePlayed = false;
-    private boolean slowPlayed = false;
-    private boolean fastPlayed = false;
-    private boolean targetHintPlayed = false;
-
     public MazeGameTutorialScreen(MazeRunnerGame game, DifficultyConfig config) {
         this.game = game;
         this.config = config;
@@ -104,8 +86,7 @@ public class MazeGameTutorialScreen implements Screen {
             gm = new GameManager(config);
         }
         gm.setTutorialMode(true);
-        game.getSoundManager()
-                .playMusic(AudioType.TUTORIAL_MAIN_BGM);
+
         // Create cameras
         camera = new OrthographicCamera();
         hudCamera = new OrthographicCamera();
@@ -113,11 +94,7 @@ public class MazeGameTutorialScreen implements Screen {
 
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         centerCameraOnPlayer();
-        float mazePixelWidth  = MAZE_WIDTH * CELL_SIZE;
-        float mazePixelHeight = MAZE_HEIGHT * CELL_SIZE;
 
-        mazeOffsetX = (Gdx.graphics.getWidth()  - mazePixelWidth)  / 2f;
-        mazeOffsetY = (Gdx.graphics.getHeight() - mazePixelHeight) / 2f;
         System.out.println("Tutorial Objective: Use WASD or Arrow Keys to move, reach the green target");
         System.out.println("Player Start: (" + playerX + ", " + playerY + ")");
         System.out.println("Target Position: (" + targetX + ", " + targetY + ")");
@@ -170,19 +147,6 @@ public class MazeGameTutorialScreen implements Screen {
 
     private void update(float delta) {
         if (finished) return;
-        tutorialTimer += delta;
-        boolean allMovesMade =
-                movedUp && movedDown && movedLeft && movedRight;
-        boolean movingNow =
-                upPressed || downPressed || leftPressed || rightPressed;
-
-        if (movingNow) {
-            idleTimer = 0f;
-        } else {
-            idleTimer += delta;
-        }
-
-
 
         // Detect movement input
         if (upPressed) {
@@ -222,43 +186,6 @@ public class MazeGameTutorialScreen implements Screen {
                 playerY = newPlayerY;
             }
         }
-//TIPS
-        // 2s 没动
-        if (idleTimer >= 2f && !idlePlayed) {
-            game.getSoundManager()
-                    .playSound(AudioType.TUTORIAL_IDLE_HINT.name());
-            idlePlayed = true;
-        }
-
-// 10s 没完成上下左右
-
-
-        if (tutorialTimer >= 10f && !allMovesMade && !slowPlayed) {
-            game.getSoundManager()
-                    .playSound(AudioType.TUTORIAL_SLOW_HINT.name());
-            slowPlayed = true;
-        }
-
-// 2s 内完成 → 正反馈
-        if (tutorialTimer <= 2f && allMovesMade && !fastPlayed) {
-            game.getSoundManager()
-                    .playSound(AudioType.TUTORIAL_FAST_FEEDBACK.name());
-            fastPlayed = true;
-            slowPlayed = true;
-        }
-
-// 20s 没靠近目标
-        float distToTarget =
-                Math.abs(playerX - targetX) +
-                        Math.abs(playerY - targetY);
-
-        if (tutorialTimer >= 20f && distToTarget > 2 && !targetHintPlayed) {
-            game.getSoundManager()
-                    .playSound(AudioType.TUTORIAL_TARGET_HINT.name());
-            targetHintPlayed = true;
-        }
-
-
 
         // Check if reached target
         float distance = (float) Math.sqrt(
@@ -271,6 +198,7 @@ public class MazeGameTutorialScreen implements Screen {
         }
 
         // Check tutorial completion conditions
+        boolean allMovesMade = movedUp && movedDown && movedLeft && movedRight;
         if (allMovesMade && reachedTarget && !finished) {
             System.out.println("Tutorial conditions met!");
             System.out.println("Movement: U=" + movedUp + " D=" + movedDown + " L=" + movedLeft + " R=" + movedRight);
@@ -320,83 +248,43 @@ public class MazeGameTutorialScreen implements Screen {
     }
 
     private void renderHUD() {
-
-        BitmapFont font = game.getSkin().getFont("default-font");
-
-        // ===== 设置 HUD 投影 =====
         shapeRenderer.setProjectionMatrix(hudCamera.combined);
-        game.getSpriteBatch().setProjectionMatrix(hudCamera.combined);
 
-        // ===== 开始渲染 =====
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // Draw tutorial status indicators
+        shapeRenderer.setColor(movedUp ? 0 : 0.5f, movedUp ? 1 : 0.5f, movedUp ? 0 : 0.5f, 0.8f);
+        shapeRenderer.rect(20, Gdx.graphics.getHeight() - 40, 20, 20);
+
+        shapeRenderer.setColor(movedDown ? 0 : 0.5f, movedDown ? 1 : 0.5f, movedDown ? 0 : 0.5f, 0.8f);
+        shapeRenderer.rect(20, Gdx.graphics.getHeight() - 70, 20, 20);
+
+        shapeRenderer.setColor(movedLeft ? 0 : 0.5f, movedLeft ? 1 : 0.5f, movedLeft ? 0 : 0.5f, 0.8f);
+        shapeRenderer.rect(20, Gdx.graphics.getHeight() - 100, 20, 20);
+
+        shapeRenderer.setColor(movedRight ? 0 : 0.5f, movedRight ? 1 : 0.5f, movedRight ? 0 : 0.5f, 0.8f);
+        shapeRenderer.rect(20, Gdx.graphics.getHeight() - 130, 20, 20);
+
+        shapeRenderer.setColor(reachedTarget ? 0 : 0.5f, reachedTarget ? 1 : 0.5f, reachedTarget ? 0 : 0.5f, 0.8f);
+        shapeRenderer.rect(200, Gdx.graphics.getHeight() - 70, 20, 20);
+
+        shapeRenderer.end();
+
+        // Draw text
         game.getSpriteBatch().begin();
+        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "↑ Move Up", 50, Gdx.graphics.getHeight() - 25);
+        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "↓ Move Down", 50, Gdx.graphics.getHeight() - 55);
+        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "← Move Left", 50, Gdx.graphics.getHeight() - 85);
+        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "→ Move Right", 50, Gdx.graphics.getHeight() - 115);
+        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "🎯 Reach Target", 230, Gdx.graphics.getHeight() - 55);
 
-        Batch batch = game.getSpriteBatch();
-
-        // ===== 教程行 =====
-        drawTutorialRow(shapeRenderer, batch, font, 0, movedUp,    "MOVE UP");
-        drawTutorialRow(shapeRenderer, batch, font, 1, movedDown,  "MOVE DOWN");
-        drawTutorialRow(shapeRenderer, batch, font, 2, movedLeft,  "MOVE LEFT");
-        drawTutorialRow(shapeRenderer, batch, font, 3, movedRight, "MOVE RIGHT");
-        drawTutorialRow(shapeRenderer, batch, font, 4, reachedTarget, "REACH TARGET");
-
-        // ===== 教程完成提示（⚠️ 一定要在 batch.begin() 之后）=====
         if (movedUp && movedDown && movedLeft && movedRight && reachedTarget) {
-            font.draw(
-                    batch,
-                    "Tutorial Complete!",
-                    Gdx.graphics.getWidth() / 2f - 60,
-                    100
-            );
+            game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "Tutorial Complete!",
+                    Gdx.graphics.getWidth() / 2 - 50, 100);
         }
 
-        // ===== 结束渲染（顺序固定）=====
         game.getSpriteBatch().end();
-        shapeRenderer.end();
     }
-
-    private void drawTutorialRow(
-            ShapeRenderer shapeRenderer,
-            Batch batch,
-            BitmapFont font,
-            int rowIndex,
-            boolean completed,
-            String text
-    ) {
-        float lineHeight = font.getLineHeight();
-        float spacing = lineHeight + 6;
-        float startY = Gdx.graphics.getHeight() - 20;
-
-        float iconX = 20;
-        float textX = 50;
-        float iconSize = 20;
-
-        float fontAscent = font.getAscent(); // negative
-
-        // === 文字 baseline ===
-        float textBaselineY = startY - spacing * rowIndex;
-
-        // === 文字盒子顶部 ===
-        float textTopY = textBaselineY - fontAscent;
-
-        // === icon 垂直居中 ===
-        float iconY = textTopY - (lineHeight + iconSize) / 2f;
-
-        // ---- 画方块 ----
-        shapeRenderer.setColor(
-                completed ? 0f : 0.5f,
-                completed ? 1f : 0.5f,
-                completed ? 0f : 0.5f,
-                0.8f
-        );
-        shapeRenderer.rect(iconX, iconY, iconSize, iconSize);
-
-        // ---- 画文字 ----
-        font.draw(batch, text, textX, textBaselineY);
-    }
-
-
-
 
     private void finishTutorial(MazeGameTutorialResult result) {
         if (finished) return;
@@ -448,7 +336,6 @@ public class MazeGameTutorialScreen implements Screen {
         if (gm != null) {
             gm.setTutorialMode(false);
         }
-        game.getSoundManager().stopMusic();
     }
 
     @Override
