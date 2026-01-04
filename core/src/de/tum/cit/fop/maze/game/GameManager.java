@@ -1,10 +1,10 @@
 package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.utils.Array;
-import de.tum.cit.fop.maze.effects.Player.combat.CombatEffectManager; // 🔥 战斗特效
+import de.tum.cit.fop.maze.effects.Player.combat.CombatEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.key.KeyEffectManager;
-import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager; // 🔥 陷阱特效
+import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager;
 import de.tum.cit.fop.maze.effects.environment.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.*;
@@ -14,6 +14,8 @@ import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.effects.Enemy.boba.BobaBulletManager;
+import de.tum.cit.fop.maze.utils.LeaderboardManager; // 🔥 新增
+import de.tum.cit.fop.maze.utils.SaveManager;       // 🔥 新增
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -44,10 +46,8 @@ public class GameManager {
     // ===== 特效管理器 =====
     private KeyEffectManager keyEffectManager;
     private ItemEffectManager itemEffectManager;
-    private TrapEffectManager trapEffectManager;     // 🔥 陷阱
-    private CombatEffectManager combatEffectManager; // 🔥 战斗/魔法
-    // ❌ 已移除 EnemyEffectManager
-
+    private TrapEffectManager trapEffectManager;
+    private CombatEffectManager combatEffectManager;
     private BobaBulletManager bobaBulletEffectManager = new BobaBulletManager();
 
     // ===== Keys =====
@@ -56,6 +56,7 @@ public class GameManager {
 
     // ===== Reset Control =====
     private boolean pendingReset = false;
+    private boolean gameOverProcessed = false; // 🔥 新增：防止死亡逻辑重复触发
 
     // 🔥 动画状态管理
     private boolean levelTransitionInProgress = false;
@@ -64,10 +65,7 @@ public class GameManager {
     private static final float LEVEL_TRANSITION_DELAY = 0.5f;
 
     private int currentLevel = 1;
-
-    //effect to player
     private PortalEffectManager playerSpawnPortal;
-
 
     /* ================= 生命周期 ================= */
     public GameManager(DifficultyConfig difficultyConfig) {
@@ -111,7 +109,7 @@ public class GameManager {
         bullets.clear();
         bobaBulletEffectManager.clearAllBullets(false);
 
-        // 🔥 初始化所有特效管理器
+        // 初始化所有特效管理器
         if (keyEffectManager != null) keyEffectManager.dispose();
         keyEffectManager = new KeyEffectManager();
 
@@ -124,11 +122,10 @@ public class GameManager {
         if (combatEffectManager != null) combatEffectManager.dispose();
         combatEffectManager = new CombatEffectManager();
 
-        // ❌ 已移除 EnemyEffectManager 初始化
-
         levelTransitionInProgress = false;
         currentExitDoor = null;
         levelTransitionTimer = 0f;
+        gameOverProcessed = false; // 🔥 重置死亡标记
 
         Logger.gameEvent("Game reset complete");
     }
@@ -138,18 +135,17 @@ public class GameManager {
         this.currentLevel = data.currentLevel;
         resetGame();
         if (player != null) {
-            player.setScore(data.score);
+            player.setScore(data.score); // 🔥 恢复分数
             player.setHealthStatus(data.lives, data.maxLives);
             player.setMana(data.mana);
             player.setHasKey(data.hasKey);
             player.setBuffs(data.buffAttack, data.buffRegen, data.buffManaEfficiency);
             if (data.hasKey) unlockAllExitDoors();
         }
-        Logger.gameEvent("Game Loaded from Save: Level " + currentLevel);
+        Logger.gameEvent("Game Loaded from Save: Level " + currentLevel + ", Score: " + data.score);
     }
 
     public void update(float delta) {
-        // 更新传送门特效
         if (playerSpawnPortal != null) {
             float cx = (player.getX() + 0.5f) * GameConstants.CELL_SIZE;
             float cy = (player.getY() + 0.15f) * GameConstants.CELL_SIZE;
@@ -161,7 +157,6 @@ public class GameManager {
             }
         }
 
-        // 关卡过渡
         if (levelTransitionInProgress) {
             if (currentExitDoor != null) currentExitDoor.update(delta, this);
             levelTransitionTimer += delta;
@@ -174,26 +169,27 @@ public class GameManager {
             return;
         }
 
-        // 正常更新
         player.update(delta);
+
+        // 🔥 检测死亡并触发结算
+        if (player.isDead() && !gameOverProcessed) {
+            handleGameOver(false);
+        }
 
         Iterator<Enemy> enemyIterator = enemies.iterator();
         while (enemyIterator.hasNext()) {
             Enemy e = enemyIterator.next();
             e.update(delta, this);
-
             if (e.isDead() || !e.isActive()) {
-                // ❌ 已移除死亡特效触发逻辑，仅移除对象
+                // 🔥 简单的加分逻辑 (杂兵150，精英600)
+                int score = (e instanceof EnemyE03_CaramelJuggernaut) ? 600 : 150;
+                player.addScore(score);
                 enemyIterator.remove();
             }
         }
 
         for (ExitDoor door : exitDoors) door.update(delta, this);
-
-        // 陷阱更新 (触发特效逻辑在 Trap 类内部)
-        for (Trap trap : traps) {
-            trap.update(delta, this);
-        }
+        for (Trap trap : traps) trap.update(delta, this);
 
         checkExitReached();
         updateCompass();
@@ -206,12 +202,10 @@ public class GameManager {
         handleDashHitEnemies();
         checkAutoPickup();
 
-        // 🔥 更新所有特效管理器
         if (keyEffectManager != null) keyEffectManager.update(delta);
         if (itemEffectManager != null) itemEffectManager.update(delta);
         if (trapEffectManager != null) trapEffectManager.update(delta);
         if (combatEffectManager != null) combatEffectManager.update(delta);
-        // ❌ 已移除 EnemyEffectManager update
 
         handleKeyLogic();
 
@@ -219,6 +213,27 @@ public class GameManager {
             pendingReset = false;
             resetGame();
         }
+    }
+
+    // 🔥 处理游戏结束 (死亡或通关)
+    private void handleGameOver(boolean victory) {
+        gameOverProcessed = true;
+        int finalScore = player.getScore();
+        Logger.gameEvent(victory ? "Game Completed!" : "Player Died! Final Score: " + finalScore);
+
+        // 1. 尝试记录到排行榜
+        LeaderboardManager leaderboard = new LeaderboardManager();
+        if (leaderboard.isHighScore(finalScore)) {
+            // 丐版实现：直接存一个默认名字，加上随机数避免重复
+            String name = "Player-" + (int)(Math.random() * 1000);
+            leaderboard.addScore(name, finalScore);
+            Logger.info("New High Score saved to leaderboard!");
+        }
+
+        // 2. 如果是死亡，可以考虑自动重置 (或跳转到菜单，这里先简单请求重置)
+        // 留给玩家看一会儿死亡画面，或者直接重置
+        // 这里不自动调用 requestReset，通常由 UI 层的 "Retry" 按钮触发，
+        // 但为了丐版流程闭环，我们暂不处理，等待玩家按 R 重置或手动重开。
     }
 
     private void updateCompass() {
@@ -258,10 +273,15 @@ public class GameManager {
 
     public void nextLevel() {
         currentLevel++;
+
         if (currentLevel > GameConstants.MAX_LEVELS) {
             Logger.gameEvent("Game completed!");
+            handleGameOver(true); // 🔥 通关结算
             return;
         }
+
+        // 🔥 过关自动存档
+        SaveManager.saveGame(this);
         requestReset();
     }
 
@@ -352,12 +372,12 @@ public class GameManager {
 
     private ExitDoor.DoorDirection determineDoorDirection(int x, int y) {
         int[][] maze = getMaze();
-        int width = maze[0].length;
-        int height = maze.length;
-        boolean up = y + 1 < height && maze[y + 1][x] == 1;
+        int w = maze[0].length;
+        int h = maze.length;
+        boolean up = y + 1 < h && maze[y + 1][x] == 1;
         boolean down = y - 1 >= 0 && maze[y - 1][x] == 1;
         boolean left = x - 1 >= 0 && maze[y][x - 1] == 1;
-        boolean right = x + 1 < width && maze[y][x + 1] == 1;
+        boolean right = x + 1 < w && maze[y][x + 1] == 1;
         List<ExitDoor.DoorDirection> possible = new ArrayList<>();
         if (up) possible.add(ExitDoor.DoorDirection.UP);
         if (down) possible.add(ExitDoor.DoorDirection.DOWN);
@@ -434,7 +454,6 @@ public class GameManager {
         return maze[y][x] == 1;
     }
 
-    // Getters
     public Player getPlayer() { return player; }
     public int[][] getMaze() { return maze; }
     public List<Enemy> getEnemies() { return enemies; }
@@ -449,14 +468,10 @@ public class GameManager {
     public BobaBulletManager getBobaBulletEffectManager() { return bobaBulletEffectManager; }
     public KeyEffectManager getKeyEffectManager() { return keyEffectManager; }
     public PortalEffectManager getPlayerSpawnPortal() { return playerSpawnPortal; }
-
-    // 🔥 新增 Getters
     public ItemEffectManager getItemEffectManager() { return itemEffectManager; }
     public TrapEffectManager getTrapEffectManager() { return trapEffectManager; }
     public CombatEffectManager getCombatEffectManager() { return combatEffectManager; }
-    // ❌ 已移除 getEnemyEffectManager()
 
-    // Input & Interaction
     public void onMoveInput(int dx, int dy) {
         if (player == null || levelTransitionInProgress) return;
         int nx = player.getX() + dx;
@@ -490,7 +505,6 @@ public class GameManager {
         if (levelTransitionInProgress) return;
         int px = player.getX();
         int py = player.getY();
-
         Iterator<Key> keyIt = keys.iterator();
         while (keyIt.hasNext()) {
             Key k = keyIt.next();
@@ -502,7 +516,6 @@ public class GameManager {
                 break;
             }
         }
-
         Iterator<Heart> heartIt = hearts.iterator();
         while (heartIt.hasNext()) {
             Heart h = heartIt.next();
@@ -512,7 +525,6 @@ public class GameManager {
                 heartIt.remove();
             }
         }
-
         for (Treasure t : treasures) {
             if (t.isInteractable() && t.getX() == px && t.getY() == py) {
                 if (itemEffectManager != null) itemEffectManager.spawnTreasure((t.getX()+0.5f)*GameConstants.CELL_SIZE, (t.getY()+0.5f)*GameConstants.CELL_SIZE);
@@ -538,7 +550,6 @@ public class GameManager {
         if (x < 0 || y < 0 || y >= maze.length || x >= maze[0].length) return 0;
         return maze[y][x];
     }
-
     public void spawnProjectile(BobaBullet bullet) { if (bullet != null) bullets.add(bullet); }
     public void spawnProjectile(EnemyBullet bullet) { if (bullet != null) bullets.add((BobaBullet) bullet); }
 
@@ -558,7 +569,7 @@ public class GameManager {
                 if (combatEffectManager != null) {
                     float ex = e.getX()*GameConstants.CELL_SIZE + GameConstants.CELL_SIZE/2f;
                     float ey = e.getY()*GameConstants.CELL_SIZE + GameConstants.CELL_SIZE/2f;
-                    combatEffectManager.spawnSlash(ex, ey, 0, 1); // 简单的打击特效
+                    combatEffectManager.spawnSlash(ex, ey, 0, 1);
                 }
             }
         }
@@ -569,7 +580,6 @@ public class GameManager {
         if (itemEffectManager != null) itemEffectManager.dispose();
         if (trapEffectManager != null) trapEffectManager.dispose();
         if (combatEffectManager != null) combatEffectManager.dispose();
-        // ❌ 已移除 EnemyEffectManager dispose
         for (ExitDoor door : exitDoors) door.dispose();
         for (Treasure t : treasures) t.dispose();
     }

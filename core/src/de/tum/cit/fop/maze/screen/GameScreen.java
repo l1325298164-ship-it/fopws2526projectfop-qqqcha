@@ -16,6 +16,7 @@ import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.game.GameSaveData; // 🔥 导入
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -41,6 +42,9 @@ public class GameScreen implements Screen {
     private DeveloperConsole console;
     private Texture uiTop, uiBottom, uiLeft, uiRight;
 
+    // 🔥 新增：待加载的存档数据
+    private GameSaveData saveDataToLoad;
+
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
     static class Item {
@@ -54,9 +58,16 @@ public class GameScreen implements Screen {
         Item(GameObject e, int p) { entity = e; y = e.getY(); priority = p; type = Type.ENTITY; }
     }
 
+    // 原构造函数 (新游戏)
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
+        this(game, difficultyConfig, null);
+    }
+
+    // 🔥 新增：带存档的构造函数 (继续游戏)
+    public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig, GameSaveData saveData) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
+        this.saveDataToLoad = saveData;
     }
 
     @Override
@@ -69,7 +80,14 @@ public class GameScreen implements Screen {
         input = new PlayerInputHandler();
         batch = game.getSpriteBatch();
         shapeRenderer = new ShapeRenderer();
+
         gm = new GameManager(difficultyConfig);
+
+        // 🔥 如果有存档数据，立即加载
+        if (saveDataToLoad != null) {
+            gm.loadFromSave(saveDataToLoad);
+        }
+
         maze = new MazeRenderer(gm, difficultyConfig);
         cam = new CameraManager(difficultyConfig);
         hud = new HUD(gm);
@@ -101,9 +119,7 @@ public class GameScreen implements Screen {
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
         batch.setProjectionMatrix(cam.getCamera().combined);
 
-        /* =========================================================
-           Phase 1: SpriteBatch - 渲染地板
-           ========================================================= */
+        /* === Phase 1: SpriteBatch === */
         batch.begin();
         maze.renderFloor(batch);
 
@@ -117,32 +133,25 @@ public class GameScreen implements Screen {
             gm.getPlayerSpawnPortal().renderFront(batch);
         }
 
-        batch.end(); // 🛑 暂停 SpriteBatch
+        batch.end();
 
-        /* =========================================================
-           Phase 1.5: ShapeRenderer - 渲染陷阱实体 (地雷、泥潭)
-           ========================================================= */
+        /* === Phase 1.5: ShapeRenderer === */
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
         shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
-
-        // 1. 先画陷阱实体 (泥潭底座、芋圆地雷)
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         for (Trap trap : gm.getTraps()) {
             trap.drawShape(shapeRenderer);
         }
-        shapeRenderer.end(); // ✅ 必须先结束这一次 begin
+        shapeRenderer.end();
 
-        // 2. 再画陷阱特效 (泥潭气泡、爆炸火花) - 它们内部有自己的 begin/end
         if (gm.getTrapEffectManager() != null) {
             gm.getTrapEffectManager().render(shapeRenderer);
         }
 
-        /* =========================================================
-           Phase 2: SpriteBatch - 渲染遮挡物体 (墙壁、人物、敌人)
-           ========================================================= */
-        batch.begin(); // ▶️ 重启 SpriteBatch
+        /* === Phase 2: SpriteBatch === */
+        batch.begin();
 
         List<Item> items = new ArrayList<>();
         for (var wg : maze.getWallGroups()) {
@@ -170,22 +179,15 @@ public class GameScreen implements Screen {
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
 
-        /* =========================================================
-           Phase 3: ShapeRenderer - 渲染顶层特效 (光效、刀光)
-           ========================================================= */
-        // 1. 物品收集特效
+        /* === Phase 3: ShapeRenderer === */
         if (gm.getItemEffectManager() != null) {
             gm.getItemEffectManager().render(shapeRenderer);
         }
-
-        // 2. 战斗特效 (最上层)
         if (gm.getCombatEffectManager() != null) {
             gm.getCombatEffectManager().render(shapeRenderer);
         }
 
-        /* =========================================================
-           Phase 4: UI
-           ========================================================= */
+        /* === Phase 4: UI === */
         renderUI();
     }
 

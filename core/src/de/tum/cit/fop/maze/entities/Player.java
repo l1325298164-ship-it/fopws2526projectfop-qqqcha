@@ -1,29 +1,25 @@
 package de.tum.cit.fop.maze.entities;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import de.tum.cit.fop.maze.abilities.Ability;
 import de.tum.cit.fop.maze.abilities.AbilityManager;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
-import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager; // 导入残影管理器
+import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
 
-
     private boolean hasKey = false;
     private int lives;
     private int maxLives;
     private float invincibleTimer = 0;
     private boolean isInvincible = false;
-
     private boolean isDead = false;
 
     // ===== 移动 =====
@@ -39,83 +35,29 @@ public class Player extends GameObject {
     private int maxMana = 100000;
     private float manaRegenRate = 5.0f;
 
-    // ==========================================
-    // 🔥 [Treasure] 新增：三种唯一 Buff 状态
-    // ==========================================
-    private boolean buffAttack = false;         // 1. 攻击力 +50%
-    private boolean buffRegen = false;          // 2. 每5秒回5血
-    private boolean buffManaEfficiency = false; // 3. 耗蓝减半
+    // ===== Buffs =====
+    private boolean buffAttack = false;
+    private boolean buffRegen = false;
+    private boolean buffManaEfficiency = false;
+    private float regenTimer = 0f;
+    private String notificationMessage = "";
+    private float notificationTimer = 0f;
 
-    // 🔥 [Treasure] 辅助变量
-    private float regenTimer = 0f;           // 回血计时器
-    private String notificationMessage = ""; // 屏幕飘字内容
-    private float notificationTimer = 0f;    // 飘字持续时间
-
-    /* =======================================================
-       ====================== DASH ===========================
-       ======================================================= */
-
+    // ===== Dash =====
     private boolean dashInvincible = false;
     private float dashInvincibleTimer = 0f;
-
     private boolean dashSpeedBoost = false;
     private float dashSpeedTimer = 0f;
-
     public static final float DASH_DURATION = 0.8f;
-    public static final float DASH_SPEED_MULTIPLIER = 0.4f; // delay * 0.4 = 更快
-
-    // 🔥 新增：残影管理器
-    private PlayerTrailManager trailManager;
-
-    public boolean useMana(int manaCost) {
-        if (buffManaEfficiency) {
-            manaCost = manaCost / 2;
-            if (manaCost < 1) manaCost = 1;
-        }
-
-        if (mana < manaCost) {
-            return false;
-        }
-        mana -= manaCost;
-        return true;
-    }
-
-    public void useAbility(int slot) {
-        if (isDead() || abilityManager == null) return;
-
-        Logger.debug("Player.useAbility(" + slot + ") called");
-
-        // 🔥 直接调用 AbilityManager.activateSlot
-        boolean success = abilityManager.activateSlot(slot);
-
-        if (success) {
-            Logger.debug("Ability activation successful");
-        } else {
-            Logger.debug("Ability activation failed");
-        }
-    }
+    public static final float DASH_SPEED_MULTIPLIER = 0.4f;
     private boolean dashJustEnded = false;
 
-    public boolean didDashJustEnd() {
-        return dashJustEnded;
-    }
-
-    public void addScore(int i) {
-        score+=i;
-
-    }
-
-
-    /* ======================================================= */
-
-    // ===== 朝向 =====
-    public enum Direction {
-        UP, DOWN, LEFT, RIGHT
-    }
-
-    private Direction direction = Direction.DOWN;
+    // ===== 特效 =====
+    private PlayerTrailManager trailManager;
 
     // ===== 动画 =====
+    public enum Direction { UP, DOWN, LEFT, RIGHT }
+    private Direction direction = Direction.DOWN;
     private TextureAtlas frontAtlas, backAtlas, leftAtlas, rightAtlas;
     private Animation<TextureRegion> frontAnim, backAnim, leftAnim, rightAnim;
     private float stateTime = 0f;
@@ -125,13 +67,11 @@ public class Player extends GameObject {
     private boolean slowed = false;
     private float slowTimer = 0f;
 
-    // ===== 分数 =====
+    // 🔥🔥 [关键] 分数系统
     private int score = 0;
 
     public Player(int x, int y, GameManager gameManager) {
         super(x, y);
-//        this.lives = GameConstants.MAX_LIVES;
-//        this.maxLives = GameConstants.MAX_LIVES;
         this.lives = 100000;
         this.maxLives = 100000;
 
@@ -146,27 +86,18 @@ public class Player extends GameObject {
         rightAnim = new Animation<>(0.4f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
 
         abilityManager = new AbilityManager(this, gameManager);
-
-        // 🔥 初始化残影管理器
         trailManager = new PlayerTrailManager();
 
         Logger.gameEvent("Player spawned at " + getPositionString());
     }
 
-    /* ====================== UPDATE ====================== */
-
-
     public void update(float delta) {
-
-        // ===== 动画 =====
         float animationSpeed = 1f / getMoveDelayMultiplier();
         stateTime += delta * animationSpeed;
 
         if (!isMovingAnim) stateTime = 0f;
         isMovingAnim = false;
 
-        // 🔥 更新残影逻辑
-        // 获取当前动画帧
         Animation<TextureRegion> currentAnim = switch (direction) {
             case UP -> backAnim;
             case LEFT -> leftAnim;
@@ -175,12 +106,10 @@ public class Player extends GameObject {
         };
         TextureRegion currentFrame = currentAnim.getKeyFrame(stateTime, true);
 
-        // 更新残影 (传入 dashSpeedBoost 作为是否冲刺的判断依据)
         if (trailManager != null) {
             trailManager.update(delta, this.x, this.y, dashSpeedBoost, currentFrame);
         }
 
-        // ===== 普通无敌 =====
         if (isInvincible) {
             invincibleTimer += delta;
             if (invincibleTimer >= GameConstants.INVINCIBLE_TIME) {
@@ -189,7 +118,6 @@ public class Player extends GameObject {
             }
         }
 
-        // ===== Dash 无敌 =====
         if (dashInvincible) {
             dashInvincibleTimer += delta;
             if (dashInvincibleTimer >= DASH_DURATION) {
@@ -199,7 +127,6 @@ public class Player extends GameObject {
             }
         }
 
-        // ===== Dash 加速 =====
         if (dashSpeedBoost) {
             dashSpeedTimer += delta;
             if (dashSpeedTimer >= DASH_DURATION) {
@@ -208,7 +135,6 @@ public class Player extends GameObject {
             }
         }
 
-        // ===== 减速 =====
         if (slowed) {
             slowTimer -= delta;
             if (slowTimer <= 0f) {
@@ -217,7 +143,6 @@ public class Player extends GameObject {
             }
         }
 
-        // ===== 移动冷却 =====
         if (moving) {
             moveTimer += delta;
             if (moveTimer >= MOVE_COOLDOWN) {
@@ -225,64 +150,77 @@ public class Player extends GameObject {
             }
         }
 
-        // ===== Mana 恢复 =====
         if (mana < maxMana) {
             mana += manaRegenRate * delta;
             if (mana > maxMana) mana = maxMana;
         }
 
-        // ===== Ability =====
         abilityManager.update(delta);
 
-        // ===== [Treasure] 自动回血逻辑 =====
         if (buffRegen) {
             regenTimer += delta;
-            if (regenTimer >= 5.0f) { // 每 5 秒
-                heal(5); // 回 5 点血
+            if (regenTimer >= 5.0f) {
+                heal(5);
                 regenTimer = 0f;
             }
         }
 
-        // ===== [Treasure] UI通知倒计时 =====
         if (notificationTimer > 0) {
             notificationTimer -= delta;
             if (notificationTimer <= 0) {
-                notificationMessage = ""; // 时间到，清空消息
+                notificationMessage = "";
             }
         }
-
         dashJustEnded = false;
     }
 
-    /* ====================== DASH API（给 Ability 调）====================== */
+    // ===== 分数管理 =====
+    public void addScore(int amount) {
+        this.score += amount;
+        Logger.debug("Score added: " + amount + ", Total: " + score);
+    }
+
+    public int getScore() { return score; }
+
+    // 用于读档恢复分数
+    public void setScore(int score) { this.score = score; }
+
+    // ===== 移动与战斗 =====
+    public boolean useMana(int manaCost) {
+        if (buffManaEfficiency) {
+            manaCost = manaCost / 2;
+            if (manaCost < 1) manaCost = 1;
+        }
+        if (mana < manaCost) return false;
+        mana -= manaCost;
+        return true;
+    }
+
+    public void useAbility(int slot) {
+        if (isDead() || abilityManager == null) return;
+        abilityManager.activateSlot(slot);
+    }
 
     public void startDash() {
         dashInvincible = true;
         dashSpeedBoost = true;
         dashInvincibleTimer = 0f;
         dashSpeedTimer = 0f;
-
-        Logger.debug("Dash started");
     }
 
-    public boolean isDashInvincible() {
-        return dashInvincible;
-    }
-
-    /* ====================== 移动相关 ====================== */
+    public boolean isDashInvincible() { return dashInvincible; }
+    public boolean isDashing() { return dashInvincible; }
+    public boolean didDashJustEnd() { return dashJustEnded; }
 
     public float getMoveDelayMultiplier() {
         float multiplier = 1f;
-
         if (slowed) multiplier *= 2.0f;
         if (dashSpeedBoost) multiplier *= DASH_SPEED_MULTIPLIER;
-
         return multiplier;
     }
 
     public void move(int dx, int dy) {
         if (isDead) return;
-
         if (dx > 0) direction = Direction.RIGHT;
         else if (dx < 0) direction = Direction.LEFT;
         else if (dy > 0) direction = Direction.UP;
@@ -291,76 +229,43 @@ public class Player extends GameObject {
         isMovingAnim = true;
         moving = true;
         moveTimer = 0f;
-
         x += dx;
         y += dy;
-
-        Logger.debug("Player moved to " + getPositionString());
     }
 
-
-    /* ====================== 状态效果 ====================== */
-
-    /**
-     * 对玩家施加减速效果
-     * 不叠加倍率，但会刷新持续时间
-     */
     public void applySlow(float duration) {
         slowed = true;
         slowTimer = Math.max(slowTimer, duration);
     }
-    /* ====================== 受伤 ====================== */
 
     public void takeDamage(int damage) {
         if (isDead || isInvincible || dashInvincible) return;
-
         lives -= damage;
-
         AudioManager.getInstance().play(AudioType.PLAYER_ATTACKED);
         isInvincible = true;
         invincibleTimer = 0f;
-
         if (lives <= 0) {
             isDead = true;
             Logger.gameEvent("Player died");
         }
     }
-    // 🔥 新增：回复生命值 (对应 Heart / 柠檬脆波波)
+
     public void heal(int amount) {
         if (isDead) return;
-
         this.lives += amount;
-        // 限制回血不能超过当前的上限
-        if (this.lives > this.maxLives) {
-            this.lives = this.maxLives;
-        }
-        Logger.gameEvent("Player healed by " + amount + ". Current HP: " + lives + "/" + maxLives);
+        if (this.lives > this.maxLives) this.lives = this.maxLives;
     }
 
-    // 🔥 新增：增加生命上限 (对应 HeartContainer / 焦糖核心)
     public void increaseMaxLives(int amount) {
         this.maxLives += amount;
-        // 增加上限的同时，顺便把增加的那部分血补上
         this.lives += amount;
-
-        Logger.gameEvent("Max HP increased by " + amount + ". New Max: " + maxLives);
     }
 
-    // 🔥 新增：获取最大生命值 (UI可能需要用到)
-    public int getMaxLives() {
-        return maxLives;
-    }
-
-    /* ====================== 渲染 ====================== */
-
+    // ===== 渲染与 Getter =====
     @Override
     public void drawSprite(SpriteBatch batch) {
         if (!active || isDead) return;
-
-        // 🔥 新增：先画残影（在底层）
-        if (trailManager != null) {
-            trailManager.render(batch);
-        }
+        if (trailManager != null) trailManager.render(batch);
 
         Animation<TextureRegion> anim = switch (direction) {
             case UP -> backAnim;
@@ -368,21 +273,17 @@ public class Player extends GameObject {
             case RIGHT -> rightAnim;
             default -> frontAnim;
         };
-
         TextureRegion frame = anim.getKeyFrame(stateTime, true);
 
         float scale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
         float drawW = frame.getRegionWidth() * scale + 10;
         float drawH = GameConstants.CELL_SIZE + 10;
-
-        float drawX = x * GameConstants.CELL_SIZE
-                + GameConstants.CELL_SIZE / 2f - drawW / 2f;
+        float drawX = x * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f - drawW / 2f;
         float drawY = y * GameConstants.CELL_SIZE;
-//TODO 需要把受伤和无敌分开，现在受伤会更新无敌，防止帧数太高被杀掉了
+
         if ((isInvincible || dashInvincible) && invincibleTimer % 0.2f > 0.1f) {
             batch.setColor(1, 1, 1, 0.6f);
         }
-
         batch.draw(frame, drawX, drawY, drawW, drawH);
         batch.setColor(1, 1, 1, 1f);
     }
@@ -391,174 +292,85 @@ public class Player extends GameObject {
     public void drawShape(ShapeRenderer shapeRenderer) {}
 
     @Override
-    public RenderType getRenderType() {
-        return RenderType.SPRITE;
-    }
+    public RenderType getRenderType() { return RenderType.SPRITE; }
 
-    /* ====================== Getter ====================== */
-
+    // Getters & Setters
     public AbilityManager getAbilityManager() { return abilityManager; }
     public int getLives() { return lives; }
+    public int getMaxLives() { return maxLives; }
+    public int getMana() { return mana; }
     public boolean hasKey() { return hasKey; }
     public void setHasKey(boolean hasKey) { this.hasKey = hasKey; }
     public boolean isDead() { return isDead; }
-    public int getMana() {
-        return mana;
-    }
-    public boolean isMoving() {
-        return moving;
-    }
+    public boolean isMoving() { return moving; }
+    public String getPositionString() { return "(" + x + ", " + y + ")"; }
+    public Direction getDirection() { return direction; }
 
-    /**
-     * 重置玩家状态
-     */
-    /**
-     * 重置玩家状态（重开关卡 / 重新开始游戏）
-     */
+    // 重置
     public void reset() {
-
-        // ===== 基础生命 =====
-//        this.lives = GameConstants.MAX_LIVES;
-//        this.maxLives = GameConstants.MAX_LIVES;
         this.lives = 100000;
         this.maxLives = 100000;
-
         this.isDead = false;
-
-        // ===== 钥匙 =====
         this.hasKey = false;
-
-        // ===== 无敌状态 =====
         this.isInvincible = true;
         this.invincibleTimer = 0f;
-
-        // ===== Dash 状态 =====
         this.dashInvincible = false;
         this.dashInvincibleTimer = 0f;
-
         this.dashSpeedBoost = false;
         this.dashSpeedTimer = 0f;
-
-        this.dashJustEnded = false;
-
-        // ===== 移动状态 =====
         this.moving = false;
         this.moveTimer = 0f;
-
-        // ===== 状态效果 =====
         this.slowed = false;
         this.slowTimer = 0f;
-
-        // ===== 资源 =====
         this.mana = maxMana;
-        this.score = 0;
-
-        // 🔥 [Treasure] 重置 Buff
+        this.score = 0; // 重置分数
         this.buffAttack = false;
         this.buffRegen = false;
         this.buffManaEfficiency = false;
         this.regenTimer = 0f;
         this.notificationMessage = "";
-
-        // ===== 能力系统 =====
-        if (abilityManager != null) {
-            abilityManager.reset();
-        }
-
-        // 🔥 重置残影
-        if (trailManager != null) {
-            trailManager.dispose();
-        }
-
-        Logger.debug(
-                "Player reset complete | HP=" + lives + "/" + maxLives +
-                        ", Mana=" + mana +
-                        ", Key=" + hasKey
-        );
+        if (abilityManager != null) abilityManager.reset();
+        if (trailManager != null) trailManager.dispose();
     }
 
-    public String getPositionString() {
-        return "(" + x + ", " + y + ")";
-    }
-    public Direction getDirection() {
-        return direction;
-    }
-    //新增读档使用getter
-    public int getScore() { return score; }
-
-    public boolean isDashing(){
-        return dashInvincible;
-    }// 现在 Dash 的唯一真状态
-
-    /* ================= [Treasure] Buff API ================= */
-
-    // 1. 激活攻击 Buff (Treasure调用)
+    // Buff API
     public void activateAttackBuff() {
         if (!buffAttack) {
             buffAttack = true;
-            showNotification("Buff Acquired: ATK +50%!");
-            Logger.gameEvent("acquire ATK Buff");
+            showNotification("Buff: ATK +50%!");
         }
     }
-
-    // 2. 激活回血 Buff (Treasure调用)
     public void activateRegenBuff() {
         if (!buffRegen) {
             buffRegen = true;
-            showNotification("Buff Acquired: Auto-Regen!");
-            Logger.gameEvent("acquire HP Buff");
+            showNotification("Buff: Auto-Regen!");
         }
     }
-
-    // 3. 激活耗蓝 Buff (Treasure调用)
     public void activateManaBuff() {
         if (!buffManaEfficiency) {
             buffManaEfficiency = true;
-            showNotification("Buff Acquired: Mana Saver (-50% Cost)!");
-            Logger.gameEvent("acquire Mana Buff");
+            showNotification("Buff: Mana Saver!");
         }
     }
-
-    // 显示屏幕通知
     public void showNotification(String msg) {
         this.notificationMessage = msg;
-        this.notificationTimer = 3.0f; // 显示3秒
+        this.notificationTimer = 3.0f;
     }
-
-    // Getters (HUD调用)
     public boolean hasBuffAttack() { return buffAttack; }
     public boolean hasBuffRegen() { return buffRegen; }
     public boolean hasBuffManaEfficiency() { return buffManaEfficiency; }
     public String getNotificationMessage() { return notificationMessage; }
+    public float getDamageMultiplier() { return buffAttack ? 1.5f : 1.0f; }
 
-    // 🔥 供 AbilityManager 计算伤害时调用
-    public float getDamageMultiplier() {
-        return buffAttack ? 1.5f : 1.0f;
-    }
-
-    // ================= 💾 读档专用 Setters =================
-
-    // 恢复分数
-    public void setScore(int score) {
-        this.score = score;
-    }
-
-    // 恢复生命值状态
+    // 读档 Setter
     public void setHealthStatus(int currentLives, int maxLives) {
         this.maxLives = maxLives;
         this.lives = currentLives;
     }
-
-    // 恢复魔法值
-    public void setMana(int mana) {
-        this.mana = mana;
-    }
-
-    // 恢复 Buff 状态 (静默恢复，不显示飘字通知)
+    public void setMana(int mana) { this.mana = mana; }
     public void setBuffs(boolean attack, boolean regen, boolean manaEfficiency) {
         this.buffAttack = attack;
         this.buffRegen = regen;
         this.buffManaEfficiency = manaEfficiency;
     }
-
 }

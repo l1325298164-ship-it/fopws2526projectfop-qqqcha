@@ -19,7 +19,9 @@ public class SaveManager {
 
         // 1. 记录关卡
         data.currentLevel = gameManager.getCurrentLevel();
-        // data.score = player.getScore(); // ⚠️ 你需要在 Player.java 加一个 getScore() 方法
+
+        // 🔥 【关键修改】启用分数保存
+        data.score = player.getScore();
 
         // 2. 记录属性
         data.lives = player.getLives();
@@ -37,7 +39,7 @@ public class SaveManager {
         FileHandle file = Gdx.files.local(SAVE_FILE);
         file.writeString(json.toJson(data), false);
 
-        Logger.info("Game Saved!");
+        Logger.info("Game Saved! Score: " + data.score + ", Level: " + data.currentLevel);
     }
 
     // 📂 读取游戏
