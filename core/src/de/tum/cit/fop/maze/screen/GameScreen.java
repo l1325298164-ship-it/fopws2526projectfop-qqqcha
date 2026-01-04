@@ -17,6 +17,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
@@ -40,6 +41,7 @@ import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 public class GameScreen implements Screen {
     private Viewport worldViewport;
     private Stage uiStage;
+    private FogSystem fogSystem;
 
 
     private final MazeRunnerGame game;
@@ -94,6 +96,7 @@ public class GameScreen implements Screen {
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
+        fogSystem = new FogSystem();
     }
 
     @Override
@@ -131,6 +134,12 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        OrthographicCamera camera = cam.getCamera();
+
+        float camLeft   = camera.position.x - camera.viewportWidth  / 2f;
+        float camBottom = camera.position.y - camera.viewportHeight / 2f;
+        float camWidth  = camera.viewportWidth;
+        float camHeight = camera.viewportHeight;
 
         // ===== DEBUG CAMERA ZOOM =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.F6)) {
@@ -198,6 +207,8 @@ public class GameScreen implements Screen {
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {
             gm.update(delta);
+            fogSystem.update(delta);
+
         }
 
         /* ================= 清屏 ================= */
@@ -219,9 +230,6 @@ public class GameScreen implements Screen {
 
             // 计算“真实”经过的游戏时间
             float gameDelta = delta * timeScale;
-
-            // 把变速后的时间传给 gm 和 cam
-            gm.update(gameDelta);
 
             // 注意：这里需要把 gameDelta 传进去，这样相机的跟随速度也会随时间变慢
             cam.update(gameDelta, gm.getPlayer(), gm);
@@ -312,6 +320,24 @@ public class GameScreen implements Screen {
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
+
+// ===== 雾（一定在这里）=====
+        batch.begin();
+        fogSystem.render(
+                batch,
+                camLeft,
+                camBottom,
+                camWidth,
+                camHeight,
+                gm.getCat().getWorldX(),
+                gm.getCat().getWorldY()
+        );
+        batch.end();
+
+
+
+
+
         /* =========================================================
    DEBUG：迷宫范围 / Camera 视野 / MovingWall 位置
    ========================================================= */
@@ -337,17 +363,12 @@ public class GameScreen implements Screen {
             );
 
             /* ===== 2️⃣ Camera 实际可视范围（黄色） ===== */
-            OrthographicCamera camera = cam.getCamera();
-
-            float camLeft   = camera.position.x - camera.viewportWidth  / 2f;
-            float camBottom = camera.position.y - camera.viewportHeight / 2f;
-
             shapeRenderer.setColor(1, 1, 0, 1); // 黄色
             shapeRenderer.rect(
                     camLeft,
                     camBottom,
-                    camera.viewportWidth,
-                    camera.viewportHeight
+                    camWidth,
+                    camHeight
             );
 
             /* ===== 3️⃣ 所有 MovingWall 的 world 位置（蓝色十字） ===== */

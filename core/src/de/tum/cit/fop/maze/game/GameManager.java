@@ -2,6 +2,7 @@ package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
+import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
@@ -41,6 +42,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final Array<BobaBullet> bullets = new Array<>();
     private List<DynamicObstacle> obstacles = new ArrayList<>();
 
+    // GameManager.java
+    private FogSystem fogSystem;
     private Compass compass;
     private MazeGenerator generator = new MazeGenerator();
     private KeyEffectManager keyEffectManager;
@@ -117,6 +120,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // 🔥 玩家出生传送阵（一次性）
         float px = player.getX() * GameConstants.CELL_SIZE;
         float py = player.getY() * GameConstants.CELL_SIZE;
+        fogSystem = new FogSystem();
 
         playerSpawnPortal = new PortalEffectManager(PortalEffectManager.PortalOwner.PLAYER);
         playerSpawnPortal.startPlayerSpawnEffect(px, py);
@@ -177,7 +181,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (cat != null) {
             cat.update(delta);
         }
-
+        if (fogSystem != null) {
+            fogSystem.update(delta);
+        }
         // ===== 修复: 使用 Iterator 遍历敌人，避免并发修改异常 =====
         Iterator<Enemy> enemyIterator = enemies.iterator();
         while (enemyIterator.hasNext()) {
