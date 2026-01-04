@@ -680,6 +680,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 return !door.isLocked();
             }
         }
+        // ⭐ 新增检查：移动墙与所有动态障碍物
+        for (DynamicObstacle o : obstacles) {
+            if (o.getX() == x && o.getY() == y) {
+                return false;  // 玩家不能走进移动的墙
+            }
+        }
 
         // 3️⃣ 普通墙体
         return maze[y][x] == 1;

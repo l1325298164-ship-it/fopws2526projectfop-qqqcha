@@ -134,6 +134,10 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        // ===== DEBUG TOGGLE (F2) =====
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
+            Logger.toggleDebug();
+        }
         OrthographicCamera camera = cam.getCamera();
 
         float camLeft   = camera.position.x - camera.viewportWidth  / 2f;
