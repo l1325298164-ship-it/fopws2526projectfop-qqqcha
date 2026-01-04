@@ -2,6 +2,7 @@ package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
+import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
@@ -41,6 +42,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final Array<BobaBullet> bullets = new Array<>();
     private List<DynamicObstacle> obstacles = new ArrayList<>();
 
+    // GameManager.java
+    private FogSystem fogSystem;
     private Compass compass;
     private MazeGenerator generator = new MazeGenerator();
     private KeyEffectManager keyEffectManager;
@@ -113,10 +116,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             player.reset();
             player.setPosition(spawn[0], spawn[1]);
         }
-        cat = new CatFollower(player,this);
+        cat = null;  // 默认没有小猫
+        if (difficultyConfig.difficulty == Difficulty.HARD) {
+            fogSystem = new FogSystem();
+        } else {
+            fogSystem = null;
+        }
         // 🔥 玩家出生传送阵（一次性）
         float px = player.getX() * GameConstants.CELL_SIZE;
         float py = player.getY() * GameConstants.CELL_SIZE;
+
 
         playerSpawnPortal = new PortalEffectManager(PortalEffectManager.PortalOwner.PLAYER);
         playerSpawnPortal.startPlayerSpawnEffect(px, py);
@@ -138,8 +147,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void update(float delta) {
-
-
         // 🔥 强制修正粒子中心
         if (playerSpawnPortal != null) {
             float cx = (player.getX() + 0.5f) * GameConstants.CELL_SIZE;
@@ -174,10 +181,23 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         // 正常游戏逻辑
         player.update(delta);
-        if (cat != null) {
-            cat.update(delta);
-        }
+        boolean fogOn = fogSystem != null && fogSystem.isActive();
 
+// Hard + 雾 → 启用猫
+        if (difficultyConfig.difficulty == Difficulty.HARD) {
+            if (fogOn) {
+                if (cat == null)
+                    cat = new CatFollower(player, this);
+                cat.update(delta);   // ★ 必须添加
+            } else {
+                cat = null;
+            }
+        } else {
+            cat = null;
+        }
+        if (fogSystem != null) {
+            fogSystem.update(delta);
+        }
         // ===== 修复: 使用 Iterator 遍历敌人，避免并发修改异常 =====
         Iterator<Enemy> enemyIterator = enemies.iterator();
         while (enemyIterator.hasNext()) {
@@ -672,6 +692,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         for (ExitDoor door : exitDoors) {
             if (door.getX() == x && door.getY() == y) {
                 return !door.isLocked();
+            }
+        }
+        // ⭐ 新增检查：移动墙与所有动态障碍物
+        for (DynamicObstacle o : obstacles) {
+            if (o.getX() == x && o.getY() == y) {
+                return false;  // 玩家不能走进移动的墙
             }
         }
 

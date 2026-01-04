@@ -158,6 +158,14 @@ private boolean damageInvincible = false;
         return this.score;
     }
 
+    public float getWorldX() {
+        return worldX;
+    }
+
+    public float getWorldY() {
+        return worldY;
+    }
+
 
 
 
@@ -315,13 +323,12 @@ private boolean damageInvincible = false;
         dashJustEnded = false;
 //连续移动
         if (isMovingContinuous) {
-
             float dx = targetX - worldX;
             float dy = targetY - worldY;
-
             float distSq = dx * dx + dy * dy;
+
             if (distSq < 0.0001f) {
-                // 到达
+                // 到达目标，强制对齐
                 worldX = targetX;
                 worldY = targetY;
                 x = (int) targetX;
@@ -329,9 +336,9 @@ private boolean damageInvincible = false;
                 isMovingContinuous = false;
             } else {
                 float dist = (float) Math.sqrt(distSq);
-
-                // ⭐ 玩家速度：格 / 秒
-                float speed = 1f / MOVE_COOLDOWN;
+                // 根据当前的移动延迟倍率计算速度（加速/减速会影响滑动感）
+                float currentMoveDelay = MOVE_COOLDOWN * getMoveDelayMultiplier();
+                float speed = 1f / currentMoveDelay;
                 float step = speed * delta;
 
                 if (step >= dist) {
@@ -341,8 +348,8 @@ private boolean damageInvincible = false;
                     y = (int) targetY;
                     isMovingContinuous = false;
                 } else {
-                    worldX += dx / dist * step;
-                    worldY += dy / dist * step;
+                    worldX += (dx / dist) * step;
+                    worldY += (dy / dist) * step;
                 }
             }
         }

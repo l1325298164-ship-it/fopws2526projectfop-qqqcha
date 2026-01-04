@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.game;
 
 public class DifficultyConfig {
+    public final Difficulty difficulty;
 
     /* ===== 地图 ===== */
     public final int mazeWidth;
@@ -27,7 +28,7 @@ public class DifficultyConfig {
 
     /* ===== 构造器（私有，强制走工厂） ===== */
     public DifficultyConfig(
-            int mazeWidth,
+            Difficulty difficulty, int mazeWidth,
             int mazeHeight,
             int exitCount,
 
@@ -45,6 +46,7 @@ public class DifficultyConfig {
             float enemyHpMultiplier,
             float enemyDamageMultiplier
     ) {
+        this.difficulty = difficulty;
         this.mazeWidth = mazeWidth;
         this.mazeHeight = mazeHeight;
         this.exitCount = exitCount;
@@ -70,7 +72,7 @@ public class DifficultyConfig {
 
             case EASY -> new DifficultyConfig(
                     /* 地图 */
-                    40, 40, 1,
+                    Difficulty.EASY, 40, 40, 1,
 
                     /* 敌人 */
                     4, 2, 0,0,
@@ -86,7 +88,7 @@ public class DifficultyConfig {
 
             case NORMAL -> new DifficultyConfig(
                     /* 地图 */
-                    50, 50, 3,
+                    Difficulty.NORMAL, 50, 50, 3,
 
                     /* 敌人 */
                     8, 6, 2,0,
@@ -102,7 +104,7 @@ public class DifficultyConfig {
 
             case HARD -> new DifficultyConfig(
                     /* 地图 */
-                    100, 100, 4,
+                    Difficulty.HARD, 100, 100, 4,
 
                     /* 敌人 */
                     12, 10, 6,1,
@@ -117,7 +119,7 @@ public class DifficultyConfig {
             );
             case TUTORIAL -> new DifficultyConfig(
                     /* 地图 */
-                    40, 40, 1,
+                    Difficulty.TUTORIAL, 40, 40, 1,
 
                     /* 敌人 */
                     0, 0, 0,0,

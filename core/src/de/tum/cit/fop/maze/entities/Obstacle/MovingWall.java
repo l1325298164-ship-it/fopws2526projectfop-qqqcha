@@ -114,7 +114,7 @@ public class MovingWall extends DynamicObstacle implements PushSource {
     @Override
     public void update(float delta, GameManager gm) {
         if (moveCooldown < 0) moveCooldown = 0;
-        debugState("BEGIN UPDATE");
+//        debugState("BEGIN UPDATE");
 
         // 减少冷却时间
         moveCooldown -= delta;
@@ -124,7 +124,7 @@ public class MovingWall extends DynamicObstacle implements PushSource {
             moveContinuously(delta);
 
             if (!isMoving) {
-                debugState("MOVE_DONE");
+//                debugState("MOVE_DONE");
                 // 移动完成后，确保坐标同步
                 x = (int)Math.round(worldX);
                 y = (int)Math.round(worldY);
@@ -142,7 +142,7 @@ public class MovingWall extends DynamicObstacle implements PushSource {
             float dy = endY - worldY;
             if (dx * dx + dy * dy < tolerance) {
                 forward = !forward;
-                debugState("REACHED_END -> REVERSE");
+//                debugState("REACHED_END -> REVERSE");
                 // 对齐到终点
                 worldX = endX;
                 worldY = endY;
@@ -156,7 +156,7 @@ public class MovingWall extends DynamicObstacle implements PushSource {
             float dy = startY - worldY;
             if (dx * dx + dy * dy < tolerance) {
                 forward = !forward;
-                debugState("REACHED_START -> REVERSE");
+//                debugState("REACHED_START -> REVERSE");
                 // 对齐到起点
                 worldX = startX;
                 worldY = startY;
@@ -171,7 +171,7 @@ public class MovingWall extends DynamicObstacle implements PushSource {
         int nx = x + (forward ? dirX : -dirX);
         int ny = y + (forward ? dirY : -dirY);
 
-        debugState("TRY_MOVE next=(" + nx + "," + ny + ")");
+//        debugState("TRY_MOVE next=(" + nx + "," + ny + ")");
 
         Player player = gm.getPlayer();
 
@@ -184,11 +184,11 @@ public class MovingWall extends DynamicObstacle implements PushSource {
             boolean pushed = player.onPushedBy(this, pushDirX, pushDirY, gm);
 
             if (pushed) {
-                debugState("PUSH_PLAYER_SUCCESS");
+//                debugState("PUSH_PLAYER_SUCCESS");
                 startMoveTo(nx, ny);
                 moveCooldown = moveInterval;
             } else {
-                debugState("PUSH_PLAYER_FAIL -> REVERSE");
+//                debugState("PUSH_PLAYER_FAIL -> REVERSE");
                 forward = !forward;
                 moveCooldown = moveInterval;
             }
@@ -197,11 +197,11 @@ public class MovingWall extends DynamicObstacle implements PushSource {
 
         // 正常移动
         if (gm.isObstacleValidMove(nx, ny)) {
-            debugState("MOVE_START (" + nx + "," + ny + ")");
+//            debugState("MOVE_START (" + nx + "," + ny + ")");
             startMoveTo(nx, ny);
             moveCooldown = moveInterval;
         } else {
-            debugState("BLOCKED -> REVERSE");
+//            debugState("BLOCKED -> REVERSE");
             forward = !forward;
             moveCooldown = moveInterval; // 被阻挡时也等待一段时间
         }
@@ -292,18 +292,18 @@ public class MovingWall extends DynamicObstacle implements PushSource {
 
     }
 
-    private void debugState(String tag) {
-        if (!Logger.isDebugEnabled()) return;
-
-        Logger.debug("[MovingWall] " + tag +
-                " | pos=(" + x + "," + y + ")" +
-                " world=(" + String.format("%.2f", worldX) + "," + String.format("%.2f", worldY) + ")" +
-                " target=(" + targetX + "," + targetY + ")" +
-                " forward=" + forward +
-                " dir=(" + dirX + "," + dirY + ")" +
-                " cooldown=" + String.format("%.2f", moveCooldown)
-        );
-    }
+//    private void debugState(String tag) {
+//        if (!Logger.isDebugEnabled()) return;
+//
+//        Logger.debug("[MovingWall] " + tag +
+//                " | pos=(" + x + "," + y + ")" +
+//                " world=(" + String.format("%.2f", worldX) + "," + String.format("%.2f", worldY) + ")" +
+//                " target=(" + targetX + "," + targetY + ")" +
+//                " forward=" + forward +
+//                " dir=(" + dirX + "," + dirY + ")" +
+//                " cooldown=" + String.format("%.2f", moveCooldown)
+//        );
+//    }
 
     @Override
     public RenderType getRenderType() {

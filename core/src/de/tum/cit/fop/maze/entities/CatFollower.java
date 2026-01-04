@@ -49,15 +49,15 @@ public class CatFollower extends GameObject {
     public CatFollower(Player player, GameManager gm) {
         super(player.getX(), player.getY());
         this.player = player;
-
-        // 初始位置：玩家身边
-        this.worldX = player.getX();
-        this.worldY = player.getY();
         this.gm = gm;
 
-        // 你可以之后换成动画 atlas
+        // ⭐ 初始化为玩家连续坐标（和渲染体系对齐）
+        this.worldX = player.getX() + 0.5f;
+        this.worldY = player.getY() + 0.2f;
+
         this.texture = TextureManager.getInstance().getCatTexture();
     }
+
 
     /* ================== Update ================== */
 
@@ -136,23 +136,50 @@ public class CatFollower extends GameObject {
     }
 
     private void moveToward(float targetX, float targetY, float delta, float speed) {
+
         float dx = targetX - worldX;
         float dy = targetY - worldY;
 
         float distSq = dx * dx + dy * dy;
-        if (distSq < 0.001f) return;
+        if (distSq < 0.0001f) return;
 
-        float dist = (float) Math.sqrt(distSq);
+        float dist = (float)Math.sqrt(distSq);
         float step = speed * delta;
 
+        float nextX = worldX;
+        float nextY = worldY;
+
         if (step >= dist) {
-            worldX = targetX;
-            worldY = targetY;
+            nextX = targetX;
+            nextY = targetY;
         } else {
-            worldX += dx / dist * step;
-            worldY += dy / dist * step;
+            nextX += dx / dist * step;
+            nextY += dy / dist * step;
         }
+
+        // ====== ★ 关键：做墙体碰撞检测 ======
+
+        int curGX = (int)(worldX);
+        int curGY = (int)(worldY);
+
+        int nextGX = (int)(nextX);
+        int nextGY = (int)(nextY);
+
+        // 如果跨格子，则检测目标格子是否合法
+        if (nextGX != curGX || nextGY != curGY) {
+
+            // 猫不能穿墙：mazeCell == 1 才能走
+            if (gm.getMazeCell(nextGX, nextGY) != 1) {
+                // 不允许跨进墙，停止本帧移动
+                return;
+            }
+        }
+
+        // ====== ★ 允许移动 ======
+        worldX = nextX;
+        worldY = nextY;
     }
+
 
 
 

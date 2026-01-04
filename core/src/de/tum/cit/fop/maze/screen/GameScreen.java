@@ -17,10 +17,12 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -40,6 +42,7 @@ import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 public class GameScreen implements Screen {
     private Viewport worldViewport;
     private Stage uiStage;
+    private FogSystem fogSystem;
 
 
     private final MazeRunnerGame game;
@@ -85,15 +88,14 @@ public class GameScreen implements Screen {
 //    private final ChapterContext chapterContext;
 
 
-
-
-
-
-
-
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
+        if (difficultyConfig.difficulty == Difficulty.HARD) {
+            fogSystem = new FogSystem();
+        } else {
+            fogSystem = null;
+        }
     }
 
     @Override
@@ -131,6 +133,16 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        // ===== DEBUG TOGGLE (F2) =====
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
+            Logger.toggleDebug();
+        }
+        OrthographicCamera camera = cam.getCamera();
+
+        float camLeft   = camera.position.x - camera.viewportWidth  / 2f;
+        float camBottom = camera.position.y - camera.viewportHeight / 2f;
+        float camWidth  = camera.viewportWidth;
+        float camHeight = camera.viewportHeight;
 
         // ===== DEBUG CAMERA ZOOM =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.F6)) {
@@ -198,6 +210,8 @@ public class GameScreen implements Screen {
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {
             gm.update(delta);
+            if (fogSystem != null) fogSystem.update(delta);
+
         }
 
         /* ================= 清屏 ================= */
@@ -220,9 +234,6 @@ public class GameScreen implements Screen {
             // 计算“真实”经过的游戏时间
             float gameDelta = delta * timeScale;
 
-            // 把变速后的时间传给 gm 和 cam
-            gm.update(gameDelta);
-
             // 注意：这里需要把 gameDelta 传进去，这样相机的跟随速度也会随时间变慢
             cam.update(gameDelta, gm.getPlayer(), gm);
         }
@@ -230,18 +241,7 @@ public class GameScreen implements Screen {
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
         batch.end();
-/* =========================================================
-   玩家脚下传送阵（Portal Effect）
-   ========================================================= */
-        batch.begin();
-        if (gm.getPlayerSpawnPortal() != null) {
-            float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
-            float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
 
-            gm.getPlayerSpawnPortal().renderBack(batch, px, py);
-            gm.getPlayerSpawnPortal().renderFront(batch);
-        }
-        batch.end();
         /* =========================================================
            ② 世界实体排序渲染
            ========================================================= */
@@ -312,6 +312,45 @@ public class GameScreen implements Screen {
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
+/* =========================================================
+   玩家脚下传送阵（Portal Effect）
+   ========================================================= */
+        batch.begin();
+        if (gm.getPlayerSpawnPortal() != null) {
+            float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
+            float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
+
+            gm.getPlayerSpawnPortal().renderBack(batch, px, py);
+            gm.getPlayerSpawnPortal().renderFront(batch);
+        }
+        batch.end();
+// ===== 雾（一定在这里）=====
+        batch.begin();
+        float fogX, fogY;
+
+        CatFollower cat = gm.getCat();
+        if (cat != null) {
+            fogX = cat.getWorldX();
+            fogY = cat.getWorldY();
+        } else {
+            fogX = gm.getPlayer().getWorldX();  // 让雾跟玩家走
+            fogY = gm.getPlayer().getWorldY();
+        }
+
+        if (fogSystem != null) {
+            fogSystem.render(
+                    batch,
+                    camLeft, camBottom, camWidth, camHeight,
+                    gm.getCat() != null ? gm.getCat().getWorldX() : gm.getPlayer().getWorldX(),
+                    gm.getCat() != null ? gm.getCat().getWorldY() : gm.getPlayer().getWorldY()
+            );
+        }
+        batch.end();
+
+
+
+
+
         /* =========================================================
    DEBUG：迷宫范围 / Camera 视野 / MovingWall 位置
    ========================================================= */
@@ -337,17 +376,12 @@ public class GameScreen implements Screen {
             );
 
             /* ===== 2️⃣ Camera 实际可视范围（黄色） ===== */
-            OrthographicCamera camera = cam.getCamera();
-
-            float camLeft   = camera.position.x - camera.viewportWidth  / 2f;
-            float camBottom = camera.position.y - camera.viewportHeight / 2f;
-
             shapeRenderer.setColor(1, 1, 0, 1); // 黄色
             shapeRenderer.rect(
                     camLeft,
                     camBottom,
-                    camera.viewportWidth,
-                    camera.viewportHeight
+                    camWidth,
+                    camHeight
             );
 
             /* ===== 3️⃣ 所有 MovingWall 的 world 位置（蓝色十字） ===== */
@@ -446,10 +480,10 @@ public class GameScreen implements Screen {
         int h = Gdx.graphics.getHeight();
         int thickness = 1000;
 
-        batch.draw(uiTop,    0, h - thickness, w, thickness);
-        batch.draw(uiBottom, 0, 0,             w, thickness);
-        batch.draw(uiLeft,   -50, 0,             thickness+400, h);
-        batch.draw(uiRight,  w - thickness-200, 0, thickness+300, h);
+        batch.draw(uiTop,    0, h - thickness+490, w, thickness-120);
+        batch.draw(uiBottom, 0, 0-300,             w, thickness-120);
+        batch.draw(uiLeft,   -600, 0,             thickness-220, h);
+        batch.draw(uiRight,  w - thickness+810, 0, thickness-220, h);
     }
 
 
