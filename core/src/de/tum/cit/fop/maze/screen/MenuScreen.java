@@ -22,6 +22,8 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.game.Difficulty;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.tools.PerlinNoise;
 
@@ -142,7 +144,10 @@ public class MenuScreen implements Screen {
 
         stage.getViewport().apply();
         batch.setProjectionMatrix(stage.getCamera().combined);
-
+        if (Gdx.input.isKeyJustPressed(Input.Keys.T)) { // 按 T 键跳转 Tutorial
+            // 获取当前游戏的难度配置，如果没有则创建一个默认的
+            game.setScreen(new MazeGameTutorialScreen(game,  DifficultyConfig.of(Difficulty.TUTORIAL)));
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             changeEnabled = !changeEnabled;
         }

@@ -110,14 +110,16 @@ public class MazeRunnerGame extends Game {
 
         spriteBatch = new SpriteBatch();
 
-        TextureAtlas uiAtlas =
-                new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
+        TextureAtlas uiAtlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
+        skin = new Skin(Gdx.files.internal("ui/skinbutton.json"), uiAtlas);
 
-        skin = new Skin(
-                Gdx.files.internal("ui/skinbutton.json"),
-                uiAtlas
-        );
-
+        // ✨ 新增：动态创建一个纯白色像素并放入 Skin
+        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        pixmap.setColor(com.badlogic.gdx.graphics.Color.WHITE);
+        pixmap.fill();
+        com.badlogic.gdx.graphics.Texture whiteTexture = new com.badlogic.gdx.graphics.Texture(pixmap);
+        skin.add("white", new com.badlogic.gdx.graphics.g2d.TextureRegion(whiteTexture));
+        pixmap.dispose(); // 用完 Pixmap 记得销毁
         initializeSoundManager();
         goToMenu();
     }
