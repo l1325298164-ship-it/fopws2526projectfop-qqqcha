@@ -92,3 +92,4 @@ public class FogSystem {
         maskTexture.dispose();
     }
 }
+
