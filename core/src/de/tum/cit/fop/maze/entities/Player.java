@@ -15,7 +15,7 @@ import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
     private static final float VISUAL_SCALE = 2.9f; // ⭐ 1.2 ~ 1.6 都很舒服
-    private static final float ANIM_SPEED_MULTIPLIER = 0.55f; // ⭐ 0.45 ~ 0.65 最舒服
+    private static final float ANIM_SPEED_MULTIPLIER = 0.15f; // ⭐ 0.45 ~ 0.65 最舒服
 //move
 // ===== 连续移动坐标 =====
 private float worldX;
@@ -165,6 +165,9 @@ private boolean damageInvincible = false;
 
     public float getWorldY() {
         return worldY;
+    }
+
+    public float getMaxMana() { return maxMana;
     }
 
 

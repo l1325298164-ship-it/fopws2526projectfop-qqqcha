@@ -41,8 +41,8 @@ public class Compass {
         needleSprite.setOriginCenter();
 
 // 🔥 整体放大
-        baseSprite.setScale(2f);
-        needleSprite.setScale(2f);
+        baseSprite.setScale(2.3f);
+        needleSprite.setScale(2.3f);
 
     }
 
@@ -67,13 +67,13 @@ public class Compass {
     public void drawAsUI(SpriteBatch batch) {
         if (!active || nearestExit == null) return;
 
-        float margin = 20f; // 距离屏幕边缘
+        float margin = 10f; // 距离屏幕边缘
 
         float x = Gdx.graphics.getWidth()
                 - baseSprite.getWidth() * baseSprite.getScaleX()
-                - margin;
+                - margin-60;
 
-        float y = margin;
+        float y = margin+50;
 
         float dx = nearestExit.getX() - player.getX();
         float dy = nearestExit.getY() - player.getY();
@@ -90,8 +90,8 @@ public class Compass {
         baseSprite.draw(batch);
 
 // ===== Needle center（唯一正确的中心点）=====
-        float centerX = x + baseSprite.getWidth() * baseSprite.getScaleX() / 2f-56;
-        float centerY = y + baseSprite.getHeight() * baseSprite.getScaleY() / 2f -78;
+        float centerX = x + baseSprite.getWidth() * baseSprite.getScaleX() / 2f-76;
+        float centerY = y + baseSprite.getHeight() * baseSprite.getScaleY() / 2f -105;
 
 // ===== Needle Shadow =====
         needleSprite.setCenter(centerX + 3f, centerY - 3f);

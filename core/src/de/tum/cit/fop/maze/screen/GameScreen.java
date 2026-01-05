@@ -488,33 +488,37 @@ public class GameScreen implements Screen {
 
 
     private void renderUI() {
+
+        // ===== 1. UI SpriteBatch（HUD / 装饰）=====
         uiStage.getViewport().apply();
         batch.setProjectionMatrix(uiStage.getCamera().combined);
 
         batch.begin();
+
+        // 边框装饰（如果这是 UI 装饰，放这里）
         renderMazeBorderDecorations(batch);
+
+        // HUD 主体（猫 / 心 / Dash / 指南针）
         hud.renderInGameUI(batch);
+
+        // Mana 条（必须在 batch.begin/end 内）
+        hud.renderManaBar(batch);
+
         batch.end();
 
-        hud.renderManaBar();
-
+        // ===== 2. Scene2D UI =====
         uiStage.act(Gdx.graphics.getDeltaTime());
         uiStage.draw();
 
-
-        batch.begin();
-        renderMazeBorderDecorations(batch);
-
-        hud.renderInGameUI(batch);
-        batch.end();
-        hud.renderManaBar();
-
+        // ===== 3. Debug / Console（如果需要）=====
         if (console != null) {
             console.render();
         }
 
+        // ===== 4. 恢复世界相机（非常重要）=====
         batch.setProjectionMatrix(cam.getCamera().combined);
     }
+
 
     @Override
     public void dispose() {
