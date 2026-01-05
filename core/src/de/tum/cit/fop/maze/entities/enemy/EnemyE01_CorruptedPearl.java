@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -20,12 +22,7 @@ public class EnemyE01_CorruptedPearl extends Enemy {
     private boolean isAttacking = false;
     private float attackTimer = 0f;
     protected Animation<TextureRegion> anim;
-    protected float stateTime = 0f;
-    protected Animation<TextureRegion> frontAnim;
-    protected Animation<TextureRegion> backAnim;
-    protected Animation<TextureRegion> leftAnim;
-    protected Animation<TextureRegion> rightAnim;
-    protected Player.Direction direction = Direction.DOWN;
+
     // 攻击节奏（远程怪推荐）
     private static final float ATTACK_WINDUP = 0.25f;   // 蓄力
     private static final float ATTACK_FLASH = 0.08f;    // 开火瞬间
@@ -43,6 +40,7 @@ public class EnemyE01_CorruptedPearl extends Enemy {
         detectRange = 6f;
 
         updateTexture();
+        Logger.debug("E01 constructed, needsTextureUpdate=" + needsTextureUpdate);
     }
     @Override
     public void takeDamage(int dmg) {
@@ -72,62 +70,39 @@ public class EnemyE01_CorruptedPearl extends Enemy {
 
     @Override
     public void drawSprite(SpriteBatch batch) {
-
-
-        if (isAttacking) {
-            // 蓄力：微微变亮
-            if (attackTimer > 0f) {
-                batch.setColor(1f, 1f, 1f, 1f);
-            } else {
-                // 开火瞬间：闪白
-                batch.setColor(1.2f, 1.2f, 1.2f, 1f);
-            }
-        }
-        Animation<TextureRegion> anim;
-
-        switch (direction) {
-            case LEFT -> anim = leftAnim;
-            case RIGHT -> anim = rightAnim;
-            case UP -> anim = backAnim;
-            case DOWN -> anim = frontAnim;
-            default -> anim = rightAnim;
-        }
-
-        TextureRegion frame = anim.getKeyFrame(stateTime, true);
-
-        super.drawSprite(batch);
-
-        // 颜色重置
-        batch.setColor(1f, 1f, 1f, 1f);
+        super.drawSprite(batch); // ✅ 现在是对的
     }
+
+
 
 
     @Override
     protected void updateTexture() {
+        Logger.debug("E01 updateTexture CALLED");
         // 1️⃣ 前（DOWN）
         TextureAtlas frontAtlas =
                 textureManager.getEnemy1AtlasFront();
-
+        Logger.debug("E01 atlas = " + frontAtlas);
         frontAnim = new Animation<>(
                 0.12f,
-                frontAtlas.getRegions(),
+                frontAtlas.findRegions("E01_front"),
                 Animation.PlayMode.LOOP
         );
 
         // 2️⃣ 后（UP）
         TextureAtlas backAtlas =
                 textureManager.getEnemy1AtlasBack();
-
+        Logger.debug("E01 atlas = " + backAtlas);
         backAnim = new Animation<>(
                 0.12f,
-                backAtlas.getRegions(),
+                backAtlas.findRegions("E01_back"),
                 Animation.PlayMode.LOOP
         );
 
         // 3️⃣ 左右（SIDE）
         TextureAtlas sideAtlas =
                 textureManager.getEnemy1AtlasRL();
-
+        Logger.debug("E01 atlas = " + sideAtlas);
         leftAnim = new Animation<>(
                 0.12f,
                 sideAtlas.findRegions("E01_left"),
@@ -244,15 +219,12 @@ public class EnemyE01_CorruptedPearl extends Enemy {
         float dx = player.getX() - x;
         float dy = player.getY() - y;
 
-        EnemyBullet bullet = new EnemyBullet(
-                x + 0.5f,
-                y + 0.5f,
-                dx,
-                dy,
-                attack
+        BobaBullet bullet = new BobaBullet(
+                x + 0.5f, y + 0.5f, dx, dy, attack
         );
 
         gm.spawnProjectile(bullet);
+        Logger.debug("✅ E01 发射 BobaBullet");
     }
 
     private float distanceTo(Player p) {

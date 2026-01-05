@@ -425,6 +425,11 @@ public class TextureManager implements Disposable {
     }
 
     public TextureAtlas getEnemy1AtlasRL() {
+        Logger.debug("Getting E01 Atlas LR: " + (E01AtlasLR != null));
+        if (E01AtlasLR == null) {
+            Logger.error("E01AtlasLR is null! Attempting to reload...");
+            loadE01Atlas();
+        }
         return E01AtlasLR;
     }
     public TextureAtlas getEnemy1AtlasFront() {
