@@ -444,33 +444,45 @@ public class GameScreen implements Screen {
         root.setFillParent(true);
         pauseStage.addActor(root);
 
-        root.add(new Label("PAUSED", game.getSkin(), "title"))
-                .padBottom(40).row();
+        // 1. 分数：放在屏幕正上方
+        Label scoreLabel = new Label("SCORE: " + gm.getScore(), game.getSkin(), "title");
+        scoreLabel.setFontScale(1.0f);
+        root.add(scoreLabel).colspan(4).padTop(60).expandY().top().row();
 
+        // 2. 按钮区域：横向排列
+        Table buttonTable = new Table();
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 
-        root.add(bf.create("continue", this::togglePause))
-                .width(400).height(80).padBottom(20).row();
+        // 统一设置按钮尺寸。
+        // 因为文字较多，我们将宽度从 300 增加到 350
+        float btnW = 350;
+        float btnH = 90;
+        float padding = 15;
 
-        root.add(bf.create("SETTINGS", () -> {
-                    // TODO: 打开设置界面（之后单独做）
+        // CONTINUE
+        buttonTable.add(bf.create("CONTINUE", this::togglePause))
+                .width(btnW).height(btnH).pad(padding);
+
+        // RESET (新加入)
+        buttonTable.add(bf.create("RESET MAZE", () -> {
+                    game.resetMaze(difficultyConfig.difficulty); // 调用你 MazeRunnerGame 里的开始新游戏逻辑
                 }))
-                .width(400).height(80).padBottom(20).row();
+                .width(btnW).height(btnH).pad(padding);
 
-        root.add(bf.create("BACK TO MENU", () -> {
+        // SETTINGS
+        buttonTable.add(bf.create("SETTINGS", () -> { /* TODO */ }))
+                .width(btnW).height(btnH).pad(padding);
+
+        // BACK TO MENU (增加宽度以容纳文字)
+        buttonTable.add(bf.create("MENU", () -> {
                     game.goToMenu();
                 }))
-                .width(400).height(80).padBottom(40).row();
+                .width(btnW).height(btnH).pad(padding);
 
-        root.add(new Label(
-                "Score: " + gm.getScore(),
-                game.getSkin()
-        ));
+        // 将整排按钮居中显示
+        root.add(buttonTable).expandY().center();
 
         pauseUIInitialized = true;
-        if (game.hasRunningGame()) {
-            root.add(bf.create("RESET the MAZE", game::resumeGame));
-        }
     }
 
 

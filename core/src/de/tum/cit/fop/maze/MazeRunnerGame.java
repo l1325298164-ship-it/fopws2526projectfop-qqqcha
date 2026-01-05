@@ -334,4 +334,27 @@ public class MazeRunnerGame extends Game {
         if (audioManager != null) audioManager.dispose();
         TextureManager.getInstance().dispose();
     }
+
+
+/* =========================
+   Game Logic / Reset
+   ========================= */
+
+    /**
+     * 专门用于在游戏过程中快速重置当前关卡，不跑剧情，不显示 StoryLoading
+     */
+    public void resetMaze(Difficulty difficulty) {
+        Logger.debug("Resetting maze without story flow, difficulty: " + difficulty);
+
+        // 1. 重新生成配置和管理器
+        this.difficultyConfig = DifficultyConfig.of(difficulty);
+        this.gameManager = new GameManager(this.difficultyConfig);
+
+        // 2. 清理旧的 Screen 引用
+        this.activeGameScreen = null;
+
+        // 3. 直接进入 GameScreen
+        // 注意：这里不需要设置 StoryStage，因为我们只是在“重玩”当前阶段
+        setScreen(new GameScreen(this, difficultyConfig));
+    }
 }
