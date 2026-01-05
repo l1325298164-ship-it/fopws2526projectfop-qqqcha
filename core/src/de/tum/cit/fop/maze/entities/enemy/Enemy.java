@@ -44,6 +44,10 @@ public abstract class Enemy extends GameObject {
     protected Animation<TextureRegion> backAnim;
     protected Animation<TextureRegion> leftAnim;
     protected Animation<TextureRegion> rightAnim;
+    protected Animation<TextureRegion> singleAnim;  // 用于单动画敌人
+    protected float animTime = 0f;  // 动画时间
+
+
     protected Direction direction = Direction.DOWN;
     protected boolean isMoving = false;
     protected float targetX;
@@ -146,8 +150,13 @@ public abstract class Enemy extends GameObject {
     public void drawSprite(SpriteBatch batch) {
         if (!active) return;
 
-        // 如果有动画，就优先画动画
-        if (hasAnimation()) {
+        // 🔥 优先级：单动画 > 四方向动画 > 静态贴图
+        if (hasSingleAnimation()) {
+            drawSingleAnimation(batch);
+            return;
+        }
+
+        if (hasFourDirectionAnimation()) {
             drawAnimated(batch);
             return;
         }
@@ -156,11 +165,54 @@ public abstract class Enemy extends GameObject {
         drawStatic(batch);
     }
 
-    protected boolean hasAnimation() {
+    boolean hasSingleAnimation() {
+        return singleAnim != null;
+    }
+
+    protected boolean hasFourDirectionAnimation() {
         return leftAnim != null || rightAnim != null
                 || frontAnim != null || backAnim != null;
     }
+    protected void drawSingleAnimation(SpriteBatch batch) {
+        if (singleAnim == null) {
+            Logger.error("单动画为空，回退静态渲染");
+            drawStatic(batch);
+            return;
+        }
 
+        TextureRegion frame = singleAnim.getKeyFrame(animTime, true);
+
+        if (frame == null) {
+            Logger.error("单动画帧为空");
+            drawStatic(batch);
+            return;
+        }
+
+        float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
+        float scale = baseScale * size;  // 使用敌人的 size 属性
+
+        float drawW = frame.getRegionWidth() * scale;
+        float drawH = frame.getRegionHeight() * scale;
+
+        // 🔥 居中绘制（对于小尺寸敌人很重要）
+        float drawX = x * GameConstants.CELL_SIZE +
+                GameConstants.CELL_SIZE / 2f - drawW / 2f;
+        float drawY = y * GameConstants.CELL_SIZE +
+                GameConstants.CELL_SIZE / 2f - drawH / 2f;
+
+        // 🔥 受击闪烁效果
+        if (isHitFlash) {
+            float flashAlpha = 0.5f + 0.5f * (float) Math.sin(hitFlashTimer * 20f);
+            batch.setColor(1, 1, 1, flashAlpha);
+        }
+
+        batch.draw(frame, drawX, drawY, drawW, drawH);
+
+        // 恢复颜色
+        if (isHitFlash) {
+            batch.setColor(1, 1, 1, 1);
+        }
+    }
     protected void drawAnimated(SpriteBatch batch) {
         Logger.debug("Drawing animated enemy. Direction: " + direction +
                 ", has animations - left: " + (leftAnim != null) +
@@ -317,4 +369,16 @@ public abstract class Enemy extends GameObject {
     public boolean isDead() {
         return !active;
     }
+
+
+    // 🔥 添加获取世界坐标的方法
+    public float getWorldX() {
+        return worldX;
+    }
+
+    public float getWorldY() {
+        return worldY;
+    }
+
+
 }

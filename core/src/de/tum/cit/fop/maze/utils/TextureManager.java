@@ -60,13 +60,21 @@ public class TextureManager implements Disposable {
     private TextureAtlas E01AtlasLR;
     private TextureAtlas E01AtlasFront;
     private TextureAtlas E01AtlasBack;
-
+    private TextureAtlas E02Atlas;
+    private TextureAtlas E03Atlas;
+    private TextureAtlas E04Atlas;
+    private TextureAtlas T01Atlas;
+    private TextureAtlas T02Atlas;
+    private TextureAtlas T03Atlas;
+    private TextureAtlas T04Atlas;
+    private TextureAtlas chipAtlas;
 
     private TextureManager() {
         textures = new HashMap<>();
         textureFileMap = new HashMap<>();
         loadWallAtlas();
         loadE01Atlas();
+        loadE02_T04Atlas();
 
 
         // 初始化各模式的图片映射
@@ -75,13 +83,21 @@ public class TextureManager implements Disposable {
         Logger.debug("TextureManager initialized, mode: " + currentMode);
     }
 
+    private void loadE02_T04Atlas() {
+        E02Atlas=new TextureAtlas(Gdx.files.internal("ani/E02/E02.atlas"));
+        E03Atlas=new TextureAtlas(Gdx.files.internal("ani/E03/E03.atlas"));
+        E04Atlas=new TextureAtlas(Gdx.files.internal("ani/E04/E04.atlas"));
+        T01Atlas=new TextureAtlas(Gdx.files.internal("ani/T01/T01.atlas"));
+        T02Atlas=new TextureAtlas(Gdx.files.internal("ani/T02/T02.atlas"));
+        T03Atlas=new TextureAtlas(Gdx.files.internal("ani/T03/T03.atlas"));
+        T04Atlas=new TextureAtlas(Gdx.files.internal("ani/T04/T04.atlas"));
+        chipAtlas=new TextureAtlas(Gdx.files.internal("ani/chip/chip.atlas"));
+    }
+
     private void loadE01Atlas() {
         E01AtlasLR=new TextureAtlas(Gdx.files.internal("ani/E01/E01.atlas"));
         E01AtlasFront=new TextureAtlas(Gdx.files.internal("ani/E01/front/E01_front.atlas"));
         E01AtlasBack=new TextureAtlas(Gdx.files.internal("ani/E01/back/E01_back.atlas"));
-
-
-
     }
 
 
@@ -437,5 +453,29 @@ public class TextureManager implements Disposable {
     }
     public TextureAtlas getEnemy1AtlasBack() {
         return E01AtlasBack;
+    }
+    public TextureAtlas getEnemyE02Atla() {
+        return E02Atlas;
+    }
+    public TextureAtlas getEnemyE03Atla() {
+        return E03Atlas;
+    }
+    public TextureAtlas getEnemyE04Atlas() {
+        return E04Atlas;
+    }
+    public TextureAtlas getTrapT01Atlas() {
+        return T01Atlas;
+    }
+    public TextureAtlas getTrapT021Atlas() {
+        return T02Atlas;
+    }
+    public TextureAtlas getTrapT03Atlas() {
+        return T03Atlas;
+    }
+    public TextureAtlas getTrapT04Atlas() {
+        return T04Atlas;
+    }
+    public TextureAtlas getTrapChipAtlas() {
+        return chipAtlas;
     }
 }
