@@ -26,6 +26,7 @@ import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.tools.PerlinNoise;
+import de.tum.cit.fop.maze.game.Difficulty;
 
 public class MenuScreen implements Screen {
 

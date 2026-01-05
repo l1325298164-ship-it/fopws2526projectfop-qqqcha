@@ -62,7 +62,7 @@ public class MazeRunnerGame extends Game {
     }
 
     public GameManager getGameManager() {
-        return  gameManager;
+        return gameManager;
     }
 
     public void startNewGame(Difficulty difficulty) {
@@ -71,18 +71,28 @@ public class MazeRunnerGame extends Game {
         // 🔥 创建配置 - 根据难度调整生命值
         this.difficultyConfig = createDifficultyConfig(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig);
-
-        // ⚠️ 新游戏必须清掉旧的运行态
         this.activeGameScreen = null;
 
-        // 🔥 修改：如果是无尽模式，直接进入游戏
         if (difficulty == Difficulty.ENDLESS) {
             System.out.println("🎮 直接进入无尽模式");
-            setScreen(new EndlessScreen(this, difficultyConfig));
-            return; // 直接返回，不进入剧情流程
+
+            // 清理可能存在的旧屏幕
+            if (getScreen() != null) {
+                System.out.println("清理旧屏幕: " + getScreen().getClass().getSimpleName());
+                getScreen().hide();
+            }
+
+            // 创建新的无尽模式屏幕
+            EndlessScreen endlessScreen = new EndlessScreen(this, difficultyConfig);
+            setScreen(endlessScreen);
+
+            // 立即验证
+            System.out.println("✅ 当前屏幕: " +
+                    (getScreen() != null ? getScreen().getClass().getSimpleName() : "null"));
+            return;
         }
 
-        // 否则，从剧情开头开始（或你想直接进游戏也可以）
+        // 否则，从剧情开头开始
         this.stage = StoryStage.STORY_BEGIN;
         setScreen(new StoryLoadingScreen(this));
     }
@@ -96,7 +106,7 @@ public class MazeRunnerGame extends Game {
         if (difficulty == Difficulty.ENDLESS) {
             // 创建一个新的配置对象，继承无尽模式的设置但生命值为200
             return new DifficultyConfig(
-                    40, 40, 0,           // 地图
+                    40, 40, 0,           // 地图（0钥匙）
                     1, 1, 1,            // 敌人
                     10, 5, 3, 2,        // 陷阱
                     200,                // 🔥 生命值改为200
@@ -129,6 +139,10 @@ public class MazeRunnerGame extends Game {
 
     @Override
     public void create() {
+        System.out.println("🎮 MazeRunnerGame.create() 开始");
+        System.out.println("   Gdx版本: " + Gdx.app.getVersion());
+        System.out.println("   图形尺寸: " + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
+
         MazeRunnerGameHolder.init(this); // ⭐ 必须最先
         assets = new AssetManager();   // ⭐ 全局唯一
         difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
@@ -146,6 +160,31 @@ public class MazeRunnerGame extends Game {
 
         initializeSoundManager();
         goToMenu();
+    }
+
+    // 🔥 添加：调试版本的 setScreen 方法
+    @Override
+    public void setScreen(Screen screen) {
+        String oldScreen = getScreen() != null ? getScreen().getClass().getSimpleName() : "null";
+        String newScreen = screen != null ? screen.getClass().getSimpleName() : "null";
+
+        System.out.println("=== 屏幕切换 ===");
+        System.out.println("   从: " + oldScreen);
+        System.out.println("   到: " + newScreen);
+
+        // 如果是切换到 GameScreen 且当前是 EndlessScreen，打印调用栈
+        if (oldScreen.contains("EndlessScreen") && newScreen.contains("GameScreen")) {
+            System.out.println("⚠️ 警告：EndlessScreen 被 GameScreen 替换！");
+            System.out.println("   调用栈:");
+            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+            for (int i = 2; i < Math.min(stackTrace.length, 8); i++) {
+                System.out.println("      " + stackTrace[i].getClassName() +
+                        "." + stackTrace[i].getMethodName() +
+                        ":" + stackTrace[i].getLineNumber());
+            }
+        }
+
+        super.setScreen(screen);
     }
 
     /* =========================
@@ -280,11 +319,19 @@ public class MazeRunnerGame extends Game {
        ========================= */
 
     public void goToMenu() {
+        System.out.println("🔄 goToMenu() 被调用");
+
+        // 如果当前在无尽模式，需要特殊处理
+        if (getScreen() instanceof EndlessScreen) {
+            System.out.println("   当前在无尽模式，正常返回菜单");
+        }
+
         Screen old = getScreen();
         resetGameState();
         setScreen(new MenuScreen(this));
         if (old != null) old.dispose();
     }
+
     public void exitGame() {
         // 先做必要清理
         dispose();
@@ -295,7 +342,17 @@ public class MazeRunnerGame extends Game {
         // ⚠️ 桌面端保险（防止某些 IDE 卡住）
         System.exit(0);
     }
+
     public void goToGame() {
+        System.out.println("⚠️ goToGame() 被调用！");
+        System.out.println("   当前屏幕: " + (getScreen() != null ? getScreen().getClass().getSimpleName() : "null"));
+
+        // 如果当前已经在无尽模式，不要切换到 GameScreen
+        if (getScreen() instanceof EndlessScreen) {
+            System.out.println("❌ 阻止：当前已在无尽模式，不切换到 GameScreen");
+            return;
+        }
+
         if (difficultyConfig == null) {
             difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
             gameManager = new GameManager(difficultyConfig);
@@ -353,6 +410,7 @@ public class MazeRunnerGame extends Game {
 
     @Override
     public void dispose() {
+        System.out.println("🗑️ MazeRunnerGame.dispose()");
         if (spriteBatch != null) spriteBatch.dispose();
         if (skin != null) skin.dispose();
         if (audioManager != null) audioManager.dispose();

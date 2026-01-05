@@ -78,7 +78,7 @@ public class DifficultyConfig {
                     0, 0, 0, 0,
 
                     /* 战斗 */
-                    5,
+                    200,
                     0.7f,
                     0.6f,
                     2
@@ -95,7 +95,7 @@ public class DifficultyConfig {
                     2, 1, 1, 10,
 
                     /* 战斗 */
-                    3,
+                    200,
                     1.0f,
                     1.0f,
                     1
@@ -112,7 +112,7 @@ public class DifficultyConfig {
                     4, 3, 3, 20,
 
                     /* 战斗 */
-                    2,
+                    200,
                     1.4f,
                     1.3f,
                     1
