@@ -379,6 +379,10 @@ public abstract class Enemy extends GameObject {
     public float getWorldY() {
         return worldY;
     }
+    protected boolean hasAnimation() {
+        return hasSingleAnimation() || hasFourDirectionAnimation();
+    }
+
 
 
 }
