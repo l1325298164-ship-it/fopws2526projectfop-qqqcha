@@ -165,7 +165,7 @@ public abstract class Enemy extends GameObject {
         drawStatic(batch);
     }
 
-    private boolean hasSingleAnimation() {
+    boolean hasSingleAnimation() {
         return singleAnim != null;
     }
 
@@ -369,4 +369,16 @@ public abstract class Enemy extends GameObject {
     public boolean isDead() {
         return !active;
     }
+
+
+    // 🔥 添加获取世界坐标的方法
+    public float getWorldX() {
+        return worldX;
+    }
+
+    public float getWorldY() {
+        return worldY;
+    }
+
+
 }
