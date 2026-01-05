@@ -10,7 +10,6 @@ import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
-import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.EnemyCorruptedBoba;
 import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
@@ -592,7 +591,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private void generateEnemies() {
         for (int i = 0; i < difficultyConfig.enemyE01PearlCount; i++) {
             int[] p = randomEmptyCell();
-            enemies.add(new EnemyCorruptedBoba(p[0], p[1]));
+            enemies.add(new EnemyE01_CorruptedPearl(p[0], p[1]));
+            Logger.debug("创建动画珍珠敌人 #" + (i+1));
         }
 
         for (int i = 0; i < difficultyConfig.enemyE02CoffeeBeanCount; i++) {

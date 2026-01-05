@@ -37,8 +37,6 @@ import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.*;
 
-import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
-
 public class GameScreen implements Screen {
     private Viewport worldViewport;
     private Stage uiStage;

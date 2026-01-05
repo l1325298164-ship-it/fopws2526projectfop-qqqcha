@@ -2,7 +2,9 @@ package de.tum.cit.fop.maze.entities.enemy;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
@@ -21,6 +23,7 @@ public abstract class Enemy extends GameObject {
     protected float worldY;
 
     /* ================= 属性 ================= */
+    protected float stateTime = 0f;
 
     protected int hp;
     public int attack;
@@ -37,7 +40,11 @@ public abstract class Enemy extends GameObject {
     protected float size = 1.0f;
 
     /* ================= 移动状态 ================= */
-
+    protected Animation<TextureRegion> frontAnim;
+    protected Animation<TextureRegion> backAnim;
+    protected Animation<TextureRegion> leftAnim;
+    protected Animation<TextureRegion> rightAnim;
+    protected Direction direction = Direction.DOWN;
     protected boolean isMoving = false;
     protected float targetX;
     protected float targetY;
@@ -89,6 +96,9 @@ public abstract class Enemy extends GameObject {
         this.worldX = x;
         this.worldY = y;
         textureManager = TextureManager.getInstance();
+        needsTextureUpdate = true;
+        texture = null; // ⬅️ 非常重要
+
     }
 
     /* ================= 抽象 ================= */
@@ -129,40 +139,71 @@ public abstract class Enemy extends GameObject {
     }
 
     /* ================= 渲染 ================= */
-
+    public enum Direction {
+        UP, DOWN, LEFT, RIGHT
+    }
     @Override
     public void drawSprite(SpriteBatch batch) {
         if (!active) return;
 
-        if (needsTextureUpdate) {
-            updateTexture();
+        // 如果有动画，就优先画动画
+        if (hasAnimation()) {
+            drawAnimated(batch);
+            return;
         }
 
-        Texture tex = (texture != null)
-                ? texture
-                : TextureManager.getInstance().getColorTexture(Color.PURPLE);
+        // 否则回退到旧贴图（兼容老怪）
+        drawStatic(batch);
+    }
 
-        if (isHitFlash && hitFlashTimer % 0.1f > 0.05f) {
-            batch.setColor(1f, 1f, 1f, 0.6f);
-        } else {
-            batch.setColor(1f, 1f, 1f, 1f);
+    protected boolean hasAnimation() {
+        return leftAnim != null || rightAnim != null
+                || frontAnim != null || backAnim != null;
+    }
+
+    protected void drawAnimated(SpriteBatch batch) {
+        Logger.debug("Drawing animated enemy. Direction: " + direction +
+                ", has animations - left: " + (leftAnim != null) +
+                ", right: " + (rightAnim != null) +
+                ", front: " + (frontAnim != null) +
+                ", back: " + (backAnim != null));
+        Animation<TextureRegion> anim;
+
+        switch (direction) {
+            case LEFT -> anim = leftAnim;
+            case RIGHT -> anim = rightAnim;
+            case UP -> anim = backAnim;
+            case DOWN -> anim = frontAnim;
+            default -> anim = rightAnim;
         }
 
-        float cell = GameConstants.CELL_SIZE;
-        float drawSize = cell * size;
+        if (anim == null){  Logger.error("Current animation is NULL! Falling back to static.");return;};
 
-// 居中对齐（关键）
-        float drawX = worldX * cell + (cell - drawSize) * 0.5f;
-        float drawY = worldY * cell + (cell - drawSize) * 0.5f;
+        TextureRegion frame = anim.getKeyFrame(stateTime, true);
 
-        batch.draw(
-                tex,
-                drawX,
-                drawY,
-                drawSize,
-                drawSize
+        float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
+        float scale = baseScale * 2.5f;
+
+        float drawW = frame.getRegionWidth() * scale;
+        float drawH = frame.getRegionHeight() * scale;
+
+        float drawX = x * GameConstants.CELL_SIZE
+                + GameConstants.CELL_SIZE / 2f - drawW / 2f;
+        float drawY = y * GameConstants.CELL_SIZE;
+
+        batch.draw(frame, drawX, drawY, drawW, drawH);
+    }
+
+    protected void drawStatic(SpriteBatch batch) {
+        if (texture == null) return;
+
+        float size = GameConstants.CELL_SIZE;
+        batch.draw(texture,
+                x * size,
+                y * size,
+                size,
+                size
         );
-
     }
 
     /* ================= 连续移动（安全版） ================= */
