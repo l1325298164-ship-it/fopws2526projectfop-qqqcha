@@ -22,6 +22,7 @@ import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
+import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -261,6 +262,21 @@ public class GameScreen implements Screen {
         // 🔥 修复：为所有实体集合创建防御性副本
         List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
         enemiesCopy.forEach(e -> items.add(new Item(e, 50)));
+
+        List<Trap> trapsCopy = new ArrayList<>(gm.getTraps());
+        Logger.debug("准备渲染陷阱数量: " + trapsCopy.size());
+        trapsCopy.forEach(t -> {
+            if (t.isActive()) {
+                // 检查陷阱是否实现了GameObject接口
+                if (t instanceof GameObject) {
+                    items.add(new Item((GameObject)t, 45)); // 优先级45
+                    Logger.debug("添加陷阱到渲染列表: " + t.getClass().getSimpleName() +
+                            " at (" + t.getX() + "," + t.getY() + ")");
+                } else {
+                    Logger.warning("陷阱 " + t.getClass().getSimpleName() + " 没有实现GameObject接口");
+                }
+            }
+        });
 
         // 再次使用 exitDoorsCopy（而不是原始集合）
         exitDoorsCopy.forEach(d -> items.add(new Item(d, 45)));

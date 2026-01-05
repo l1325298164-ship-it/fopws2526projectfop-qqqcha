@@ -38,15 +38,24 @@ public class TrapT01_Geyser extends Trap {
     private Array<TextureAtlas.AtlasRegion> frames;
     private int totalFrames = 0;
 
+
+
     public TrapT01_Geyser(int x, int y, float cycleDuration) {
         super(x, y);
 
         Logger.debug("=== T01 地热喷口创建于 (" + x + "," + y + ") ===");
+        Logger.debug("IDLE: " + idleDuration + "s, WARNING: " + warningDuration + "s");
+        Logger.debug("ERUPT: " + eruptDuration + "s, COOLDOWN: " + cooldownDuration + "s");
 
-        // 加载动画资源
         loadAnimation();
-    }
 
+        // 确认加载结果
+        if (frames != null && frames.size > 0) {
+            Logger.debug("✅ T01 准备就绪，动画帧数: " + frames.size);
+        } else {
+            Logger.warning("⚠️ T01 没有动画帧，将使用回退渲染");
+        }
+    }
     // 🔥 加载动画资源
     private void loadAnimation() {
         try {
@@ -212,29 +221,30 @@ public class TrapT01_Geyser extends Trap {
     @Override
     public void drawSprite(SpriteBatch batch) {
         if (!active) return;
-
-        // 🔥 安全检查
-        if (frames == null || frames.size == 0) {
-            // 没有动画帧，回退到形状渲染
-            return;
-        }
+        if (frames == null || frames.size == 0) return;
 
         int frameIndex = getFrameIndex();
-
-        // 🔥 确保索引有效
         if (frameIndex < 0 || frameIndex >= frames.size) {
-            Logger.warning("T01 帧索引无效: " + frameIndex + " / " + frames.size);
             frameIndex = MathUtils.clamp(frameIndex, 0, frames.size - 1);
         }
 
         TextureRegion frame = frames.get(frameIndex);
-
-        if (frame == null) {
-            Logger.warning("T01 帧为空: " + frameIndex);
-            return;
-        }
+        if (frame == null) return;
 
         float size = GameConstants.CELL_SIZE;
+
+        // 🔥 竖向放大参数（可调整）
+        float verticalScale = 3.5f; // 竖向放大1.5倍
+        float horizontalScale = 3.0f; // 横向保持原样
+
+        // 🔥 计算渲染尺寸
+        float renderWidth = size * horizontalScale;
+        float renderHeight = size * verticalScale;
+
+        // 🔥 计算位置：底部对齐，水平居中
+        // 这样喷口看起来是从地面向上延伸
+        float offsetX = (size - renderWidth) / 2f;
+        float offsetY = 0; // 底部对齐
 
         // 🔥 喷发时添加闪烁效果
         if (state == State.ERUPTING) {
@@ -242,12 +252,35 @@ public class TrapT01_Geyser extends Trap {
             batch.setColor(1f, pulse, pulse, 1f);
         }
 
+        // 🔥 根据状态调整竖向放大倍数
+        switch (state) {
+            case IDLE:
+                // 待机状态稍小一些
+                renderHeight = size * 1.2f;
+                break;
+            case WARNING:
+                // 警告状态开始变大
+                renderHeight = size * 1.8f;
+                break;
+            case ERUPTING:
+                // 喷发状态最大
+                renderHeight = size * 2.0f;
+                break;
+            case COOLDOWN:
+                // 冷却状态恢复
+                renderHeight = size * 1.3f;
+                break;
+        }
+
+        // 重新计算Y偏移（保持底部对齐）
+        offsetY = 0;
+
         batch.draw(
                 frame,
-                x * size,
-                y * size,
-                size,
-                size
+                x * size + offsetX,
+                y * size + offsetY,
+                renderWidth,
+                renderHeight
         );
 
         // 🔥 恢复颜色
@@ -257,9 +290,9 @@ public class TrapT01_Geyser extends Trap {
 
         // 🔥 调试信息
         if (Logger.isDebugEnabled()) {
-            Logger.debug("T01 渲染: 状态=" + state +
-                    ", 帧=" + frameIndex + "/" + frames.size +
-                    ", 时间=" + String.format("%.2f", timer));
+            Logger.debug("T01渲染: 状态=" + state +
+                    " 尺寸=" + renderWidth + "x" + renderHeight +
+                    " 位置=(" + (x * size + offsetX) + "," + (y * size + offsetY) + ")");
         }
     }
 
@@ -269,15 +302,5 @@ public class TrapT01_Geyser extends Trap {
         return (frames != null && frames.size > 0) ? RenderType.SPRITE : RenderType.SHAPE;
     }
 
-    // 🔥 清理资源
-    public void dispose() {
-        if (atlas != null) {
-            atlas.dispose();
-            atlas = null;
-        }
-        if (frames != null) {
-            frames.clear();
-            frames = null;
-        }
-    }
+
 }

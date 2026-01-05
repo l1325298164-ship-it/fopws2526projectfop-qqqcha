@@ -2,7 +2,7 @@ package de.tum.cit.fop.maze.utils;
 
 public class Logger {
 
-    private static boolean DEBUG_ENABLED = false;   // 默认关闭
+    private static boolean DEBUG_ENABLED = true;   // 默认关闭
 
     public static void toggleDebug() {
         DEBUG_ENABLED = !DEBUG_ENABLED;

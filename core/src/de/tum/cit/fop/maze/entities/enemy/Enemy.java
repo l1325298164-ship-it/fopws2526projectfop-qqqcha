@@ -214,11 +214,7 @@ public abstract class Enemy extends GameObject {
         }
     }
     protected void drawAnimated(SpriteBatch batch) {
-        Logger.debug("Drawing animated enemy. Direction: " + direction +
-                ", has animations - left: " + (leftAnim != null) +
-                ", right: " + (rightAnim != null) +
-                ", front: " + (frontAnim != null) +
-                ", back: " + (backAnim != null));
+
         Animation<TextureRegion> anim;
 
         switch (direction) {

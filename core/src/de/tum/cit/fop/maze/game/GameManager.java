@@ -141,7 +141,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionInProgress = false;
         currentExitDoor = null;
         levelTransitionTimer = 0f;
+        // 🔥 测试：强制在玩家旁边创建一个T01陷阱
+        int testX = player.getX() + 1;
+        int testY = player.getY();
 
+        System.out.println("🔥🔥🔥 创建测试陷阱在玩家旁边: (" + testX + "," + testY + ")");
+        Trap testTrap = new TrapT01_Geyser(testX, testY, 2.0f);
+        traps.add(testTrap);
         Logger.gameEvent("Game reset complete");
     }
 
@@ -197,6 +203,22 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (fogSystem != null) {
             fogSystem.update(delta);
         }
+
+        // ===== 🔥 新增：更新陷阱 =====
+        for (Trap trap : traps) {
+            if (trap.isActive()) {
+                trap.update(delta);
+
+                // 🔥 调试：输出T01陷阱状态
+                if (trap instanceof TrapT01_Geyser) {
+                    Logger.debug("T01陷阱更新: 位置(" + trap.getX() + "," + trap.getY() + ")");
+                }
+            }
+        }
+
+
+
+
         // ===== 修复: 使用 Iterator 遍历敌人，避免并发修改异常 =====
         Iterator<Enemy> enemyIterator = enemies.iterator();
         while (enemyIterator.hasNext()) {
@@ -230,7 +252,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (keyEffectManager != null) {
             keyEffectManager.update(delta);
         }
-
+        handlePlayerTrapInteraction();
         handleKeyLogic();
 
         // ===== 🔥 统一重置执行点 =====
@@ -238,6 +260,27 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             pendingReset = false;
             resetGame();
             justReset = true;
+        }
+    }
+
+    private void handlePlayerTrapInteraction() {
+        if (levelTransitionInProgress || player == null || player.isDead()) return;
+
+        int px = player.getX();
+        int py = player.getY();
+
+        for (Trap trap : traps) {
+            if (!trap.isActive()) continue;
+
+            // 检查玩家是否在陷阱上
+            if (trap.getX() == px && trap.getY() == py) {
+                trap.onPlayerStep(player);
+
+                // 🔥 调试：输出陷阱交互
+                if (trap instanceof TrapT01_Geyser) {
+                    Logger.debug("玩家在T01陷阱上: 位置(" + px + "," + py + ")");
+                }
+            }
         }
     }
     private void updateCompass() {
