@@ -10,33 +10,33 @@ public class PackPV {
 
         Settings settings = new Settings();
 
-        // === atlas 最大尺寸 ===
-        settings.maxWidth = 4096;
-        settings.maxHeight = 4096;
+        // === ⭐ 新增：自动缩小比例 ⭐ ===
+        // 1248 * 0.25 = 312 像素，非常完美
+        settings.scale = new float[]{1f};
 
-        // === ⭐⭐⭐ 核心修复：禁止旋转 ⭐⭐⭐ ===
+        // === 因为缩小了，最大尺寸也可以调小了 ===
+        // 1024x1024 足够装下缩小后的 9 帧
+        settings.maxWidth = 1024;
+        settings.maxHeight = 1024;
+
+        // === 其余保持不变 ===
         settings.rotation = false;
-
-        // === 推荐设置 ===
         settings.filterMin = TextureFilter.Linear;
         settings.filterMag = TextureFilter.Linear;
-
         settings.alias = false;
-
-        // 防止裁剪透明边（坐标更直观）
         settings.stripWhitespaceX = false;
         settings.stripWhitespaceY = false;
 
         String root = System.getProperty("user.dir");
-        System.out.println("Working dir = " + root);
 
+        // 执行打包（记得把路径改成你小猫素材的路径）
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/pv/4",
-                root + "/assets/pv/4",
-                "PV_4"
+                root + "/assets_raw/ani/characters/cat/nokey", // 假设你的大猫原图在这里
+                root + "/assets/Character/cat", // 输出到 assets
+                "cat"                // 输出文件名
         );
 
-        System.out.println("PV atlas packed successfully.");
+        System.out.println("Cat atlas packed successfully with 0.25x scale.");
     }
 }

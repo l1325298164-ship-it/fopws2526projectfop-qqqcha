@@ -14,7 +14,8 @@ import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
-
+    private static final float VISUAL_SCALE = 2.9f; // ⭐ 1.2 ~ 1.6 都很舒服
+    private static final float ANIM_SPEED_MULTIPLIER = 0.15f; // ⭐ 0.45 ~ 0.65 最舒服
 //move
 // ===== 连续移动坐标 =====
 private float worldX;
@@ -166,6 +167,9 @@ private boolean damageInvincible = false;
         return worldY;
     }
 
+    public float getMaxMana() { return maxMana;
+    }
+
 
 
 
@@ -232,7 +236,7 @@ private boolean damageInvincible = false;
         }
         // ===== 动画 =====
         float animationSpeed = 1f / getMoveDelayMultiplier();
-        stateTime += delta * animationSpeed;
+        stateTime += delta * animationSpeed * ANIM_SPEED_MULTIPLIER;
 
         if (!isMovingAnim) stateTime = 0f;
         isMovingAnim = false;
@@ -478,9 +482,11 @@ private boolean damageInvincible = false;
 
         TextureRegion frame = anim.getKeyFrame(stateTime, true);
 
-        float scale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
-        float drawW = frame.getRegionWidth() * scale + 10;
-        float drawH = GameConstants.CELL_SIZE + 10;
+        float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
+        float scale = baseScale * VISUAL_SCALE;
+
+        float drawW = frame.getRegionWidth() * scale;
+        float drawH = frame.getRegionHeight() * scale;
 
         float drawX = worldX * GameConstants.CELL_SIZE
                 + GameConstants.CELL_SIZE / 2f - drawW / 2f;

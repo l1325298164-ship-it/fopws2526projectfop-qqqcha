@@ -5,8 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.*;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import de.tum.cit.fop.maze.abilities.Ability;
@@ -23,7 +22,6 @@ public class HUD {
     private BitmapFont font;
     private GameManager gameManager;
     private TextureManager textureManager;
-    private SpriteBatch uiBatchForCompass;
     // ❤ 生命值贴图
     private Texture heartFull;   // live_00
     private Texture heartHalf;   // live_01
@@ -31,6 +29,32 @@ public class HUD {
     private static final int HEARTS_PER_ROW = 40;     // 每行最多 10 颗
     private static final int HEART_SPACING = 70;      // 爱心之间的水平间距
     private static final int ROW_SPACING = 30;        // 行距
+    // ===== Mana UI (image-based) =====
+    private Texture manaBase;
+    private Texture manaFill;
+    private Texture manaGlow;
+    private Texture manadeco_1;
+    private Texture manadeco_2;
+    private float manaGlowTime = 0f;
+
+    // 尺寸
+    private static final float MANA_BAR_WIDTH  = 220f;
+    private static final float MANA_BAR_HEIGHT = 28f;
+
+    // 位置（右下角，猫上方）
+    private static final float MANA_MARGIN_RIGHT = 24f;
+    private static final float MANA_MARGIN_BOTTOM = 180f;
+
+    // 🐱 HUD 小猫
+    private TextureAtlas catAtlas;
+    private Animation<TextureRegion> catNoKeyAnim;
+    private Animation<TextureRegion> catHasKeyAnim;
+    private float catStateTime = 0f;
+
+    // 🐱 HUD 小猫位置与大小
+    private static final float CAT_SIZE = 506f;
+    private static final float CAT_MARGIN = 10f; // 距离屏幕边缘
+
     // ❤ 抖动动画相关
     private int lastLives = -1;
 
@@ -47,9 +71,8 @@ public class HUD {
 
     // ===== Mana UI =====
     private ShapeRenderer shapeRenderer;
-
-    private static final int MANA_BAR_WIDTH = 180;
-    private static final int MANA_BAR_HEIGHT = 18;
+    float barWidth  = Gdx.graphics.getWidth() * 0.66f; // 2/3 屏宽
+    float barHeight = barWidth * (32f / 256f);         // 保持 PNG 比例
 
     private static final int MANA_UI_MARGIN_X = 20;
     private static final int MANA_UI_MARGIN_Y = 100; // 在 Dash 图标上方
@@ -78,13 +101,32 @@ public class HUD {
         this.font.getData().setScale(1.2f);
         this.textureManager = TextureManager.getInstance();
         Logger.debug("HUD initialized with compass support");
-        this.uiBatchForCompass = new SpriteBatch();
         this.shapeRenderer = new ShapeRenderer();
-
+        manaBase = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
+        manaFill = new Texture(Gdx.files.internal("HUD/manabar_progress_fill.png"));
+        manaGlow = new Texture(Gdx.files.internal("HUD/manabar_progress_grow.png"));
+        manadeco_1=new Texture(Gdx.files.internal("HUD/manabar_progress_decoration.png"));
+        manadeco_2=new Texture(Gdx.files.internal("HUD/manabar_progress_decoration2.png"));
         heartFull = new Texture("HUD/live_000.png");
         heartHalf = new Texture("HUD/live_001.png");
 
         dashIcon = new Texture("HUD/icon_dash.png");
+// 🐱 加载 HUD 小猫 Atlas
+        catAtlas = new TextureAtlas(Gdx.files.internal("Character/cat/cat.atlas"));
+
+// 没钥匙动画
+        catNoKeyAnim = new Animation<>(
+                0.25f,
+                catAtlas.findRegions("cat_nokey"),
+                Animation.PlayMode.LOOP
+        );
+
+// 有钥匙动画
+        catHasKeyAnim = new Animation<>(
+                0.25f,
+                catAtlas.findRegions("cat_key"),
+                Animation.PlayMode.LOOP
+        );
 
 
         Logger.debug("HUD initialized with heart-based life bar");
@@ -105,14 +147,14 @@ public class HUD {
      */
     public void renderInGameUI(SpriteBatch uiBatch) {
         try {
-            // 1. 钥匙状态
-            if (gameManager.getPlayer().hasKey()) {
-                font.setColor(Color.GREEN);
-                font.draw(uiBatch, "key: get", 20, Gdx.graphics.getHeight() - 40);
-            } else {
-                font.setColor(Color.YELLOW);
-                font.draw(uiBatch, "key: needed", 20, Gdx.graphics.getHeight() - 40);
-            }
+//            // 1. 钥匙状态
+//            if (gameManager.getPlayer().hasKey()) {
+//                font.setColor(Color.GREEN);
+//                font.draw(uiBatch, "key: get", 20, Gdx.graphics.getHeight() - 40);
+//            } else {
+//                font.setColor(Color.YELLOW);
+//                font.draw(uiBatch, "key: needed", 20, Gdx.graphics.getHeight() - 40);
+//            }
 
             // 2. 生命值（❤显示）
             renderLivesAsHearts(uiBatch);
@@ -135,8 +177,10 @@ public class HUD {
                     Gdx.graphics.getWidth() - 250,
                     Gdx.graphics.getHeight() - 20);
             }
+            renderManaBar(uiBatch);
+            renderCat(uiBatch);
             // 6. 指南针
-            renderCompassAsUI();
+            renderCompassAsUI(uiBatch);
             // 7. 技能图标
             renderDashIcon(uiBatch);
 
@@ -223,51 +267,94 @@ public class HUD {
         }
     }
 
-    public void renderManaBar() {
+    public void renderManaBar(SpriteBatch uiBatch) {
         if (gameManager == null || gameManager.getPlayer() == null) return;
 
         var player = gameManager.getPlayer();
 
         float mana = player.getMana();
-        float maxMana = 100f; // 如果以后做升级，可以改成 getter
-        float percent = mana / maxMana;
+        float maxMana = player.getMaxMana();
+        if (maxMana <= 0f) return;
 
-        float x = MANA_UI_MARGIN_X;
-        float y = MANA_UI_MARGIN_Y;
+        float percent = Math.max(0f, Math.min(1f, mana / maxMana));
 
-        shapeRenderer.setProjectionMatrix(
-                new Matrix4().setToOrtho2D(
-                        0, 0,
-                        Gdx.graphics.getWidth(),
-                        Gdx.graphics.getHeight()
-                )
-        );
+        // === 尺寸：占 2/3 屏幕宽 ===
+        float barWidth  = Gdx.graphics.getWidth() * 0.66f;
+        float barHeight = barWidth * (32f / 256f); // 保持 PNG 比例
 
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        // === 居中 ===
+        float x = (Gdx.graphics.getWidth()  - barWidth)  / 2f;
+        float y = (Gdx.graphics.getHeight() - barHeight) / 2f;
 
-        // 背景
-        shapeRenderer.setColor(0f, 0f, 0f, 0.6f);
-        shapeRenderer.rect(x, y, MANA_BAR_WIDTH, MANA_BAR_HEIGHT);
+        // === 1. Base ===
+        uiBatch.setColor(1f, 1f, 1f, 1f);
+        uiBatch.draw(manaBase, x, y, barWidth, barHeight);
 
-        // Mana 填充
-        shapeRenderer.setColor(0.2f, 0.5f, 1f, 0.9f);
-        shapeRenderer.rect(
-                x,
-                y,
-                MANA_BAR_WIDTH * percent,
-                MANA_BAR_HEIGHT
-        );
+        // === 2. Fill（按百分比裁切）===
+        if (percent > 0f) {
+            int srcW = (int)(manaFill.getWidth() * percent);
 
-        shapeRenderer.end();
+            TextureRegion fillRegion = new TextureRegion(
+                    manaFill,
+                    0, 0,
+                    srcW,
+                    manaFill.getHeight()
+            );
 
-        // 边框
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(Color.WHITE);
-        shapeRenderer.rect(x, y, MANA_BAR_WIDTH, MANA_BAR_HEIGHT);
-        shapeRenderer.end();
+            uiBatch.draw(
+                    fillRegion,
+                    x,
+                    y,
+                    barWidth * percent,
+                    barHeight
+            );
+        }
+        uiBatch.draw(manadeco_1, x, y, barWidth, barHeight);
+        uiBatch.draw(manadeco_2, x, y, barWidth, barHeight);
+        // === 3. Glow（加法混合）===
+        if (percent > 0.01f) {
+            manaGlowTime += Gdx.graphics.getDeltaTime();
 
+            float glowAlpha =
+                    0.5f + 0.5f * (float)Math.sin(manaGlowTime * 2.5f);
 
+            if (percent > 0.99f) {
+                glowAlpha *= 1.4f; // 满 Mana 更亮
+            }
+
+            uiBatch.setBlendFunction(
+                    com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA,
+                    com.badlogic.gdx.graphics.GL20.GL_ONE
+            );
+
+            uiBatch.setColor(0.7f, 0.85f, 1.0f, glowAlpha);
+
+            int srcW = (int)(manaGlow.getWidth() * percent);
+            TextureRegion glowRegion = new TextureRegion(
+                    manaGlow,
+                    0, 0,
+                    srcW,
+                    manaGlow.getHeight()
+            );
+
+            uiBatch.draw(
+                    glowRegion,
+                    x,
+                    y,
+                    barWidth * percent,
+                    barHeight
+            );
+
+            // 恢复
+            uiBatch.setBlendFunction(
+                    com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA,
+                    com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA
+            );
+            uiBatch.setColor(1f, 1f, 1f, 1f);
+        }
     }
+
+
 
 
     private void renderDashIcon(SpriteBatch uiBatch) {
@@ -323,8 +410,29 @@ public class HUD {
             }
         }
 
+
         uiBatch.setColor(1f, 1f, 1f, 1f);
     }
+
+    private void renderCat(SpriteBatch uiBatch) {
+        if (gameManager == null || gameManager.getPlayer() == null) return;
+
+        catStateTime += Gdx.graphics.getDeltaTime();
+
+        boolean hasKey = gameManager.getPlayer().hasKey();
+        Animation<TextureRegion> anim =
+                hasKey ? catHasKeyAnim : catNoKeyAnim;
+
+        TextureRegion frame = anim.getKeyFrame(catStateTime, true);
+
+        float x = Gdx.graphics.getWidth() - CAT_SIZE - CAT_MARGIN+170;
+        float y = CAT_MARGIN-80;
+
+        uiBatch.setColor(1f, 1f, 1f, 1f);
+        uiBatch.draw(frame, x, y, CAT_SIZE, CAT_SIZE);
+    }
+
+
 
 
     private void renderLivesAsHearts(SpriteBatch uiBatch) {
@@ -432,20 +540,21 @@ public class HUD {
     /**
      * 渲染指南针（UI模式）
      */
-    public void renderCompassAsUI() {
+    public void renderCompassAsUI(SpriteBatch uiBatch) {
         if (gameManager == null || gameManager.getCompass() == null) return;
 
         Compass compass = gameManager.getCompass();
         if (!compass.isActive()) return;
 
-        Matrix4 uiMatrix = new Matrix4()
-                .setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        uiBatch.setProjectionMatrix(
+                new Matrix4().setToOrtho2D(
+                        0, 0,
+                        Gdx.graphics.getWidth(),
+                        Gdx.graphics.getHeight()
+                )
+        );
 
-        uiBatchForCompass.setProjectionMatrix(uiMatrix);
-
-        uiBatchForCompass.begin();
-        compass.drawAsUI(uiBatchForCompass);
-        uiBatchForCompass.end();
+        compass.drawAsUI(uiBatch);
     }
 
 
@@ -508,16 +617,17 @@ public class HUD {
 
     public void dispose() {
         if (font != null) font.dispose();
-        if (uiBatchForCompass != null) uiBatchForCompass.dispose();
         if (heartFull != null) heartFull.dispose();
         if (heartHalf != null) heartHalf.dispose();
         if (shapeRenderer != null) shapeRenderer.dispose();
-
+        if (catAtlas != null) catAtlas.dispose();
         // 🔥 清理 Buff 图标
         if (iconAtk != null) iconAtk.dispose();
         if (iconRegen != null) iconRegen.dispose();
         if (iconMana != null) iconMana.dispose();
-
+        if (manaBase != null) manaBase.dispose();
+        if (manaFill != null) manaFill.dispose();
+        if (manaGlow != null) manaGlow.dispose();
         Logger.debug("HUD disposed");
     }
 }
