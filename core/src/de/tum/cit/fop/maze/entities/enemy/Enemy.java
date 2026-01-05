@@ -383,6 +383,11 @@ public abstract class Enemy extends GameObject {
         return hasSingleAnimation() || hasFourDirectionAnimation();
     }
 
+    public boolean occupiesCell(int cellX, int cellY) {
+        // 默认1x1敌人只占据一个格子
+        return active && cellX == x && cellY == y;
+    }
+
 
 
 }

@@ -78,7 +78,7 @@ public class DifficultyConfig {
                     4, 2, 0,0,
 
                     /* 陷阱 */
-                    0, 0, 0, 0,
+                    50, 0, 0, 0,
 
                     /* 战斗 */
                     5,

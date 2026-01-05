@@ -688,6 +688,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             return false;
         }
 
+
+        // 2️⃣ 检查2x2敌人
+        for (Enemy enemy : enemies) {
+            if (enemy instanceof EnemyE04_CrystallizedCaramelShell) {
+                EnemyE04_CrystallizedCaramelShell shell = (EnemyE04_CrystallizedCaramelShell) enemy;
+                if (shell.isActive() && shell.occupiesCell(x, y)) {
+                    return false;
+                }
+            }
+        }
+
         // 2️⃣ 检查是否是门的位置
         for (ExitDoor door : exitDoors) {
             if (door.getX() == x && door.getY() == y) {
@@ -724,13 +735,21 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     /* ================= 输入 ================= */
     public void onMoveInput(int dx, int dy) {
-        if (player == null || levelTransitionInProgress) return;
+        if (player == null) return;
 
+        // 首先更新玩家的朝向（无论是否能移动）
+        player.updateDirection(dx, dy);
+
+        // 然后尝试移动
         int nx = player.getX() + dx;
         int ny = player.getY() + dy;
 
         if (canPlayerMoveTo(nx, ny)) {
             player.move(dx, dy);
+        } else {
+            // 即使不能移动，方向也已经更新了
+            // 可以在这里播放一个"撞墙"的音效或动画
+            Logger.debug("无法移动到 (" + nx + "," + ny + ")，但方向已更新");
         }
     }
 
