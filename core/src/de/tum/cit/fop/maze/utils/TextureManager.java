@@ -20,7 +20,6 @@ public class TextureManager implements Disposable {
 
 
 
-
     // 纹理模式
     public enum TextureMode {
         COLOR,      // 纯色模式（现有功能）
@@ -58,18 +57,34 @@ public class TextureManager implements Disposable {
 
 
     private TextureAtlas wallAtlas;
+    private TextureAtlas E01AtlasLR;
+    private TextureAtlas E01AtlasFront;
+    private TextureAtlas E01AtlasBack;
 
 
     private TextureManager() {
         textures = new HashMap<>();
         textureFileMap = new HashMap<>();
         loadWallAtlas();
+        loadE01Atlas();
+
 
         // 初始化各模式的图片映射
         initializeTextureMappings();
 
         Logger.debug("TextureManager initialized, mode: " + currentMode);
     }
+
+    private void loadE01Atlas() {
+        E01AtlasLR=new TextureAtlas(Gdx.files.internal("ani/E01/E01.atlas"));
+        E01AtlasFront=new TextureAtlas(Gdx.files.internal("ani/E01/front/E01_front.atlas"));
+        E01AtlasBack=new TextureAtlas(Gdx.files.internal("ani/E01/back/E01_back.atlas"));
+
+
+
+    }
+
+
     private void loadWallAtlas() {
         wallAtlas = new TextureAtlas(Gdx.files.internal("Wallpaper/Wallpaper.atlas"));
     }
@@ -407,5 +422,15 @@ public class TextureManager implements Disposable {
             pm.dispose();
         }
         return whitePixel;
+    }
+
+    public TextureAtlas getEnemy1AtlasRL() {
+        return E01AtlasLR;
+    }
+    public TextureAtlas getEnemy1AtlasFront() {
+        return E01AtlasFront;
+    }
+    public TextureAtlas getEnemy1AtlasBack() {
+        return E01AtlasBack;
     }
 }

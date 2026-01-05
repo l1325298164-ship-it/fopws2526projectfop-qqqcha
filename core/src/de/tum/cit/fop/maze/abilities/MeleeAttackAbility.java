@@ -21,14 +21,16 @@ public class MeleeAttackAbility extends Ability {
     /* ===== 数值 ===== */
     private int baseDamage = 5;
     private int damagePerLevel = 1;
-
+    private boolean damageDone = false;
+    private static final float HIT_TIME = 0.12f; // 命中帧时间
     /* ===== 攻击区域 ===== */
     private final List<int[]> attackTiles = new ArrayList<>();
-
+    // ===== 命中帧控制 =====
+    private float attackTimer = 0f;
     /* ===== 视觉调试 ===== */
     private static final Color DEBUG_COLOR =
             new Color(1f, 0.2f, 0.2f, 0.3f);
-
+    private GameManager gameManager;
     public MeleeAttackAbility() {
         super(
                 "Sword Slash",
@@ -45,25 +47,37 @@ public class MeleeAttackAbility extends Ability {
 
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
+
+        this.gameManager = gameManager;
+
+        player.startAttack();
+        // 初始化攻击计时
+        attackTimer = 0f;
+        damageDone = false;
+
         // 1️⃣ 计算攻击区域
         calculateAttackTiles(player);
 
-        // 2️⃣ 造成伤害
-        dealDamage(gameManager);
-
-        // 3️⃣ 播放音效
         AudioManager.getInstance().play(AudioType.UI_CLICK);
+
     }
 
     @Override
     protected void updateActive(float delta) {
-        // 这里暂时不需要做事
-        // 如果以后加动画，可以放这里
+        attackTimer += delta;
+
+        if (!damageDone && attackTimer >= HIT_TIME) {
+            dealDamage(gameManager);
+            damageDone = true;
+        }
     }
 
     @Override
     protected void onDeactivate() {
         attackTiles.clear();
+        attackTimer = 0f;
+        damageDone = false;
+        gameManager = null;
     }
 
     /* ================================================= */

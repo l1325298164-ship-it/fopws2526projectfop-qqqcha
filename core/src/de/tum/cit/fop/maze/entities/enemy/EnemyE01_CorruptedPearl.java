@@ -1,6 +1,9 @@
 package de.tum.cit.fop.maze.entities.enemy;
 
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -13,6 +16,19 @@ public class EnemyE01_CorruptedPearl extends Enemy {
 
     private float shootCooldown = 0f;
     private static final float SHOOT_INTERVAL = 1.2f;
+    // ===== 攻击表现用 =====
+    private boolean isAttacking = false;
+    private float attackTimer = 0f;
+    protected Animation<TextureRegion> anim;
+    protected float stateTime = 0f;
+    protected Animation<TextureRegion> frontAnim;
+    protected Animation<TextureRegion> backAnim;
+    protected Animation<TextureRegion> leftAnim;
+    protected Animation<TextureRegion> rightAnim;
+    protected Player.Direction direction = Direction.DOWN;
+    // 攻击节奏（远程怪推荐）
+    private static final float ATTACK_WINDUP = 0.25f;   // 蓄力
+    private static final float ATTACK_FLASH = 0.08f;    // 开火瞬间
 
     public EnemyE01_CorruptedPearl(int x, int y) {
         super(x, y);
@@ -56,12 +72,73 @@ public class EnemyE01_CorruptedPearl extends Enemy {
 
     @Override
     public void drawSprite(SpriteBatch batch) {
+
+
+        if (isAttacking) {
+            // 蓄力：微微变亮
+            if (attackTimer > 0f) {
+                batch.setColor(1f, 1f, 1f, 1f);
+            } else {
+                // 开火瞬间：闪白
+                batch.setColor(1.2f, 1.2f, 1.2f, 1f);
+            }
+        }
+        Animation<TextureRegion> anim;
+
+        switch (direction) {
+            case LEFT -> anim = leftAnim;
+            case RIGHT -> anim = rightAnim;
+            case UP -> anim = backAnim;
+            case DOWN -> anim = frontAnim;
+            default -> anim = rightAnim;
+        }
+
+        TextureRegion frame = anim.getKeyFrame(stateTime, true);
+
         super.drawSprite(batch);
+
+        // 颜色重置
+        batch.setColor(1f, 1f, 1f, 1f);
     }
+
 
     @Override
     protected void updateTexture() {
-        texture = textureManager.getEnemy1Texture();
+        // 1️⃣ 前（DOWN）
+        TextureAtlas frontAtlas =
+                textureManager.getEnemy1AtlasFront();
+
+        frontAnim = new Animation<>(
+                0.12f,
+                frontAtlas.getRegions(),
+                Animation.PlayMode.LOOP
+        );
+
+        // 2️⃣ 后（UP）
+        TextureAtlas backAtlas =
+                textureManager.getEnemy1AtlasBack();
+
+        backAnim = new Animation<>(
+                0.12f,
+                backAtlas.getRegions(),
+                Animation.PlayMode.LOOP
+        );
+
+        // 3️⃣ 左右（SIDE）
+        TextureAtlas sideAtlas =
+                textureManager.getEnemy1AtlasRL();
+
+        leftAnim = new Animation<>(
+                0.12f,
+                sideAtlas.findRegions("E01_left"),
+                Animation.PlayMode.LOOP
+        );
+        rightAnim = new Animation<>(
+                0.12f,
+                sideAtlas.findRegions("E01_right"),
+                Animation.PlayMode.LOOP
+        );
+
         needsTextureUpdate = false;
     }
 
@@ -69,6 +146,14 @@ public class EnemyE01_CorruptedPearl extends Enemy {
 
     @Override
     public void update(float delta, GameManager gm) {
+        // ===== 动画时间推进 =====
+        if (isMoving) {
+            stateTime += delta;
+        } else {
+            stateTime = 0f;
+        }
+
+
         if (!active) return;
 
         updateHitFlash(delta);
@@ -81,7 +166,28 @@ public class EnemyE01_CorruptedPearl extends Enemy {
         state = (dist <= detectRange)
                 ? EnemyState.ATTACK
                 : EnemyState.PATROL;
+// ===== 攻击表现驱动 =====
+        if (isAttacking) {
+            attackTimer += delta;
 
+            // 到达开火时间点
+            if (attackTimer >= ATTACK_WINDUP) {
+                shootAt(player, gm);
+                shootCooldown = SHOOT_INTERVAL;
+
+                // 进入“开火闪烁阶段”
+                attackTimer = -ATTACK_FLASH;
+            }
+
+            // 闪烁结束，攻击结束
+            if (attackTimer >= 0f) {
+                isAttacking = false;
+                attackTimer = 0f;
+            }
+
+            // ⛔ 攻击时不移动
+            return;
+        }
         switch (state) {
             case PATROL -> patrol(delta, gm);
             case ATTACK -> combat(delta, gm, player, dist);
@@ -98,7 +204,10 @@ public class EnemyE01_CorruptedPearl extends Enemy {
     private void combat(float delta, GameManager gm, Player player, float dist) {
 
         float idealDistance = detectRange * 0.5f;
-
+        if (shootCooldown <= 0f && !isAttacking) {
+            isAttacking = true;
+            attackTimer = 0f;
+        }
         // ❗ 这里先用“简单版追逐”，避免瞬移问题
         if (!isMoving) {
             int dx = Integer.compare(player.getX(), x);

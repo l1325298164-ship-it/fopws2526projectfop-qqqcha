@@ -48,6 +48,15 @@ private boolean damageInvincible = false;
     private float moveTimer = 0f;
     private static final float MOVE_COOLDOWN = 0.15f;
 
+    // 在 Player 类中现有的 Animation 变量下方添加：
+    private TextureAtlas frontAtkAtlas, backAtkAtlas, leftAtkAtlas, rightAtkAtlas;
+    private Animation<TextureRegion> frontAtkAnim, backAtkAnim, leftAtkAnim, rightAtkAnim;
+
+    // 攻击状态控制
+    private boolean isAttacking = false;
+    private float attackAnimTimer = 0f;
+    private static final float ATTACK_DURATION = 0.4f; // 假设攻击动画持续 0.4 秒
+
     // ===== Ability System =====
     private AbilityManager abilityManager;
 
@@ -208,19 +217,49 @@ private boolean damageInvincible = false;
         this.targetY = y;
 
 
-        frontAtlas = new TextureAtlas("player/front.atlas");
-        backAtlas  = new TextureAtlas("player/back.atlas");
-        leftAtlas  = new TextureAtlas("player/left.atlas");
-        rightAtlas = new TextureAtlas("player/right.atlas");
+        frontAtlas = new TextureAtlas("Character/player1/front.atlas");
+        backAtlas  = new TextureAtlas("Character/player1/back.atlas");
+        leftAtlas  = new TextureAtlas("Character/player1/left.atlas");
+        rightAtlas = new TextureAtlas("Character/player1/right.atlas");
 
-        frontAnim = new Animation<>(0.4f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
-        backAnim  = new Animation<>(0.4f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
-        leftAnim  = new Animation<>(0.4f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
-        rightAnim = new Animation<>(0.4f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
+        frontAnim = new Animation<>(0.1f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
+        backAnim  = new Animation<>(0.1f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
+        leftAnim  = new Animation<>(0.1f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
+        rightAnim = new Animation<>(0.1f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
 
         abilityManager = new AbilityManager(this, gameManager);
 
         Logger.gameEvent("Player spawned at " + getPositionString());
+
+        // 加载攻击贴图 (请根据你的文件名修改)
+        TextureAtlas attackAtlas = new TextureAtlas("Character/melee/player1.atlas");
+        backAtkAnim = new Animation<>(
+                0.1f,
+                attackAtlas.findRegions("player1_back"),
+                Animation.PlayMode.NORMAL
+        );
+
+        frontAtkAnim = new Animation<>(
+                0.1f,
+                attackAtlas.findRegions("player1_front"),
+                Animation.PlayMode.NORMAL
+        );
+
+        leftAtkAnim = new Animation<>(
+                0.1f,
+                attackAtlas.findRegions("player1_left"),
+                Animation.PlayMode.NORMAL
+        );
+
+        rightAtkAnim = new Animation<>(
+                0.1f,
+                attackAtlas.findRegions("player1_right"),
+                Animation.PlayMode.NORMAL
+        );
+
+
+
+
     }
 
     /* ====================== UPDATE ====================== */
@@ -240,7 +279,14 @@ private boolean damageInvincible = false;
 
         if (!isMovingAnim) stateTime = 0f;
         isMovingAnim = false;
-
+// ===== 攻击动画推进 =====
+        if (isAttacking) {
+            attackAnimTimer += delta;
+            if (attackAnimTimer >= ATTACK_DURATION) {
+                isAttacking = false;
+                attackAnimTimer = 0f;
+            }
+        }
         // ===== 无敌 =====
         // 1️⃣ 受伤无敌（i-frame）
         if (damageInvincible) {
@@ -375,6 +421,17 @@ private boolean damageInvincible = false;
         return dashInvincible;
     }
 
+    /* ====================== ATTACK API ====================== */
+
+    public void startAttack() {
+        if (isAttacking) return;
+
+        isAttacking = true;
+        attackAnimTimer = 0f;
+
+        Logger.debug("Player attack started");
+    }
+
     /* ====================== 移动相关 ====================== */
 
     public float getMoveDelayMultiplier() {
@@ -473,14 +530,28 @@ private boolean damageInvincible = false;
     public void drawSprite(SpriteBatch batch) {
         if (!active || isDead) return;
 
-        Animation<TextureRegion> anim = switch (direction) {
-            case UP -> backAnim;
-            case LEFT -> leftAnim;
-            case RIGHT -> rightAnim;
-            default -> frontAnim;
-        };
+        Animation<TextureRegion> anim;
 
-        TextureRegion frame = anim.getKeyFrame(stateTime, true);
+        if (isAttacking) {
+            anim = switch (direction) {
+                case UP -> backAtkAnim;
+                case LEFT -> leftAtkAnim;
+                case RIGHT -> rightAtkAnim;
+                default -> frontAtkAnim;
+            };
+        } else {
+            anim = switch (direction) {
+                case UP -> backAnim;
+                case LEFT -> leftAnim;
+                case RIGHT -> rightAnim;
+                default -> frontAnim;
+            };
+        }
+
+        TextureRegion frame = anim.getKeyFrame(
+                isAttacking ? attackAnimTimer : stateTime,
+                !isAttacking
+        );
 
         float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
         float scale = baseScale * VISUAL_SCALE;
