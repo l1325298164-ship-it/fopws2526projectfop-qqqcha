@@ -25,8 +25,8 @@ public class HUD {
     // ❤ 生命值贴图
     private Texture heartFull;   // live_00
     private Texture heartHalf;   // live_01
-    private static final int MAX_HEARTS_DISPLAY = 80; // 最多显示 50 颗
-    private static final int HEARTS_PER_ROW = 40;     // 每行最多 10 颗
+    private static final int MAX_HEARTS_DISPLAY = 40; // 最多显示 50 颗
+    private static final int HEARTS_PER_ROW = 20;     // 每行最多 10 颗
     private static final int HEART_SPACING = 70;      // 爱心之间的水平间距
     private static final int ROW_SPACING = 30;        // 行距
     // ===== Mana UI (image-based) =====
@@ -80,7 +80,7 @@ public class HUD {
 
 
     // UI 尺寸
-    private static final int DASH_ICON_SIZE = 64;
+    private static final int DASH_ICON_SIZE = 200;
     private static final int DASH_ICON_SPACING = 10;
     // ===== Dash UI 布局 =====
 
@@ -283,8 +283,8 @@ public class HUD {
         float barHeight = barWidth * (32f / 256f); // 保持 PNG 比例
 
         // === 居中 ===
-        float x = (Gdx.graphics.getWidth()  - barWidth)  / 2f;
-        float y = (Gdx.graphics.getHeight() - barHeight) / 2f;
+        float x = (Gdx.graphics.getWidth()  - barWidth)  / 2f-50;
+        float y = barHeight-130;
 
         // === 1. Base ===
         uiBatch.setColor(1f, 1f, 1f, 1f);
