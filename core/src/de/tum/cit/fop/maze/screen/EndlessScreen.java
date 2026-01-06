@@ -875,7 +875,6 @@ public class EndlessScreen implements Screen {
         // 波次越高，额外敌人越多
         return baseCount + (endlessWave / 3);
     }
-
     private Enemy createEnemyBasedOnHealth(float healthPercent, int x, int y) {
         float randValue = randomGenerator.nextFloat() * 100f;
 
