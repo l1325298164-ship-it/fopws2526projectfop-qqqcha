@@ -1,5 +1,6 @@
 package de.tum.cit.fop.maze.game;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.effects.Player.combat.CombatEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
@@ -14,8 +15,8 @@ import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.effects.Enemy.boba.BobaBulletManager;
-import de.tum.cit.fop.maze.utils.LeaderboardManager; // 🔥 新增
-import de.tum.cit.fop.maze.utils.SaveManager;       // 🔥 新增
+import de.tum.cit.fop.maze.utils.LeaderboardManager;
+import de.tum.cit.fop.maze.utils.SaveManager;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -56,7 +57,7 @@ public class GameManager {
 
     // ===== Reset Control =====
     private boolean pendingReset = false;
-    private boolean gameOverProcessed = false; // 🔥 新增：防止死亡逻辑重复触发
+    private boolean gameOverProcessed = false;
 
     // 🔥 动画状态管理
     private boolean levelTransitionInProgress = false;
@@ -67,12 +68,26 @@ public class GameManager {
     private int currentLevel = 1;
     private PortalEffectManager playerSpawnPortal;
 
+    // ==========================================
+    // 🔥 [Phase 1 & 2] 统计与数据
+    // ==========================================
+    private int sessionDamageTaken = 0; // 本局受伤次数
+    private GameSaveData careerStats;   // 生涯数据缓存
+
+    // 🔥 让 VictoryScreen 能访问
+    public GameSaveData victoryData = null;
+    public boolean isGameWon() { return victoryData != null; }
+
     /* ================= 生命周期 ================= */
     public GameManager(DifficultyConfig difficultyConfig) {
         if (difficultyConfig == null) {
             throw new IllegalArgumentException("difficultyConfig must not be null");
         }
         this.difficultyConfig = difficultyConfig;
+
+        // 初始化生涯数据
+        this.careerStats = new GameSaveData();
+
         resetGame();
     }
 
@@ -125,7 +140,11 @@ public class GameManager {
         levelTransitionInProgress = false;
         currentExitDoor = null;
         levelTransitionTimer = 0f;
-        gameOverProcessed = false; // 🔥 重置死亡标记
+        gameOverProcessed = false;
+        victoryData = null;
+
+        // 重置局内统计
+        sessionDamageTaken = 0;
 
         Logger.gameEvent("Game reset complete");
     }
@@ -133,9 +152,13 @@ public class GameManager {
     public void loadFromSave(GameSaveData data) {
         if (data == null) return;
         this.currentLevel = data.currentLevel;
+
+        // 同步生涯数据
+        this.careerStats = data;
+
         resetGame();
         if (player != null) {
-            player.setScore(data.score); // 🔥 恢复分数
+            player.setScore(data.score);
             player.setHealthStatus(data.lives, data.maxLives);
             player.setMana(data.mana);
             player.setHasKey(data.hasKey);
@@ -144,6 +167,134 @@ public class GameManager {
         }
         Logger.gameEvent("Game Loaded from Save: Level " + currentLevel + ", Score: " + data.score);
     }
+
+    // ==========================================
+    // 🔥 [Phase 1 & 4] 扣分系统 + 飘字
+    // ==========================================
+    public void deductScore(int amount, String reason) {
+        if (player == null) return;
+
+        int oldScore = player.getScore();
+        int newScore = Math.max(0, oldScore - amount); // 确保不为负
+
+        player.setScore(newScore);
+
+        // 记录受伤
+        if (amount > 0) {
+            sessionDamageTaken++;
+
+            // 🔥 [Phase 4] 飘红字特效
+            if (combatEffectManager != null) {
+                float px = player.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE/2f;
+                float py = player.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE;
+                combatEffectManager.spawnFloatingText(px, py, "-" + amount, Color.RED);
+            }
+        }
+
+        Logger.info("Score deducted: " + amount + " (" + reason + ") | Current: " + newScore);
+    }
+
+    public GameSaveData getCareerStats() {
+        return careerStats;
+    }
+
+    // ==========================================
+    // 🔥 [Phase 3] 成就系统核心逻辑
+    // ==========================================
+
+    public void unlockAchievement(String id, String name) {
+        GameSaveData stats = getCareerStats();
+
+        if (stats.unlockedAchievements.containsKey(id) && stats.unlockedAchievements.get(id)) {
+            return;
+        }
+
+        stats.unlockedAchievements.put(id, true);
+
+        // 1. 屏幕顶部弹窗
+        if (player != null) {
+            player.showNotification("ACHIEVEMENT: " + name);
+        }
+
+        // 2. 立即保存
+        SaveManager.saveGame(this);
+
+        Logger.info(">>> ACHIEVEMENT UNLOCKED: " + name + " (" + id + ") <<<");
+    }
+
+    private void checkCombatAchievements() {
+        GameSaveData stats = getCareerStats();
+
+        if (stats.totalKills_E01 >= 60) unlockAchievement("ACH_04", "Scrap Filtering");
+        if (stats.totalKills_E02 >= 40) unlockAchievement("ACH_05", "Grinding Time");
+        if (stats.totalKills_E03 >= 50) unlockAchievement("ACH_06", "Melting Sugar");
+        if (stats.totalKills_E04 >= 50) unlockAchievement("ACH_07", "Shell Breaker");
+        if (stats.totalKills_Global >= 200) unlockAchievement("ACH_08", "Order Overload");
+    }
+
+    private void checkProgressionAchievements() {
+        if (currentLevel > 1) unlockAchievement("ACH_02", "First Order Served");
+    }
+
+    public void unlockPVAchievement() {
+        unlockAchievement("ACH_01", "Recipe Memorized");
+    }
+
+    // ==========================================
+    // 🔥 [Phase 2, 3, 4] 埋点：杀怪、计分、飘字
+    // ==========================================
+    private void handleEnemyDeath(Enemy e) {
+        if (player == null) return;
+
+        GameSaveData stats = getCareerStats();
+        int scoreToAdd = 0;
+
+        // 计分规则
+        if (e instanceof EnemyE01_CorruptedPearl) {
+            scoreToAdd = 150;
+            stats.totalKills_E01++;
+        }
+        else if (e instanceof EnemyE02_SmallCoffeeBean) {
+            scoreToAdd = 100;
+            stats.totalKills_E02++;
+        }
+        else if (e instanceof EnemyE03_CaramelJuggernaut) {
+            scoreToAdd = 600;
+            stats.totalKills_E03++;
+        }
+//        else if (e instanceof EnemyE04_CrystallizedCaramelShell) {
+//            scoreToAdd = 600;
+//            stats.totalKills_E04++;
+//        }
+        else {
+            scoreToAdd = 100;
+        }
+
+        player.addScore(scoreToAdd);
+        stats.totalKills_Global++;
+
+        // 🔥 [Phase 4] 飘金字特效 (在怪物尸体上方)
+        if (combatEffectManager != null) {
+            float ex = e.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE/2f;
+            float ey = e.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE;
+            combatEffectManager.spawnFloatingText(ex, ey, "+" + scoreToAdd, Color.GOLD);
+        }
+
+        Logger.info("Enemy Defeated: " + e.getClass().getSimpleName() + " | Total Kills: " + stats.totalKills_Global);
+
+        // 检查成就
+        checkCombatAchievements();
+    }
+
+    private void applyDamageWithPenalty(int damage, int scorePenalty, String sourceName) {
+        if (player.isInvincible() || player.isDashInvincible()) return;
+
+        player.takeDamage(damage);
+        deductScore(scorePenalty, sourceName);
+        sessionDamageTaken++;
+    }
+
+    /* ================= 游戏循环与逻辑 ================= */
 
     public void update(float delta) {
         if (playerSpawnPortal != null) {
@@ -171,7 +322,6 @@ public class GameManager {
 
         player.update(delta);
 
-        // 🔥 检测死亡并触发结算
         if (player.isDead() && !gameOverProcessed) {
             handleGameOver(false);
         }
@@ -180,10 +330,11 @@ public class GameManager {
         while (enemyIterator.hasNext()) {
             Enemy e = enemyIterator.next();
             e.update(delta, this);
+
             if (e.isDead() || !e.isActive()) {
-                // 🔥 简单的加分逻辑 (杂兵150，精英600)
-                int score = (e instanceof EnemyE03_CaramelJuggernaut) ? 600 : 150;
-                player.addScore(score);
+                if (e.isDead()) {
+                    handleEnemyDeath(e);
+                }
                 enemyIterator.remove();
             }
         }
@@ -215,25 +366,27 @@ public class GameManager {
         }
     }
 
-    // 🔥 处理游戏结束 (死亡或通关)
     private void handleGameOver(boolean victory) {
         gameOverProcessed = true;
-        int finalScore = player.getScore();
-        Logger.gameEvent(victory ? "Game Completed!" : "Player Died! Final Score: " + finalScore);
 
-        // 1. 尝试记录到排行榜
-        LeaderboardManager leaderboard = new LeaderboardManager();
-        if (leaderboard.isHighScore(finalScore)) {
-            // 丐版实现：直接存一个默认名字，加上随机数避免重复
-            String name = "Player-" + (int)(Math.random() * 1000);
-            leaderboard.addScore(name, finalScore);
-            Logger.info("New High Score saved to leaderboard!");
+        // 准备结算数据
+        GameSaveData finalData = new GameSaveData();
+        finalData.score = player.getScore();
+        finalData.lives = player.getLives();
+        finalData.unlockedAchievements = getCareerStats().unlockedAchievements;
+
+        Logger.gameEvent(victory ? "Game Completed!" : "Player Died!");
+
+        if (victory) {
+            // 🎉 胜利：通知 GameScreen 跳转
+            this.victoryData = finalData;
+        } else {
+            // 💀 失败：简单记录
+            LeaderboardManager leaderboard = new LeaderboardManager();
+            if (leaderboard.isHighScore(finalData.score)) {
+                leaderboard.addScore("Player-Died", finalData.score);
+            }
         }
-
-        // 2. 如果是死亡，可以考虑自动重置 (或跳转到菜单，这里先简单请求重置)
-        // 留给玩家看一会儿死亡画面，或者直接重置
-        // 这里不自动调用 requestReset，通常由 UI 层的 "Retry" 按钮触发，
-        // 但为了丐版流程闭环，我们暂不处理，等待玩家按 R 重置或手动重开。
     }
 
     private void updateCompass() {
@@ -274,13 +427,14 @@ public class GameManager {
     public void nextLevel() {
         currentLevel++;
 
+        checkProgressionAchievements();
+
         if (currentLevel > GameConstants.MAX_LEVELS) {
             Logger.gameEvent("Game completed!");
-            handleGameOver(true); // 🔥 通关结算
+            handleGameOver(true);
             return;
         }
 
-        // 🔥 过关自动存档
         SaveManager.saveGame(this);
         requestReset();
     }
@@ -522,6 +676,22 @@ public class GameManager {
             if (h.isActive() && h.getX() == px && h.getY() == py) {
                 if (itemEffectManager != null) itemEffectManager.spawnHeart((h.getX()+0.5f)*GameConstants.CELL_SIZE, (h.getY()+0.5f)*GameConstants.CELL_SIZE);
                 h.onInteract(player);
+
+                player.addScore(50);
+
+                // 🔥 [Phase 4] 爱心飘字 +50 (绿色)
+                if (combatEffectManager != null) {
+                    float fx = (h.getX()+0.5f)*GameConstants.CELL_SIZE;
+                    float fy = (h.getY()+1f)*GameConstants.CELL_SIZE;
+                    combatEffectManager.spawnFloatingText(fx, fy, "+50", Color.GREEN);
+                }
+
+                GameSaveData stats = getCareerStats();
+                if (!stats.hasHealedOnce) {
+                    stats.hasHealedOnce = true;
+                    unlockAchievement("ACH_03", "Emergency Topping");
+                }
+
                 heartIt.remove();
             }
         }
@@ -529,6 +699,15 @@ public class GameManager {
             if (t.isInteractable() && t.getX() == px && t.getY() == py) {
                 if (itemEffectManager != null) itemEffectManager.spawnTreasure((t.getX()+0.5f)*GameConstants.CELL_SIZE, (t.getY()+0.5f)*GameConstants.CELL_SIZE);
                 t.onInteract(player);
+
+                player.addScore(800);
+
+                // 🔥 [Phase 4] 宝箱飘字 +800 (金色)
+                if (combatEffectManager != null) {
+                    float tx = (t.getX()+0.5f)*GameConstants.CELL_SIZE;
+                    float ty = (t.getY()+1f)*GameConstants.CELL_SIZE;
+                    combatEffectManager.spawnFloatingText(tx, ty, "+800", Color.GOLD);
+                }
             }
         }
     }
@@ -557,10 +736,21 @@ public class GameManager {
         if (levelTransitionInProgress || player == null || player.isDead()) return;
         for (Enemy e : enemies) {
             if (e.isActive() && !e.isDead() && e.getX() == player.getX() && e.getY() == player.getY()) {
-                if (!player.isDashInvincible()) player.takeDamage(e.getAttackDamage());
+
+                if (!player.isDashInvincible()) {
+                    int damage = e.getAttackDamage();
+                    int penalty = 50;
+
+                    if (e instanceof EnemyE03_CaramelJuggernaut || e instanceof EnemyE04_CrystallizedCaramelShell) {
+                       penalty = 100;
+                    }
+
+                    applyDamageWithPenalty(damage, penalty, e.getClass().getSimpleName());
+                }
             }
         }
     }
+
     private void handleDashHitEnemies() {
         if (levelTransitionInProgress || player == null || !player.isDashing()) return;
         for (Enemy e : enemies) {

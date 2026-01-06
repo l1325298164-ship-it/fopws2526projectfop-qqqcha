@@ -1,376 +1,198 @@
 package de.tum.cit.fop.maze.entities;
 
-import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Rectangle;
 import de.tum.cit.fop.maze.abilities.AbilityManager;
-import de.tum.cit.fop.maze.audio.AudioManager;
-import de.tum.cit.fop.maze.audio.AudioType;
-import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.TextureManager;
+
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class Player extends GameObject {
-
+    private float speed = 200f;
+    private int score = 0;
+    private int lives = 3;
+    private int maxLives = 3;
+    private int mana = 100;
     private boolean hasKey = false;
-    private int lives;
-    private int maxLives;
-    private float invincibleTimer = 0;
-    private boolean isInvincible = false;
-    private boolean isDead = false;
 
-    // ===== 移动 =====
-    private boolean moving = false;
-    private float moveTimer = 0f;
-    private static final float MOVE_COOLDOWN = 0.15f;
-
-    // ===== Ability System =====
+    // 状态机变量
+    private boolean isMoving = false;
+    private float stateTime = 0f;
+    private Direction direction = Direction.DOWN;
+    private GameManager gameManager;
     private AbilityManager abilityManager;
 
-    // ===== Mana =====
-    private int mana = 100000;
-    private int maxMana = 100000;
-    private float manaRegenRate = 5.0f;
-
-    // ===== Buffs =====
+    // Buffs
     private boolean buffAttack = false;
     private boolean buffRegen = false;
     private boolean buffManaEfficiency = false;
-    private float regenTimer = 0f;
-    private String notificationMessage = "";
-    private float notificationTimer = 0f;
 
-    // ===== Dash =====
-    private boolean dashInvincible = false;
-    private float dashInvincibleTimer = 0f;
-    private boolean dashSpeedBoost = false;
-    private float dashSpeedTimer = 0f;
-    public static final float DASH_DURATION = 0.8f;
-    public static final float DASH_SPEED_MULTIPLIER = 0.4f;
-    private boolean dashJustEnded = false;
+    // Dash / Invincible state
+    private boolean isDashInvincible = false;
+    private boolean isInvincible = false;
+    private float invincibleTimer = 0f;
+    private static final float INVINCIBLE_TIME_ON_HIT = 1.0f;
 
-    // ===== 特效 =====
-    private PlayerTrailManager trailManager;
+    // Dash Logic
+    private boolean isDashing = false;
+    private float dashTimer = 0f;
+    private final float DASH_DURATION = 0.2f;
+    private final float DASH_SPEED_MULTIPLIER = 2.5f;
 
-    // ===== 动画 =====
+    // 🔥 [Phase 4 New] 通知队列 (用于 HUD 显示成就)
+    private Queue<String> notificationQueue = new LinkedList<>();
+
     public enum Direction { UP, DOWN, LEFT, RIGHT }
-    private Direction direction = Direction.DOWN;
-    private TextureAtlas frontAtlas, backAtlas, leftAtlas, rightAtlas;
-    private Animation<TextureRegion> frontAnim, backAnim, leftAnim, rightAnim;
-    private float stateTime = 0f;
-    private boolean isMovingAnim = false;
 
-    // ===== 状态效果 =====
-    private boolean slowed = false;
-    private float slowTimer = 0f;
-
-    // 🔥🔥 [关键] 分数系统
-    private int score = 0;
-
-    public Player(int x, int y, GameManager gameManager) {
-        super(x, y);
-        this.lives = 100000;
-        this.maxLives = 100000;
-
-        frontAtlas = new TextureAtlas("player/front.atlas");
-        backAtlas  = new TextureAtlas("player/back.atlas");
-        leftAtlas  = new TextureAtlas("player/left.atlas");
-        rightAtlas = new TextureAtlas("player/right.atlas");
-
-        frontAnim = new Animation<>(0.4f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
-        backAnim  = new Animation<>(0.4f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
-        leftAnim  = new Animation<>(0.4f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
-        rightAnim = new Animation<>(0.4f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
-
-        abilityManager = new AbilityManager(this, gameManager);
-        trailManager = new PlayerTrailManager();
-
-        Logger.gameEvent("Player spawned at " + getPositionString());
+    public Player(float x, float y, GameManager gameManager) {
+        super(x, y, GameObject.RenderType.PLAYER);
+        this.gameManager = gameManager;
+        this.abilityManager = new AbilityManager(this, gameManager);
+        TextureManager.loadPlayerAnimations();
     }
 
     public void update(float delta) {
-        float animationSpeed = 1f / getMoveDelayMultiplier();
-        stateTime += delta * animationSpeed;
-
-        if (!isMovingAnim) stateTime = 0f;
-        isMovingAnim = false;
-
-        Animation<TextureRegion> currentAnim = switch (direction) {
-            case UP -> backAnim;
-            case LEFT -> leftAnim;
-            case RIGHT -> rightAnim;
-            default -> frontAnim;
-        };
-        TextureRegion currentFrame = currentAnim.getKeyFrame(stateTime, true);
-
-        if (trailManager != null) {
-            trailManager.update(delta, this.x, this.y, dashSpeedBoost, currentFrame);
-        }
-
-        if (isInvincible) {
-            invincibleTimer += delta;
-            if (invincibleTimer >= GameConstants.INVINCIBLE_TIME) {
-                isInvincible = false;
-                invincibleTimer = 0f;
-            }
-        }
-
-        if (dashInvincible) {
-            dashInvincibleTimer += delta;
-            if (dashInvincibleTimer >= DASH_DURATION) {
-                dashInvincible = false;
-                dashInvincibleTimer = 0f;
-                dashJustEnded = true;
-            }
-        }
-
-        if (dashSpeedBoost) {
-            dashSpeedTimer += delta;
-            if (dashSpeedTimer >= DASH_DURATION) {
-                dashSpeedBoost = false;
-                dashSpeedTimer = 0f;
-            }
-        }
-
-        if (slowed) {
-            slowTimer -= delta;
-            if (slowTimer <= 0f) {
-                slowed = false;
-                slowTimer = 0f;
-            }
-        }
-
-        if (moving) {
-            moveTimer += delta;
-            if (moveTimer >= MOVE_COOLDOWN) {
-                moving = false;
-            }
-        }
-
-        if (mana < maxMana) {
-            mana += manaRegenRate * delta;
-            if (mana > maxMana) mana = maxMana;
-        }
-
+        stateTime += delta;
         abilityManager.update(delta);
 
-        if (buffRegen) {
-            regenTimer += delta;
-            if (regenTimer >= 5.0f) {
-                heal(5);
-                regenTimer = 0f;
+        // 无敌闪烁更新
+        if (isInvincible) {
+            invincibleTimer -= delta;
+            if (invincibleTimer <= 0) {
+                isInvincible = false;
             }
         }
 
-        if (notificationTimer > 0) {
-            notificationTimer -= delta;
-            if (notificationTimer <= 0) {
-                notificationMessage = "";
+        // 冲刺状态更新
+        if (isDashing) {
+            dashTimer -= delta;
+            if (dashTimer <= 0) {
+                isDashing = false;
+                isDashInvincible = false;
             }
         }
-        dashJustEnded = false;
     }
 
-    // ===== 分数管理 =====
-    public void addScore(int amount) {
-        this.score += amount;
-        Logger.debug("Score added: " + amount + ", Total: " + score);
+    public void draw(SpriteBatch batch) {
+        drawSprite(batch, this.x, this.y);
     }
 
-    public int getScore() { return score; }
+    private void drawSprite(SpriteBatch batch, float x, float y) {
+        TextureRegion currentFrame = TextureManager.getPlayerFrame(direction, isMoving, stateTime);
 
-    // 用于读档恢复分数
-    public void setScore(int score) { this.score = score; }
-
-    // ===== 移动与战斗 =====
-    public boolean useMana(int manaCost) {
-        if (buffManaEfficiency) {
-            manaCost = manaCost / 2;
-            if (manaCost < 1) manaCost = 1;
+        // 受伤闪烁效果
+        if (isInvincible && !isDashing) {
+            if (((int)(invincibleTimer * 20)) % 2 == 0) {
+                batch.setColor(1, 1, 1, 0.5f);
+            }
         }
-        if (mana < manaCost) return false;
-        mana -= manaCost;
-        return true;
-    }
+        // 冲刺半透明
+        if (isDashing) {
+            batch.setColor(1, 1, 1, 0.6f);
+        }
 
-    public void useAbility(int slot) {
-        if (isDead() || abilityManager == null) return;
-        abilityManager.activateSlot(slot);
-    }
+        float drawScale = 1.0f;
+        float width = GameConstants.CELL_SIZE * drawScale;
+        float height = GameConstants.CELL_SIZE * drawScale;
 
-    public void startDash() {
-        dashInvincible = true;
-        dashSpeedBoost = true;
-        dashInvincibleTimer = 0f;
-        dashSpeedTimer = 0f;
-    }
+        if (currentFrame != null) {
+            batch.draw(currentFrame,
+                    x * GameConstants.CELL_SIZE,
+                    y * GameConstants.CELL_SIZE,
+                    width, height);
+        }
 
-    public boolean isDashInvincible() { return dashInvincible; }
-    public boolean isDashing() { return dashInvincible; }
-    public boolean didDashJustEnd() { return dashJustEnded; }
-
-    public float getMoveDelayMultiplier() {
-        float multiplier = 1f;
-        if (slowed) multiplier *= 2.0f;
-        if (dashSpeedBoost) multiplier *= DASH_SPEED_MULTIPLIER;
-        return multiplier;
+        // 重置颜色
+        batch.setColor(1, 1, 1, 1);
     }
 
     public void move(int dx, int dy) {
-        if (isDead) return;
-        if (dx > 0) direction = Direction.RIGHT;
-        else if (dx < 0) direction = Direction.LEFT;
-        else if (dy > 0) direction = Direction.UP;
-        else if (dy < 0) direction = Direction.DOWN;
+        this.x += dx;
+        this.y += dy;
+        isMoving = true;
 
-        isMovingAnim = true;
-        moving = true;
-        moveTimer = 0f;
-        x += dx;
-        y += dy;
+        if (dx > 0) direction = Direction.RIGHT;
+        if (dx < 0) direction = Direction.LEFT;
+        if (dy > 0) direction = Direction.UP;
+        if (dy < 0) direction = Direction.DOWN;
     }
 
-    public void applySlow(float duration) {
-        slowed = true;
-        slowTimer = Math.max(slowTimer, duration);
+    public void useAbility(int slot) {
+        abilityManager.useAbility(slot);
     }
 
     public void takeDamage(int damage) {
-        if (isDead || isInvincible || dashInvincible) return;
-        lives -= damage;
-        AudioManager.getInstance().play(AudioType.PLAYER_ATTACKED);
-        isInvincible = true;
-        invincibleTimer = 0f;
-        if (lives <= 0) {
-            isDead = true;
-            Logger.gameEvent("Player died");
+        if (isInvincible || isDashInvincible) return;
+
+        this.lives -= damage;
+        if (this.lives < 0) this.lives = 0;
+
+        // 受伤无敌时间
+        this.isInvincible = true;
+        this.invincibleTimer = INVINCIBLE_TIME_ON_HIT;
+    }
+
+    public void startDash() {
+        if (!isDashing) {
+            isDashing = true;
+            isDashInvincible = true;
+            dashTimer = DASH_DURATION;
         }
     }
 
-    public void heal(int amount) {
-        if (isDead) return;
-        this.lives += amount;
-        if (this.lives > this.maxLives) this.lives = this.maxLives;
+    // ==========================================
+    // 🔥 [Phase 4 New] 通知系统方法
+    // ==========================================
+
+    public void showNotification(String message) {
+        notificationQueue.add(message);
     }
 
-    public void increaseMaxLives(int amount) {
-        this.maxLives += amount;
-        this.lives += amount;
+    public String pollNotification() {
+        return notificationQueue.poll();
     }
 
-    // ===== 渲染与 Getter =====
-    @Override
-    public void drawSprite(SpriteBatch batch) {
-        if (!active || isDead) return;
-        if (trailManager != null) trailManager.render(batch);
-
-        Animation<TextureRegion> anim = switch (direction) {
-            case UP -> backAnim;
-            case LEFT -> leftAnim;
-            case RIGHT -> rightAnim;
-            default -> frontAnim;
-        };
-        TextureRegion frame = anim.getKeyFrame(stateTime, true);
-
-        float scale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
-        float drawW = frame.getRegionWidth() * scale + 10;
-        float drawH = GameConstants.CELL_SIZE + 10;
-        float drawX = x * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f - drawW / 2f;
-        float drawY = y * GameConstants.CELL_SIZE;
-
-        if ((isInvincible || dashInvincible) && invincibleTimer % 0.2f > 0.1f) {
-            batch.setColor(1, 1, 1, 0.6f);
-        }
-        batch.draw(frame, drawX, drawY, drawW, drawH);
-        batch.setColor(1, 1, 1, 1f);
+    public boolean hasNotifications() {
+        return !notificationQueue.isEmpty();
     }
-
-    @Override
-    public void drawShape(ShapeRenderer shapeRenderer) {}
-
-    @Override
-    public RenderType getRenderType() { return RenderType.SPRITE; }
 
     // Getters & Setters
-    public AbilityManager getAbilityManager() { return abilityManager; }
+    public int getScore() { return score; }
+    public void addScore(int points) { this.score += points; }
+    public void setScore(int score) { this.score = score; }
+
     public int getLives() { return lives; }
     public int getMaxLives() { return maxLives; }
+    public void setHealthStatus(int lives, int maxLives) { this.lives = lives; this.maxLives = maxLives; }
+
     public int getMana() { return mana; }
+    public void setMana(int mana) { this.mana = mana; }
+
     public boolean hasKey() { return hasKey; }
     public void setHasKey(boolean hasKey) { this.hasKey = hasKey; }
-    public boolean isDead() { return isDead; }
-    public boolean isMoving() { return moving; }
-    public String getPositionString() { return "(" + x + ", " + y + ")"; }
+
+    public void setBuffs(boolean atk, boolean reg, boolean mana) {
+        this.buffAttack = atk;
+        this.buffRegen = reg;
+        this.buffManaEfficiency = mana;
+    }
+
+    public boolean isDead() { return lives <= 0; }
     public Direction getDirection() { return direction; }
+    public boolean isDashing() { return isDashing; }
+    public boolean isDashInvincible() { return isDashInvincible; }
+    public boolean isInvincible() { return isInvincible; }
 
-    // 重置
     public void reset() {
-        this.lives = 100000;
-        this.maxLives = 100000;
-        this.isDead = false;
-        this.hasKey = false;
-        this.isInvincible = true;
-        this.invincibleTimer = 0f;
-        this.dashInvincible = false;
-        this.dashInvincibleTimer = 0f;
-        this.dashSpeedBoost = false;
-        this.dashSpeedTimer = 0f;
-        this.moving = false;
-        this.moveTimer = 0f;
-        this.slowed = false;
-        this.slowTimer = 0f;
-        this.mana = maxMana;
-        this.score = 0; // 重置分数
-        this.buffAttack = false;
-        this.buffRegen = false;
-        this.buffManaEfficiency = false;
-        this.regenTimer = 0f;
-        this.notificationMessage = "";
-        if (abilityManager != null) abilityManager.reset();
-        if (trailManager != null) trailManager.dispose();
-    }
-
-    // Buff API
-    public void activateAttackBuff() {
-        if (!buffAttack) {
-            buffAttack = true;
-            showNotification("Buff: ATK +50%!");
-        }
-    }
-    public void activateRegenBuff() {
-        if (!buffRegen) {
-            buffRegen = true;
-            showNotification("Buff: Auto-Regen!");
-        }
-    }
-    public void activateManaBuff() {
-        if (!buffManaEfficiency) {
-            buffManaEfficiency = true;
-            showNotification("Buff: Mana Saver!");
-        }
-    }
-    public void showNotification(String msg) {
-        this.notificationMessage = msg;
-        this.notificationTimer = 3.0f;
-    }
-    public boolean hasBuffAttack() { return buffAttack; }
-    public boolean hasBuffRegen() { return buffRegen; }
-    public boolean hasBuffManaEfficiency() { return buffManaEfficiency; }
-    public String getNotificationMessage() { return notificationMessage; }
-    public float getDamageMultiplier() { return buffAttack ? 1.5f : 1.0f; }
-
-    // 读档 Setter
-    public void setHealthStatus(int currentLives, int maxLives) {
-        this.maxLives = maxLives;
-        this.lives = currentLives;
-    }
-    public void setMana(int mana) { this.mana = mana; }
-    public void setBuffs(boolean attack, boolean regen, boolean manaEfficiency) {
-        this.buffAttack = attack;
-        this.buffRegen = regen;
-        this.buffManaEfficiency = manaEfficiency;
+        lives = maxLives;
+        mana = 100;
+        score = 0;
+        isInvincible = false;
+        isDashing = false;
+        notificationQueue.clear();
     }
 }

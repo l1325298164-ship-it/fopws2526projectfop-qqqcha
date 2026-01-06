@@ -75,6 +75,8 @@ public class AbilityManager {
                 gameManager.getCombatEffectManager().spawnSlash(px, py, angle, 1);
                 break;
             case 1: // Dash
+                // Dash -> 🔥 新增：生成冲刺气浪
+                gameManager.getCombatEffectManager().spawnDash(px, py, angle);
                 break;
             case 2: // 技能3 -> 模拟火球
                 gameManager.getCombatEffectManager().spawnFire(px, py);

@@ -1,89 +1,78 @@
 package de.tum.cit.fop.maze.effects.Player.combat;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.utils.Array;
-import de.tum.cit.fop.maze.effects.Player.combat.CombatParticleSystem;
 import de.tum.cit.fop.maze.effects.Player.combat.instances.*;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 public class CombatEffectManager {
-
-    private Array<CombatEffect> effects;
-    private CombatParticleSystem particleSystem; // 独立的战斗粒子系统
+    private final List<CombatEffect> effects;
+    private final BitmapFont font; // 用于绘制飘字
 
     public CombatEffectManager() {
-        this.effects = new Array<>();
-        this.particleSystem = new CombatParticleSystem();
+        this.effects = new ArrayList<>();
+        // 加载字体：如果有自定义字体请替换路径，否则使用默认字体
+        // 建议使用 Skin 中的字体以保持风格统一，这里为了独立性使用 new BitmapFont()
+        try {
+            this.font = new BitmapFont(Gdx.files.internal("ui/font.fnt"));
+        } catch (Exception e) {
+            // 如果找不到文件，回退到默认字体
+            // this.font = new BitmapFont();
+            throw new RuntimeException("Could not load font for CombatEffects. Ensure 'ui/font.fnt' exists.");
+        }
+
+        this.font.setUseIntegerPositions(false);
+        this.font.getData().setScale(0.8f); // 稍微调小一点，避免太遮挡
     }
-
-    // === 外部调用接口 ===
-
-    /**
-     * 挥剑攻击
-     * @param level 1=普通, 2=进阶, 3=炫彩大招
-     */
-    public void spawnSlash(float x, float y, float angle, int level) {
-        effects.add(new SlashEffect(x, y, angle, level));
-    }
-
-    public void spawnFire(float x, float y) {
-        effects.add(new FireMagicEffect(x, y));
-    }
-
-    public void spawnHeal(float x, float y) {
-        effects.add(new HealEffect(x, y));
-    }
-
-    public void spawnLaser(float startX, float startY, float endX, float endY) {
-        effects.add(new LaserEffect(startX, startY, endX, endY));
-    }
-
-    public void spawnDebuff(float x, float y) {
-        effects.add(new DebuffEffect(x, y));
-    }
-
-    // === 核心循环 ===
 
     public void update(float delta) {
-        // 1. 更新特效逻辑 (生成粒子)
-        Iterator<CombatEffect> it = effects.iterator();
-        while (it.hasNext()) {
-            CombatEffect e = it.next();
-            e.update(delta, particleSystem);
-            if (e.isFinished()) it.remove();
+        Iterator<CombatEffect> iterator = effects.iterator();
+        while (iterator.hasNext()) {
+            CombatEffect effect = iterator.next();
+            effect.update(delta);
+            if (effect.isFinished()) {
+                iterator.remove();
+            }
         }
-
-        // 2. 更新粒子物理
-        particleSystem.update(delta);
     }
 
-    public void render(ShapeRenderer sr) {
-        // 🔥 关键：开启加法混合模式 (Additive Blending)
-        // 这会让重叠的粒子变亮，产生发光感
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
-
-        sr.begin(ShapeRenderer.ShapeType.Filled);
-
-        // 绘制特效主体
-        for (CombatEffect e : effects) {
-            e.render(sr);
+    public void draw(SpriteBatch batch) {
+        for (CombatEffect effect : effects) {
+            effect.draw(batch);
         }
+    }
 
-        // 绘制粒子
-        particleSystem.render(sr);
+    public void drawDebug(ShapeRenderer shapeRenderer) {
+        for (CombatEffect effect : effects) {
+            effect.drawDebug(shapeRenderer);
+        }
+    }
 
-        sr.end();
+    // ===== 生成特效的方法 =====
 
-        // 恢复默认混合模式
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+    public void spawnSlash(float x, float y, float angle, int type) {
+        effects.add(new SlashEffect(x, y, angle));
+    }
+
+    public void spawnDash(float x, float y, float directionAngle) {
+        // 如果你有 DashEffect 类
+        // effects.add(new DashEffect(x, y, directionAngle));
+    }
+
+    /**
+     * 🔥 [Phase 4] 生成飘字
+     */
+    public void spawnFloatingText(float x, float y, String text, Color color) {
+        effects.add(new FloatingTextEffect(x, y, text, color, font));
     }
 
     public void dispose() {
-        effects.clear();
-        particleSystem.clear();
+        if (font != null) font.dispose();
     }
 }

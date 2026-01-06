@@ -9,6 +9,7 @@ import de.tum.cit.fop.maze.game.GameConstants;
 
 /**
  * 冲刺残影特效管理器
+ * 特性：高亮发光混合模式，显示为原色发光残影
  */
 public class PlayerTrailManager {
 
@@ -29,17 +30,6 @@ public class PlayerTrailManager {
     private float spawnTimer = 0;
     private final float SPAWN_INTERVAL = 0.05f; // 残影生成间隔
 
-    // 配置参数
-    private Color trailColor = new Color(0.3f, 0.8f, 1.0f, 1f); // 青蓝色残影
-
-    /**
-     * 更新残影逻辑
-     * @param delta 时间增量
-     * @param playerX 玩家格子X
-     * @param playerY 玩家格子Y
-     * @param isDashing 是否正在冲刺
-     * @param currentFrame 当前玩家显示的动画帧（关键！）
-     */
     public void update(float delta, float playerX, float playerY, boolean isDashing, TextureRegion currentFrame) {
         // 1. 生成逻辑
         if (isDashing) {
@@ -58,7 +48,7 @@ public class PlayerTrailManager {
         // 2. 更新残影（淡出）
         for (int i = ghosts.size - 1; i >= 0; i--) {
             Ghost g = ghosts.get(i);
-            g.alpha -= delta * 3.0f; // 消失速度 (数值越大消失越快)
+            g.alpha -= delta * 3.0f; // 消失速度
             if (g.alpha <= 0) {
                 ghosts.removeIndex(i);
             }
@@ -73,16 +63,18 @@ public class PlayerTrailManager {
         int dstFunc = batch.getBlendDstFunc();
         Color oldColor = batch.getColor();
 
-        // 使用加法混合 (Additive Blending) 让残影发光
+        // 🔥 保留：使用加法混合 (Additive Blending)
+        // 这会让残影看起来更亮、有“能量感”，且重叠部分会变亮
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
 
         for (Ghost g : ghosts) {
             if (g.region == null) continue;
 
-            batch.setColor(trailColor.r, trailColor.g, trailColor.b, g.alpha * 0.5f);
+            // 使用纯白 (1f, 1f, 1f)
+            // 这样残影会显示角色原本的颜色，但因为加法混合，看起来会比本体更亮/发光
+            // 透明度系数设为 0.6f，避免在白色背景下过曝
+            batch.setColor(1f, 1f, 1f, g.alpha * 0.6f);
 
-            // 🔥 核心：复刻 Player.drawSprite 中的位置和缩放算法
-            // 确保残影和玩家本体大小、位置完全一致
             float scale = (float) GameConstants.CELL_SIZE / g.region.getRegionHeight();
             float drawW = g.region.getRegionWidth() * scale + 10;
             float drawH = GameConstants.CELL_SIZE + 10;
