@@ -100,11 +100,11 @@ public class TrapT04_Mud extends Trap {
                     Logger.debug("⚠️ T04 没有动画帧，将使用形状渲染");
                 }
             } else {
-                Logger.error("❌ T04 无法加载 Atlas 文件");
+//                Logger.error("❌ T04 无法加载 Atlas 文件");
                 frames = new Array<>();
             }
         } catch (Exception e) {
-            Logger.error("❌ T04 加载动画失败: " + e.getMessage());
+//            Logger.error("❌ T04 加载动画失败: " + e.getMessage());
             frames = new Array<>();
         }
     }

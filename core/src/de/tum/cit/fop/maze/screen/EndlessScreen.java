@@ -134,10 +134,10 @@ public class EndlessScreen implements Screen {
 
         // 只加载一次 UI 纹理
         try {
-            uiTop = new Texture("Wallpaper/background.png");
-            uiBottom = new Texture("Wallpaper/frontground.png");
-            uiLeft = new Texture("Wallpaper/leftground.png");
-            uiRight = new Texture("Wallpaper/rightground.png");
+            uiTop = new Texture("Wallpaper/HUD_up.png");
+            uiBottom = new Texture("Wallpaper/HUD_down.png");
+            uiLeft = new Texture("Wallpaper/HUD_left.png");
+            uiRight = new Texture("Wallpaper/HUD_right.png");
             System.out.println("✅ UI 纹理加载完成");
         } catch (Exception e) {
             System.out.println("❌ UI 纹理加载失败: " + e.getMessage());
@@ -157,14 +157,24 @@ public class EndlessScreen implements Screen {
         }
 
         // 初始化其他组件
-        maze = new MazeRenderer(gm, difficultyConfig);
         cam = new CameraManager(difficultyConfig);
+
+        // 🔥🔥🔥 关键修复：立即调用 resize 设置相机视口
+        int screenWidth = Gdx.graphics.getWidth();
+        int screenHeight = Gdx.graphics.getHeight();
+        System.out.println("屏幕尺寸: " + screenWidth + "x" + screenHeight);
+        cam.resize(screenWidth, screenHeight);
+
+        maze = new MazeRenderer(gm, difficultyConfig);
         hud = new HUD(gm);
+
+        if (gm.getPlayer() != null) {
+            cam.centerOnPlayerImmediately(gm.getPlayer());
+        }
 
         // 尝试设置活动游戏屏幕
         trySetActiveGameScreen();
 
-        cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
 
         // 无尽模式专属初始化
@@ -175,6 +185,21 @@ public class EndlessScreen implements Screen {
 
         isInitialized = true;
         System.out.println("✅ EndlessScreen 初始化完成");
+
+        // 🔥 关键修复：确保相机正确初始化并居中于玩家
+        if (gm != null && gm.getPlayer() != null) {
+            Player player = gm.getPlayer();
+            System.out.println("🎯 玩家位置: (" + player.getX() + ", " + player.getY() + ")");
+
+            // 立即将相机居中于玩家
+            cam.centerOnPlayerImmediately(player);
+            System.out.println("📷 相机已居中于玩家");
+        }
+
+        // 调试相机状态
+        System.out.println("相机位置: " + cam.getCamera().position);
+        System.out.println("相机缩放: " + cam.getCamera().zoom);
+        System.out.println("相机视口: " + cam.getCamera().viewportWidth + "x" + cam.getCamera().viewportHeight);
     }
 
     // ===== 安全调用 setActiveGameScreen 的方法 =====
@@ -215,7 +240,6 @@ public class EndlessScreen implements Screen {
 
         // 初始生成一些敌人
         spawnInitialEndlessEnemies();
-
         System.out.println("无尽模式已初始化！");
         System.out.println("   - 生命值: " + gm.getPlayer().getLives());
         System.out.println("   - 玩家位置: (" + gm.getPlayer().getX() + ", " + gm.getPlayer().getY() + ")");
@@ -224,53 +248,58 @@ public class EndlessScreen implements Screen {
     // ===== 主渲染循环 =====
     @Override
     public void render(float delta) {
-        /* ================= 输入处理 ================= */
+        // 1. 逻辑更新 (保持放在最前面)
         handleInput(delta);
-
-        /* ================= 游戏更新 ================= */
         float timeScale = console.isVisible() ? 0f : gm.getVariable("time_scale");
         float gameDelta = delta * timeScale;
 
         if (!paused && !console.isVisible()) {
             gm.update(gameDelta);
-
             if (isEndlessMode() && !endlessGameOver) {
                 updateEndlessMode(gameDelta);
             }
 
+        }
+        // 🔥 关键修复：相机更新必须放在这里，确保玩家位置已更新
+        if (gm != null && gm.getPlayer() != null && !paused && !console.isVisible()) {
             cam.update(gameDelta, gm.getPlayer(), gm);
         }
 
-        /* ================= 清屏 ================= */
+        // 🔥 减少调试输出频率（每2秒一次）
+        if ((int)(System.currentTimeMillis() / 2000) != (int)((System.currentTimeMillis() - delta * 1000) / 2000)) {
+            System.out.println("📷 相机状态: Pos(" + cam.getCamera().position.x + ", " + cam.getCamera().position.y +
+                    ") Viewport(" + cam.getCamera().viewportWidth + "x" + cam.getCamera().viewportHeight + ")");
+            System.out.println("👤 玩家位置: (" + gm.getPlayer().getX() + ", " + gm.getPlayer().getY() + ")");
+        }
+        // 2. 清屏
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
-        batch.setProjectionMatrix(cam.getCamera().combined);
 
-        /* ================= 渲染阶段1：地板和门背景效果 ================= */
+        // 3. 【核心修复】设置世界坐标矩阵
+        // 先获取相机矩阵
+        Matrix4 cameraMatrix = cam.getCamera().combined;
+
+        // 调试输出相机矩阵信息
+        System.out.println("Camera combined matrix: " + cameraMatrix);
+
+        // 设置到 batch
+        batch.setProjectionMatrix(cameraMatrix);
+
+        /* ================= 渲染世界物体 (都在一个 begin/end 块中更高效) ================= */
         batch.begin();
+
+        // A. 地板
         maze.renderFloor(batch);
 
-        // 渲染门背景效果
+        // B. 传送阵背景
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
-        batch.end();
 
-        /* ================= 渲染阶段2：玩家传送阵效果 ================= */
-        batch.begin();
-        if (gm.getPlayerSpawnPortal() != null) {
-            float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
-            float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
-            gm.getPlayerSpawnPortal().renderBack(batch, px, py);
-            gm.getPlayerSpawnPortal().renderFront(batch);
-        }
-        batch.end();
-
-        /* ================= 渲染阶段3：实体排序渲染 ================= */
+        // C. 排序后的实体 (墙、玩家、敌人等)
         List<Item> items = prepareRenderItems(exitDoorsCopy);
         items.sort(Comparator.comparingDouble((Item i) -> -i.y)
                 .thenComparingInt(i -> i.type.ordinal())
                 .thenComparingInt(i -> i.priority));
 
-        batch.begin();
         for (Item it : items) {
             if (it.wall != null) {
                 maze.renderWallGroup(batch, it.wall);
@@ -278,29 +307,18 @@ public class EndlessScreen implements Screen {
                 it.entity.drawSprite(batch);
             }
         }
-        batch.end();
 
-        /* ================= 渲染阶段4：特效和UI ================= */
-        batch.begin();
-        exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
+        // D. 特效
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
 
-        /* ================= 渲染UI ================= */
+        /* ================= 渲染 UI (切换到屏幕坐标) ================= */
         renderUI();
 
-        // 渲染暂停界面
-        if (paused) {
-            renderPauseScreen(delta);
-            return;
-        }
-
-        // 渲染游戏结束界面
-        if (endlessGameOver && endlessGameOverStage != null) {
-            renderGameOverScreen(delta);
-            return;
-        }
+        // 4. 暂停和结束界面 (它们使用 Stage，会自动管理自己的投影矩阵)
+        if (paused) renderPauseScreen(delta);
+        if (endlessGameOver && endlessGameOverStage != null) renderGameOverScreen(delta);
     }
 
     // ===== 无尽模式核心更新方法 =====
@@ -1076,40 +1094,40 @@ public class EndlessScreen implements Screen {
         int finalScore = calculateEndlessScore();
 
         // 🔥 修改：使用与GameScreen一致的标题样式
-        root.add(new Label("无尽模式 - 游戏结束", game.getSkin(), "title"))
+        root.add(new Label("Game Over", game.getSkin(), "title"))
                 .padBottom(40).row();
 
         root.add(new Label(
-                String.format("生存时间: %02d分%02d秒",
+                String.format("SURVIVAL TIME: %02d min  %02d sec",
                         (int)endlessSurvivalTime / 60,
                         (int)endlessSurvivalTime % 60),
                 game.getSkin()
         )).padBottom(10).row();
 
         root.add(new Label(
-                String.format("最终波次: %d", endlessWave),
+                String.format("LEVEL %d", endlessWave),
                 game.getSkin()
         )).padBottom(10).row();
 
         root.add(new Label(
-                String.format("击杀敌人: %d", endlessKills),
+                String.format("ENEMY KILLED: %d", endlessKills),
                 game.getSkin()
         )).padBottom(10).row();
 
         root.add(new Label(
-                String.format("最终得分: %d", finalScore),
+                String.format("SCORE: %d", finalScore),
                 game.getSkin()
         )).padBottom(40).row();
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 
         // 🔥 修改：使用与GameScreen一致的按钮尺寸和样式
-        root.add(bf.create("再玩一次", () -> {
+        root.add(bf.create("try again", () -> {
             game.startNewGame(Difficulty.ENDLESS);
             game.goToGame();
         })).width(400).height(80).padBottom(20).row();
 
-        root.add(bf.create("主菜单", () -> {
+        root.add(bf.create("MENU", () -> {
             game.goToMenu();
         })).width(400).height(80).row();
 
@@ -1216,9 +1234,9 @@ public class EndlessScreen implements Screen {
         renderMazeBorderDecorations(batch);
 
         hud.renderInGameUI(batch);
-        batch.end();
-        hud.renderManaBar(batch);
 
+        hud.renderManaBar(batch);
+        batch.end();
         if (console != null) {
             console.render();
         }
@@ -1232,10 +1250,10 @@ public class EndlessScreen implements Screen {
         int h = Gdx.graphics.getHeight();
         int thickness = 1000;
 
-        batch.draw(uiTop, 0, h - thickness, w, thickness);
-        batch.draw(uiBottom, 0, 0, w, thickness);
-        batch.draw(uiLeft, -50, 0, thickness + 400, h);
-        batch.draw(uiRight, w - thickness - 200, 0, thickness + 300, h);
+        batch.draw(uiTop,    0, h - thickness+860, w, thickness-120);
+        batch.draw(uiBottom, 0, 0-800,             w, thickness-120);
+        batch.draw(uiLeft,   -600, 0,             thickness-220, h);
+        batch.draw(uiRight,  w - thickness+810, 0, thickness-220, h);
     }
 
     // 🔥 修改：使暂停界面渲染与GameScreen一致
@@ -1272,7 +1290,7 @@ public class EndlessScreen implements Screen {
             Gdx.input.setInputProcessor(null);
         }
 
-        Gdx.app.log("EndlessScreen", paused ? "暂停" : "继续");
+        Gdx.app.log("EndlessScreen", paused ? "pause" : "continue");
     }
 
     // 🔥 修改：使暂停界面与GameScreen一致
@@ -1289,15 +1307,15 @@ public class EndlessScreen implements Screen {
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 
         // 🔥 修改：使用与GameScreen一致的按钮尺寸和文本
-        root.add(bf.create("继续", this::togglePause))
+        root.add(bf.create("continue", this::togglePause))
                 .width(400).height(80).padBottom(20).row();
 
-        root.add(bf.create("设置", () -> {
+        root.add(bf.create("setting", () -> {
                     // TODO: 打开设置界面
                 }))
                 .width(400).height(80).padBottom(20).row();
 
-        root.add(bf.create("返回主菜单", () -> {
+        root.add(bf.create("menu", () -> {
                     game.goToMenu();
                 }))
                 .width(400).height(80).padBottom(40).row();
@@ -1305,26 +1323,42 @@ public class EndlessScreen implements Screen {
         // 如果是无尽模式，显示无尽模式得分
         if (isEndlessMode()) {
             root.add(new Label(
-                    "波次: " + endlessWave + " | 得分: " + calculateEndlessScore(),
+                    "level" + endlessWave + " | score: " + calculateEndlessScore(),
                     game.getSkin()
             ));
         } else {
             root.add(new Label(
-                    "得分: " + gm.getScore(),
+                    "score: " + gm.getScore(),
                     game.getSkin()
             ));
         }
 
         pauseUIInitialized = true;
         if (game.hasRunningGame()) {
-            root.add(bf.create("重置迷宫", game::resumeGame));
+            root.add(bf.create("reset", game::resumeGame));
         }
     }
 
     // ===== LibGDX Screen接口方法 =====
     @Override
     public void resize(int width, int height) {
+        System.out.println("📐 EndlessScreen.resize(): " + width + "x" + height);
+
+        // 🔥 确保相机也响应窗口大小变化
+        if (cam != null) {
+            cam.resize(width, height);
+            System.out.println("📷 相机视口更新为: " + cam.getCamera().viewportWidth + "x" + cam.getCamera().viewportHeight);
+        }
+
         if (console != null) console.resize(width, height);
+
+        // 更新暂停界面和游戏结束界面
+        if (pauseStage != null) {
+            pauseStage.getViewport().update(width, height, true);
+        }
+        if (endlessGameOverStage != null) {
+            endlessGameOverStage.getViewport().update(width, height, true);
+        }
     }
 
     @Override
