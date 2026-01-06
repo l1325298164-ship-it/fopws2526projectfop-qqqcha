@@ -84,7 +84,7 @@ public class StoryLoadingScreen implements Screen {
 
             // 手动遍历：只要名字里包含 "frame"，就加进来
             for (TextureAtlas.AtlasRegion region : atlas.getRegions()) {
-                if (region.name.startsWith("frame")) {
+                if (region.name.startsWith("cat_right")) {
                     catFrames.add(region);
                 }
             }

@@ -172,9 +172,8 @@ public class MazeRunnerGame extends Game {
     }
 
     public void advanceStory() {
-        Logger.debug("advanceStory: " + stage);
+        Logger.debug("advanceStory ENTER, stage = " + stage);
 
-        Screen old = getScreen();
 
         switch (stage) {
 
@@ -213,7 +212,6 @@ public class MazeRunnerGame extends Game {
             }
         }
 
-        if (old != null) old.dispose();
     }
 
     /* =========================
@@ -222,7 +220,9 @@ public class MazeRunnerGame extends Game {
 
     public void onTutorialFinished(MazeGameTutorialScreen tutorial) {
         if (stage == StoryStage.MAZE_GAME_TUTORIAL) {
-            advanceStory();
+            Gdx.app.postRunnable(() -> {
+                advanceStory();
+            });
         }
     }
 
@@ -237,7 +237,6 @@ public class MazeRunnerGame extends Game {
     public void onPV4Choice(PV4Result result) {
         if (stage != StoryStage.PV4) return;
 
-        Screen old = getScreen();
 
         if (result == PV4Result.START) {
             saveProgress();
@@ -248,7 +247,6 @@ public class MazeRunnerGame extends Game {
             setScreen(new MenuScreen(this));
         }
 
-        if (old != null) old.dispose();
     }
 
     /* =========================
@@ -256,10 +254,8 @@ public class MazeRunnerGame extends Game {
        ========================= */
 
     public void goToMenu() {
-        Screen old = getScreen();
         resetGameState();
         setScreen(new MenuScreen(this));
-        if (old != null) old.dispose();
     }
     public void exitGame() {
         // 先做必要清理
@@ -357,4 +353,24 @@ public class MazeRunnerGame extends Game {
         // 注意：这里不需要设置 StoryStage，因为我们只是在“重玩”当前阶段
         setScreen(new GameScreen(this, difficultyConfig));
     }
+
+    public void debugEnterTutorial() {
+        Logger.debug("DEBUG: Enter Tutorial (standalone)");
+
+        stage = StoryStage.MAZE_GAME_TUTORIAL;
+        storyPipeline = null;
+
+        difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
+        gameManager = new GameManager(difficultyConfig);
+
+        // ✅ 正确加载 PV4
+        AssetManager am = getAssets();
+        if (!am.isLoaded("pv/4/PV_4.atlas")) {
+            am.load("pv/4/PV_4.atlas", TextureAtlas.class);
+            am.finishLoadingAsset("pv/4/PV_4.atlas");
+        }
+
+        setScreen(new MazeGameTutorialScreen(this, difficultyConfig));
+    }
+
 }
