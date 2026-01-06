@@ -1242,7 +1242,6 @@ public class EndlessScreen implements Screen {
         }
         batch.setProjectionMatrix(cam.getCamera().combined);
     }
-
     // 🔥 修改：使用与GameScreen一致的装饰渲染
     private void renderMazeBorderDecorations(SpriteBatch batch) {
         int w = Gdx.graphics.getWidth();
