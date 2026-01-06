@@ -30,6 +30,8 @@ private float worldX;
     private boolean hasKey = false;
     private int lives;
     private int maxLives;
+    private float invincibleTimer = 0;
+    private boolean isInvincible = false;
 
     private boolean isDead = false;
 //判定效果重新设计
@@ -209,12 +211,13 @@ private boolean damageInvincible = false;
         super(x, y);
 //        this.lives = GameConstants.MAX_LIVES;
 //        this.maxLives = GameConstants.MAX_LIVES;
-          this.lives = 100000;
-          this.maxLives = 100000;
+          this.lives = 200;
+          this.maxLives = 200;
         this.worldX = x;
         this.worldY = y;
         this.targetX = x;
         this.targetY = y;
+
 
 
         frontAtlas = new TextureAtlas("Character/player1/front.atlas");
@@ -505,7 +508,6 @@ private boolean damageInvincible = false;
             Logger.gameEvent("Player died");
         }
     }
-
     // 🔥 新增：回复生命值 (对应 Heart / 柠檬脆波波)
     public void heal(int amount) {
         if (isDead) return;

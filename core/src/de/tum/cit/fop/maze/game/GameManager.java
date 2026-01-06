@@ -24,7 +24,7 @@ import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final DifficultyConfig difficultyConfig;
-
+    private float debugTimer = 0f;
 
 
     public DifficultyConfig getDifficultyConfig() {
@@ -145,6 +145,34 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.gameEvent("Game reset complete");
     }
 
+    public void debugEnemiesAndBullets() {
+        Logger.debug("=== GameManager Debug ===");
+        Logger.debug("Player at: (" + player.getX() + ", " + player.getY() + ")");
+        Logger.debug("Total enemies: " + enemies.size());
+
+        int shootingEnemies = 0;
+        for (Enemy enemy : enemies) {
+            String state = enemy.isActive() ? "Active" : "Inactive";
+            String type = enemy.getClass().getSimpleName();
+            String pos = "(" + enemy.getX() + ", " + enemy.getY() + ")";
+            float dist = (float) Math.sqrt(
+                    Math.pow(enemy.getX() - player.getX(), 2) +
+                            Math.pow(enemy.getY() - player.getY(), 2)
+            );
+
+            Logger.debug("  " + type + " at " + pos + " - " + state + " | Dist: " + dist);
+
+            if (enemy.isActive() && dist < 10) { // 假设射击距离为10
+                shootingEnemies++;
+            }
+        }
+
+        Logger.debug("Enemies in shooting range: " + shootingEnemies);
+        Logger.debug("Active bullets: " + bullets.size);
+        Logger.debug("=== End Debug ===");
+    }
+
+
     public void update(float delta) {
         // 🔥 强制修正粒子中心
         if (playerSpawnPortal != null) {
@@ -254,6 +282,30 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             pendingReset = false;
             resetGame();
             justReset = true;
+        }
+
+        debugTimer += delta;
+        if (debugTimer >= 2.0f) {
+            debugEnemiesAndBullets();
+            debugTimer = 0f;
+        }
+
+        if (System.currentTimeMillis() % 2000 < 16) { // 大约每2秒一次
+            Logger.debug("Enemies: " + enemies.size() +
+                    " | Bullets: " + bullets.size +
+                    " | Player: (" + player.getX() + ", " + player.getY() + ")");
+
+            for (Enemy enemy : enemies) {
+                float dist = (float) Math.sqrt(
+                        Math.pow(enemy.getX() - player.getX(), 2) +
+                                Math.pow(enemy.getY() - player.getY(), 2)
+                );
+                if (dist < 8) {
+                    Logger.debug("  " + enemy.getClass().getSimpleName() +
+                            " at (" + enemy.getX() + ", " + enemy.getY() +
+                            ") - Dist: " + String.format("%.1f", dist));
+                }
+            }
         }
     }
 
@@ -431,7 +483,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
 
     private void generateKeys() {
-        int keyCount = GameConstants.KEYCOUNT;
+        int keyCount = difficultyConfig.keyCount;
 
         for (int i = 0; i < keyCount; i++) {
             int x, y;
@@ -969,7 +1021,15 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
      */
     public void spawnProjectile(EnemyBullet bullet) {
         if (bullet == null) return;
-        bullets.add((BobaBullet) bullet);
+
+        // 🔥 修复：检查类型，如果是 BobaBullet 则添加到相应的列表
+        if (bullet instanceof BobaBullet) {
+            bullets.add((BobaBullet) bullet);
+        } else {
+            // 如果是其他类型的 EnemyBullet，可能需要单独处理
+            // 例如：添加到另一个子弹列表，或直接忽略
+            Logger.debug("Non-Boba bullet spawned: " + bullet.getClass().getSimpleName());
+        }
     }
 
     public void spawnProjectile(BobaBullet bullet) {

@@ -59,6 +59,14 @@ public class DifficultySelectScreen implements Screen {
                     game.startNewGame(Difficulty.HARD);
                     game.goToGame();
                 }))
+                .padBottom(20)
+                .width(550)
+                .height(100)
+                .row();
+        root.add(bf.create("ENDLESS", () -> {
+                    game.startNewGame(Difficulty.ENDLESS);
+                    game.goToGame();
+                }))
                 .padBottom(40)
                 .width(550)
                 .height(100)
