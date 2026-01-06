@@ -9,6 +9,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
@@ -18,10 +20,12 @@ import de.tum.cit.fop.maze.entities.Player;
 
 
 public class MazeGameTutorialScreen implements Screen {
+
+
+    private Viewport viewport;
+
     private Pixmap mazeMask;
     private Texture mazeTexture; // 如果你要画背景图
-    private float mazeScale;
-    private float mazeDrawX, mazeDrawY;
     private boolean debugShowMask = false;
     // === Tutorial Player ===
     private Player tutorialPlayer;
@@ -88,10 +92,23 @@ public class MazeGameTutorialScreen implements Screen {
     public MazeGameTutorialScreen(MazeRunnerGame game, DifficultyConfig config) {
         this.game = game;
         this.config = config;
+        viewport = new ScreenViewport();
+        viewport.apply(true);
     }
 
     @Override
     public void show() {
+        viewport = new ScreenViewport();
+        viewport.apply(true);
+
+        hudCamera = new OrthographicCamera();
+        hudCamera.setToOrtho(false,
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight()
+        );
+
+        shapeRenderer = new ShapeRenderer();
+
 
         System.out.println("=== TUTORIAL START ===");
         objectives.clear();
@@ -189,6 +206,11 @@ public class MazeGameTutorialScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        viewport.apply();
+        game.getSpriteBatch().setProjectionMatrix(
+                viewport.getCamera().combined
+        );
+
         handleInput();
         update(delta);
 
@@ -715,6 +737,9 @@ public class MazeGameTutorialScreen implements Screen {
 
     @Override
     public void resize(int width, int height) {
+        if (viewport != null) {
+            viewport.update(width, height, true);
+        }
         if (hudCamera != null) {
             hudCamera.setToOrtho(false, width, height);
             hudCamera.update();
@@ -738,6 +763,7 @@ public class MazeGameTutorialScreen implements Screen {
     @Override
     public void dispose() {
         System.out.println("Tutorial screen resources disposed");
+
         if (mazeMask != null) mazeMask.dispose();
         if (mazeTexture != null) mazeTexture.dispose();
         if (shapeRenderer != null) shapeRenderer.dispose();
