@@ -141,17 +141,16 @@ public class DifficultyConfig {
             );
             case ENDLESS -> new DifficultyConfig(
                     /* 地图 */
-                    40, 40, 0,
+                    Difficulty.ENDLESS,40, 40, 0,
 
                     /* 敌人 */
-                    7, 5, 4,
+                    7, 5, 4,4,
 
                     /* 陷阱 */
-                    10, 5, 3, 2,
+                    10, 5, 3, 2,2,
 
                     /* 战斗 */
                     400,
-                    1.4f,
                     1.3f,
                     0
             );

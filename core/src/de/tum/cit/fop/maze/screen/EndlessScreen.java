@@ -1217,7 +1217,7 @@ public class EndlessScreen implements Screen {
 
         hud.renderInGameUI(batch);
         batch.end();
-        hud.renderManaBar();
+        hud.renderManaBar(batch);
 
         if (console != null) {
             console.render();

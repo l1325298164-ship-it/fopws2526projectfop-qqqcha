@@ -106,8 +106,8 @@ public class MazeRunnerGame extends Game {
         if (difficulty == Difficulty.ENDLESS) {
             // 创建一个新的配置对象，继承无尽模式的设置但生命值为200
             return new DifficultyConfig(
-                    40, 40, 0,           // 地图（0钥匙）
-                    1, 1, 1,            // 敌人
+                    difficulty.ENDLESS,40, 40, 0,           // 地图（0钥匙）
+                    1, 1, 1, 1,           // 敌人
                     10, 5, 3, 2,        // 陷阱
                     200,                // 🔥 生命值改为200
                     1.4f, 1.3f, 0       // 其他参数
