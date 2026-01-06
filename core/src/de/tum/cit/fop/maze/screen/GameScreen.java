@@ -101,10 +101,10 @@ public class GameScreen implements Screen {
     public void show() {
 
 
-        uiTop = new Texture("Wallpaper/background.png");
-        uiBottom = new Texture("Wallpaper/frontground.png");
-        uiLeft = new Texture("Wallpaper/leftground.png");
-        uiRight = new Texture("Wallpaper/rightground.png");
+        uiTop = new Texture("Wallpaper/HUD_up.png");
+        uiBottom = new Texture("Wallpaper/HUD_down.png");
+        uiLeft = new Texture("Wallpaper/HUD_left.png");
+        uiRight = new Texture("Wallpaper/HUD_right.png");
 //        uiTop.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
 //        uiBottom.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
 //        uiLeft.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
@@ -506,8 +506,8 @@ public class GameScreen implements Screen {
         int h = Gdx.graphics.getHeight();
         int thickness = 1000;
 
-        batch.draw(uiTop,    0, h - thickness+490, w, thickness-120);
-        batch.draw(uiBottom, 0, 0-300,             w, thickness-120);
+        batch.draw(uiTop,    0, h - thickness+860, w, thickness-120);
+        batch.draw(uiBottom, 0, 0-800,             w, thickness-120);
         batch.draw(uiLeft,   -600, 0,             thickness-220, h);
         batch.draw(uiRight,  w - thickness+810, 0, thickness-220, h);
     }
