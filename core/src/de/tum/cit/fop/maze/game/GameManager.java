@@ -31,6 +31,7 @@ public class GameManager {
     public DifficultyConfig getDifficultyConfig() {
         return difficultyConfig;
     }
+
     private int[][] maze;
     private Player player;
 
@@ -76,7 +77,10 @@ public class GameManager {
 
     // 🔥 让 VictoryScreen 能访问
     public GameSaveData victoryData = null;
-    public boolean isGameWon() { return victoryData != null; }
+
+    public boolean isGameWon() {
+        return victoryData != null;
+    }
 
     /* ================= 生命周期 ================= */
     public GameManager(DifficultyConfig difficultyConfig) {
@@ -185,7 +189,7 @@ public class GameManager {
 
             // 🔥 [Phase 4] 飘红字特效
             if (combatEffectManager != null) {
-                float px = player.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE/2f;
+                float px = player.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
                 float py = player.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE;
                 combatEffectManager.spawnFloatingText(px, py, "-" + amount, Color.RED);
             }
@@ -253,12 +257,10 @@ public class GameManager {
         if (e instanceof EnemyE01_CorruptedPearl) {
             scoreToAdd = 150;
             stats.totalKills_E01++;
-        }
-        else if (e instanceof EnemyE02_SmallCoffeeBean) {
+        } else if (e instanceof EnemyE02_SmallCoffeeBean) {
             scoreToAdd = 100;
             stats.totalKills_E02++;
-        }
-        else if (e instanceof EnemyE03_CaramelJuggernaut) {
+        } else if (e instanceof EnemyE03_CaramelJuggernaut) {
             scoreToAdd = 600;
             stats.totalKills_E03++;
         }
@@ -275,7 +277,7 @@ public class GameManager {
 
         // 🔥 [Phase 4] 飘金字特效 (在怪物尸体上方)
         if (combatEffectManager != null) {
-            float ex = e.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE/2f;
+            float ex = e.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
             float ey = e.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE;
             combatEffectManager.spawnFloatingText(ex, ey, "+" + scoreToAdd, Color.GOLD);
         }
@@ -439,7 +441,9 @@ public class GameManager {
         requestReset();
     }
 
-    public void requestReset() { pendingReset = true; }
+    public void requestReset() {
+        pendingReset = true;
+    }
 
     public void onKeyCollected() {
         player.setHasKey(true);
@@ -561,8 +565,8 @@ public class GameManager {
             int x = BORDER_THICKNESS + random.nextInt(w - BORDER_THICKNESS * 2);
             int y = BORDER_THICKNESS + random.nextInt(h - BORDER_THICKNESS * 2);
             if (maze[y][x] != 0 || isExitDoorAt(x, y)) continue;
-            if ((y+1<h && maze[y+1][x]==1) || (y-1>=0 && maze[y-1][x]==1) ||
-                    (x-1>=0 && maze[y][x-1]==1) || (x+1<w && maze[y][x+1]==1)) {
+            if ((y + 1 < h && maze[y + 1][x] == 1) || (y - 1 >= 0 && maze[y - 1][x] == 1) ||
+                    (x - 1 >= 0 && maze[y][x - 1] == 1) || (x + 1 < w && maze[y][x + 1] == 1)) {
                 return new int[]{x, y};
             }
         }
@@ -570,23 +574,52 @@ public class GameManager {
     }
 
     private void generateEnemies() {
-        for (int i=0; i<difficultyConfig.enemyE01PearlCount; i++) { int[] p = randomEmptyCell(); enemies.add(new EnemyCorruptedBoba(p[0], p[1])); }
-        for (int i=0; i<difficultyConfig.enemyE02CoffeeBeanCount; i++) { int[] p = randomEmptyCell(); enemies.add(new EnemyE02_SmallCoffeeBean(p[0], p[1])); }
-        for (int i=0; i<difficultyConfig.enemyE03CaramelCount; i++) { int[] p = randomEmptyCell(); enemies.add(new EnemyE03_CaramelJuggernaut(p[0], p[1])); }
+        for (int i = 0; i < difficultyConfig.enemyE01PearlCount; i++) {
+            int[] p = randomEmptyCell();
+            enemies.add(new EnemyCorruptedBoba(p[0], p[1]));
+        }
+        for (int i = 0; i < difficultyConfig.enemyE02CoffeeBeanCount; i++) {
+            int[] p = randomEmptyCell();
+            enemies.add(new EnemyE02_SmallCoffeeBean(p[0], p[1]));
+        }
+        for (int i = 0; i < difficultyConfig.enemyE03CaramelCount; i++) {
+            int[] p = randomEmptyCell();
+            enemies.add(new EnemyE03_CaramelJuggernaut(p[0], p[1]));
+        }
     }
+
     private void generateTraps() {
-        for (int i=0; i<difficultyConfig.trapT01GeyserCount; i++) { int[] p = randomEmptyCell(); traps.add(new TrapT01_Geyser(p[0], p[1], 3f)); }
-        for (int i=0; i<difficultyConfig.trapT02PearlMineCount; i++) { int[] p = randomEmptyCell(); traps.add(new TrapT02_PearlMine(p[0], p[1], this)); }
-        for (int i=0; i<difficultyConfig.trapT03TeaShardCount; i++) { int[] p = randomEmptyCell(); traps.add(new TrapT03_TeaShards(p[0], p[1])); }
-        for (int i=0; i<difficultyConfig.trapT04MudTileCount; i++) { int[] p = randomEmptyCell(); traps.add(new TrapT04_Mud(p[0], p[1])); }
+        for (int i = 0; i < difficultyConfig.trapT01GeyserCount; i++) {
+            int[] p = randomEmptyCell();
+            traps.add(new TrapT01_Geyser(p[0], p[1], 3f));
+        }
+        for (int i = 0; i < difficultyConfig.trapT02PearlMineCount; i++) {
+            int[] p = randomEmptyCell();
+            traps.add(new TrapT02_PearlMine(p[0], p[1], this));
+        }
+        for (int i = 0; i < difficultyConfig.trapT03TeaShardCount; i++) {
+            int[] p = randomEmptyCell();
+            traps.add(new TrapT03_TeaShards(p[0], p[1]));
+        }
+        for (int i = 0; i < difficultyConfig.trapT04MudTileCount; i++) {
+            int[] p = randomEmptyCell();
+            traps.add(new TrapT04_Mud(p[0], p[1]));
+        }
     }
+
     private void generateHearts() {
-        for (int i=0; i<10; i++) { int[] p = randomEmptyCell(); hearts.add(new Heart(p[0], p[1])); }
+        for (int i = 0; i < 10; i++) {
+            int[] p = randomEmptyCell();
+            hearts.add(new Heart(p[0], p[1]));
+        }
     }
+
     private void generateTreasures() {
-        int count = 0; int attempts = 0;
+        int count = 0;
+        int attempts = 0;
         while (count < 3 && attempts < 200) {
-            attempts++; int[] p = randomEmptyCell();
+            attempts++;
+            int[] p = randomEmptyCell();
             if (isOccupied(p[0], p[1])) continue;
             treasures.add(new Treasure(p[0], p[1]));
             count++;
@@ -608,23 +641,73 @@ public class GameManager {
         return maze[y][x] == 1;
     }
 
-    public Player getPlayer() { return player; }
-    public int[][] getMaze() { return maze; }
-    public List<Enemy> getEnemies() { return enemies; }
-    public List<Trap> getTraps() { return traps; }
-    public List<Heart> getHearts() { return hearts; }
-    public List<Treasure> getTreasures() { return treasures; }
-    public List<ExitDoor> getExitDoors() { return exitDoors; }
-    public Compass getCompass() { return compass; }
-    public int getCurrentLevel() { return currentLevel; }
-    public List<Key> getKeys() { return keys; }
-    public boolean isLevelTransitionInProgress() { return levelTransitionInProgress; }
-    public BobaBulletManager getBobaBulletEffectManager() { return bobaBulletEffectManager; }
-    public KeyEffectManager getKeyEffectManager() { return keyEffectManager; }
-    public PortalEffectManager getPlayerSpawnPortal() { return playerSpawnPortal; }
-    public ItemEffectManager getItemEffectManager() { return itemEffectManager; }
-    public TrapEffectManager getTrapEffectManager() { return trapEffectManager; }
-    public CombatEffectManager getCombatEffectManager() { return combatEffectManager; }
+    public Player getPlayer() {
+        return player;
+    }
+
+    public int[][] getMaze() {
+        return maze;
+    }
+
+    public List<Enemy> getEnemies() {
+        return enemies;
+    }
+
+    public List<Trap> getTraps() {
+        return traps;
+    }
+
+    public List<Heart> getHearts() {
+        return hearts;
+    }
+
+    public List<Treasure> getTreasures() {
+        return treasures;
+    }
+
+    public List<ExitDoor> getExitDoors() {
+        return exitDoors;
+    }
+
+    public Compass getCompass() {
+        return compass;
+    }
+
+    public int getCurrentLevel() {
+        return currentLevel;
+    }
+
+    public List<Key> getKeys() {
+        return keys;
+    }
+
+    public boolean isLevelTransitionInProgress() {
+        return levelTransitionInProgress;
+    }
+
+    public BobaBulletManager getBobaBulletEffectManager() {
+        return bobaBulletEffectManager;
+    }
+
+    public KeyEffectManager getKeyEffectManager() {
+        return keyEffectManager;
+    }
+
+    public PortalEffectManager getPlayerSpawnPortal() {
+        return playerSpawnPortal;
+    }
+
+    public ItemEffectManager getItemEffectManager() {
+        return itemEffectManager;
+    }
+
+    public TrapEffectManager getTrapEffectManager() {
+        return trapEffectManager;
+    }
+
+    public CombatEffectManager getCombatEffectManager() {
+        return combatEffectManager;
+    }
 
     public void onMoveInput(int dx, int dy) {
         if (player == null || levelTransitionInProgress) return;
@@ -632,11 +715,13 @@ public class GameManager {
         int ny = player.getY() + dy;
         if (canPlayerMoveTo(nx, ny)) player.move(dx, dy);
     }
+
     public boolean onAbilityInput(int slot) {
         if (levelTransitionInProgress) return false;
         player.useAbility(slot);
         return true;
     }
+
     public void onInteractInput() {
         if (levelTransitionInProgress) return;
         int px = player.getX();
@@ -663,7 +748,8 @@ public class GameManager {
         while (keyIt.hasNext()) {
             Key k = keyIt.next();
             if (k.isActive() && k.getX() == px && k.getY() == py) {
-                if (keyEffectManager != null) keyEffectManager.spawnKeyEffect(k.getX()*GameConstants.CELL_SIZE, k.getY()*GameConstants.CELL_SIZE, k.getTexture());
+                if (keyEffectManager != null)
+                    keyEffectManager.spawnKeyEffect(k.getX() * GameConstants.CELL_SIZE, k.getY() * GameConstants.CELL_SIZE, k.getTexture());
                 k.onInteract(player);
                 keyIt.remove();
                 onKeyCollected();
@@ -674,15 +760,16 @@ public class GameManager {
         while (heartIt.hasNext()) {
             Heart h = heartIt.next();
             if (h.isActive() && h.getX() == px && h.getY() == py) {
-                if (itemEffectManager != null) itemEffectManager.spawnHeart((h.getX()+0.5f)*GameConstants.CELL_SIZE, (h.getY()+0.5f)*GameConstants.CELL_SIZE);
+                if (itemEffectManager != null)
+                    itemEffectManager.spawnHeart((h.getX() + 0.5f) * GameConstants.CELL_SIZE, (h.getY() + 0.5f) * GameConstants.CELL_SIZE);
                 h.onInteract(player);
 
                 player.addScore(50);
 
                 // 🔥 [Phase 4] 爱心飘字 +50 (绿色)
                 if (combatEffectManager != null) {
-                    float fx = (h.getX()+0.5f)*GameConstants.CELL_SIZE;
-                    float fy = (h.getY()+1f)*GameConstants.CELL_SIZE;
+                    float fx = (h.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                    float fy = (h.getY() + 1f) * GameConstants.CELL_SIZE;
                     combatEffectManager.spawnFloatingText(fx, fy, "+50", Color.GREEN);
                 }
 
@@ -697,15 +784,16 @@ public class GameManager {
         }
         for (Treasure t : treasures) {
             if (t.isInteractable() && t.getX() == px && t.getY() == py) {
-                if (itemEffectManager != null) itemEffectManager.spawnTreasure((t.getX()+0.5f)*GameConstants.CELL_SIZE, (t.getY()+0.5f)*GameConstants.CELL_SIZE);
+                if (itemEffectManager != null)
+                    itemEffectManager.spawnTreasure((t.getX() + 0.5f) * GameConstants.CELL_SIZE, (t.getY() + 0.5f) * GameConstants.CELL_SIZE);
                 t.onInteract(player);
 
                 player.addScore(800);
 
                 // 🔥 [Phase 4] 宝箱飘字 +800 (金色)
                 if (combatEffectManager != null) {
-                    float tx = (t.getX()+0.5f)*GameConstants.CELL_SIZE;
-                    float ty = (t.getY()+1f)*GameConstants.CELL_SIZE;
+                    float tx = (t.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                    float ty = (t.getY() + 1f) * GameConstants.CELL_SIZE;
                     combatEffectManager.spawnFloatingText(tx, ty, "+800", Color.GOLD);
                 }
             }
@@ -725,12 +813,19 @@ public class GameManager {
         for (Enemy e : enemies) if (e.isActive() && !e.isDead() && e.getX() == x && e.getY() == y) result.add(e);
         return result;
     }
+
     public int getMazeCell(int x, int y) {
         if (x < 0 || y < 0 || y >= maze.length || x >= maze[0].length) return 0;
         return maze[y][x];
     }
-    public void spawnProjectile(BobaBullet bullet) { if (bullet != null) bullets.add(bullet); }
-    public void spawnProjectile(EnemyBullet bullet) { if (bullet != null) bullets.add((BobaBullet) bullet); }
+
+    public void spawnProjectile(BobaBullet bullet) {
+        if (bullet != null) bullets.add(bullet);
+    }
+
+    public void spawnProjectile(EnemyBullet bullet) {
+        if (bullet != null) bullets.add((BobaBullet) bullet);
+    }
 
     private void handlePlayerEnemyCollision() {
         if (levelTransitionInProgress || player == null || player.isDead()) return;
@@ -742,7 +837,7 @@ public class GameManager {
                     int penalty = 50;
 
                     if (e instanceof EnemyE03_CaramelJuggernaut || e instanceof EnemyE04_CrystallizedCaramelShell) {
-                       penalty = 100;
+                        penalty = 100;
                     }
 
                     applyDamageWithPenalty(damage, penalty, e.getClass().getSimpleName());
@@ -757,8 +852,8 @@ public class GameManager {
             if (e.isActive() && !e.isDead() && e.getX() == player.getX() && e.getY() == player.getY()) {
                 e.takeDamage(2);
                 if (combatEffectManager != null) {
-                    float ex = e.getX()*GameConstants.CELL_SIZE + GameConstants.CELL_SIZE/2f;
-                    float ey = e.getY()*GameConstants.CELL_SIZE + GameConstants.CELL_SIZE/2f;
+                    float ex = e.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                    float ey = e.getY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
                     combatEffectManager.spawnSlash(ex, ey, 0, 1);
                 }
             }
@@ -772,5 +867,11 @@ public class GameManager {
         if (combatEffectManager != null) combatEffectManager.dispose();
         for (ExitDoor door : exitDoors) door.dispose();
         for (Treasure t : treasures) t.dispose();
+
+        for (Trap trap : traps) {
+            if (trap instanceof TrapT02_PearlMine) {
+                ((TrapT02_PearlMine) trap).dispose();
+            }
+        }
     }
 }

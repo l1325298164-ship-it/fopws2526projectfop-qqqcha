@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.effects.Player.combat.CombatEffect;
+import de.tum.cit.fop.maze.effects.Player.combat.CombatParticleSystem;
 
 public class FloatingTextEffect extends CombatEffect {
     private String text;
@@ -47,5 +48,15 @@ public class FloatingTextEffect extends CombatEffect {
     @Override
     public void drawDebug(ShapeRenderer shapeRenderer) {
         // 不需要 Debug 框
+    }
+
+    @Override
+    protected void onUpdate(float delta, CombatParticleSystem ps) {
+
+    }
+
+    @Override
+    public void render(ShapeRenderer sr) {
+
     }
 }

@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.entities.trap;
 
-import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Texture; // 引入 Texture
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
@@ -20,20 +21,22 @@ public class TrapT02_PearlMine extends Trap {
     private State state = State.IDLE;
     private float timer = 0f;
 
+    // 🔥 新增：贴图纹理
+    private Texture texture;
+
     /* ===== 参数 ===== */
     private static final float EXPLODE_DELAY = 0.8f;
     private static final int DAMAGE = 15;
-
-    // 🔥 芋圆三色定义
-    private static final Color TARO_PURPLE = new Color(0.7f, 0.4f, 0.95f, 1f);
-    private static final Color POTATO_ORANGE = new Color(1.0f, 0.65f, 0.3f, 1f);
-    private static final Color RICE_WHITE = new Color(0.98f, 0.98f, 0.95f, 1f);
 
     private final GameManager gm;
 
     public TrapT02_PearlMine(int x, int y, GameManager gm) {
         super(x, y);
         this.gm = gm;
+
+        // ⚠️ 请修改这里的路径为你实际的图片路径
+        // 建议图片大小为 16x16 或 32x32 像素
+        this.texture = new Texture(Gdx.files.internal("traps/pearl_mine.png"));
     }
 
     @Override
@@ -41,58 +44,46 @@ public class TrapT02_PearlMine extends Trap {
         return true;
     }
 
-    // ❌ 删除这个单参数的 update，因为它不会被调用，容易造成误导
-    // @Override
-    // public void update(float delta) { ... }
-
-    @Override
-    public void update(float delta) {
-
-    }
-
-    // ✅ 将逻辑移到这里
+    // ✅ 这里的 update 逻辑保留之前修复后的版本
     @Override
     public void update(float delta, GameManager gameManager) {
         if (!active) return;
 
-        // 如果陷阱处于“已激活”状态，开始倒计时
         if (state == State.ARMED) {
             timer += delta;
-            // 震动效果的随机数可以在这里每帧更新，或者在 draw 里生成
-
             if (timer >= EXPLODE_DELAY) {
                 explode();
             }
         }
     }
 
+    // 屏蔽掉未使用的 update(float delta)
+    @Override
+    public void update(float delta) {}
+
     @Override
     public void onPlayerStep(Player player) {
         if (state != State.IDLE) return;
         state = State.ARMED;
         timer = 0f;
-        // 可以在这里播放一个“滴滴”声
     }
 
-    /** 爆炸逻辑 */
     private void explode() {
         state = State.EXPLODED;
-        active = false; // 爆炸后陷阱本身消失（但特效会生成）
+        active = false;
 
         int cx = x;
         int cy = y;
 
-        // 🔥 触发爆炸特效
-        // 注意：这里我们使用成员变量 gm，或者使用传入 update 的 gameManager 都可以
+        // 触发特效
         if (gm.getTrapEffectManager() != null) {
             float effectX = (x + 0.5f) * GameConstants.CELL_SIZE;
             float effectY = (y + 0.5f) * GameConstants.CELL_SIZE;
             gm.getTrapEffectManager().spawnPearlMine(effectX, effectY);
         }
 
-        // ===== 伤害判定 =====
+        // 伤害判定
         Player player = gm.getPlayer();
-        // 简单的距离判定 (爆炸半径1格)
         if (Math.abs(player.getX() - cx) <= 1 && Math.abs(player.getY() - cy) <= 1) {
             player.takeDamage(DAMAGE);
         }
@@ -104,19 +95,23 @@ public class TrapT02_PearlMine extends Trap {
         }
     }
 
-    /* ================= 渲染（Shape） ================= */
+    /* ================= 渲染修改 ================= */
 
     @Override
-    public void drawShape(ShapeRenderer sr) {
+    public RenderType getRenderType() {
+        // 🔥 修改为 SPRITE 模式，这样游戏才会调用 drawSprite
+        return RenderType.SPRITE;
+    }
+
+    @Override
+    public void drawSprite(SpriteBatch batch) {
         if (!active) return;
 
         float size = GameConstants.CELL_SIZE;
-        float centerX = x * size + size / 2;
-        float centerY = y * size + size / 2;
+        float px = x * size;
+        float py = y * size;
 
-        float radius = size / 5f;
-
-        // 🔥 震动效果
+        // 🔥 保留震动效果：如果处于 ARMED 状态，计算随机偏移
         float shakeX = 0;
         float shakeY = 0;
         if (state == State.ARMED) {
@@ -126,22 +121,29 @@ public class TrapT02_PearlMine extends Trap {
             shakeY = MathUtils.random(-intensity, intensity);
         }
 
-        // 绘制三个小芋圆
-        sr.setColor(TARO_PURPLE);
-        sr.circle(centerX - radius + shakeX, centerY - radius + shakeY, radius);
+        // 如果处于 ARMED 状态，还可以让贴图变红一点表示警告
+        if (state == State.ARMED) {
+            batch.setColor(1f, 0.5f, 0.5f, 1f); // 变红
+        } else {
+            batch.setColor(1f, 1f, 1f, 1f); // 原色
+        }
 
-        sr.setColor(POTATO_ORANGE);
-        sr.circle(centerX + radius + shakeX, centerY - radius + shakeY, radius);
+        // 绘制贴图 (加上震动偏移)
+        batch.draw(texture, px + shakeX, py + shakeY, size, size);
 
-        sr.setColor(RICE_WHITE);
-        sr.circle(centerX + shakeX, centerY + radius + shakeY, radius);
+        // 记得把颜色改回来，以免影响后续绘制
+        batch.setColor(1f, 1f, 1f, 1f);
     }
 
     @Override
-    public void drawSprite(SpriteBatch batch) {}
+    public void drawShape(ShapeRenderer sr) {
+        // 不需要 Shape 绘制了
+    }
 
-    @Override
-    public RenderType getRenderType() {
-        return RenderType.SHAPE;
+    // 建议添加释放资源的方法
+    public void dispose() {
+        if (texture != null) {
+            texture.dispose();
+        }
     }
 }
