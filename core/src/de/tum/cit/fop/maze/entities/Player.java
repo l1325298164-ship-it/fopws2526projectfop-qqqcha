@@ -711,15 +711,16 @@ private boolean damageInvincible = false;
     public float getDamageMultiplier() {
         return buffAttack ? 1.5f : 1.0f;
     }
-
-
-
-
     public float getMoveSpeed() {
         // MOVE_COOLDOWN 表示「走一格需要多少秒」
         // 所以速度 = 1 / cooldown 防止除数为0
         return Math.max(0.01f, 1f / MOVE_COOLDOWN);
     }
-
-
+    public void setWorldPosition(float worldX, float worldY) {
+        this.worldX = worldX;
+        this.worldY = worldY;
+    }
+    public void setMovingAnim(boolean moving) {
+        this.isMovingAnim = moving;
+    }
 }

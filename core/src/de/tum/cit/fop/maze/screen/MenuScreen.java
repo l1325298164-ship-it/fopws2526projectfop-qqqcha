@@ -146,7 +146,7 @@ public class MenuScreen implements Screen {
         batch.setProjectionMatrix(stage.getCamera().combined);
         if (Gdx.input.isKeyJustPressed(Input.Keys.T)) { // 按 T 键跳转 Tutorial
             // 获取当前游戏的难度配置，如果没有则创建一个默认的
-            game.setScreen(new MazeGameTutorialScreen(game,  DifficultyConfig.of(Difficulty.TUTORIAL)));
+            game.debugEnterTutorial();
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             changeEnabled = !changeEnabled;
