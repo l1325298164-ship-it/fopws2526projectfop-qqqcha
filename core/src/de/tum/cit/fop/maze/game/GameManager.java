@@ -141,7 +141,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionInProgress = false;
         currentExitDoor = null;
         levelTransitionTimer = 0f;
+        // 🔥 测试：强制在玩家旁边创建一个T01陷阱
+        int testX = player.getX() + 1;
+        int testY = player.getY();
 
+        System.out.println("🔥🔥🔥 创建测试陷阱在玩家旁边: (" + testX + "," + testY + ")");
+        Trap testTrap = new TrapT01_Geyser(testX, testY, 2.0f);
+        traps.add(testTrap);
         Logger.gameEvent("Game reset complete");
     }
 
@@ -197,6 +203,22 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (fogSystem != null) {
             fogSystem.update(delta);
         }
+
+        // ===== 🔥 新增：更新陷阱 =====
+        for (Trap trap : traps) {
+            if (trap.isActive()) {
+                trap.update(delta);
+
+                // 🔥 调试：输出T01陷阱状态
+                if (trap instanceof TrapT01_Geyser) {
+                    Logger.debug("T01陷阱更新: 位置(" + trap.getX() + "," + trap.getY() + ")");
+                }
+            }
+        }
+
+
+
+
         // ===== 修复: 使用 Iterator 遍历敌人，避免并发修改异常 =====
         Iterator<Enemy> enemyIterator = enemies.iterator();
         while (enemyIterator.hasNext()) {
@@ -230,7 +252,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (keyEffectManager != null) {
             keyEffectManager.update(delta);
         }
-
+        handlePlayerTrapInteraction();
         handleKeyLogic();
 
         // ===== 🔥 统一重置执行点 =====
@@ -238,6 +260,27 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             pendingReset = false;
             resetGame();
             justReset = true;
+        }
+    }
+
+    private void handlePlayerTrapInteraction() {
+        if (levelTransitionInProgress || player == null || player.isDead()) return;
+
+        int px = player.getX();
+        int py = player.getY();
+
+        for (Trap trap : traps) {
+            if (!trap.isActive()) continue;
+
+            // 检查玩家是否在陷阱上
+            if (trap.getX() == px && trap.getY() == py) {
+                trap.onPlayerStep(player);
+
+                // 🔥 调试：输出陷阱交互
+                if (trap instanceof TrapT01_Geyser) {
+                    Logger.debug("玩家在T01陷阱上: 位置(" + px + "," + py + ")");
+                }
+            }
         }
     }
     private void updateCompass() {
@@ -670,15 +713,35 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     /* ================= 工具 ================= */
     private int[] randomEmptyCell() {
         int x, y;
-
         int width = maze[0].length;
         int height = maze.length;
 
+        int attempts = 0;
         do {
             x = random(1, width - 2);
             y = random(1, height - 2);
-        } while (maze[y][x] == 0);
+            attempts++;
 
+            // 防止无限循环
+            if (attempts > 500) {
+                Logger.warning("randomEmptyCell: Too many attempts, using fallback");
+                // 回退：从中心开始搜索
+                for (int offset = 0; offset < Math.max(width, height); offset++) {
+                    for (int cx = Math.max(1, width/2 - offset); cx <= Math.min(width-2, width/2 + offset); cx++) {
+                        for (int cy = Math.max(1, height/2 - offset); cy <= Math.min(height-2, height/2 + offset); cy++) {
+                            if (maze[cy][cx] != 0 && !isOccupied(cx, cy)) {
+                                Logger.debug("randomEmptyCell fallback: found (" + cx + ", " + cy + ")");
+                                return new int[]{cx, cy};
+                            }
+                        }
+                    }
+                }
+                // 终极回退：返回玩家位置（应该不会到这里）
+                return new int[]{player.getX(), player.getY()};
+            }
+        } while (maze[y][x] == 0 || isOccupied(x, y)); // 🔥 新增 isOccupied 检查
+
+        Logger.debug("randomEmptyCell: found (" + x + ", " + y + ") after " + attempts + " attempts");
         return new int[]{x, y};
     }
 
@@ -686,6 +749,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // 1️⃣ 越界
         if (x < 0 || y < 0 || y >= maze.length || x >= maze[0].length) {
             return false;
+        }
+
+
+        // 2️⃣ 检查2x2敌人
+        for (Enemy enemy : enemies) {
+            if (enemy instanceof EnemyE04_CrystallizedCaramelShell) {
+                EnemyE04_CrystallizedCaramelShell shell = (EnemyE04_CrystallizedCaramelShell) enemy;
+                if (shell.isActive() && shell.occupiesCell(x, y)) {
+                    return false;
+                }
+            }
         }
 
         // 2️⃣ 检查是否是门的位置
@@ -724,13 +798,21 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     /* ================= 输入 ================= */
     public void onMoveInput(int dx, int dy) {
-        if (player == null || levelTransitionInProgress) return;
+        if (player == null) return;
 
+        // 首先更新玩家的朝向（无论是否能移动）
+        player.updateDirection(dx, dy);
+
+        // 然后尝试移动
         int nx = player.getX() + dx;
         int ny = player.getY() + dy;
 
         if (canPlayerMoveTo(nx, ny)) {
             player.move(dx, dy);
+        } else {
+            // 即使不能移动，方向也已经更新了
+            // 可以在这里播放一个"撞墙"的音效或动画
+            Logger.debug("无法移动到 (" + nx + "," + ny + ")，但方向已更新");
         }
     }
 

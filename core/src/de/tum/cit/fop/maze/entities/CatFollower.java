@@ -1,7 +1,10 @@
 package de.tum.cit.fop.maze.entities;
 
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -43,8 +46,48 @@ public class CatFollower extends GameObject {
     private float idleTargetY;
 
     private State state = State.FOLLOW_PLAYER;
-    /* ================== 渲染 ================== */
-    private final Texture texture;
+    /* ================== Animation ================== */
+
+    private static Animation<TextureRegion> animLeft;
+    private static Animation<TextureRegion> animRight;
+    private static Animation<TextureRegion> animFront;
+    private static Animation<TextureRegion> animBack;
+
+    private float animTime = 0f;
+
+    private enum Facing {
+        LEFT, RIGHT, FRONT, BACK
+    }
+
+    private Facing facing = Facing.FRONT;
+    private static void loadAnimations(TextureManager tm) {
+        if (animLeft != null) return;
+
+        animLeft = new Animation<>(
+                0.18f,
+                tm.getCatLeftAtlas().getRegions()
+        );
+
+        animRight = new Animation<>(
+                0.18f,
+                tm.getCatRightAtlas().getRegions()
+        );
+
+        animFront = new Animation<>(
+                0.18f,
+                tm.getCatFrontAtlas().getRegions()
+        );
+
+        animBack = new Animation<>(
+                0.18f,
+                tm.getCatBackAtlas().getRegions()
+        );
+
+        animLeft.setPlayMode(Animation.PlayMode.LOOP);
+        animRight.setPlayMode(Animation.PlayMode.LOOP);
+        animFront.setPlayMode(Animation.PlayMode.LOOP);
+        animBack.setPlayMode(Animation.PlayMode.LOOP);
+    }
 
     public CatFollower(Player player, GameManager gm) {
         super(player.getX(), player.getY());
@@ -55,7 +98,7 @@ public class CatFollower extends GameObject {
         this.worldX = player.getX() + 0.5f;
         this.worldY = player.getY() + 0.2f;
 
-        this.texture = TextureManager.getInstance().getCatTexture();
+        loadAnimations(TextureManager.getInstance());
     }
 
 
@@ -139,7 +182,11 @@ public class CatFollower extends GameObject {
 
         float dx = targetX - worldX;
         float dy = targetY - worldY;
-
+        if (Math.abs(dx) > Math.abs(dy)) {
+            facing = dx > 0 ? Facing.RIGHT : Facing.LEFT;
+        } else {
+            facing = dy > 0 ? Facing.BACK : Facing.FRONT;
+        }
         float distSq = dx * dx + dy * dy;
         if (distSq < 0.0001f) return;
 
@@ -189,16 +236,30 @@ public class CatFollower extends GameObject {
 
     @Override
     public void drawSprite(SpriteBatch batch) {
-        if (!active || texture == null) return;
+        if (!active) return;
 
         float cs = GameConstants.CELL_SIZE;
 
-        float size = cs * 0.8f; // 比玩家小一点
+        float size = cs * 0.8f;
         float drawX = worldX * cs - size * 0.5f;
         float drawY = worldY * cs - size * 0.2f;
 
-        batch.draw(texture, drawX, drawY, size, size);
+        Animation<TextureRegion> anim = switch (facing) {
+            case LEFT  -> animLeft;
+            case RIGHT -> animRight;
+            case BACK  -> animBack;
+            case FRONT -> animFront;
+        };
+
+        boolean isMoving = player.isMoving() || state == State.IDLE_WANDER;
+
+        TextureRegion frame = isMoving
+                ? anim.getKeyFrame(animTime)
+                : anim.getKeyFrames()[0]; // ✅ 待机帧（第一帧）
+
+        batch.draw(frame, drawX, drawY, size, size);
     }
+
 
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {

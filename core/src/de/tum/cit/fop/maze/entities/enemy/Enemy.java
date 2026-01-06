@@ -214,11 +214,7 @@ public abstract class Enemy extends GameObject {
         }
     }
     protected void drawAnimated(SpriteBatch batch) {
-        Logger.debug("Drawing animated enemy. Direction: " + direction +
-                ", has animations - left: " + (leftAnim != null) +
-                ", right: " + (rightAnim != null) +
-                ", front: " + (frontAnim != null) +
-                ", back: " + (backAnim != null));
+
         Animation<TextureRegion> anim;
 
         switch (direction) {
@@ -379,6 +375,15 @@ public abstract class Enemy extends GameObject {
     public float getWorldY() {
         return worldY;
     }
+    protected boolean hasAnimation() {
+        return hasSingleAnimation() || hasFourDirectionAnimation();
+    }
+
+    public boolean occupiesCell(int cellX, int cellY) {
+        // 默认1x1敌人只占据一个格子
+        return active && cellX == x && cellY == y;
+    }
+
 
 
 }

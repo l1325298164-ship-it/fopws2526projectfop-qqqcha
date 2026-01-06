@@ -423,15 +423,6 @@ private boolean damageInvincible = false;
 
     /* ====================== ATTACK API ====================== */
 
-    public void startAttack() {
-        if (isAttacking) return;
-
-        isAttacking = true;
-        attackAnimTimer = 0f;
-
-        Logger.debug("Player attack started");
-    }
-
     /* ====================== 移动相关 ====================== */
 
     public float getMoveDelayMultiplier() {
@@ -444,28 +435,45 @@ private boolean damageInvincible = false;
     }
 
     public void move(int dx, int dy) {
-        if (isDead || isMovingContinuous) return;
+        if (isDead || inHitStun) return;
 
-        int nx = x + dx;
-        int ny = y + dy;
-        if (dx > 0) direction = Direction.RIGHT;
-        else if (dx < 0) direction = Direction.LEFT;
-        else if (dy > 0) direction = Direction.UP;
-        else if (dy < 0) direction = Direction.DOWN;
+        // ⭐ 1. 强制转向：即使卡在墙里，点击按键也会立即改变朝向
+        updateDirection(dx, dy);
 
+        // 2. 检查当前是否可以开启新的位移（如果正在移动或攻击，则不位移，但上面已经转过向了）
+        if (isMovingContinuous || isAttacking) return;
+
+        // 3. 这里的逻辑通常由 GameManager 调用 canPlayerMoveTo(x + dx, y + dy)
+        // 如果外部 InputHandler 已经判断过碰撞，则直接执行：
         isMovingAnim = true;
         moving = true;
         moveTimer = 0f;
-
-        targetX = nx;
-        targetY = ny;
+        targetX = x + dx;
+        targetY = y + dy;
         isMovingContinuous = true;
-
-        Logger.debug("Player start move to (" + targetX + "," + targetY + ")");
-
     }
 
+    public void updateDirection(int dx, int dy) {
+        // 🔥 无条件更新方向，即使不移动
+        if (dx != 0 || dy != 0) {
+            // 优先水平方向
+            if (dx != 0) {
+                direction = (dx > 0) ? Direction.RIGHT : Direction.LEFT;
+            } else {
+                direction = (dy > 0) ? Direction.UP : Direction.DOWN;
+            }
 
+            // 🔥 只要方向改变，就重置动画时间
+            stateTime = 0f;
+        }
+    }
+
+    public void startAttack() {
+        if (isAttacking || isDead) return;
+        isAttacking = true;
+        attackAnimTimer = 0f;
+        Logger.debug("Player attack started facing: " + direction);
+    }
     /* ====================== 状态效果 ====================== */
 
     /**
@@ -531,7 +539,6 @@ private boolean damageInvincible = false;
         if (!active || isDead) return;
 
         Animation<TextureRegion> anim;
-
         if (isAttacking) {
             anim = switch (direction) {
                 case UP -> backAtkAnim;
@@ -548,36 +555,22 @@ private boolean damageInvincible = false;
             };
         }
 
-        TextureRegion frame = anim.getKeyFrame(
-                isAttacking ? attackAnimTimer : stateTime,
-                !isAttacking
-        );
+        // 如果不在位移也不在攻击，getKeyFrame 会根据 stateTime(0) 返回该方向的站立帧
+        TextureRegion frame = anim.getKeyFrame(isAttacking ? attackAnimTimer : stateTime, !isAttacking);
 
         float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
         float scale = baseScale * VISUAL_SCALE;
-
         float drawW = frame.getRegionWidth() * scale;
         float drawH = frame.getRegionHeight() * scale;
-
-        float drawX = worldX * GameConstants.CELL_SIZE
-                + GameConstants.CELL_SIZE / 2f - drawW / 2f;
+        float drawX = worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f - drawW / 2f;
         float drawY = worldY * GameConstants.CELL_SIZE;
 
-        if (hitFlash && hitFlashTimer % 0.1f > 0.05f) {
-            batch.setColor(1f, 1f, 1f, 0.6f);
-        } else if (dashInvincible && dashInvincibleTimer % 0.1f > 0.05f) {
-            // Dash 无敌闪烁（可选不同风格）
-            batch.setColor(0.8f, 0.9f, 1f, 0.7f);
-        } else {
-            batch.setColor(1f, 1f, 1f, 1f);
-        }
+        if (hitFlash && hitFlashTimer % 0.1f > 0.05f) batch.setColor(1, 1, 1, 0.6f);
+        else if (dashInvincible && dashInvincibleTimer % 0.1f > 0.05f) batch.setColor(0.8f, 0.9f, 1f, 0.7f);
+        else batch.setColor(1, 1, 1, 1);
 
-        // ⭐⭐⭐ 真正画出来的关键一行 ⭐⭐⭐
         batch.draw(frame, drawX, drawY, drawW, drawH);
-
-        // 重置颜色（防止污染后续渲染）
-        batch.setColor(1f, 1f, 1f, 1f);
-
+        batch.setColor(1, 1, 1, 1);
     }
 
     @Override

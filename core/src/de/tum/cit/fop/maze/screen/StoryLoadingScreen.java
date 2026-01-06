@@ -28,7 +28,7 @@ public class StoryLoadingScreen implements Screen {
     // ===== 小猫动画 =====
     private Animation<TextureRegion> catAnim;
     private float stateTime = 0f;
-    private final String CAT_ATLAS_PATH = "ani/cat/cat_right.atlas"; // 确认你的文件名
+    private final String CAT_ATLAS_PATH = "ani/cat/right/cat_right.atlas"; // 确认你的文件名
     private boolean catInitialized = false;
     private com.badlogic.gdx.utils.Array<Sparkle> sparkles = new com.badlogic.gdx.utils.Array<>();
     private float sparkleTimer = 0;
