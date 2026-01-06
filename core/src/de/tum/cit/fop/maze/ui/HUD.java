@@ -346,7 +346,7 @@ public class HUD {
         float delta = Gdx.graphics.getDeltaTime();
 
         // --- 1. 粒子生成 (高度收缩 1/3) ---
-        float centerOffset = h / 6f; // 计算 1/3 的偏移（上下各缩掉 1/6）
+        float centerOffset = h / 3f; // 计算 1/3 的偏移（上下各缩掉 1/6）
         float activeHeight = h * (2f/3f); // 粒子活动的有效高度
 
         for (int i = 0; i < 6; i++) {
