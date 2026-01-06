@@ -61,8 +61,8 @@ private boolean damageInvincible = false;
     private AbilityManager abilityManager;
 
     // ===== Mana =====
-    private int mana = 100000;
-    private int maxMana = 100000;
+    private int mana = 100;
+    private int maxMana = 100;
     private float manaRegenRate = 5.0f;
 
     // ==========================================
