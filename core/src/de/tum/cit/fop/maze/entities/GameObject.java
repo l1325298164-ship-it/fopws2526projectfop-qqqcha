@@ -8,7 +8,7 @@ public abstract class GameObject {
     protected int x, y;
     protected boolean active = true;
 
-    protected void applySlow(float slowDuration) {
+    public void applySlow(float slowDuration) {
     }
 
     // 渲染类型枚举
