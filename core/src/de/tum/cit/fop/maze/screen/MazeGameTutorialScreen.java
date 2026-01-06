@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -28,7 +29,8 @@ public class MazeGameTutorialScreen implements Screen {
     private ShapeRenderer shapeRenderer;
 
     private boolean finished = false;
-    private boolean movedUp, movedDown, movedLeft, movedRight;
+    private boolean movedUp, movedDown, movedLeft, movedRight, usedShift; // 增加 usedShift
+    private float shiftTimer; // 用于检测是否按够了时长
     private boolean reachedTarget = false;
 
     // Fixed maze dimensions
@@ -148,65 +150,53 @@ public class MazeGameTutorialScreen implements Screen {
     private void update(float delta) {
         if (finished) return;
 
-        // Detect movement input
-        if (upPressed) {
-            if (!movedUp) movedUp = true;
-            upTimer += delta;
-        }
-        if (downPressed) {
-            if (!movedDown) movedDown = true;
-            downTimer += delta;
-        }
-        if (leftPressed) {
-            if (!movedLeft) movedLeft = true;
-            leftTimer += delta;
-        }
-        if (rightPressed) {
-            if (!movedRight) movedRight = true;
-            rightTimer += delta;
+        // 1. 记录移动状态（修复指示灯不亮的问题）
+        if (upPressed) movedUp = true;
+        if (downPressed) movedDown = true;
+        if (leftPressed) movedLeft = true;
+        if (rightPressed) movedRight = true;
+
+        // 2. 检测 Shift 冲刺
+        boolean isSprinting = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
+        // 只有在移动时按住 Shift 才算完成任务
+        if (isSprinting && (upPressed || downPressed || leftPressed || rightPressed)) {
+            usedShift = true;
         }
 
-        // Move player
-        float moveSpeed = 3f * delta;
-        float newPlayerX = playerX;
-        float newPlayerY = playerY;
+        // 3. 计算位移
+        float moveSpeed = (isSprinting ? 6.0f : 3.0f) * delta;
+        float nextX = playerX;
+        float nextY = playerY;
 
-        if (upPressed) newPlayerY += moveSpeed;
-        if (downPressed) newPlayerY -= moveSpeed;
-        if (rightPressed) newPlayerX += moveSpeed;
-        if (leftPressed) newPlayerX -= moveSpeed;
+        if (upPressed) nextY += moveSpeed;
+        if (downPressed) nextY -= moveSpeed;
+        if (rightPressed) nextX += moveSpeed;
+        if (leftPressed) nextX -= moveSpeed;
 
-        // Collision detection
-        int cellX = (int) newPlayerX;
-        int cellY = (int) newPlayerY;
-
-        if (cellX >= 0 && cellX < MAZE_WIDTH && cellY >= 0 && cellY < MAZE_HEIGHT) {
-            if (fixedMaze[cellY][cellX] == 0) {
-                playerX = newPlayerX;
-                playerY = newPlayerY;
+        // 4. 碰撞检测
+        if (nextX >= 0 && nextX < MAZE_WIDTH && nextY >= 0 && nextY < MAZE_HEIGHT) {
+            // 注意：这里转换为 int 检查迷宫数组
+            if (fixedMaze[(int)nextY][(int)nextX] == 0) {
+                playerX = nextX;
+                playerY = nextY;
             }
         }
 
-        // Check if reached target
-        float distance = (float) Math.sqrt(
-                Math.pow(playerX - targetX, 2) + Math.pow(playerY - targetY, 2)
-        );
-
-        if (distance < 1.0f && !reachedTarget) {
+        // 5. 到达目标逻辑（距离判定）
+        float distToTarget = (float) Math.sqrt(Math.pow(playerX - targetX, 2) + Math.pow(playerY - targetY, 2));
+        if (distToTarget < 0.8f) { // 稍微给一点余量，不需要完全重合
             reachedTarget = true;
-            System.out.println("Reached target!");
         }
 
-        // Check tutorial completion conditions
-        boolean allMovesMade = movedUp && movedDown && movedLeft && movedRight;
-        if (allMovesMade && reachedTarget && !finished) {
-            System.out.println("Tutorial conditions met!");
-            System.out.println("Movement: U=" + movedUp + " D=" + movedDown + " L=" + movedLeft + " R=" + movedRight);
-            System.out.println("Target reached: " + reachedTarget);
+        // 6. 核心：条件达成逻辑
+        // 必须：上下左右都动过 + 用过冲刺 + 站到了目标点
+        boolean allTasksDone = movedUp && movedDown && movedLeft && movedRight && usedShift && reachedTarget;
+
+        if (allTasksDone) {
             finishTutorial(MazeGameTutorialResult.SUCCESS);
         }
 
-        // Simple death detection
+        // 7. 边界死亡判定（可选）
         if (playerX < 0 || playerX >= MAZE_WIDTH || playerY < 0 || playerY >= MAZE_HEIGHT) {
             finishTutorial(MazeGameTutorialResult.FAILURE_DEAD);
         }
@@ -215,75 +205,94 @@ public class MazeGameTutorialScreen implements Screen {
     private void renderGameWorld() {
         shapeRenderer.setProjectionMatrix(camera.combined);
 
-        // Draw floor
+        // 计算居中偏移量
+        float mazePixelWidth = MAZE_WIDTH * CELL_SIZE;
+        float mazePixelHeight = MAZE_HEIGHT * CELL_SIZE;
+        float offsetX = (Gdx.graphics.getWidth() - mazePixelWidth) / 2f;
+        float offsetY = (Gdx.graphics.getHeight() - mazePixelHeight) / 2f;
+
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.2f, 0.2f, 0.3f, 1);
+
+        // --- 1. 绘制地板 (浅粉色) ---
+        shapeRenderer.setColor(1.0f, 0.85f, 0.9f, 1);
         for (int y = 0; y < MAZE_HEIGHT; y++) {
             for (int x = 0; x < MAZE_WIDTH; x++) {
                 if (fixedMaze[y][x] == 0) {
-                    shapeRenderer.rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    shapeRenderer.rect(offsetX + x * CELL_SIZE, offsetY + y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
             }
         }
 
-        // Draw walls
-        shapeRenderer.setColor(0.4f, 0.4f, 0.6f, 1);
+        // --- 2. 绘制墙壁 (深粉色/草莓粉) ---
+        shapeRenderer.setColor(0.9f, 0.4f, 0.6f, 1);
         for (int y = 0; y < MAZE_HEIGHT; y++) {
             for (int x = 0; x < MAZE_WIDTH; x++) {
                 if (fixedMaze[y][x] == 1) {
-                    shapeRenderer.rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    // 绘制墙壁主体
+                    shapeRenderer.rect(offsetX + x * CELL_SIZE, offsetY + y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+
+                    // 可选：给墙壁加一个白色的“糖霜”边缘，增加体积感
+                    shapeRenderer.setColor(1f, 1f, 1f, 0.3f);
+                    shapeRenderer.rect(offsetX + x * CELL_SIZE, offsetY + y * CELL_SIZE + CELL_SIZE - 4, CELL_SIZE, 4);
+                    shapeRenderer.setColor(0.9f, 0.4f, 0.6f, 1); // 还原颜色继续画
                 }
             }
         }
 
-        // Draw target
-        shapeRenderer.setColor(0, 1, 0, 0.8f);
-        shapeRenderer.rect(targetX * CELL_SIZE, targetY * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        // --- 3. 绘制目标点 (金色糖果色) ---
+        shapeRenderer.setColor(1.0f, 0.85f, 0.2f, 0.8f);
+        shapeRenderer.rect(offsetX + targetX * CELL_SIZE, offsetY + targetY * CELL_SIZE, CELL_SIZE, CELL_SIZE);
 
-        // Draw player
-        shapeRenderer.setColor(0, 0.8f, 1, 1);
-        shapeRenderer.circle(playerX * CELL_SIZE, playerY * CELL_SIZE, CELL_SIZE / 3);
+        // --- 4. 绘制玩家 (白色小球) ---
+        shapeRenderer.setColor(1f, 1f, 1f, 1);
+        shapeRenderer.circle(offsetX + playerX * CELL_SIZE, offsetY + playerY * CELL_SIZE, CELL_SIZE / 2.5f);
 
         shapeRenderer.end();
     }
 
     private void renderHUD() {
         shapeRenderer.setProjectionMatrix(hudCamera.combined);
+        float startX = Gdx.graphics.getWidth() / 2f - 120; // 居中对齐起点
+        float startY = Gdx.graphics.getHeight() - 60;
+        float spacing = 35f; // 行距
 
+        // 绘制指示方块
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        drawStatusBox(startX, startY, movedUp);
+        drawStatusBox(startX, startY - spacing, movedDown);
+        drawStatusBox(startX, startY - spacing * 2, movedLeft);
+        drawStatusBox(startX, startY - spacing * 3, movedRight);
+        drawStatusBox(startX, startY - spacing * 4, usedShift); // 新增 Shift 指示
 
-        // Draw tutorial status indicators
-        shapeRenderer.setColor(movedUp ? 0 : 0.5f, movedUp ? 1 : 0.5f, movedUp ? 0 : 0.5f, 0.8f);
-        shapeRenderer.rect(20, Gdx.graphics.getHeight() - 40, 20, 20);
-
-        shapeRenderer.setColor(movedDown ? 0 : 0.5f, movedDown ? 1 : 0.5f, movedDown ? 0 : 0.5f, 0.8f);
-        shapeRenderer.rect(20, Gdx.graphics.getHeight() - 70, 20, 20);
-
-        shapeRenderer.setColor(movedLeft ? 0 : 0.5f, movedLeft ? 1 : 0.5f, movedLeft ? 0 : 0.5f, 0.8f);
-        shapeRenderer.rect(20, Gdx.graphics.getHeight() - 100, 20, 20);
-
-        shapeRenderer.setColor(movedRight ? 0 : 0.5f, movedRight ? 1 : 0.5f, movedRight ? 0 : 0.5f, 0.8f);
-        shapeRenderer.rect(20, Gdx.graphics.getHeight() - 130, 20, 20);
-
-        shapeRenderer.setColor(reachedTarget ? 0 : 0.5f, reachedTarget ? 1 : 0.5f, reachedTarget ? 0 : 0.5f, 0.8f);
-        shapeRenderer.rect(200, Gdx.graphics.getHeight() - 70, 20, 20);
-
+        // 目标指示灯放在右边一点
+        drawStatusBox(startX + 240, startY - spacing * 2, reachedTarget);
         shapeRenderer.end();
 
-        // Draw text
+        // 绘制对齐的文字
         game.getSpriteBatch().begin();
-        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "↑ Move Up", 50, Gdx.graphics.getHeight() - 25);
-        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "↓ Move Down", 50, Gdx.graphics.getHeight() - 55);
-        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "← Move Left", 50, Gdx.graphics.getHeight() - 85);
-        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "→ Move Right", 50, Gdx.graphics.getHeight() - 115);
-        game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "🎯 Reach Target", 230, Gdx.graphics.getHeight() - 55);
+        var font = game.getSkin().getFont("default-font");
+        float textX = startX + 30; // 文字跟在方块后面
+        float textYOffset = 18;     // 修正文字垂直对齐偏移
 
-        if (movedUp && movedDown && movedLeft && movedRight && reachedTarget) {
-            game.getSkin().getFont("default-font").draw(game.getSpriteBatch(), "Tutorial Complete!",
-                    Gdx.graphics.getWidth() / 2 - 50, 100);
-        }
+        font.draw(game.getSpriteBatch(), "W / UP - Move Up", textX, startY + textYOffset);
+        font.draw(game.getSpriteBatch(), "S / DOWN - Move Down", textX, startY - spacing + textYOffset);
+        font.draw(game.getSpriteBatch(), "A / LEFT - Move Left", textX, startY - spacing * 2 + textYOffset);
+        font.draw(game.getSpriteBatch(), "D / RIGHT - Move Right", textX, startY - spacing * 3 + textYOffset);
+        font.draw(game.getSpriteBatch(), "SHIFT - Sprint", textX, startY - spacing * 4 + textYOffset);
 
+        font.draw(game.getSpriteBatch(), "🎯 Reach Exit", startX + 275, startY - spacing * 2 + textYOffset);
         game.getSpriteBatch().end();
+    }
+
+    private void drawStatusBox(float x, float y, boolean done) {
+        shapeRenderer.setColor(done ? Color.GREEN : Color.RED); // 完成变绿，未完成变红
+        shapeRenderer.rect(x, y, 20, 20);
+    }
+
+    // 辅助方法：绘制对齐的灯
+    private void drawIndicator(float x, float y, boolean active) {
+        shapeRenderer.setColor(active ? Color.GREEN : Color.GRAY);
+        shapeRenderer.rect(x, y, 18, 18);
     }
 
     private void finishTutorial(MazeGameTutorialResult result) {
