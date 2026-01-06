@@ -8,6 +8,9 @@ public abstract class GameObject {
     protected int x, y;
     protected boolean active = true;
 
+    protected void applySlow(float slowDuration) {
+    }
+
     // 渲染类型枚举
     public enum RenderType {
         SHAPE,  // 使用ShapeRenderer绘制

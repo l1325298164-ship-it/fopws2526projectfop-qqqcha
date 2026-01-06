@@ -3,7 +3,7 @@ package de.tum.cit.fop.maze.entities.trap;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.MathUtils; // 引入数学工具用于震动
+import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -41,12 +41,25 @@ public class TrapT02_PearlMine extends Trap {
         return true;
     }
 
+    // ❌ 删除这个单参数的 update，因为它不会被调用，容易造成误导
+    // @Override
+    // public void update(float delta) { ... }
+
     @Override
     public void update(float delta) {
+
+    }
+
+    // ✅ 将逻辑移到这里
+    @Override
+    public void update(float delta, GameManager gameManager) {
         if (!active) return;
 
+        // 如果陷阱处于“已激活”状态，开始倒计时
         if (state == State.ARMED) {
             timer += delta;
+            // 震动效果的随机数可以在这里每帧更新，或者在 draw 里生成
+
             if (timer >= EXPLODE_DELAY) {
                 explode();
             }
@@ -54,26 +67,23 @@ public class TrapT02_PearlMine extends Trap {
     }
 
     @Override
-    public void update(float delta, GameManager gameManager) {
-
-    }
-
-    @Override
     public void onPlayerStep(Player player) {
         if (state != State.IDLE) return;
         state = State.ARMED;
         timer = 0f;
+        // 可以在这里播放一个“滴滴”声
     }
 
     /** 爆炸逻辑 */
     private void explode() {
         state = State.EXPLODED;
-        active = false;
+        active = false; // 爆炸后陷阱本身消失（但特效会生成）
 
         int cx = x;
         int cy = y;
 
-        // 🔥 触发爆炸特效 (无缝衔接)
+        // 🔥 触发爆炸特效
+        // 注意：这里我们使用成员变量 gm，或者使用传入 update 的 gameManager 都可以
         if (gm.getTrapEffectManager() != null) {
             float effectX = (x + 0.5f) * GameConstants.CELL_SIZE;
             float effectY = (y + 0.5f) * GameConstants.CELL_SIZE;
@@ -82,6 +92,7 @@ public class TrapT02_PearlMine extends Trap {
 
         // ===== 伤害判定 =====
         Player player = gm.getPlayer();
+        // 简单的距离判定 (爆炸半径1格)
         if (Math.abs(player.getX() - cx) <= 1 && Math.abs(player.getY() - cy) <= 1) {
             player.takeDamage(DAMAGE);
         }
@@ -103,36 +114,31 @@ public class TrapT02_PearlMine extends Trap {
         float centerX = x * size + size / 2;
         float centerY = y * size + size / 2;
 
-        // 芋圆半径 (比之前的方块小，显得精致)
         float radius = size / 5f;
 
-        // 🔥 震动效果：如果处于 ARMED (触发) 状态，让芋圆剧烈抖动
+        // 🔥 震动效果
         float shakeX = 0;
         float shakeY = 0;
         if (state == State.ARMED) {
-            shakeX = MathUtils.random(-3f, 3f);
-            shakeY = MathUtils.random(-3f, 3f);
+            // 随着时间推移震动越来越剧烈
+            float intensity = (timer / EXPLODE_DELAY) * 5f;
+            shakeX = MathUtils.random(-intensity, intensity);
+            shakeY = MathUtils.random(-intensity, intensity);
         }
 
-        // 绘制三个挤在一起的小芋圆 (左紫、右橙、上白)
-
-        // 1. 左下：芋头紫
+        // 绘制三个小芋圆
         sr.setColor(TARO_PURPLE);
         sr.circle(centerX - radius + shakeX, centerY - radius + shakeY, radius);
 
-        // 2. 右下：地瓜橙
         sr.setColor(POTATO_ORANGE);
         sr.circle(centerX + radius + shakeX, centerY - radius + shakeY, radius);
 
-        // 3. 上方：糯米白
         sr.setColor(RICE_WHITE);
         sr.circle(centerX + shakeX, centerY + radius + shakeY, radius);
     }
 
     @Override
-    public void drawSprite(SpriteBatch batch) {
-        // 不需要贴图，使用 ShapeRenderer 绘制
-    }
+    public void drawSprite(SpriteBatch batch) {}
 
     @Override
     public RenderType getRenderType() {
