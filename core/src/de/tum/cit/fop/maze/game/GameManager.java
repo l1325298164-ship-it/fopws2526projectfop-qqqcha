@@ -713,15 +713,35 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     /* ================= 工具 ================= */
     private int[] randomEmptyCell() {
         int x, y;
-
         int width = maze[0].length;
         int height = maze.length;
 
+        int attempts = 0;
         do {
             x = random(1, width - 2);
             y = random(1, height - 2);
-        } while (maze[y][x] == 0);
+            attempts++;
 
+            // 防止无限循环
+            if (attempts > 500) {
+                Logger.warning("randomEmptyCell: Too many attempts, using fallback");
+                // 回退：从中心开始搜索
+                for (int offset = 0; offset < Math.max(width, height); offset++) {
+                    for (int cx = Math.max(1, width/2 - offset); cx <= Math.min(width-2, width/2 + offset); cx++) {
+                        for (int cy = Math.max(1, height/2 - offset); cy <= Math.min(height-2, height/2 + offset); cy++) {
+                            if (maze[cy][cx] != 0 && !isOccupied(cx, cy)) {
+                                Logger.debug("randomEmptyCell fallback: found (" + cx + ", " + cy + ")");
+                                return new int[]{cx, cy};
+                            }
+                        }
+                    }
+                }
+                // 终极回退：返回玩家位置（应该不会到这里）
+                return new int[]{player.getX(), player.getY()};
+            }
+        } while (maze[y][x] == 0 || isOccupied(x, y)); // 🔥 新增 isOccupied 检查
+
+        Logger.debug("randomEmptyCell: found (" + x + ", " + y + ") after " + attempts + " attempts");
         return new int[]{x, y};
     }
 

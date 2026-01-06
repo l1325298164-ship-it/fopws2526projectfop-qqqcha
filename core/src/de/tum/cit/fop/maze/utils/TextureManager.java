@@ -20,6 +20,7 @@ public class TextureManager implements Disposable {
 
 
 
+
     // 纹理模式
     public enum TextureMode {
         COLOR,      // 纯色模式（现有功能）
@@ -68,6 +69,10 @@ public class TextureManager implements Disposable {
     private TextureAtlas T03Atlas;
     private TextureAtlas T04Atlas;
     private TextureAtlas chipAtlas;
+    private TextureAtlas catRightAtlas;
+    private TextureAtlas catLeftAtlas;
+    private TextureAtlas catBackAtlas;
+    private TextureAtlas catFrontAtlas;
 
     private TextureManager() {
         textures = new HashMap<>();
@@ -75,12 +80,21 @@ public class TextureManager implements Disposable {
         loadWallAtlas();
         loadE01Atlas();
         loadE02_T04Atlas();
+        loadCatAtlas();
 
 
         // 初始化各模式的图片映射
         initializeTextureMappings();
 
         Logger.debug("TextureManager initialized, mode: " + currentMode);
+    }
+
+    private void loadCatAtlas() {
+        catRightAtlas=new TextureAtlas(Gdx.files.internal("ani/cat/right/cat_right.atlas"));
+          catLeftAtlas=new TextureAtlas(Gdx.files.internal("ani/cat/left/cat_left.atlas"));
+          catBackAtlas=new TextureAtlas(Gdx.files.internal("ani/cat/back/cat_back.atlas"));
+          catFrontAtlas=new TextureAtlas(Gdx.files.internal("ani/cat/front/cat_front.atlas"));
+
     }
 
     private void loadE02_T04Atlas() {
@@ -466,7 +480,7 @@ public class TextureManager implements Disposable {
     public TextureAtlas getTrapT01Atlas() {
         return T01Atlas;
     }
-    public TextureAtlas getTrapT021Atlas() {
+    public TextureAtlas getTrapT02Atlas() {
         return T02Atlas;
     }
     public TextureAtlas getTrapT03Atlas() {
@@ -477,5 +491,15 @@ public class TextureManager implements Disposable {
     }
     public TextureAtlas getTrapChipAtlas() {
         return chipAtlas;
+    }
+
+    public TextureAtlas getCatLeftAtlas() {
+        return catLeftAtlas;
+    }
+    public TextureAtlas getCatRightAtlas() {return catRightAtlas;
+    }
+    public TextureAtlas getCatFrontAtlas() {return catFrontAtlas;
+    }
+    public TextureAtlas getCatBackAtlas() {return catBackAtlas;
     }
 }
