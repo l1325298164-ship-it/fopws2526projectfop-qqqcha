@@ -1240,7 +1240,6 @@ public class EndlessScreen implements Screen {
         if (console != null) {
             console.render();
         }
-
         batch.setProjectionMatrix(cam.getCamera().combined);
     }
 
