@@ -141,13 +141,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionInProgress = false;
         currentExitDoor = null;
         levelTransitionTimer = 0f;
-        // 🔥 测试：强制在玩家旁边创建一个T01陷阱
-        int testX = player.getX() + 1;
-        int testY = player.getY();
 
-        System.out.println("🔥🔥🔥 创建测试陷阱在玩家旁边: (" + testX + "," + testY + ")");
-        Trap testTrap = new TrapT01_Geyser(testX, testY, 2.0f);
-        traps.add(testTrap);
         Logger.gameEvent("Game reset complete");
     }
 
