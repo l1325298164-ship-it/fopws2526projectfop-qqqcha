@@ -1,35 +1,37 @@
 package de.tum.cit.fop.maze.abilities;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Vector3;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
 public class MagicAbility extends Ability {
+
     private GameManager gameManager;
 
-    /* ================= 阶段 ================= */
-    enum Phase {
-        IDLE,        // 什么都没发生
-        AIMING,      // 按住：只画 AOE，不结算
-        EXECUTED,    // 已结算 AOE，等二段
+    /* ================= Phase ================= */
+
+    private enum Phase {
+        IDLE,
+        AIMING,      // AOE 预警
+        EXECUTED,    // AOE 已释放，等待二段
         COOLDOWN
     }
 
     private Phase phase = Phase.IDLE;
 
-    /* ================= 计时 ================= */
+    /* ================= Timers ================= */
 
-    private float waitTimer = 0f;
+    private float aimingTimer = 0f;
+    private float waitTimer   = 0f;
 
-    private static final float WAIT_SECOND_TIME = 1.0f;
-    private static final float COOLDOWN_FAIL    = 1.5f;
-    private static final float COOLDOWN_SUCCESS = 5.0f;
+    private static final float AIMING_TIMEOUT    = 2.0f;
+    private static final float WAIT_SECOND_TIME  = 1.0f;
+    private static final float COOLDOWN_FAIL     = 0.5f;
+    private static final float COOLDOWN_SUCCESS  = 5.0f;
 
     /* ================= AOE ================= */
 
@@ -41,19 +43,19 @@ public class MagicAbility extends Ability {
 
     private int hitEnemyCount = 0;
 
-    /* ================= 治疗 ================= */
+    /* ================= Heal ================= */
 
     private float baseHealPercent = 0.10f;
     private float extraPerEnemy   = 0.01f;
 
-    /* ================= 冷却 ================= */
+    /* ================= Cooldown ================= */
 
     private float currentCooldown = 0f;
 
     public MagicAbility() {
         super(
                 "Magic",
-                "AOE damage, then heal both players based on enemies hit",
+                "AOE damage, then heal based on enemies hit",
                 0f,
                 0f
         );
@@ -69,7 +71,7 @@ public class MagicAbility extends Ability {
 
     @Override
     protected boolean shouldStartCooldown() {
-        return phase == Phase.EXECUTED    || phase == Phase.COOLDOWN;
+        return phase == Phase.COOLDOWN;
     }
 
     @Override
@@ -79,7 +81,7 @@ public class MagicAbility extends Ability {
 
     @Override
     protected boolean shouldBecomeActive() {
-        return false; // P2 不走 active/duration
+        return false;
     }
 
     @Override
@@ -88,66 +90,78 @@ public class MagicAbility extends Ability {
         return player.getMana() >= manaCost;
     }
 
-    /* ================= 激活 ================= */
+    /* ================= Activate ================= */
 
     @Override
     protected void onActivate(Player player, GameManager gm) {
         this.gameManager = gm;
+
         switch (phase) {
 
             case IDLE -> {
                 aoeCenterX = gm.getMouseTileX();
                 aoeCenterY = gm.getMouseTileY();
+                aimingTimer = 0f;
                 phase = Phase.AIMING;
             }
 
             case AIMING -> {
-                // 第二次按下：确认释放 AOE
                 castAOE(gm);
-                phase = Phase.EXECUTED;
                 waitTimer = 0f;
+                phase = Phase.EXECUTED;
             }
 
             case EXECUTED -> {
-                // 二段技能：治疗
                 castHeal(gm);
                 startInternalCooldown(COOLDOWN_SUCCESS);
             }
         }
     }
 
-
-    /* ================= 更新 ================= */
+    /* ================= Update ================= */
 
     @Override
     public void update(float delta) {
-
+        super.update(delta);
+        if (phase == Phase.COOLDOWN && ready) {
+            phase = Phase.IDLE;
+        }
         if (phase == Phase.AIMING && gameManager != null) {
+            aimingTimer += delta;
             aoeCenterX = gameManager.getMouseTileX();
             aoeCenterY = gameManager.getMouseTileY();
-        }
 
+            // 2s 内未再次按键 → 自动取消，无 CD
+            if (aimingTimer >= AIMING_TIMEOUT) {
+                phase = Phase.IDLE;
+                aimingTimer = 0f;
+            }
+        }
 
         if (phase == Phase.EXECUTED) {
             waitTimer += delta;
             if (waitTimer >= WAIT_SECOND_TIME) {
                 startInternalCooldown(COOLDOWN_FAIL);
+                // 🔥 关键：清理状态，防止重复进入
+                waitTimer = 0f;
             }
         }
     }
-
 
     private void startInternalCooldown(float cd) {
         phase = Phase.COOLDOWN;
         currentCooldown = cd;
         ready = false;
         cooldownTimer = 0f;
+
+        // 🔒 清理所有阶段计时
+        aimingTimer = 0f;
+        waitTimer = 0f;
     }
 
     /* ================= AOE ================= */
 
     private void castAOE(GameManager gm) {
-
         hitEnemyCount = 0;
 
         aoeCenterX = gm.getMouseTileX();
@@ -160,7 +174,7 @@ public class MagicAbility extends Ability {
             int dy = enemy.getY() - aoeCenterY;
 
             if (dx * dx + dy * dy <= aoeTileRadius * aoeTileRadius) {
-                enemy.takeDamage(1);
+                enemy.takeDamage(20);
                 hitEnemyCount++;
             }
         }
@@ -169,15 +183,15 @@ public class MagicAbility extends Ability {
     /* ================= Heal ================= */
 
     private void castHeal(GameManager gm) {
-
-        float healPercent =
-                baseHealPercent + hitEnemyCount * extraPerEnemy;
+        float healPercent = baseHealPercent + hitEnemyCount * extraPerEnemy;
 
         for (Player p : gm.getPlayers()) {
             if (p == null || p.isDead()) continue;
 
-            int heal = Math.max(1,
-                    Math.round(p.getMaxLives() * healPercent));
+            int heal = Math.max(
+                    1,
+                    Math.round(p.getMaxLives() * healPercent)
+            );
             p.heal(heal);
         }
     }
@@ -200,7 +214,6 @@ public class MagicAbility extends Ability {
         sr.end();
     }
 
-
     /* ================= Upgrade ================= */
 
     @Override
@@ -210,39 +223,9 @@ public class MagicAbility extends Ability {
         if (level == 4) extraPerEnemy += 0.01f;
         if (level == 5) aoeTileRadius += 1;
     }
+
     @Override
     public AbilityInputType getInputType() {
         return AbilityInputType.CONTINUOUS;
     }
-    public void onMousePressed(GameManager gm) {
-        if (phase != Phase.IDLE) return;
-        if (!canActivate(gm.getPlayer())) return;
-
-        // 扣蓝
-        gm.getPlayer().useMana(manaCost);
-
-        // 进入瞄准
-        aoeCenterX = gm.getMouseTileX();
-        aoeCenterY = gm.getMouseTileY();
-        phase = Phase.AIMING;
-    }
-
-    public void onMouseHeld(GameManager gm) {
-        if (phase != Phase.AIMING) return;
-
-        // AOE 跟着鼠标
-        aoeCenterX = gm.getMouseTileX();
-        aoeCenterY = gm.getMouseTileY();
-    }
-    public void onMouseReleased(GameManager gm) {
-        if (phase != Phase.AIMING) return;
-
-        // 释放 AOE
-        castAOE(gm);
-        phase = Phase.EXECUTED;
-        waitTimer = 0f;
-    }
-
-
-
 }

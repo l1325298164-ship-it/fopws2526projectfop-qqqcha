@@ -56,7 +56,6 @@ public class GameScreen implements Screen {
     private DeveloperConsole console;
     private Texture uiTop, uiBottom, uiLeft, uiRight;
     private ShapeRenderer shapeRenderer = new ShapeRenderer();
-    private boolean magicMouseDownLastFrame = false;
 
     //PAUSE
     private boolean paused = false;
@@ -256,23 +255,15 @@ public class GameScreen implements Screen {
 
                 if (ability instanceof MagicAbility m) {
 
-                    boolean mouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
+                    // 只监听「再次按下」
+                    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
 
-                    if (mouseDown && !magicMouseDownLastFrame) {
-                        m.onMousePressed(gm);
+                        // 统一走 Ability 的 onActivate 状态机
+                        m.activate(p2, gm);
                     }
-
-                    if (mouseDown) {
-                        m.onMouseHeld(gm);
-                    }
-
-                    if (!mouseDown && magicMouseDownLastFrame) {
-                        m.onMouseReleased(gm);
-                    }
-
-                    magicMouseDownLastFrame = mouseDown;
                 }
             }
+
 
 
         }
