@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.input;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -39,6 +40,10 @@ public class PlayerInputHandler {
 
         // ===== 交互 =====
         handleActionInput(callback, index);
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            callback.onMenuInput();
+        }
     }
 
     /* ================= 移动 ================= */
@@ -120,24 +125,24 @@ public class PlayerInputHandler {
 
             // P1：Space = 技能 / 近战
             if (km.isJustPressed(KeyBindingManager.GameAction.P1_USE_ABILITY)) {
-                used = callback.onAbilityInput(0);
+                used = callback.onAbilityInput(index, 0);
             }
 
             // P1：Shift = Dash
             if (km.isJustPressed(KeyBindingManager.GameAction.P1_DASH)) {
-                used = callback.onAbilityInput(1);
+                used = callback.onAbilityInput(index,1);
             }
 
         } else { // ===== P2 =====
 
             // P2：鼠标左键 = 魔法技能
             if (km.isJustPressed(KeyBindingManager.GameAction.P2_USE_ABILITY)) {
-                used = callback.onAbilityInput(0);
+                used = callback.onAbilityInput(index, 1);
             }
 
             // P2：鼠标右键 = Dash
             if (km.isJustPressed(KeyBindingManager.GameAction.P2_DASH)) {
-                used = callback.onAbilityInput(1);
+                used = callback.onAbilityInput(index,1);
             }
         }
 
@@ -160,11 +165,11 @@ public class PlayerInputHandler {
 
         if (index == Player.PlayerIndex.P1) {
             if (km.isJustPressed(KeyBindingManager.GameAction.P1_INTERACT)) {
-                callback.onInteractInput();
+                callback.onInteractInput(index);
             }
         } else {
             if (km.isJustPressed(KeyBindingManager.GameAction.P2_INTERACT)) {
-                callback.onInteractInput();
+                callback.onInteractInput(index);
             }
         }
     }
@@ -173,13 +178,9 @@ public class PlayerInputHandler {
 
     public interface InputHandlerCallback {
         void onMoveInput(Player.PlayerIndex index, int dx, int dy);
-
         float getMoveDelayMultiplier();
-
-        boolean onAbilityInput(int slot);
-
-        void onInteractInput();
-
+        boolean onAbilityInput(Player.PlayerIndex index, int slot);
+        void onInteractInput(Player.PlayerIndex index);
         void onMenuInput();
     }
 

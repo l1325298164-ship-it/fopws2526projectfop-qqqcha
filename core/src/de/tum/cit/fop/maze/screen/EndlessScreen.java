@@ -1140,14 +1140,54 @@ public class EndlessScreen implements Screen {
     }
 
     private void handleInput(float delta) {
-        // 控制台开关
+
+        // ===== 控制台 =====
         if (KeyBindingManager.getInstance().isJustPressed(KeyBindingManager.GameAction.CONSOLE)) {
             console.toggle();
         }
 
-        // 游戏输入（非暂停、非控制台、非转场、非游戏结束）
-        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !endlessGameOver) {
+        if (paused || console.isVisible() || gm.isLevelTransitionInProgress() || endlessGameOver) {
+            return;
+        }
+
+        // =========================
+        // P1 输入
+        // =========================
+        input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+
+            @Override
+            public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
+                gm.onMoveInput(index, dx, dy);
+            }
+
+            @Override
+            public float getMoveDelayMultiplier() {
+                return 1.0f;
+            }
+
+            @Override
+            public boolean onAbilityInput(Player.PlayerIndex index, int slot) {
+                return gm.onAbilityInput(index, slot);
+            }
+
+            @Override
+            public void onInteractInput(Player.PlayerIndex index) {
+                gm.onInteractInput(index);
+            }
+
+            @Override
+            public void onMenuInput() {
+                togglePause();
+            }
+
+        }, Player.PlayerIndex.P1);
+
+        // =========================
+        // P2 输入（如果开启双人）
+        // =========================
+        if (gm.isTwoPlayerMode()) {
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+
                 @Override
                 public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
                     gm.onMoveInput(index, dx, dy);
@@ -1155,30 +1195,28 @@ public class EndlessScreen implements Screen {
 
                 @Override
                 public float getMoveDelayMultiplier() {
-                    if (gm.getPlayer() != null) {
-                        return gm.getPlayer().getMoveDelayMultiplier();
-                    }
                     return 1.0f;
                 }
 
                 @Override
-                public boolean onAbilityInput(int slot) {
-                    return gm.onAbilityInput(slot);
+                public boolean onAbilityInput(Player.PlayerIndex index, int slot) {
+                    return gm.onAbilityInput(index, slot);
                 }
 
                 @Override
-                public void onInteractInput() {
-                    gm.onInteractInput();
+                public void onInteractInput(Player.PlayerIndex index) {
+                    gm.onInteractInput(index);
                 }
 
                 @Override
                 public void onMenuInput() {
-                    togglePause();
+                    // P2 不控制暂停
                 }
-            }, Player.PlayerIndex.P1);
-        }
 
+            }, Player.PlayerIndex.P2);
+        }
     }
+
 
     private List<Item> prepareRenderItems(List<ExitDoor> exitDoorsCopy) {
         List<Item> items = new ArrayList<>();

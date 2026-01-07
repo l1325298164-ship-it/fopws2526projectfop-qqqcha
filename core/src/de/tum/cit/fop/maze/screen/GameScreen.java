@@ -184,24 +184,56 @@ public class GameScreen implements Screen {
 
                 @Override
                 public float getMoveDelayMultiplier() {
-                    return gm.getPlayer().getMoveDelayMultiplier();
+                    return 1.0f;
                 }
 
                 @Override
-                public boolean onAbilityInput(int slot) {
-                    return gm.onAbilityInput(slot);
+                public boolean onAbilityInput(Player.PlayerIndex index, int slot) {
+                    return gm.onAbilityInput(index, slot);
                 }
 
                 @Override
-                public void onInteractInput() {
-                    gm.onInteractInput();
+                public void onInteractInput(Player.PlayerIndex index) {
+                    gm.onInteractInput(index);
                 }
 
                 @Override
                 public void onMenuInput() {
                     togglePause();
                 }
+
             }, Player.PlayerIndex.P1);
+
+// 🔥 第二个玩家输入（关键）
+            if (gm.isTwoPlayerMode()) {
+                input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+
+                    @Override
+                    public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
+                        gm.onMoveInput(index, dx, dy);
+                    }
+
+                    @Override
+                    public float getMoveDelayMultiplier() {
+                        return 1.0f;
+                    }
+
+                    @Override
+                    public boolean onAbilityInput(Player.PlayerIndex index, int slot) {
+                        return gm.onAbilityInput(index, slot);
+                    }
+
+                    @Override
+                    public void onInteractInput(Player.PlayerIndex index) {
+                        gm.onInteractInput(index);
+                    }
+
+                    @Override
+                    public void onMenuInput() {}
+
+                }, Player.PlayerIndex.P2);
+            }
+
         }
 
         /* ================= 更新 ================= */

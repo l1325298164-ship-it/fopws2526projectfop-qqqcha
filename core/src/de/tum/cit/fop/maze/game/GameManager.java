@@ -928,44 +928,49 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return null;
     }
 
-    @Override
-    public void onMoveInput(int dx, int dy) {
 
-    }
 
     @Override
     public float getMoveDelayMultiplier() {
         return 1.0f;
     }
 
-    public boolean onAbilityInput(int slot) {
+    @Override
+    public boolean onAbilityInput(Player.PlayerIndex index, int slot) {
         if (levelTransitionInProgress) return false;
-        if (player == null) return false;
 
-        player.useAbility(slot);
+        Player p = getPlayerByIndex(index);
+        if (p == null || p.isDead()) return false;
+
+        p.useAbility(slot);
         return true;
     }
 
-    public void onInteractInput() {
-        if (levelTransitionInProgress || player == null) return;
+    @Override
+    public void onInteractInput(Player.PlayerIndex index) {
+        if (levelTransitionInProgress) return;
 
-        int px = player.getX();
-        int py = player.getY();
+        Player p = getPlayerByIndex(index);
+        if (p == null || p.isDead()) return;
+
+        int px = p.getX();
+        int py = p.getY();
 
         for (Treasure t : treasures) {
             if (t.isInteractable() && t.getX() == px && t.getY() == py) {
-                t.onInteract(player);
+                t.onInteract(p);
                 return;
             }
         }
 
         for (Heart h : hearts) {
             if (h.isActive() && h.getX() == px && h.getY() == py) {
-                h.onInteract(player);
+                h.onInteract(p);
                 return;
             }
         }
     }
+
 
 
     @Override
