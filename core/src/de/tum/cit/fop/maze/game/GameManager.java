@@ -31,6 +31,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return difficultyConfig;
     }
     private int[][] maze;
+    private List<Player> players = new ArrayList<>();
+    private boolean twoPlayerMode = true;
     private Player player;
 
     private final List<Enemy> enemies = new ArrayList<>();
@@ -106,15 +108,34 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         }
         keys.clear();
+        players.clear();
 
-        int[] spawn = randomEmptyCell();
+        int[] spawn1 = randomEmptyCell();
+        Player p1 = new Player(
+                spawn1[0],spawn1[1],this,Player.PlayerIndex.P1
+        );players.add(p1);
 
-        if (player == null) {
-            player = new Player(spawn[0], spawn[1], this);
-        } else {
-            player.reset();
-            player.setPosition(spawn[0], spawn[1]);
+
+        if (twoPlayerMode) {
+            int[] spawn2 = findNearbySpawn(p1);
+
+            Player p2 = new Player(
+                    spawn2[0],
+                    spawn2[1],
+                    this,
+                    Player.PlayerIndex.P2
+            );
+            players.add(p2);
+
+            Logger.gameEvent(
+                    "P2 spawned near P1 at (" + spawn2[0] + ", " + spawn2[1] + ")"
+            );
         }
+
+// 🔥 关键：同步旧 player 引用
+        syncSinglePlayerRef();
+
+
         cat = null;  // 默认没有小猫
         if (difficultyConfig.difficulty == Difficulty.HARD) {
             fogSystem = new FogSystem();
@@ -143,6 +164,31 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionTimer = 0f;
 
         Logger.gameEvent("Game reset complete");
+    }
+    private int[] findNearbySpawn(Player p1) {
+        int px = p1.getX();
+        int py = p1.getY();
+
+        // 8 个方向（顺时针）
+        int[][] offsets = {
+                {-1, -1}, {0, -1}, {1, -1},
+                {-1,  0},          {1,  0},
+                {-1,  1}, {0,  1}, {1,  1}
+        };
+
+        for (int[] o : offsets) {
+            int nx = px + o[0];
+            int ny = py + o[1];
+
+            // 必须：能走 + 没被占
+            if (canPlayerMoveTo(nx, ny) && !isOccupied(nx, ny)) {
+                return new int[]{nx, ny};
+            }
+        }
+
+        // ⚠️ 如果 8 格全满，兜底：随机一个
+        Logger.warning("No nearby spawn found for P2, fallback to random");
+        return randomEmptyCell();
     }
 
     public void debugEnemiesAndBullets() {
@@ -174,6 +220,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
 
     public void update(float delta) {
+
+        inputHandler.update(delta, this, Player.PlayerIndex.P1);
+
+         if (twoPlayerMode) {
+        inputHandler.update(delta, this, Player.PlayerIndex.P2);
+    }
+
+
         // 🔥 强制修正粒子中心
         if (playerSpawnPortal != null) {
             float cx = (player.getX() + 0.5f) * GameConstants.CELL_SIZE;
@@ -207,7 +261,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
 
         // 正常游戏逻辑
-        player.update(delta);
+        for (Player p : players) {
+            if (!p.isDead()) {
+                p.update(delta);
+            }
+        }
         boolean fogOn = fogSystem != null && fogSystem.isActive();
 
 // Hard + 雾 → 启用猫
@@ -843,23 +901,36 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     /* ================= 输入 ================= */
-    public void onMoveInput(int dx, int dy) {
-        if (player == null) return;
+    public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
+        Player p = getPlayerByIndex(index);
+        if (p == null) return;
 
-        // 首先更新玩家的朝向（无论是否能移动）
-        player.updateDirection(dx, dy);
+        // 无论能不能走，先更新朝向
+        p.updateDirection(dx, dy);
 
-        // 然后尝试移动
-        int nx = player.getX() + dx;
-        int ny = player.getY() + dy;
+        int nx = p.getX() + dx;
+        int ny = p.getY() + dy;
 
         if (canPlayerMoveTo(nx, ny)) {
-            player.move(dx, dy);
+            p.move(dx, dy);
         } else {
-            // 即使不能移动，方向也已经更新了
-            // 可以在这里播放一个"撞墙"的音效或动画
-            Logger.debug("无法移动到 (" + nx + "," + ny + ")，但方向已更新");
+            Logger.debug("Player " + index + " blocked at (" + nx + "," + ny + ")");
         }
+    }
+
+
+    private Player getPlayerByIndex(Player.PlayerIndex index) {
+        for (Player p : players) {
+            if (p.getPlayerIndex() == index) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void onMoveInput(int dx, int dy) {
+
     }
 
     @Override
@@ -869,17 +940,18 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     public boolean onAbilityInput(int slot) {
         if (levelTransitionInProgress) return false;
+        if (player == null) return false;
+
         player.useAbility(slot);
         return true;
     }
 
     public void onInteractInput() {
-        if (levelTransitionInProgress) return;
+        if (levelTransitionInProgress || player == null) return;
 
         int px = player.getX();
         int py = player.getY();
 
-        // 宝箱
         for (Treasure t : treasures) {
             if (t.isInteractable() && t.getX() == px && t.getY() == py) {
                 t.onInteract(player);
@@ -887,7 +959,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         }
 
-        // 爱心
         for (Heart h : hearts) {
             if (h.isActive() && h.getX() == px && h.getY() == py) {
                 h.onInteract(player);
@@ -895,6 +966,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         }
     }
+
 
     @Override
     public void onMenuInput() {
@@ -1199,5 +1271,21 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public CatFollower getCat() {
         return cat;
     }
+    public void setTwoPlayerMode(boolean enabled) {
+        this.twoPlayerMode = enabled;
+    }
+    private void syncSinglePlayerRef() {
+        if (!players.isEmpty()) {
+            player = players.get(0); // P1 永远是主玩家
+        } else {
+            player = null;
+        }
+    }
+    public boolean isTwoPlayerMode() {
+        return twoPlayerMode;
+    }
 
+    public List<Player> getPlayers() {
+        return players;
+    }
 }

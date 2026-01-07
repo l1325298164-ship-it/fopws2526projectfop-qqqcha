@@ -14,6 +14,50 @@ import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
+    protected boolean isTutorial = false;
+    public Player(int x, int y) {
+        super(x, y);
+
+        this.worldX = x;
+        this.worldY = y;
+        this.targetX = x;
+        this.targetY = y;
+
+        this.playerIndex = PlayerIndex.P1;
+        this.isTutorial = true;
+
+        // ===== 生命值随便给个安全值 =====
+        this.lives = 1;
+        this.maxLives = 1;
+
+        // ===== 贴图 & 动画（必须）=====
+        frontAtlas = new TextureAtlas("Character/player1/front.atlas");
+        backAtlas  = new TextureAtlas("Character/player1/back.atlas");
+        leftAtlas  = new TextureAtlas("Character/player1/left.atlas");
+        rightAtlas = new TextureAtlas("Character/player1/right.atlas");
+
+        frontAnim = new Animation<>(0.1f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
+        backAnim  = new Animation<>(0.1f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
+        leftAnim  = new Animation<>(0.1f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
+        rightAnim = new Animation<>(0.1f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
+
+        this.abilityManager = null;
+    }
+
+
+    //双人模式
+    public enum PlayerIndex {
+        P1, P2
+    }
+
+    private PlayerIndex playerIndex;
+
+    public PlayerIndex getPlayerIndex() {
+        return playerIndex;
+    }
+
+
+
     private static final float VISUAL_SCALE = 2.9f; // ⭐ 1.2 ~ 1.6 都很舒服
     private static final float ANIM_SPEED_MULTIPLIER = 0.15f; // ⭐ 0.45 ~ 0.65 最舒服
 //move
@@ -63,9 +107,9 @@ private boolean damageInvincible = false;
     private AbilityManager abilityManager;
 
     // ===== Mana =====
-    private int mana = 100;
-    private int maxMana = 100;
-    private float manaRegenRate = 5.0f;
+    private float mana = 100;
+    private float maxMana = 100;
+    private float manaRegenRate = 30.0f;
 
     // ==========================================
     // 🔥 [Treasure] 新增：三种唯一 Buff 状态
@@ -207,7 +251,10 @@ private boolean damageInvincible = false;
     // ===== 分数 =====
     private int score = 0;
 
-    public Player(int x, int y, GameManager gameManager) {
+
+
+    /// //////////////////////////
+    public Player(int x, int y, GameManager gameManager,PlayerIndex index) {
         super(x, y);
 //        this.lives = GameConstants.MAX_LIVES;
 //        this.maxLives = GameConstants.MAX_LIVES;
@@ -217,9 +264,72 @@ private boolean damageInvincible = false;
         this.worldY = y;
         this.targetX = x;
         this.targetY = y;
+        this.playerIndex = index;
+        if (playerIndex == PlayerIndex.P2) {
+            loadPlayer2Animations();
+        } else {
+            loadPlayer1Animations();
+        }
 
 
 
+
+
+        abilityManager = new AbilityManager(this, gameManager);
+
+        Logger.gameEvent("Player spawned at " + getPositionString());
+
+        // 加载攻击贴图 (请根据你的文件名修改)
+        if (playerIndex == PlayerIndex.P1) {
+
+            TextureAtlas attackAtlas =
+                    new TextureAtlas("Character/melee/player1.atlas");
+
+            backAtkAnim = new Animation<>(0.08f,
+                    attackAtlas.findRegions("player1_back"),
+                    Animation.PlayMode.NORMAL);
+
+            frontAtkAnim = new Animation<>(0.08f,
+                    attackAtlas.findRegions("player1_front"),
+                    Animation.PlayMode.NORMAL);
+
+            leftAtkAnim = new Animation<>(0.08f,
+                    attackAtlas.findRegions("player1_left"),
+                    Animation.PlayMode.NORMAL);
+
+            rightAtkAnim = new Animation<>(0.08f,
+                    attackAtlas.findRegions("player1_right"),
+                    Animation.PlayMode.NORMAL);
+
+        } else { // ===== P2 =====
+
+            TextureAtlas attackAtlas =
+                    new TextureAtlas("Character/magic/player2.atlas");
+
+            backAtkAnim = new Animation<>(0.08f,
+                    attackAtlas.findRegions("player2_back"),
+                    Animation.PlayMode.NORMAL);
+
+            frontAtkAnim = new Animation<>(0.08f,
+                    attackAtlas.findRegions("player2_front"),
+                    Animation.PlayMode.NORMAL);
+
+            leftAtkAnim = new Animation<>(0.08f,
+                    attackAtlas.findRegions("player2_left"),
+                    Animation.PlayMode.NORMAL);
+
+            rightAtkAnim = new Animation<>(0.08f,
+                    attackAtlas.findRegions("player2_right"),
+                    Animation.PlayMode.NORMAL);
+        }
+
+
+
+
+
+    }
+
+    private void loadPlayer1Animations() {
         frontAtlas = new TextureAtlas("Character/player1/front.atlas");
         backAtlas  = new TextureAtlas("Character/player1/back.atlas");
         leftAtlas  = new TextureAtlas("Character/player1/left.atlas");
@@ -229,46 +339,34 @@ private boolean damageInvincible = false;
         backAnim  = new Animation<>(0.1f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
         leftAnim  = new Animation<>(0.1f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
         rightAnim = new Animation<>(0.1f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
-
-        abilityManager = new AbilityManager(this, gameManager);
-
-        Logger.gameEvent("Player spawned at " + getPositionString());
-
-        // 加载攻击贴图 (请根据你的文件名修改)
-        TextureAtlas attackAtlas = new TextureAtlas("Character/melee/player1.atlas");
-        backAtkAnim = new Animation<>(
-                0.1f,
-                attackAtlas.findRegions("player1_back"),
-                Animation.PlayMode.NORMAL
-        );
-
-        frontAtkAnim = new Animation<>(
-                0.1f,
-                attackAtlas.findRegions("player1_front"),
-                Animation.PlayMode.NORMAL
-        );
-
-        leftAtkAnim = new Animation<>(
-                0.1f,
-                attackAtlas.findRegions("player1_left"),
-                Animation.PlayMode.NORMAL
-        );
-
-        rightAtkAnim = new Animation<>(
-                0.1f,
-                attackAtlas.findRegions("player1_right"),
-                Animation.PlayMode.NORMAL
-        );
-
-
-
-
     }
+
+    private void loadPlayer2Animations() {
+        TextureAtlas atlas = new TextureAtlas("Character/player2/player2.atlas");
+
+        frontAnim = new Animation<>(0.1f, atlas.findRegions("player2_front"));
+        backAnim  = new Animation<>(0.1f, atlas.findRegions("player2_back"));
+        leftAnim  = new Animation<>(0.1f, atlas.findRegions("player2_left"));
+        rightAnim = new Animation<>(0.1f, atlas.findRegions("player2_right"));
+    }
+
 
     /* ====================== UPDATE ====================== */
 
 
     public void update(float delta) {
+
+        // ===== Tutorial 模式：只跑动画 =====
+        if (isTutorial) {
+            float animationSpeed = 1f;
+            stateTime += delta * animationSpeed * ANIM_SPEED_MULTIPLIER;
+
+            if (!isMovingAnim) stateTime = 0f;
+            isMovingAnim = false;
+            return;
+        }
+
+
         if (inHitStun) {
             hitStunTimer -= delta;
             if (hitStunTimer <= 0f) {
@@ -354,7 +452,9 @@ private boolean damageInvincible = false;
         }
 
         // ===== Ability =====
-        abilityManager.update(delta);
+        if (abilityManager != null) {
+            abilityManager.update(delta);
+        }
 
         // ===== [Treasure] 自动回血逻辑 =====
         if (buffRegen) {
@@ -590,7 +690,7 @@ private boolean damageInvincible = false;
     public boolean hasKey() { return hasKey; }
     public void setHasKey(boolean hasKey) { this.hasKey = hasKey; }
     public boolean isDead() { return isDead; }
-    public int getMana() {
+    public float getMana() {
         return mana;
     }
     public boolean isMoving() {

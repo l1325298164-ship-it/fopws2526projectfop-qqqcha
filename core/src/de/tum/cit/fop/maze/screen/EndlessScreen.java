@@ -15,7 +15,6 @@ import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
-import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -1150,8 +1149,8 @@ public class EndlessScreen implements Screen {
         if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !endlessGameOver) {
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
                 @Override
-                public void onMoveInput(int dx, int dy) {
-                    gm.onMoveInput(dx, dy);
+                public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
+                    gm.onMoveInput(index, dx, dy);
                 }
 
                 @Override
@@ -1176,8 +1175,9 @@ public class EndlessScreen implements Screen {
                 public void onMenuInput() {
                     togglePause();
                 }
-            });
+            }, Player.PlayerIndex.P1);
         }
+
     }
 
     private List<Item> prepareRenderItems(List<ExitDoor> exitDoorsCopy) {

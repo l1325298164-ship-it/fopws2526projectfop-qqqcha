@@ -6,9 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -180,8 +178,8 @@ public class GameScreen implements Screen {
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
 
                 @Override
-                public void onMoveInput(int dx, int dy) {
-                    gm.onMoveInput(dx, dy);
+                public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
+                    gm.onMoveInput(index, dx, dy);
                 }
 
                 @Override
@@ -203,7 +201,7 @@ public class GameScreen implements Screen {
                 public void onMenuInput() {
                     togglePause();
                 }
-            });
+            }, Player.PlayerIndex.P1);
         }
 
         /* ================= 更新 ================= */
@@ -253,7 +251,9 @@ public class GameScreen implements Screen {
         }
 
         // 🔥 玩家始终渲染（不会被隐藏）
-        items.add(new Item(gm.getPlayer(), 100));
+        for (Player p : gm.getPlayers()) {
+            items.add(new Item(p, 100));
+        }
         if (gm.getCat() != null) {
             items.add(new Item(gm.getCat(), 95)); // 比玩家略低
         }

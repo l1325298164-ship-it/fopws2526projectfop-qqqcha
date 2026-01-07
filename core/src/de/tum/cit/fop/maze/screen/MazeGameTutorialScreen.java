@@ -13,6 +13,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
+import de.tum.cit.fop.maze.entities.TutorialPlayer;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -136,7 +137,7 @@ public class MazeGameTutorialScreen implements Screen {
         goalTexture = new Texture(Gdx.files.internal("ui/goal_icon.png"));
         findSpawnByCode(); // 注意：这里用的是「屏幕坐标」
 
-        tutorialPlayer = new Player(0, 0, null); // GameManager 在 Tutorial 里用不到
+        tutorialPlayer = new TutorialPlayer(0, 0);
         tutorialPlayer.setPosition(0, 0);
 
         // 同步屏幕坐标 → Player world 坐标

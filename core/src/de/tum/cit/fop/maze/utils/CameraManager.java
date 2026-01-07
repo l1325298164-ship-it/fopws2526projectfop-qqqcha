@@ -7,8 +7,6 @@ import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
-
-
 public class CameraManager {
     private OrthographicCamera camera;
     private float targetX, targetY;

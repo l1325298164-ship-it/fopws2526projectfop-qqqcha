@@ -18,15 +18,28 @@ public class KeyBindingManager {
 
     // 🔥 报错的核心原因：必须在这里定义 GameAction
     public enum GameAction {
-        MOVE_UP,
-        MOVE_DOWN,
-        MOVE_LEFT,
-        MOVE_RIGHT,
-        USE_ABILITY,
-        INTERACT,
-        CONSOLE // 👈 后面我们会用到这个来开控制台
-    }
 
+        // ===== P1 =====
+        P1_MOVE_UP,
+        P1_MOVE_DOWN,
+        P1_MOVE_LEFT,
+        P1_MOVE_RIGHT,
+        P1_USE_ABILITY,
+        P1_DASH,
+        P1_INTERACT,
+
+        // ===== P2 =====
+        P2_MOVE_UP,
+        P2_MOVE_DOWN,
+        P2_MOVE_LEFT,
+        P2_MOVE_RIGHT,
+        P2_USE_ABILITY,
+        P2_DASH,
+        P2_INTERACT,
+
+        // ===== SYSTEM =====
+        CONSOLE
+    }
     private final Map<GameAction, Integer> keyBindings;
 
     private KeyBindingManager() {
@@ -43,15 +56,31 @@ public class KeyBindingManager {
     }
 
     private void load() {
-        // 默认按键设置
-        loadBinding(GameAction.MOVE_UP, Input.Keys.W);
-        loadBinding(GameAction.MOVE_DOWN, Input.Keys.S);
-        loadBinding(GameAction.MOVE_LEFT, Input.Keys.A);
-        loadBinding(GameAction.MOVE_RIGHT, Input.Keys.D);
-        loadBinding(GameAction.USE_ABILITY, Input.Keys.SPACE);
-        loadBinding(GameAction.INTERACT, Input.Keys.E);
-        loadBinding(GameAction.CONSOLE, Input.Keys.GRAVE); // ` 键
+
+        // ===== P1 默认键位 =====
+        loadBinding(GameAction.P1_MOVE_UP, Input.Keys.W);
+        loadBinding(GameAction.P1_MOVE_DOWN, Input.Keys.S);
+        loadBinding(GameAction.P1_MOVE_LEFT, Input.Keys.A);
+        loadBinding(GameAction.P1_MOVE_RIGHT, Input.Keys.D);
+
+        loadBinding(GameAction.P1_USE_ABILITY, Input.Keys.SPACE);
+        loadBinding(GameAction.P1_DASH, Input.Keys.SHIFT_LEFT);
+        loadBinding(GameAction.P1_INTERACT, Input.Keys.E);
+
+        // ===== P2 默认键位 =====
+        loadBinding(GameAction.P2_MOVE_UP, Input.Keys.UP);
+        loadBinding(GameAction.P2_MOVE_DOWN, Input.Keys.DOWN);
+        loadBinding(GameAction.P2_MOVE_LEFT, Input.Keys.LEFT);
+        loadBinding(GameAction.P2_MOVE_RIGHT, Input.Keys.RIGHT);
+
+        loadBinding(GameAction.P2_USE_ABILITY, Input.Buttons.LEFT);
+        loadBinding(GameAction.P2_DASH, Input.Buttons.RIGHT);
+        loadBinding(GameAction.P2_INTERACT, Input.Keys.NUM_1);
+
+        // ===== SYSTEM =====
+        loadBinding(GameAction.CONSOLE, Input.Keys.GRAVE);
     }
+
 
     private void loadBinding(GameAction action, int defaultKey) {
         int keyCode = prefs.getInteger(action.name(), defaultKey);
@@ -79,28 +108,60 @@ public class KeyBindingManager {
      * 检测某个动作的键是否正被按住 (用于移动)
      */
     public boolean isPressed(GameAction action) {
-        return Gdx.input.isKeyPressed(getKey(action));
+        int code = getKey(action);
+
+        if (code == Input.Buttons.LEFT || code == Input.Buttons.RIGHT) {
+            return Gdx.input.isButtonPressed(code);
+        }
+
+        return Gdx.input.isKeyPressed(code);
     }
 
-    /**
-     * 检测某个动作的键是否刚刚被按下 (用于技能/交互)
-     */
     public boolean isJustPressed(GameAction action) {
-        return Gdx.input.isKeyJustPressed(getKey(action));
+        int code = getKey(action);
+
+        if (code == Input.Buttons.LEFT || code == Input.Buttons.RIGHT) {
+            return Gdx.input.isButtonJustPressed(code);
+        }
+
+        return Gdx.input.isKeyJustPressed(code);
     }
+
+
+
     /**
-     * 🔥 新增：恢复默认设置
-     * 根据你的要求，移动键恢复为 上/下/左/右
+     * 🔥 双人模式默认键位
      */
     public void resetToDefaults() {
-        setBinding(GameAction.MOVE_UP, Input.Keys.UP);
-        setBinding(GameAction.MOVE_DOWN, Input.Keys.DOWN);
-        setBinding(GameAction.MOVE_LEFT, Input.Keys.LEFT);
-        setBinding(GameAction.MOVE_RIGHT, Input.Keys.RIGHT);
 
-        // 其他功能键恢复默认
-        setBinding(GameAction.USE_ABILITY, Input.Keys.SPACE);
-        setBinding(GameAction.INTERACT, Input.Keys.E);
-        setBinding(GameAction.CONSOLE, Input.Keys.F1);
+        // ======================
+        // P1 - 键盘 WASD
+        // ======================
+        setBinding(GameAction.P1_MOVE_UP,    Input.Keys.W);
+        setBinding(GameAction.P1_MOVE_DOWN,  Input.Keys.S);
+        setBinding(GameAction.P1_MOVE_LEFT,  Input.Keys.A);
+        setBinding(GameAction.P1_MOVE_RIGHT, Input.Keys.D);
+
+        setBinding(GameAction.P1_USE_ABILITY, Input.Keys.SPACE);
+        setBinding(GameAction.P1_DASH,        Input.Keys.SHIFT_LEFT);
+        setBinding(GameAction.P1_INTERACT,    Input.Keys.E);
+
+        // ======================
+        // P2 - 方向键 + 鼠标
+        // ======================
+        setBinding(GameAction.P2_MOVE_UP,    Input.Keys.UP);
+        setBinding(GameAction.P2_MOVE_DOWN,  Input.Keys.DOWN);
+        setBinding(GameAction.P2_MOVE_LEFT,  Input.Keys.LEFT);
+        setBinding(GameAction.P2_MOVE_RIGHT, Input.Keys.RIGHT);
+
+        setBinding(GameAction.P2_USE_ABILITY, Input.Buttons.LEFT);   // 鼠标左键
+        setBinding(GameAction.P2_DASH,        Input.Buttons.RIGHT);  // 鼠标右键
+        setBinding(GameAction.P2_INTERACT,    Input.Keys.NUM_1);
+
+        // ======================
+        // 通用
+        // ======================
+        setBinding(GameAction.CONSOLE, Input.Keys.GRAVE); // `
     }
+
 }
