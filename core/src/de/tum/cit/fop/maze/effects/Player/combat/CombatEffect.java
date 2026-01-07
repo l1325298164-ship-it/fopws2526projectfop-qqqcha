@@ -1,5 +1,6 @@
 package de.tum.cit.fop.maze.effects.Player.combat;
 
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
 public abstract class CombatEffect {
@@ -15,17 +16,33 @@ public abstract class CombatEffect {
         this.timer = 0;
     }
 
+    /**
+     * 更新逻辑
+     * @param delta 时间增量
+     * @param ps 粒子系统，允许特效在 update 时自己生成粒子
+     */
     public void update(float delta, CombatParticleSystem ps) {
         timer += delta;
         if (timer >= maxDuration) isFinished = true;
         onUpdate(delta, ps);
     }
 
-    // 子类必须实现：每一帧的逻辑（如生成粒子）
     protected abstract void onUpdate(float delta, CombatParticleSystem ps);
 
-    // 子类必须实现：绘制几何主体
-    public abstract void render(ShapeRenderer sr);
+    /**
+     * 🟢 形状/粒子层渲染 (使用 ShapeRenderer)
+     * 适合：刀光几何体、火花、圆环、线条
+     * 注意：这一层通常开启 GL_BLEND 混合模式以实现发光效果
+     */
+    public abstract void renderShape(ShapeRenderer sr);
+
+    /**
+     * 🔵 贴图/文字层渲染 (使用 SpriteBatch)
+     * 适合：伤害数字、复杂的魔法阵图片、图标
+     */
+    public void renderSprite(SpriteBatch batch) {
+        // 默认留空，子类按需覆盖
+    }
 
     public boolean isFinished() { return isFinished; }
 }
