@@ -51,14 +51,7 @@ public class AbilityManager {
         }
     }
 
-    public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer) {
-        // 绘制所有激活的能力效果
-        for (Ability ability : abilities.values()) {
-            if (ability.isActive()) {
-                ability.draw(batch, shapeRenderer, player);
-            }
-        }
-    }
+
 
     public boolean activateSlot(int slot) {
         if (slot < 0 || slot >= abilitySlots.length) return false;
@@ -125,13 +118,7 @@ public class AbilityManager {
         activeAbilities.clear();
     }
 
-    public void drawActiveAbilities(SpriteBatch batch,
-                                    ShapeRenderer shapeRenderer,
-                                    Player player) {
-        for (Ability ability : activeAbilities) {
-            ability.draw(batch, shapeRenderer, player);
-        }
-    }
+
 
     public Ability getAbility(int slot) {
         if (slot >= 0 && slot < abilitySlots.length) {
@@ -143,4 +130,14 @@ public class AbilityManager {
     public void activateAbility(int slot, Player player) {
         activateSlot(slot);
     }
+
+    public void drawAbilities(SpriteBatch batch,
+                              ShapeRenderer shapeRenderer,
+                              Player player) {
+        for (Ability ability : abilities.values()) {
+            ability.draw(batch, shapeRenderer, player);
+        }
+    }
+
+
 }

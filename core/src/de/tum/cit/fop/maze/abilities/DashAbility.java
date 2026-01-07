@@ -14,13 +14,33 @@ public class DashAbility extends Ability {
     private float chargeTimer = 0f;
 
     public DashAbility() {
+        // cooldown = 0（不用），duration = Dash 持续时间
         super("Dash", "Quick dash forward", 0f, 0.8f);
+    }
+
+    /* ================= Ability Hooks ================= */
+
+    @Override
+    protected boolean shouldConsumeMana() {
+        return false; // Dash 不耗蓝
+    }
+
+    @Override
+    protected boolean shouldStartCooldown() {
+        return false; // ❌ 不使用 Ability 的冷却系统
+    }
+
+    @Override
+    protected boolean shouldBecomeActive() {
+        return true; // Dash 是持续技能
     }
 
     @Override
     public boolean canActivate(Player player) {
-        return charges > 0;
+        return charges > 0 && !player.isDashing();
     }
+
+    /* ================= Activate ================= */
 
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
@@ -28,15 +48,19 @@ public class DashAbility extends Ability {
         player.startDash();
     }
 
+    /* ================= Active ================= */
+
     @Override
     protected void updateActive(float delta) {
-        // Dash 本身不需要逐帧逻辑
+        // Dash 的位移 / 碰撞都在 Player 里处理
     }
 
     @Override
     protected void onDeactivate() {
-        // Dash 结束
+        // Dash 时间结束（如果你 Player 里需要回调，可以以后加）
     }
+
+    /* ================= Update ================= */
 
     @Override
     public void update(float delta) {
@@ -52,32 +76,32 @@ public class DashAbility extends Ability {
         }
     }
 
-    @Override
-    public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player) {}
+    /* ================= Render ================= */
 
     @Override
-    protected void onUpgrade() {}
-    // ===== Dash UI 用 Getter =====
+    public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player) {
+        // Dash 不需要绘制额外效果
+    }
 
-    /** 当前可用冲刺次数 */
+    /* ================= Upgrade ================= */
+
+    @Override
+    protected void onUpgrade() {
+        // 以后可以做：+1 charge / cooldown -x
+    }
+
+    /* ================= HUD Getter ================= */
+
     public int getCurrentCharges() {
         return charges;
     }
 
-    /** 最大冲刺次数 */
     public int getMaxCharges() {
         return MAX_CHARGES;
     }
 
-    /**
-     * 当前正在充能的那一格的进度（0~1）
-     * 如果已经满充能，直接返回 1
-     */
     public float getChargeProgress() {
-        if (charges >= MAX_CHARGES) {
-            return 1f;
-        }
+        if (charges >= MAX_CHARGES) return 1f;
         return chargeTimer / CHARGE_COOLDOWN;
     }
-
 }

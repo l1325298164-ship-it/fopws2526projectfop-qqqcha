@@ -7,12 +7,20 @@ import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameManager;
 
 public abstract class Ability {
-
+    public enum AbilityInputType {
+        INSTANT,    // 一按就触发（P1、Dash）
+        CONTINUOUS  // 按/持/放（Magic）
+    }
+    public AbilityInputType getInputType() {
+        return AbilityInputType.INSTANT;
+    }
     protected final String name;
     protected final String description;
 
     protected final float cooldown;
     protected final float duration;
+
+
 
     protected boolean active = false;
     protected boolean ready = true;
@@ -36,18 +44,28 @@ public abstract class Ability {
     public boolean tryActivate(Player player, GameManager gameManager) {
         if (!canActivate(player)) return false;
 
-        ready = false;
-        active = true;
-        cooldownTimer = 0f;
-        durationTimer = 0f;
-
-        if (manaCost > 0) {
+        if (shouldConsumeMana() && manaCost > 0) {
             player.useMana(manaCost);
         }
 
         onActivate(player, gameManager);
+//立刻进冷却或者立刻按
+        if (shouldStartCooldown()) {
+            ready = false;
+            cooldownTimer = 0f;
+        }
+
+
+        if (shouldBecomeActive()) {
+            active = true;
+            durationTimer = 0f;
+        }
+
         return true;
+
     }
+
+
 
     public void update(float delta) {
 
@@ -63,17 +81,34 @@ public abstract class Ability {
             }
         }
 
-        // 冷却阶段
         if (!ready) {
             cooldownTimer += delta;
-            if (cooldownTimer >= cooldown) {
+            if (cooldownTimer >= getCooldownDuration()) {
                 ready = true;
-                cooldownTimer = cooldown;
+                cooldownTimer = getCooldownDuration();
             }
         }
     }
 
     /* =================== 子类实现 =================== */
+
+    protected boolean shouldBecomeActive() {
+        return duration > 0;
+    }
+// 是否在 tryActivate 时消耗 mana
+    protected boolean shouldConsumeMana() {
+        return true;
+    }
+
+    // 是否在 tryActivate 后立刻进入冷却
+    protected boolean shouldStartCooldown() {
+        return true;
+    }
+
+    // 实际使用的冷却时间（允许动态）
+    protected float getCooldownDuration() {
+        return cooldown;
+    }
 
     protected abstract void onActivate(Player player, GameManager gameManager);
 
@@ -96,8 +131,10 @@ public abstract class Ability {
     public boolean isReady() { return ready; }
 
     public float getCooldownProgress() {
-        return cooldown <= 0 ? 1f : cooldownTimer / cooldown;
+        float cd = getCooldownDuration();
+        return cd <= 0 ? 1f : cooldownTimer / cd;
     }
+
 
     public float getDurationProgress() {
         return duration <= 0 ? 0f : durationTimer / duration;

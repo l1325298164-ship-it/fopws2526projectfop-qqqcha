@@ -9,7 +9,6 @@ import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,16 +20,20 @@ public class MeleeAttackAbility extends Ability {
     /* ===== 数值 ===== */
     private int baseDamage = 5;
     private int damagePerLevel = 1;
-    private boolean damageDone = false;
-    private static final float HIT_TIME = 0.12f; // 命中帧时间
+
+    private static final float HIT_TIME = 0.12f;
+    private GameManager gameManager;
     /* ===== 攻击区域 ===== */
     private final List<int[]> attackTiles = new ArrayList<>();
-    // ===== 命中帧控制 =====
+
+    /* ===== 命中帧控制 ===== */
     private float attackTimer = 0f;
-    /* ===== 视觉调试 ===== */
+    private boolean damageDone = false;
+
+    /* ===== Debug ===== */
     private static final Color DEBUG_COLOR =
             new Color(1f, 0.2f, 0.2f, 0.3f);
-    private GameManager gameManager;
+
     public MeleeAttackAbility() {
         super(
                 "Sword Slash",
@@ -41,25 +44,20 @@ public class MeleeAttackAbility extends Ability {
         this.manaCost = 10;
     }
 
-    /* ================================================= */
-    /* ================= 生命周期 ====================== */
-    /* ================================================= */
+    /* ================= 生命周期 ================= */
 
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
-
         this.gameManager = gameManager;
 
         player.startAttack();
-        // 初始化攻击计时
+
         attackTimer = 0f;
         damageDone = false;
 
-        // 1️⃣ 计算攻击区域
         calculateAttackTiles(player);
 
         AudioManager.getInstance().play(AudioType.UI_CLICK);
-
     }
 
     @Override
@@ -80,9 +78,7 @@ public class MeleeAttackAbility extends Ability {
         gameManager = null;
     }
 
-    /* ================================================= */
-    /* ================= 核心逻辑 ====================== */
-    /* ================================================= */
+    /* ================= 攻击逻辑 ================= */
 
     private void calculateAttackTiles(Player player) {
         attackTiles.clear();
@@ -91,7 +87,7 @@ public class MeleeAttackAbility extends Ability {
         int py = player.getY();
         Player.Direction dir = player.getDirection();
 
-        // 始终包含玩家所在格（防止贴脸敌人）
+        // 包含自身，防止贴脸
         attackTiles.add(new int[]{px, py});
 
         switch (dir) {
@@ -117,7 +113,6 @@ public class MeleeAttackAbility extends Ability {
             }
         }
 
-        // 等级扩展
         if (level >= 3) {
             extendRange(dir, px, py);
         }
@@ -132,7 +127,6 @@ public class MeleeAttackAbility extends Ability {
         }
     }
 
-    // 防止一次攻击多次伤害同一个对象
     private void dealDamage(GameManager gameManager) {
         int damage = baseDamage + (level - 1) * damagePerLevel;
 
@@ -147,14 +141,13 @@ public class MeleeAttackAbility extends Ability {
         }
     }
 
-    /* ================================================= */
-    /* ================= 绘制 ========================== */
-    /* ================================================= */
+    /* ================= 绘制 ================= */
 
     @Override
     public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player) {
         if (!GameConstants.DEBUG_MODE) return;
 
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(DEBUG_COLOR);
 
         for (int[] tile : attackTiles) {
@@ -165,32 +158,19 @@ public class MeleeAttackAbility extends Ability {
                     GameConstants.CELL_SIZE
             );
         }
+
+        shapeRenderer.end();
     }
 
-    /* ================================================= */
-    /* ================= 升级 ========================== */
-    /* ================================================= */
+    /* ================= 升级 ================= */
 
     @Override
     protected void onUpgrade() {
-        // 2级：冷却减少
-        if (level == 2) {
-            // 冷却减少逻辑
-        }
 
-        // 3级：范围已经生效（前方第二格）
-        if (level == 3) {
-            // 范围增加逻辑
-        }
-
-        // 4级：基础伤害提高
         if (level == 4) {
             baseDamage += 1;
         }
 
-        // 5级：你可以在这里解锁新形态
-        if (level == 5) {
-            // 最大等级效果
-        }
+        // 2 / 3 / 5 级效果你以后再扩
     }
 }

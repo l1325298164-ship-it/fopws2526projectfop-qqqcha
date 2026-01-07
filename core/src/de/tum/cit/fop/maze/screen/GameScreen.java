@@ -16,6 +16,8 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.abilities.Ability;
+import de.tum.cit.fop.maze.abilities.MagicAbility;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
@@ -54,6 +56,7 @@ public class GameScreen implements Screen {
     private DeveloperConsole console;
     private Texture uiTop, uiBottom, uiLeft, uiRight;
     private ShapeRenderer shapeRenderer = new ShapeRenderer();
+    private boolean magicMouseDownLastFrame = false;
 
     //PAUSE
     private boolean paused = false;
@@ -245,6 +248,32 @@ public class GameScreen implements Screen {
 
                 }, Player.PlayerIndex.P2);
             }
+            // ===== Magic 鼠标技能（P2）=====
+            if (gm.isTwoPlayerMode() && gm.getPlayers().size() > 1) {
+
+                Player p2 = gm.getPlayers().get(1);
+                Ability ability = p2.getAbilityManager().getAbility(0);
+
+                if (ability instanceof MagicAbility m) {
+
+                    boolean mouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
+
+                    if (mouseDown && !magicMouseDownLastFrame) {
+                        m.onMousePressed(gm);
+                    }
+
+                    if (mouseDown) {
+                        m.onMouseHeld(gm);
+                    }
+
+                    if (!mouseDown && magicMouseDownLastFrame) {
+                        m.onMouseReleased(gm);
+                    }
+
+                    magicMouseDownLastFrame = mouseDown;
+                }
+            }
+
 
         }
 
@@ -382,6 +411,20 @@ public class GameScreen implements Screen {
             gm.getPlayerSpawnPortal().renderFront(batch);
         }
         batch.end();
+// ===== Ability Debug / Targeting (AOE etc.) =====
+        shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+
+        for (Player p : gm.getPlayers()) {
+            if (p.getAbilityManager() != null) {
+                p.getAbilityManager().drawAbilities(batch, shapeRenderer, p);
+            }
+        }
+
+
+
+
+
+
 // ===== 雾（一定在这里）=====
         batch.begin();
         float fogX, fogY;
