@@ -33,7 +33,7 @@ public abstract class Ability {
 
     /* =================== 核心生命周期 =================== */
 
-    public final boolean tryActivate(Player player, GameManager gameManager) {
+    public boolean tryActivate(Player player, GameManager gameManager) {
         if (!canActivate(player)) return false;
 
         ready = false;

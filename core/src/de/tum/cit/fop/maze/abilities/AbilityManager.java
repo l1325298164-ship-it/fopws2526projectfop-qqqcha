@@ -26,15 +26,14 @@ public class AbilityManager {
     }
 
     private void initializeAbilities() {
-        // 初始能力：近战攻击
-        MeleeAttackAbility meleeAttack = new MeleeAttackAbility();
-        abilities.put("melee", meleeAttack);
-        abilitySlots[0] = meleeAttack;
-
-        // 冲刺能力
-        DashAbility dash = new DashAbility();
-        abilities.put("dash", dash);
-        abilitySlots[1] = dash;
+        if (player.getPlayerIndex() == Player.PlayerIndex.P1) {
+            MeleeAttackAbility melee = new MeleeAttackAbility();
+            abilitySlots[0] = melee;
+        } else {
+            MagicAbility magic = new MagicAbility();
+            abilities.put("magic", magic);
+            abilitySlots[0] = magic;
+        }
     }
 
     public void update(float deltaTime) {

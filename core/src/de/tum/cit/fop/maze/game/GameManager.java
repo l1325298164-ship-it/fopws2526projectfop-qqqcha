@@ -42,7 +42,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final List<ExitDoor> exitDoors = new ArrayList<>();
     private final Array<BobaBullet> bullets = new Array<>();
     private List<DynamicObstacle> obstacles = new ArrayList<>();
-
+    // ===== 鼠标目标格子（给技能用）=====
+    private int mouseTileX = -1;
+    private int mouseTileY = -1;
     // GameManager.java
     private FogSystem fogSystem;
     private Compass compass;
@@ -1293,4 +1295,21 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public List<Player> getPlayers() {
         return players;
     }
+
+    public void setMouseTargetTile(int x, int y) {
+        this.mouseTileX = x;
+        this.mouseTileY = y;
+    }
+
+    public int getMouseTileX() {
+        return mouseTileX;
+    }
+
+    public int getMouseTileY() {
+        return mouseTileY;
+    }
+
+
+
+
 }

@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -130,6 +131,17 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+
+        // ===== 更新鼠标指向的格子（给技能用）=====
+        Vector3 world = cam.getCamera().unproject(
+                new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
+        );
+
+        int tileX = (int)(world.x / GameConstants.CELL_SIZE);
+        int tileY = (int)(world.y / GameConstants.CELL_SIZE);
+
+        gm.setMouseTargetTile(tileX, tileY);
+
         // ===== DEBUG TOGGLE (F2) =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
             Logger.toggleDebug();
