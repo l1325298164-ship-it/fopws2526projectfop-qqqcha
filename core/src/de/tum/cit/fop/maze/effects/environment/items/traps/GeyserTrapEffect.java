@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.effects.environment.items.traps;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
@@ -26,42 +27,40 @@ public class GeyserTrapEffect extends EnvironmentEffect {
     protected void onUpdate(float delta, EnvironmentParticleSystem ps) {
         if (timer < WARNING_TIME) {
             // === 阶段1: 地表震颤 (Warning) ===
-            // 随着时间推移，震动频率变高
             float progress = timer / WARNING_TIME;
             if (MathUtils.random() < 0.05f + progress * 0.1f) {
-                // 生成细小的碎石，微微跳起
                 ps.spawn(
                         x + MathUtils.random(-15, 15),
                         y - 10 + MathUtils.random(-5, 5),
                         rubbleColor,
-                        0, MathUtils.random(20, 50), // 只有向上的微小初速度
-                        MathUtils.random(2, 4),      // 很小
-                        0.3f,                        // 存活极短
-                        true, true                   // 受重力落下，有阻力
+                        0, MathUtils.random(20, 50),
+                        MathUtils.random(2, 4),
+                        0.3f,
+                        true, true
                 );
             }
         } else {
             // === 阶段2: 喷发 (Eruption) ===
-            // 持续生成大量蒸汽（向上冲）
+            // 蒸汽
             for (int i = 0; i < 2; i++) {
-                float angle = MathUtils.random(85, 95); // 几乎垂直向上
+                float angle = MathUtils.random(85, 95);
                 float speed = MathUtils.random(180, 350);
 
                 ps.spawn(
                         x + MathUtils.random(-8, 8),
-                        y + 5, // 从喷口上方生成
+                        y + 5,
                         steamColor,
                         MathUtils.cosDeg(angle) * speed,
                         MathUtils.sinDeg(angle) * speed,
-                        MathUtils.random(8, 15), // 蒸汽团较大
+                        MathUtils.random(8, 15),
                         0.5f,
-                        false, true // 无重力(持续上升)，有空气阻力
+                        false, true
                 );
             }
 
-            // 伴随水滴飞溅（向四周抛洒）
+            // 水滴
             if (MathUtils.randomBoolean(0.3f)) {
-                float angle = MathUtils.random(60, 120); // 扇形喷洒
+                float angle = MathUtils.random(60, 120);
                 float speed = MathUtils.random(100, 200);
 
                 ps.spawn(
@@ -69,16 +68,23 @@ public class GeyserTrapEffect extends EnvironmentEffect {
                         waterColor,
                         MathUtils.cosDeg(angle) * speed,
                         MathUtils.sinDeg(angle) * speed,
-                        MathUtils.random(3, 5), // 水滴较小
+                        MathUtils.random(3, 5),
                         0.8f,
-                        true, false // 受重力，无阻力(抛物线)
+                        true, false
                 );
             }
         }
     }
 
+    // 🔴 修正点 1: 改名
     @Override
-    public void render(ShapeRenderer sr) {
-        // 完全移除几何绘制，只靠粒子表现
+    public void renderShape(ShapeRenderer sr) {
+        // 移除几何绘制，全靠粒子
+    }
+
+    // 🔴 修正点 2: 新增空实现
+    @Override
+    public void renderSprite(SpriteBatch batch) {
+        // 不需要贴图
     }
 }

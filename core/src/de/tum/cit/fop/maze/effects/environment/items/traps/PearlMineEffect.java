@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.effects.environment.items.traps;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
@@ -44,8 +45,9 @@ public class PearlMineEffect extends EnvironmentEffect {
         }
     }
 
+    // 🔴 修正点 1: 改名
     @Override
-    public void render(ShapeRenderer sr) {
+    public void renderShape(ShapeRenderer sr) {
         // 1. 绘制冲击波 (仅在爆炸初期)
         if (timer < SHOCKWAVE_DURATION) {
             float p = timer / SHOCKWAVE_DURATION;
@@ -54,12 +56,11 @@ public class PearlMineEffect extends EnvironmentEffect {
             float alpha = 1.0f - p;
 
             sr.setColor(1f, 1f, 1f, alpha * 0.5f); // 半透明白环
-            // 绘制圆环 (通过画一个大圆扣一个小圆模拟，或者直接画线框，这里用Filled模式模拟粗线条有点难，直接画半透明圆面)
+            // 绘制圆环
             sr.circle(x, y, radius);
         }
 
         // 2. 爆炸后的地面残留印记 (糖水渍)
-        // 随着时间缓慢淡出
         float stainAlpha = 0f;
         if (timer > 0.1f) { // 爆炸后才显示
             float fadeP = (timer - 0.1f) / (maxDuration - 0.1f);
@@ -70,5 +71,11 @@ public class PearlMineEffect extends EnvironmentEffect {
             sr.setColor(0.4f, 0.3f, 0.2f, stainAlpha);
             sr.ellipse(x - 20, y - 6, 40, 12);
         }
+    }
+
+    // 🔴 修正点 2: 新增空实现
+    @Override
+    public void renderSprite(SpriteBatch batch) {
+        // 不需要贴图
     }
 }

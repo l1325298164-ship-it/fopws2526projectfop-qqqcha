@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.effects.environment.items.traps;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
@@ -43,8 +44,15 @@ public class TeaShardsEffect extends EnvironmentEffect {
         }
     }
 
+    // 🔴 修正点 1: 改名
     @Override
-    public void render(ShapeRenderer sr) {
-        // 移除所有几何绘制
+    public void renderShape(ShapeRenderer sr) {
+        // 移除所有几何绘制，保持为空
+    }
+
+    // 🔴 修正点 2: 新增空实现
+    @Override
+    public void renderSprite(SpriteBatch batch) {
+        // 不需要贴图
     }
 }
