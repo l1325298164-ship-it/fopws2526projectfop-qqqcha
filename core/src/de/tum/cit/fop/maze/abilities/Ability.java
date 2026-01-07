@@ -1,4 +1,3 @@
-// Ability.java
 package de.tum.cit.fop.maze.abilities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -7,6 +6,15 @@ import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameManager;
 
 public abstract class Ability {
+
+    public enum AbilityInputType {
+        INSTANT,    // 一按就触发（P1、Dash）
+        CONTINUOUS  // 多阶段 / 状态机（Magic）
+    }
+
+    public AbilityInputType getInputType() {
+        return AbilityInputType.INSTANT;
+    }
 
     protected final String name;
     protected final String description;
@@ -31,21 +39,38 @@ public abstract class Ability {
         this.duration = duration;
     }
 
+    /* =================== 对外统一入口（新增） =================== */
+
+    /**
+     * 👉 推荐：所有输入系统 / Screen / Controller 都只调用这个方法
+     */
+    public boolean activate(Player player, GameManager gameManager) {
+        return tryActivate(player, gameManager);
+    }
+
     /* =================== 核心生命周期 =================== */
 
-    public final boolean tryActivate(Player player, GameManager gameManager) {
+    protected boolean tryActivate(Player player, GameManager gameManager) {
         if (!canActivate(player)) return false;
 
-        ready = false;
-        active = true;
-        cooldownTimer = 0f;
-        durationTimer = 0f;
-
-        if (manaCost > 0) {
+        if (shouldConsumeMana() && manaCost > 0) {
             player.useMana(manaCost);
         }
 
         onActivate(player, gameManager);
+
+        // 是否立刻进入冷却
+        if (shouldStartCooldown()) {
+            ready = false;
+            cooldownTimer = 0f;
+        }
+
+        // 是否进入 active/duration 阶段
+        if (shouldBecomeActive()) {
+            active = true;
+            durationTimer = 0f;
+        }
+
         return true;
     }
 
@@ -63,17 +88,33 @@ public abstract class Ability {
             }
         }
 
-        // 冷却阶段
+        // 冷却
         if (!ready) {
             cooldownTimer += delta;
-            if (cooldownTimer >= cooldown) {
+            if (cooldownTimer >= getCooldownDuration()) {
                 ready = true;
-                cooldownTimer = cooldown;
+                cooldownTimer = getCooldownDuration();
             }
         }
     }
 
-    /* =================== 子类实现 =================== */
+    /* =================== 子类钩子 =================== */
+
+    protected boolean shouldBecomeActive() {
+        return duration > 0;
+    }
+
+    protected boolean shouldConsumeMana() {
+        return true;
+    }
+
+    protected boolean shouldStartCooldown() {
+        return true;
+    }
+
+    protected float getCooldownDuration() {
+        return cooldown;
+    }
 
     protected abstract void onActivate(Player player, GameManager gameManager);
 
@@ -85,7 +126,7 @@ public abstract class Ability {
 
     public abstract void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player);
 
-    /* =================== 状态 =================== */
+    /* =================== 状态查询 =================== */
 
     public boolean canActivate(Player player) {
         return ready && player.getMana() >= manaCost;
@@ -96,7 +137,8 @@ public abstract class Ability {
     public boolean isReady() { return ready; }
 
     public float getCooldownProgress() {
-        return cooldown <= 0 ? 1f : cooldownTimer / cooldown;
+        float cd = getCooldownDuration();
+        return cd <= 0 ? 1f : cooldownTimer / cd;
     }
 
     public float getDurationProgress() {
@@ -123,8 +165,9 @@ public abstract class Ability {
 
     public int getManaCost() { return manaCost; }
 
-    // 可能还需要这些
     public String getDescription() { return description; }
+
     public float getCooldown() { return cooldown; }
+
     public float getDuration() { return duration; }
 }

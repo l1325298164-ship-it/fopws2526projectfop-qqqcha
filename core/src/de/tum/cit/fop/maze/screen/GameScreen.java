@@ -6,9 +6,8 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -17,6 +16,8 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.abilities.Ability;
+import de.tum.cit.fop.maze.abilities.MagicAbility;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
@@ -132,6 +133,17 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
+
+        // ===== 更新鼠标指向的格子（给技能用）=====
+        Vector3 world = cam.getCamera().unproject(
+                new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
+        );
+
+        int tileX = (int)(world.x / GameConstants.CELL_SIZE);
+        int tileY = (int)(world.y / GameConstants.CELL_SIZE);
+
+        gm.setMouseTargetTile(tileX, tileY);
+
         // ===== DEBUG TOGGLE (F2) =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
             Logger.toggleDebug();
@@ -180,30 +192,80 @@ public class GameScreen implements Screen {
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
 
                 @Override
-                public void onMoveInput(int dx, int dy) {
-                    gm.onMoveInput(dx, dy);
+                public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
+                    gm.onMoveInput(index, dx, dy);
                 }
 
                 @Override
                 public float getMoveDelayMultiplier() {
-                    return gm.getPlayer().getMoveDelayMultiplier();
+                    return 1.0f;
                 }
 
                 @Override
-                public boolean onAbilityInput(int slot) {
-                    return gm.onAbilityInput(slot);
+                public boolean onAbilityInput(Player.PlayerIndex index, int slot) {
+                    return gm.onAbilityInput(index, slot);
                 }
 
                 @Override
-                public void onInteractInput() {
-                    gm.onInteractInput();
+                public void onInteractInput(Player.PlayerIndex index) {
+                    gm.onInteractInput(index);
                 }
 
                 @Override
                 public void onMenuInput() {
                     togglePause();
                 }
-            });
+
+            }, Player.PlayerIndex.P1);
+
+// 🔥 第二个玩家输入（关键）
+            if (gm.isTwoPlayerMode()) {
+                input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+
+                    @Override
+                    public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
+                        gm.onMoveInput(index, dx, dy);
+                    }
+
+                    @Override
+                    public float getMoveDelayMultiplier() {
+                        return 1.0f;
+                    }
+
+                    @Override
+                    public boolean onAbilityInput(Player.PlayerIndex index, int slot) {
+                        return gm.onAbilityInput(index, slot);
+                    }
+
+                    @Override
+                    public void onInteractInput(Player.PlayerIndex index) {
+                        gm.onInteractInput(index);
+                    }
+
+                    @Override
+                    public void onMenuInput() {}
+
+                }, Player.PlayerIndex.P2);
+            }
+            // ===== Magic 鼠标技能（P2）=====
+            if (gm.isTwoPlayerMode() && gm.getPlayers().size() > 1) {
+
+                Player p2 = gm.getPlayers().get(1);
+                Ability ability = p2.getAbilityManager().getAbility(0);
+
+                if (ability instanceof MagicAbility m) {
+
+                    // 只监听「再次按下」
+                    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+
+                        // 统一走 Ability 的 onActivate 状态机
+                        m.activate(p2, gm);
+                    }
+                }
+            }
+
+
+
         }
 
         /* ================= 更新 ================= */
@@ -253,7 +315,9 @@ public class GameScreen implements Screen {
         }
 
         // 🔥 玩家始终渲染（不会被隐藏）
-        items.add(new Item(gm.getPlayer(), 100));
+        for (Player p : gm.getPlayers()) {
+            items.add(new Item(p, 100));
+        }
         if (gm.getCat() != null) {
             items.add(new Item(gm.getCat(), 95)); // 比玩家略低
         }
@@ -338,6 +402,20 @@ public class GameScreen implements Screen {
             gm.getPlayerSpawnPortal().renderFront(batch);
         }
         batch.end();
+// ===== Ability Debug / Targeting (AOE etc.) =====
+        shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+
+        for (Player p : gm.getPlayers()) {
+            if (p.getAbilityManager() != null) {
+                p.getAbilityManager().drawAbilities(batch, shapeRenderer, p);
+            }
+        }
+
+
+
+
+
+
 // ===== 雾（一定在这里）=====
         batch.begin();
         float fogX, fogY;

@@ -26,15 +26,14 @@ public class AbilityManager {
     }
 
     private void initializeAbilities() {
-        // 初始能力：近战攻击
-        MeleeAttackAbility meleeAttack = new MeleeAttackAbility();
-        abilities.put("melee", meleeAttack);
-        abilitySlots[0] = meleeAttack;
-
-        // 冲刺能力
-        DashAbility dash = new DashAbility();
-        abilities.put("dash", dash);
-        abilitySlots[1] = dash;
+        if (player.getPlayerIndex() == Player.PlayerIndex.P1) {
+            MeleeAttackAbility melee = new MeleeAttackAbility();
+            abilitySlots[0] = melee;
+        } else {
+            MagicAbility magic = new MagicAbility();
+            abilities.put("magic", magic);
+            abilitySlots[0] = magic;
+        }
     }
 
     public void update(float deltaTime) {
@@ -52,14 +51,7 @@ public class AbilityManager {
         }
     }
 
-    public void draw(SpriteBatch batch, ShapeRenderer shapeRenderer) {
-        // 绘制所有激活的能力效果
-        for (Ability ability : abilities.values()) {
-            if (ability.isActive()) {
-                ability.draw(batch, shapeRenderer, player);
-            }
-        }
-    }
+
 
     public boolean activateSlot(int slot) {
         if (slot < 0 || slot >= abilitySlots.length) return false;
@@ -126,13 +118,7 @@ public class AbilityManager {
         activeAbilities.clear();
     }
 
-    public void drawActiveAbilities(SpriteBatch batch,
-                                    ShapeRenderer shapeRenderer,
-                                    Player player) {
-        for (Ability ability : activeAbilities) {
-            ability.draw(batch, shapeRenderer, player);
-        }
-    }
+
 
     public Ability getAbility(int slot) {
         if (slot >= 0 && slot < abilitySlots.length) {
@@ -144,4 +130,14 @@ public class AbilityManager {
     public void activateAbility(int slot, Player player) {
         activateSlot(slot);
     }
+
+    public void drawAbilities(SpriteBatch batch,
+                              ShapeRenderer shapeRenderer,
+                              Player player) {
+        for (Ability ability : abilities.values()) {
+            ability.draw(batch, shapeRenderer, player);
+        }
+    }
+
+
 }
