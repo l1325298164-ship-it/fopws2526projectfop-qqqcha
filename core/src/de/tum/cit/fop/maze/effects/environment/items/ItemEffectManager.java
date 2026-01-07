@@ -2,10 +2,13 @@ package de.tum.cit.fop.maze.effects.environment.items;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentParticleSystem;
+
 import java.util.Iterator;
 
 public class ItemEffectManager {
@@ -17,6 +20,8 @@ public class ItemEffectManager {
         this.particleSystem = new EnvironmentParticleSystem();
     }
 
+    // === 生成接口 ===
+
     public void spawnTreasure(float x, float y) {
         effects.add(new TreasureEffect(x, y));
     }
@@ -24,6 +29,13 @@ public class ItemEffectManager {
     public void spawnHeart(float x, float y) {
         effects.add(new HeartEffect(x, y));
     }
+
+    // 新增：接管钥匙特效
+    public void spawnKeyEffect(float x, float y, Texture texture) {
+        effects.add(new KeyCollectEffect(x, y, texture));
+    }
+
+    // === 更新逻辑 ===
 
     public void update(float delta) {
         Iterator<EnvironmentEffect> it = effects.iterator();
@@ -35,28 +47,39 @@ public class ItemEffectManager {
         particleSystem.update(delta);
     }
 
-    public void render(ShapeRenderer sr) {
-        // 🔥 【关键修改】 改回标准混合模式 (Normal Blending)
-        // 之前的 Additive (GL_ONE) 会导致颜色越叠越亮最后变白。
-        // 标准模式能保持金黄色和粉色的纯正度，不会过曝。
+    // === 渲染逻辑 (分层) ===
+
+    /**
+     * 阶段 1: 渲染光效和粒子 (ShapeRenderer)
+     * 在 GameScreen 中，应该在 batch.end() 之后，单独调用
+     */
+    public void renderShapes(ShapeRenderer sr) {
+        // 开启混合模式 (让光效叠加更好看，且不过曝)
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
         sr.begin(ShapeRenderer.ShapeType.Filled);
 
-        // 先画特效主体（光晕等）
         for (EnvironmentEffect effect : effects) {
-            effect.render(sr);
+            effect.renderShape(sr);
         }
-
-        // 再画粒子
         particleSystem.render(sr);
 
         sr.end();
-
-        // 恢复默认 (其实已经是默认了，但保持是个好习惯)
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
-    public void dispose() { effects.clear(); particleSystem.clear(); }
+    /**
+     * 阶段 2: 渲染物品贴图 (SpriteBatch)
+     * 在 GameScreen 中，应该在 batch.begin() 和 batch.end() 之间调用
+     */
+    public void renderSprites(SpriteBatch batch) {
+        for (EnvironmentEffect effect : effects) {
+            effect.renderSprite(batch);
+        }
+    }
+
+    public void dispose() {
+        effects.clear();
+        particleSystem.clear();
+    }
 }
