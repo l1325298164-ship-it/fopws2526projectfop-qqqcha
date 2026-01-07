@@ -4,6 +4,7 @@ import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.EnemyTier;
 import de.tum.cit.fop.maze.game.event.GameListener;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.game.score.ScoreConstants;
 
 /**
  * 分数管理器

@@ -1,9 +1,6 @@
+// 修改后的 ScoreConstants.java
 package de.tum.cit.fop.maze.game.score;
 
-/**
- * 游戏数值常量定义
- * 包括：分数、成就计数阈值、物品分值等
- */
 public class ScoreConstants {
 
     // === 击杀得分 ===
@@ -15,17 +12,24 @@ public class ScoreConstants {
 
     // === 物品得分 ===
     public static final int SCORE_HEART = 50;
-    public static final int SCORE_TREASURE = 800; // 任意宝箱
+    public static final int SCORE_TREASURE = 800;
     public static final int SCORE_FOG_CLEARED = 500;
 
-    // === 成就阈值 (Target Counts) ===
-    public static final int TARGET_KILLS_E01 = 60;      // ACH_04
-    public static final int TARGET_KILLS_E02 = 40;      // ACH_05
-    public static final int TARGET_KILLS_E03 = 50;      // ACH_06
-    public static final int TARGET_KILLS_E04_DASH = 50; // ACH_07
-    public static final int TARGET_KILLS_GLOBAL = 500;  // ACH_08
+    // === 【新增】 解决报错的别名映射 ===
+    // 其他代码引用了 ScoreConstants.E01，所以这里我们需要补充定义
+    public static final int E01 = SCORE_E01_PEARL;
+    public static final int E02 = SCORE_E02_COFFEE;
+    public static final int E03 = SCORE_E03_CARAMEL;
+    public static final int E04 = SCORE_E04_SHELL;
+    public static final int BOSS = SCORE_BOSS;
 
-    public static final int TARGET_HEARTS_COLLECTED = 50;     // ACH_09
-    public static final int TARGET_TREASURE_TYPES = 3;        // ACH_10
-    public static final int TARGET_NO_DAMAGE_LIMIT = 3;       // ACH_11 (受击<=3)
+    // ... (保留原本的 TARGET_... 代码不变)
+    public static final int TARGET_KILLS_E01 = 60;
+    public static final int TARGET_KILLS_E02 = 40;
+    public static final int TARGET_KILLS_E03 = 50;
+    public static final int TARGET_KILLS_E04_DASH = 50;
+    public static final int TARGET_KILLS_GLOBAL = 500;
+    public static final int TARGET_HEARTS_COLLECTED = 50;
+    public static final int TARGET_TREASURE_TYPES = 3;
+    public static final int TARGET_NO_DAMAGE_LIMIT = 3;
 }
