@@ -109,7 +109,7 @@ private boolean damageInvincible = false;
     // ===== Mana =====
     private float mana = 100;
     private float maxMana = 100;
-    private float manaRegenRate = 30.0f;
+    private float manaRegenRate = 5.0f;
 
     // ==========================================
     // 🔥 [Treasure] 新增：三种唯一 Buff 状态

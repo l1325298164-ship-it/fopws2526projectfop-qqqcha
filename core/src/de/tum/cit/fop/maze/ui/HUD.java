@@ -101,9 +101,9 @@ public class HUD {
         this.textureManager = TextureManager.getInstance();
         Logger.debug("HUD initialized with compass support");
         this.shapeRenderer = new ShapeRenderer();
-        manaBase = new Texture(Gdx.files.internal("HUD/bar_base.png"));
-        manaFill = new Texture(Gdx.files.internal("HUD/bar_fill_1.png"));
-        manaGlow = new Texture(Gdx.files.internal("HUD/manabar_progress_grow.png"));
+        manaBase = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
+        manaFill = new Texture(Gdx.files.internal("HUD/manabar_1_fill.png"));
+        manaGlow = new Texture(Gdx.files.internal("HUD/manabar_1_grow.png"));
         manadeco_1=new Texture(Gdx.files.internal("HUD/bar_star1.png"));
         heartFull = new Texture("HUD/live_000.png");
         heartHalf = new Texture("HUD/live_001.png");
@@ -287,11 +287,17 @@ public class HUD {
 
         if (percent > 0f) {
             // --- 2. 进度条主体 (基础填充) ---
-            int srcW = (int)(manaFill.getWidth() * percent);
-            TextureRegion fillRegion = new TextureRegion(manaFill, 0, 0, srcW, manaFill.getHeight());
+            TextureRegion fillRegion = new TextureRegion(manaFill);
+            fillRegion.setRegionWidth((int)(manaFill.getWidth() * percent));
 
-            uiBatch.setColor(1f, 0.7f, 0.9f, 1f); // 粉粉嫩嫩色
-            uiBatch.draw(fillRegion, x, y, barWidth * percent, barHeight);
+            uiBatch.setColor(1f, 0.7f, 0.9f, 1f);
+            uiBatch.draw(
+                    fillRegion,
+                    x, y,
+                    barWidth * percent,
+                    barHeight
+            );
+
 
             // --- 3. 启用：renderManaGlowEffect (呼吸立体光) ---
             renderManaGlowEffect(uiBatch, x, y, barWidth, barHeight, percent);
@@ -303,15 +309,17 @@ public class HUD {
             uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE);
             uiBatch.setColor(1f, 1f, 1f, 0.35f);
             uiBatch.draw(TextureManager.getInstance().getWhitePixel(),
-                    x, y + barHeight * 0.52f,
-                    barWidth * percent * 0.99f,
+                    x+120, y + barHeight * 0.52f,
+                    barWidth * percent * 0.8f,
                     barHeight * 0.07f);
             uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
         }
 
-        // --- 6. 装饰层 (最上层遮盖) ---
         uiBatch.setColor(1f, 1f, 1f, 1f);
-        uiBatch.draw(manadeco_1, x, y, barWidth, barHeight);
+        // --- 6. 装饰层 (最上层遮盖，跟随进度) ---
+        float decoX = x + barWidth * percent + 1100 - barWidth;
+        uiBatch.setColor(1f, 1f, 1f, 1f);
+        uiBatch.draw(manadeco_1, decoX, y - 80, barWidth * 0.2f, barHeight * 2f);
     }
 
     /**
@@ -426,8 +434,6 @@ public class HUD {
             uiBatch.draw(TextureManager.getInstance().getWhitePixel(), x, y + maskHeight - 2, DASH_ICON_SIZE, 2);
 
 
-        uiBatch.setColor(1f, 1f, 1f, 1f); // 还原 Batch 颜色
-
             // 可选：在遮罩边缘画一条细亮的进度线
             if (maskHeight > 2) {
                 uiBatch.setColor(1f, 0.7f, 0.9f, 0.8f); // 粉色进度线
@@ -438,6 +444,7 @@ public class HUD {
                         2
                 );
             }
+            uiBatch.setColor(1f, 1f, 1f, 1f); // 还原 Batch 颜色
         }
 
         // --- 3. 层数文字提示 ---
