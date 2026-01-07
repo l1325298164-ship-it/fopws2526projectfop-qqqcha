@@ -352,7 +352,16 @@ public class GameScreen implements Screen {
 
         List<Treasure> treasuresCopy = new ArrayList<>(gm.getTreasures());
         treasuresCopy.forEach(t -> items.add(new Item(t, 20)));
-// 🔥 新增：动态障碍物（移动墙）
+
+        List<HeartContainer> containersCopy = new ArrayList<>(gm.getHeartContainers());
+        containersCopy.forEach(hc -> {
+            // 只有激活状态才渲染 (捡起后 active 会变成 false)
+            if (hc.isActive()) {
+                items.add(new Item(hc, 30));
+            }
+        });
+
+        // 🔥 新增：动态障碍物（移动墙）
         List<DynamicObstacle> obstaclesCopy = new ArrayList<>(gm.getObstacles());
         obstaclesCopy.forEach(o -> items.add(new Item(o, 40)));
 
