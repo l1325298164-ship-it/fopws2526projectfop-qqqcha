@@ -372,7 +372,6 @@ private boolean damageInvincible = false;
             if (hitStunTimer <= 0f) {
                 inHitStun = false;
             }
-            return; // ⛔ 本帧不处理移动 / 能力
         }
         // ===== 动画 =====
         float animationSpeed = 1f / getMoveDelayMultiplier();
@@ -572,7 +571,9 @@ private boolean damageInvincible = false;
     }
 
     public void startAttack() {
-        if (isAttacking || isDead) return;
+
+        Logger.debug("🎬 startAttack() called, isAttacking=" + isAttacking);
+        if (isDead) return;
         isAttacking = true;
         attackAnimTimer = 0f;
         Logger.debug("Player attack started facing: " + direction);

@@ -1,8 +1,7 @@
-// HUD.java - 更新版本
+// HUD.java - 修复版本
 package de.tum.cit.fop.maze.ui;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.*;
@@ -15,8 +14,6 @@ import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
-
-import java.util.function.ToDoubleBiFunction;
 
 public class HUD {
     private BitmapFont font;
@@ -70,13 +67,6 @@ public class HUD {
 
     // ===== Mana UI =====
     private ShapeRenderer shapeRenderer;
-    float barWidth  = Gdx.graphics.getWidth() * 0.66f; // 2/3 屏宽
-    float barHeight = barWidth * (32f / 256f);         // 保持 PNG 比例
-
-    private static final int MANA_UI_MARGIN_X = 20;
-    private static final int MANA_UI_MARGIN_Y = 100; // 在 Dash 图标上方
-
-
 
     // UI 尺寸
     private static final int DASH_ICON_SIZE = 200;
@@ -91,8 +81,12 @@ public class HUD {
     private Texture iconRegen;
     private Texture iconMana;
 
+    // 在 HUD 类成员变量区添加
+    private java.util.List<ManaParticle> particles = new java.util.ArrayList<>();
 
-
+    // 进度条缓存 - 用于平滑动画
+    private float currentManaPercent = 0f;
+    private float targetManaPercent = 0f;
 
     public HUD(GameManager gameManager) {
         this.gameManager = gameManager;
@@ -101,31 +95,38 @@ public class HUD {
         this.textureManager = TextureManager.getInstance();
         Logger.debug("HUD initialized with compass support");
         this.shapeRenderer = new ShapeRenderer();
-        manaBase = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
-        manaFill = new Texture(Gdx.files.internal("HUD/manabar_1_fill.png"));
-        manaGlow = new Texture(Gdx.files.internal("HUD/manabar_1_grow.png"));
-        manadeco_1=new Texture(Gdx.files.internal("HUD/bar_star1.png"));
-        heartFull = new Texture("HUD/live_000.png");
-        heartHalf = new Texture("HUD/live_001.png");
 
-        dashIcon = new Texture("HUD/icon_dash.png");
-// 🐱 加载 HUD 小猫 Atlas
+        // 加载法力条纹理
+        try {
+            manaBase = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
+            manaFill = new Texture(Gdx.files.internal("HUD/manabar_1_fill.png"));
+            manaGlow = new Texture(Gdx.files.internal("HUD/manabar_1_grow.png"));
+            manadeco_1 = new Texture(Gdx.files.internal("HUD/bar_star1.png"));
+        } catch (Exception e) {
+            Logger.error("法力条纹理加载失败: " + e.getMessage());
+        }
+
+        heartFull = new Texture(Gdx.files.internal("HUD/live_000.png"));
+        heartHalf = new Texture(Gdx.files.internal("HUD/live_001.png"));
+
+        dashIcon = new Texture(Gdx.files.internal("HUD/icon_dash.png"));
+
+        // 🐱 加载 HUD 小猫 Atlas
         catAtlas = new TextureAtlas(Gdx.files.internal("Character/cat/cat.atlas"));
 
-// 没钥匙动画
+        // 没钥匙动画
         catNoKeyAnim = new Animation<>(
                 0.25f,
                 catAtlas.findRegions("cat_nokey"),
                 Animation.PlayMode.LOOP
         );
 
-// 有钥匙动画
+        // 有钥匙动画
         catHasKeyAnim = new Animation<>(
                 0.25f,
                 catAtlas.findRegions("cat_key"),
                 Animation.PlayMode.LOOP
         );
-
 
         Logger.debug("HUD initialized with heart-based life bar");
         // 🔥 [Treasure] 加载图标 (请确保文件名正确！)
@@ -145,35 +146,26 @@ public class HUD {
      */
     public void renderInGameUI(SpriteBatch uiBatch) {
         try {
-//            // 1. 钥匙状态
-//            if (gameManager.getPlayer().hasKey()) {
-//                font.setColor(Color.GREEN);
-//                font.draw(uiBatch, "key: get", 20, Gdx.graphics.getHeight() - 40);
-//            } else {
-//                font.setColor(Color.YELLOW);
-//                font.draw(uiBatch, "key: needed", 20, Gdx.graphics.getHeight() - 40);
-//            }
-
             // 2. 生命值（❤显示）
             renderLivesAsHearts(uiBatch);
 
             // 3. 关卡信息
             font.setColor(Color.CYAN);
             font.draw(uiBatch, "start: " + gameManager.getCurrentLevel(),
-                20, Gdx.graphics.getHeight() - 120);
+                    20, Gdx.graphics.getHeight() - 120);
 
             // 4. 操作说明
             font.setColor(Color.WHITE);
             font.draw(uiBatch, "direction buttons to move，Shift to sprint",
-                20, Gdx.graphics.getHeight() - 160);
+                    20, Gdx.graphics.getHeight() - 160);
 
             // 5. 纹理模式提示
             TextureManager.TextureMode currentMode = textureManager.getCurrentMode();
             if (currentMode != TextureManager.TextureMode.COLOR) {
                 font.setColor(Color.GREEN);
                 font.draw(uiBatch, "mode: " + currentMode + " (F1-F4 to switch)",
-                    Gdx.graphics.getWidth() - 250,
-                    Gdx.graphics.getHeight() - 20);
+                        Gdx.graphics.getWidth() - 250,
+                        Gdx.graphics.getHeight() - 20);
             }
             renderManaBar(uiBatch);
             renderCat(uiBatch);
@@ -233,7 +225,6 @@ public class HUD {
                 font.setColor(Color.WHITE);
                 font.getData().setScale(1.2f); // 还原回默认大小
 
-
                 // ============================================
                 // 🔥 [Treasure] 屏幕中央飘字 (超大字体通知)
                 // ============================================
@@ -259,21 +250,25 @@ public class HUD {
                 }
             }
 
-
         } catch (Exception e) {
-            Logger.debug("HUD failed");
+            Logger.debug("HUD failed: " + e.getMessage());
         }
     }
 
-    // 1. 修改类成员变量，增加上限
-    // 1. 建议调大上限，因为长拖尾会导致屏幕上同时存在的粒子变多
-    private static final int MAX_PARTICLES = 150;
-
     public void renderManaBar(SpriteBatch uiBatch) {
         if (gameManager == null || gameManager.getPlayer() == null) return;
+        if (manaFill == null || manaBase == null) return; // 纹理检查
 
         var player = gameManager.getPlayer();
-        float percent = Math.max(0f, Math.min(1f, player.getMana() / (float)player.getMaxMana()));
+
+        // 计算目标百分比
+        targetManaPercent = Math.max(0f, Math.min(1f, player.getMana() / (float)player.getMaxMana()));
+
+        // 平滑过渡动画（可选）
+        float delta = Gdx.graphics.getDeltaTime();
+        currentManaPercent = currentManaPercent + (targetManaPercent - currentManaPercent) * Math.min(1.0f, delta * 8f);
+
+        float percent = currentManaPercent; // 使用当前动画百分比
 
         // === 尺寸与位置 ===
         float barWidth  = Gdx.graphics.getWidth() * 0.66f;
@@ -287,17 +282,19 @@ public class HUD {
 
         if (percent > 0f) {
             // --- 2. 进度条主体 (基础填充) ---
-            TextureRegion fillRegion = new TextureRegion(manaFill);
-            fillRegion.setRegionWidth((int)(manaFill.getWidth() * percent));
+            // 使用TextureRegion裁剪显示部分
+            int srcWidth = (int)(manaFill.getWidth() * percent);
+            if (srcWidth > 0) {
+                TextureRegion fillRegion = new TextureRegion(manaFill, 0, 0, srcWidth, manaFill.getHeight());
 
-            uiBatch.setColor(1f, 0.7f, 0.9f, 1f);
-            uiBatch.draw(
-                    fillRegion,
-                    x, y,
-                    barWidth * percent,
-                    barHeight
-            );
-
+                uiBatch.setColor(1f, 0.7f, 0.9f, 1f);
+                uiBatch.draw(
+                        fillRegion,
+                        x, y,
+                        barWidth * percent,
+                        barHeight
+                );
+            }
 
             // --- 3. 启用：renderManaGlowEffect (呼吸立体光) ---
             renderManaGlowEffect(uiBatch, x, y, barWidth, barHeight, percent);
@@ -317,15 +314,19 @@ public class HUD {
 
         uiBatch.setColor(1f, 1f, 1f, 1f);
         // --- 6. 装饰层 (最上层遮盖，跟随进度) ---
-        float decoX = x + barWidth * percent + 1100 - barWidth;
-        uiBatch.setColor(1f, 1f, 1f, 1f);
-        uiBatch.draw(manadeco_1, decoX, y - 80, barWidth * 0.2f, barHeight * 2f);
+        if (manadeco_1 != null) {
+            float decoX = x + barWidth * percent + 1100 - barWidth;
+            uiBatch.setColor(1f, 1f, 1f, 1f);
+            uiBatch.draw(manadeco_1, decoX, y - 80, barWidth * 0.2f, barHeight * 2f);
+        }
     }
 
     /**
      * 负责管内液体的立体感呼吸光
      */
     private void renderManaGlowEffect(SpriteBatch uiBatch, float x, float y, float w, float h, float percent) {
+        if (manaGlow == null) return;
+
         manaGlowTime += Gdx.graphics.getDeltaTime();
         // 呼吸频率
         float glowAlpha = 0.4f + 0.3f * (float)Math.sin(manaGlowTime * 3.0f);
@@ -334,10 +335,12 @@ public class HUD {
         uiBatch.setColor(1f, 0.8f, 0.95f, glowAlpha); // 粉色高光
 
         int srcW = (int)(manaGlow.getWidth() * percent);
-        TextureRegion glowRegion = new TextureRegion(manaGlow, 0, 0, srcW, manaGlow.getHeight());
+        if (srcW > 0) {
+            TextureRegion glowRegion = new TextureRegion(manaGlow, 0, 0, srcW, manaGlow.getHeight());
 
-        // 绘制在管子中心，高度稍微压缩以体现圆柱感
-        uiBatch.draw(glowRegion, x, y + h * 0.15f, w * percent, h * 0.7f);
+            // 绘制在管子中心，高度稍微压缩以体现圆柱感
+            uiBatch.draw(glowRegion, x, y + h * 0.15f, w * percent, h * 0.7f);
+        }
 
         uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
         uiBatch.setColor(1f, 1f, 1f, 1f);
@@ -347,6 +350,8 @@ public class HUD {
      * 负责末端的喷射和超长拖尾
      */
     private void updateAndRenderLongTrail(SpriteBatch uiBatch, float x, float y, float w, float h, float percent) {
+        if (manaGlow == null) return;
+
         float endX = x + (w * percent);
         float delta = Gdx.graphics.getDeltaTime();
 
@@ -392,9 +397,9 @@ public class HUD {
         uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
-
-
     private void renderDashIcon(SpriteBatch uiBatch) {
+        if (dashIcon == null) return;
+
         DashAbility dash = null;
         for (Ability a : gameManager.getPlayer().getAbilityManager().getAbilities().values()) {
             if (a instanceof DashAbility d) {
@@ -432,7 +437,6 @@ public class HUD {
             // 金色进度线
             uiBatch.setColor(1.0f, 0.85f, 0.2f, 0.9f);
             uiBatch.draw(TextureManager.getInstance().getWhitePixel(), x, y + maskHeight - 2, DASH_ICON_SIZE, 2);
-
 
             // 可选：在遮罩边缘画一条细亮的进度线
             if (maskHeight > 2) {
@@ -476,11 +480,7 @@ public class HUD {
         uiBatch.draw(frame, x, y, CAT_SIZE, CAT_SIZE);
     }
 
-
-
-
     private void renderLivesAsHearts(SpriteBatch uiBatch) {
-
         // 🔴 关键：UI 颜色必须重置
         uiBatch.setColor(1f, 1f, 1f, 1f);
 
@@ -576,11 +576,6 @@ public class HUD {
         }
     }
 
-
-
-
-
-
     /**
      * 渲染指南针（UI模式）
      */
@@ -600,8 +595,6 @@ public class HUD {
 
         compass.drawAsUI(uiBatch);
     }
-
-
 
     /**
      * 渲染游戏结束画面
@@ -672,15 +665,10 @@ public class HUD {
         if (manaBase != null) manaBase.dispose();
         if (manaFill != null) manaFill.dispose();
         if (manaGlow != null) manaGlow.dispose();
+        if (manadeco_1 != null) manadeco_1.dispose();
+        if (dashIcon != null) dashIcon.dispose();
         Logger.debug("HUD disposed");
     }
-
-
-
-
-
-    // 在 HUD 类成员变量区添加
-    private java.util.List<ManaParticle> particles = new java.util.ArrayList<>();
 
     // 粒子辅助类
     private static class ManaParticle {
