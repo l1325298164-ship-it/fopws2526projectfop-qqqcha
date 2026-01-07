@@ -48,7 +48,7 @@ public class TrapEffectManager {
     }
 
     public void render(ShapeRenderer sr) {
-        // 使用正常混合模式 (遮盖效果)
+        // 开启混合模式以支持透明度和光效
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -57,6 +57,8 @@ public class TrapEffectManager {
         for (EnvironmentEffect effect : effects) {
             effect.render(sr);
         }
+
+        // 渲染粒子系统
         particleSystem.render(sr);
 
         sr.end();

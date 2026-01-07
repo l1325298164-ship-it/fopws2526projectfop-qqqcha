@@ -8,57 +8,67 @@ import de.tum.cit.fop.maze.effects.environment.EnvironmentParticleSystem;
 
 public class PearlMineEffect extends EnvironmentEffect {
     // 芋圆三色：芋头紫、地瓜橙、糯米白
-    private static final Color TARO_PURPLE = new Color(0.65f, 0.4f, 0.9f, 1f);
-    private static final Color POTATO_ORANGE = new Color(1.0f, 0.6f, 0.2f, 1f);
-    private static final Color RICE_WHITE = new Color(0.95f, 0.9f, 0.85f, 1f);
+    private static final Color TARO_PURPLE = new Color(0.65f, 0.4f, 0.9f, 0.8f);
+    private static final Color POTATO_ORANGE = new Color(1.0f, 0.6f, 0.2f, 0.8f);
+    private static final Color RICE_WHITE = new Color(0.95f, 0.9f, 0.85f, 0.8f);
 
-    private final Color[] taroColors = {TARO_PURPLE, POTATO_ORANGE, RICE_WHITE};
+    private final Color[] juiceColors = {TARO_PURPLE, POTATO_ORANGE, RICE_WHITE};
+
+    // 冲击波参数
+    private float shockwaveRadius = 0f;
+    private final float SHOCKWAVE_MAX_RADIUS = 60f;
+    private final float SHOCKWAVE_DURATION = 0.25f;
 
     public PearlMineEffect(float x, float y) {
-        super(x, y, 0.6f); // 爆炸持续时间
+        super(x, y, 3.0f); // 持续较长以显示残留印记
     }
 
     @Override
     protected void onUpdate(float delta, EnvironmentParticleSystem ps) {
-        // 只有第一帧触发爆炸 (生成一堆芋圆粒子)
+        // 只有第一帧触发爆炸 (生成果汁飞溅)
         if (timer < delta * 2) {
-            for (int i = 0; i < 18; i++) { // 增加一点粒子数量，更丰盛
+            for (int i = 0; i < 20; i++) {
                 // 向四周炸开
                 float angle = MathUtils.random(0, 360);
-                float speed = MathUtils.random(60, 180);
+                float speed = MathUtils.random(80, 200);
 
                 // 随机选一个颜色
-                Color randomColor = taroColors[MathUtils.random(0, taroColors.length - 1)];
+                Color randomColor = juiceColors[MathUtils.random(0, juiceColors.length - 1)];
 
                 ps.spawn(x, y + 10, randomColor,
                         MathUtils.cosDeg(angle) * speed, MathUtils.sinDeg(angle) * speed,
-                        MathUtils.random(8, 14), // 芋圆比较大颗
-                        0.8f,
-                        true, true); // gravity=true(掉落), friction=true(Q弹减速)
+                        MathUtils.random(4, 8), // 颗粒较小，像汁水
+                        0.6f,
+                        true, true); // gravity=true(掉落), friction=true(减速)
             }
         }
     }
 
     @Override
     public void render(ShapeRenderer sr) {
-        // 爆炸前的一瞬间(闪烁帧)，画三个挤在一起的小芋圆，而不是一个大黑球
-        if (timer < 0.05f) {
-            // 左边：紫色
-            sr.setColor(TARO_PURPLE);
-            sr.circle(x - 8, y + 8, 10);
+        // 1. 绘制冲击波 (仅在爆炸初期)
+        if (timer < SHOCKWAVE_DURATION) {
+            float p = timer / SHOCKWAVE_DURATION;
+            // 缓动：快出慢停
+            float radius = SHOCKWAVE_MAX_RADIUS * (float)Math.pow(p, 0.5);
+            float alpha = 1.0f - p;
 
-            // 右边：橙色
-            sr.setColor(POTATO_ORANGE);
-            sr.circle(x + 8, y + 8, 10);
+            sr.setColor(1f, 1f, 1f, alpha * 0.5f); // 半透明白环
+            // 绘制圆环 (通过画一个大圆扣一个小圆模拟，或者直接画线框，这里用Filled模式模拟粗线条有点难，直接画半透明圆面)
+            sr.circle(x, y, radius);
+        }
 
-            // 上面：白色
-            sr.setColor(RICE_WHITE);
-            sr.circle(x, y + 18, 10);
-        } else {
-            // 爆炸后的地面残留印记 (混合色，看起来像糖水渍)
-            float p = timer / maxDuration;
-            sr.setColor(0.4f, 0.3f, 0.2f, 0.4f * (1-p)); // 糖水色
-            sr.ellipse(x - 20, y - 5, 40, 12);
+        // 2. 爆炸后的地面残留印记 (糖水渍)
+        // 随着时间缓慢淡出
+        float stainAlpha = 0f;
+        if (timer > 0.1f) { // 爆炸后才显示
+            float fadeP = (timer - 0.1f) / (maxDuration - 0.1f);
+            stainAlpha = 0.5f * (1f - fadeP);
+        }
+
+        if (stainAlpha > 0) {
+            sr.setColor(0.4f, 0.3f, 0.2f, stainAlpha);
+            sr.ellipse(x - 20, y - 6, 40, 12);
         }
     }
 }

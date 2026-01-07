@@ -7,46 +7,41 @@ import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentParticleSystem;
 
 public class MudTrapEffect extends EnvironmentEffect {
-    // 深褐/紫黑泥浆色
-    private final Color mudColor = new Color(0.25f, 0.15f, 0.1f, 0.9f);
-    private final Color bubbleColor = new Color(0.35f, 0.25f, 0.2f, 0.7f);
+    // 泥点颜色
+    private final Color mudColor = new Color(0.25f, 0.15f, 0.1f, 1f);
 
+    // 触发特效通常在玩家踩上去时生成，持续时间不需太长
     public MudTrapEffect(float x, float y) {
-        super(x, y, 1.2f);
+        super(x, y, 1.0f);
     }
 
     @Override
     protected void onUpdate(float delta, EnvironmentParticleSystem ps) {
-        // 咕嘟冒泡
-        if (MathUtils.randomBoolean(0.2f)) {
-            ps.spawn(x + MathUtils.random(-15, 15), y + MathUtils.random(-15, 15),
-                    bubbleColor, 0, 15, MathUtils.random(3, 8), 1.0f, false, false);
-        }
-        // 泥点飞溅
-        if (MathUtils.randomBoolean(0.05f)) {
-            ps.spawn(x, y, mudColor,
-                    MathUtils.random(-40, 40), MathUtils.random(40, 80),
-                    4, 0.6f, true, false);
+        // 第一帧生成泥浆飞溅 (Splatter)
+        if (timer < delta * 2) {
+            for (int i = 0; i < 6; i++) {
+                ps.spawn(x, y, mudColor,
+                        MathUtils.random(-40, 40), MathUtils.random(30, 70),
+                        MathUtils.random(3, 5),
+                        0.8f,
+                        true, true); // 重力+阻力=黏在地上不弹跳的感觉
+            }
         }
     }
 
     @Override
     public void render(ShapeRenderer sr) {
+        // 绘制向内收缩的波纹 (Inward Ripple)
+        // 配合 Entity 的贴图，增强吸入感
         float p = timer / maxDuration;
-        sr.setColor(mudColor.r, mudColor.g, mudColor.b, 1f - p * 0.3f);
+        float rippleRadius = 25 * (1f - p); // 从外向内收缩
 
-        // 泥潭
-        sr.circle(x, y, 25);
-        sr.circle(x, y, 22 + MathUtils.sin(timer * 15) * 1.5f);
-
-        // 吸入波纹 (Inward Ripple)
-        float rippleCycle = (timer * 2) % 1.0f;
-        float rippleRadius = 30 * (1 - rippleCycle);
-
-        sr.setColor(0.15f, 0.05f, 0f, 0.6f * (1-rippleCycle));
+        // 半透明深色环
+        sr.setColor(0.1f, 0.05f, 0.0f, 0.4f * (1f - p));
         sr.circle(x, y, rippleRadius);
-        // 挖空中间
-        sr.setColor(mudColor);
-        sr.circle(x, y, rippleRadius - 2);
+
+        // 挖空中间 (实际上是画一个稍微小一点的圆覆盖，但这需要混合模式支持 '减法' 或遮罩)
+        // 由于 ShapeRenderer 功能有限，我们用画细圆环模拟：
+        // (注：Filled 模式下无法画空心环，这里简单用画圆代替，依靠透明度叠加)
     }
 }

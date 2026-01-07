@@ -7,42 +7,78 @@ import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentParticleSystem;
 
 public class GeyserTrapEffect extends EnvironmentEffect {
-    private final Color steamColor = new Color(0.9f, 0.9f, 0.95f, 0.6f);
+    // 蒸汽色：纯白带透
+    private final Color steamColor = new Color(1f, 1f, 1f, 0.4f);
+    // 水滴色：清澈蓝
+    private final Color waterColor = new Color(0.6f, 0.8f, 1.0f, 0.7f);
+    // 碎石色：深灰
+    private final Color rubbleColor = new Color(0.4f, 0.35f, 0.3f, 1f);
+
+    private static final float WARNING_TIME = 0.8f;
+    private static final float ERUPT_TIME = 1.2f;
 
     public GeyserTrapEffect(float x, float y) {
-        super(x, y, 1.0f); // 喷发持续1秒
+        // 总时长 = 警告 + 喷发
+        super(x, y, WARNING_TIME + ERUPT_TIME);
     }
 
     @Override
     protected void onUpdate(float delta, EnvironmentParticleSystem ps) {
-        // 持续产生向上喷射的蒸汽粒子
-        if (timer < 0.8f) { // 前0.8秒喷发
-            for (int i = 0; i < 3; i++) {
-                float angle = MathUtils.random(80, 100); // 主要是向上，稍微有点左右扩散
-                float speed = MathUtils.random(150, 300); // 高速喷发
+        if (timer < WARNING_TIME) {
+            // === 阶段1: 地表震颤 (Warning) ===
+            // 随着时间推移，震动频率变高
+            float progress = timer / WARNING_TIME;
+            if (MathUtils.random() < 0.05f + progress * 0.1f) {
+                // 生成细小的碎石，微微跳起
+                ps.spawn(
+                        x + MathUtils.random(-15, 15),
+                        y - 10 + MathUtils.random(-5, 5),
+                        rubbleColor,
+                        0, MathUtils.random(20, 50), // 只有向上的微小初速度
+                        MathUtils.random(2, 4),      // 很小
+                        0.3f,                        // 存活极短
+                        true, true                   // 受重力落下，有阻力
+                );
+            }
+        } else {
+            // === 阶段2: 喷发 (Eruption) ===
+            // 持续生成大量蒸汽（向上冲）
+            for (int i = 0; i < 2; i++) {
+                float angle = MathUtils.random(85, 95); // 几乎垂直向上
+                float speed = MathUtils.random(180, 350);
 
-                ps.spawn(x + MathUtils.random(-10, 10), y, steamColor,
-                        MathUtils.cosDeg(angle) * speed, MathUtils.sinDeg(angle) * speed,
-                        MathUtils.random(5, 10), // 粒子大小
-                        0.6f, // 存活时间短
-                        false, true); // 无重力(反向重力靠代码模拟或忽略)，有阻力(friction)
+                ps.spawn(
+                        x + MathUtils.random(-8, 8),
+                        y + 5, // 从喷口上方生成
+                        steamColor,
+                        MathUtils.cosDeg(angle) * speed,
+                        MathUtils.sinDeg(angle) * speed,
+                        MathUtils.random(8, 15), // 蒸汽团较大
+                        0.5f,
+                        false, true // 无重力(持续上升)，有空气阻力
+                );
+            }
+
+            // 伴随水滴飞溅（向四周抛洒）
+            if (MathUtils.randomBoolean(0.3f)) {
+                float angle = MathUtils.random(60, 120); // 扇形喷洒
+                float speed = MathUtils.random(100, 200);
+
+                ps.spawn(
+                        x, y + 15,
+                        waterColor,
+                        MathUtils.cosDeg(angle) * speed,
+                        MathUtils.sinDeg(angle) * speed,
+                        MathUtils.random(3, 5), // 水滴较小
+                        0.8f,
+                        true, false // 受重力，无阻力(抛物线)
+                );
             }
         }
     }
 
     @Override
     public void render(ShapeRenderer sr) {
-        float p = timer / maxDuration;
-
-        // 1. 地面喷口裂缝
-        sr.setColor(0.3f, 0.3f, 0.3f, 1f - p);
-        sr.ellipse(x - 15, y - 5, 30, 10);
-
-        // 2. 冲击水柱 (快速冲出，然后变淡)
-        if (p < 0.3f) {
-            float rise = p / 0.3f; // 0 -> 1
-            sr.setColor(1f, 1f, 1f, 0.8f * (1-rise));
-            sr.rect(x - 10, y, 20, rise * 100); // 瞬间冲高
-        }
+        // 完全移除几何绘制，只靠粒子表现
     }
 }
