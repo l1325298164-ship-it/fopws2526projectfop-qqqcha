@@ -34,7 +34,6 @@ public class HUD {
     private Texture manaFill;
     private Texture manaGlow;
     private Texture manadeco_1;
-    private Texture manadeco_2;
     private float manaGlowTime = 0f;
 
     // 尺寸
@@ -102,11 +101,10 @@ public class HUD {
         this.textureManager = TextureManager.getInstance();
         Logger.debug("HUD initialized with compass support");
         this.shapeRenderer = new ShapeRenderer();
-        manaBase = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
-        manaFill = new Texture(Gdx.files.internal("HUD/manabar_progress_fill.png"));
+        manaBase = new Texture(Gdx.files.internal("HUD/bar_base.png"));
+        manaFill = new Texture(Gdx.files.internal("HUD/bar_fill_1.png"));
         manaGlow = new Texture(Gdx.files.internal("HUD/manabar_progress_grow.png"));
-        manadeco_1=new Texture(Gdx.files.internal("HUD/manabar_progress_decoration.png"));
-        manadeco_2=new Texture(Gdx.files.internal("HUD/manabar_progress_decoration2.png"));
+        manadeco_1=new Texture(Gdx.files.internal("HUD/bar_star1.png"));
         heartFull = new Texture("HUD/live_000.png");
         heartHalf = new Texture("HUD/live_001.png");
 
@@ -314,7 +312,6 @@ public class HUD {
         // --- 6. 装饰层 (最上层遮盖) ---
         uiBatch.setColor(1f, 1f, 1f, 1f);
         uiBatch.draw(manadeco_1, x, y, barWidth, barHeight);
-        uiBatch.draw(manadeco_2, x, y, barWidth, barHeight);
     }
 
     /**
