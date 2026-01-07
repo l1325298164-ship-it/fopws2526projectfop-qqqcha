@@ -4,6 +4,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
+ * 单局/当前关卡存档数据 (Level Snapshot)
+ * <p>
+ * 职责：
+ * 保存**当前关卡**的运行时状态。
+ * <p>
+ * 生命周期：
+ * - 每次进入新关卡 (New Level) 时，应由 GameManager 创建新的实例或重置本对象。
+ * - 游戏中断（退出/暂停）时，本对象会被 StorageManager 序列化保存。
+ */
+
+/**
  * 单局游戏数据 (Session Data)
  * <p>
  * 职责：
