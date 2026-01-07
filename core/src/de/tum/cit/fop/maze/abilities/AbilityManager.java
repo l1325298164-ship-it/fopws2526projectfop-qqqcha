@@ -28,8 +28,9 @@ public class AbilityManager {
     private void initializeAbilities() {
         if (player.getPlayerIndex() == Player.PlayerIndex.P1) {
             MeleeAttackAbility melee = new MeleeAttackAbility();
+            abilities.put("melee", melee);   // ← 加这一行
             abilitySlots[0] = melee;
-        } else {
+        }else {
             MagicAbility magic = new MagicAbility();
             abilities.put("magic", magic);
             abilitySlots[0] = magic;
@@ -38,8 +39,10 @@ public class AbilityManager {
 
     public void update(float deltaTime) {
         // 更新所有能力
-        for (Ability ability : abilities.values()) {
-            ability.update(deltaTime);
+        for (Ability slotAbility : abilitySlots) {
+            if (slotAbility != null) {
+                slotAbility.update(deltaTime);
+            }
         }
 
         // 更新激活的能力列表
