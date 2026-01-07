@@ -32,6 +32,9 @@ public class HUD {
     private Texture manaGlow;
     private Texture manadeco_1;
     private float manaGlowTime = 0f;
+    // Mana special states
+    private float manaFullPulse = 0f;
+    private float manaLowAlert = 0f;
 
     // 尺寸
     private static final float MANA_BAR_WIDTH  = 220f;
@@ -313,13 +316,33 @@ public class HUD {
         }
 
         uiBatch.setColor(1f, 1f, 1f, 1f);
-        // --- 6. 装饰层 (最上层遮盖，跟随进度) ---
+        // --- 6. 装饰层 (最上层遮盖，沿固定轨道运动) ---
         if (manadeco_1 != null) {
-            float decoX = x + barWidth * percent + 1100 - barWidth;
-            uiBatch.setColor(1f, 1f, 1f, 1f);
-            uiBatch.draw(manadeco_1, decoX, y - 80, barWidth * 0.2f, barHeight * 2f);
+            float decoWidth = barWidth * 0.12f;
+
+            // 🎯 轨道起点和终点（你可以微调 0.08 / 0.92 之类）
+            float startCenterX = x + barWidth * 0.08f;   // 6% 处
+            float endCenterX   = x + barWidth * 0.90f;   // 94% 处
+
+            // 百分比夹一下，防止超界
+            float t = Math.max(0f, Math.min(1f, percent));
+
+            // 中心位置按 t 插值
+            float decoCenterX = startCenterX + (endCenterX - startCenterX) * t;
+
+            // 贴图左上角坐标
+            float decoX = decoCenterX - decoWidth * 0.5f;
+
+            uiBatch.draw(
+                    manadeco_1,
+                    decoX,
+                    y,
+                    decoWidth,
+                    barHeight
+            );
         }
     }
+
 
     /**
      * 负责管内液体的立体感呼吸光
