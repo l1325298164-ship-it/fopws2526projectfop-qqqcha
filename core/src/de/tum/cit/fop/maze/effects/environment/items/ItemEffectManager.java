@@ -1,0 +1,62 @@
+package de.tum.cit.fop.maze.effects.environment.items;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
+import de.tum.cit.fop.maze.effects.environment.EnvironmentParticleSystem;
+import java.util.Iterator;
+
+public class ItemEffectManager {
+    private Array<EnvironmentEffect> effects;
+    private EnvironmentParticleSystem particleSystem;
+
+    public ItemEffectManager() {
+        this.effects = new Array<>();
+        this.particleSystem = new EnvironmentParticleSystem();
+    }
+
+    public void spawnTreasure(float x, float y) {
+        effects.add(new TreasureEffect(x, y));
+    }
+
+    public void spawnHeart(float x, float y) {
+        effects.add(new HeartEffect(x, y));
+    }
+
+    public void update(float delta) {
+        Iterator<EnvironmentEffect> it = effects.iterator();
+        while (it.hasNext()) {
+            EnvironmentEffect effect = it.next();
+            effect.update(delta, particleSystem);
+            if (effect.isFinished()) it.remove();
+        }
+        particleSystem.update(delta);
+    }
+
+    public void render(ShapeRenderer sr) {
+        // 🔥 【关键修改】 改回标准混合模式 (Normal Blending)
+        // 之前的 Additive (GL_ONE) 会导致颜色越叠越亮最后变白。
+        // 标准模式能保持金黄色和粉色的纯正度，不会过曝。
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+
+        // 先画特效主体（光晕等）
+        for (EnvironmentEffect effect : effects) {
+            effect.render(sr);
+        }
+
+        // 再画粒子
+        particleSystem.render(sr);
+
+        sr.end();
+
+        // 恢复默认 (其实已经是默认了，但保持是个好习惯)
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    public void dispose() { effects.clear(); particleSystem.clear(); }
+}
