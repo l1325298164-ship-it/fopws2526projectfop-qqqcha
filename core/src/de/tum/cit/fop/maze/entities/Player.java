@@ -133,8 +133,8 @@ private boolean damageInvincible = false;
     private boolean dashSpeedBoost = false;
     private float dashSpeedTimer = 0f;
 
-    public static final float DASH_DURATION = 0.8f;
-    public static final float DASH_SPEED_MULTIPLIER = 0.4f; // delay * 0.4 = 更快
+    public static final float DASH_DURATION = 1f;
+    public static final float DASH_SPEED_MULTIPLIER = 0.35f; // delay * 0.4 = 更快
 
     public boolean useMana(int manaCost) {
         if (buffManaEfficiency) {

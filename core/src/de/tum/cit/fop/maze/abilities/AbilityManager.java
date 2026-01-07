@@ -30,10 +30,19 @@ public class AbilityManager {
             MeleeAttackAbility melee = new MeleeAttackAbility();
             abilities.put("melee", melee);   // ← 加这一行
             abilitySlots[0] = melee;
+            // ⭐⭐ 注册 Dash
+            DashAbility dash = new DashAbility();
+            abilities.put("dash", dash);
+            abilitySlots[1] = dash;
         }else {
             MagicAbility magic = new MagicAbility();
             abilities.put("magic", magic);
             abilitySlots[0] = magic;
+
+            // ⭐⭐ 注册 Dash
+            DashAbility dash = new DashAbility();
+            abilities.put("dash", dash);
+            abilitySlots[1] = dash;
         }
     }
 
