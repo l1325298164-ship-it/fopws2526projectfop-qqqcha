@@ -16,7 +16,7 @@ public class FireMagicEffect extends CombatEffect {
     protected void onUpdate(float delta, CombatParticleSystem ps) {
         // 每帧生成大量火焰粒子
         for (int i = 0; i < 4; i++) {
-            float angle = MathUtils.random(0, 360); // 暂时向四周喷，你可以改成跟随鼠标方向
+            float angle = MathUtils.random(0, 360); // 暂时向四周喷
             float speed = MathUtils.random(50, 150);
 
             // 颜色从黄到红随机
@@ -31,7 +31,7 @@ public class FireMagicEffect extends CombatEffect {
     }
 
     @Override
-    public void render(ShapeRenderer sr) {
+    public void renderShape(ShapeRenderer sr) { // 修正：重命名为 renderShape
         // 主体不需要画东西，全靠粒子表现
         // 为了视觉中心明显，画个淡淡的底座
         float p = timer / maxDuration;

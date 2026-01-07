@@ -1,12 +1,10 @@
 package de.tum.cit.fop.maze.effects.Player.combat.instances;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.effects.Player.combat.CombatEffect;
 import de.tum.cit.fop.maze.effects.Player.combat.CombatParticleSystem;
-import de.tum.cit.fop.maze.game.GameConstants;
 
 /**
  * 冲刺特效：在冲刺起点生成一团消散的烟尘/气流
@@ -31,7 +29,6 @@ public class DashEffect extends CombatEffect {
 
         // 冲刺方向 (角度转弧度)
         float rad = directionAngle * MathUtils.degRad;
-
         // 粒子生成的方向应该是冲刺的"反方向" (向后喷射)
         float backAngle = rad + MathUtils.PI;
 
@@ -41,7 +38,7 @@ public class DashEffect extends CombatEffect {
 
             // 在反方向上加一点随机散布 (+/- 45度)
             float spread = MathUtils.random(-0.8f, 0.8f);
-            float speed = MathUtils.random(30f, 80f); // 粒子速度
+            float speed = MathUtils.random(30f, 80f);
 
             particlesVX[i] = MathUtils.cos(backAngle + spread) * speed;
             particlesVY[i] = MathUtils.sin(backAngle + spread) * speed;
@@ -52,17 +49,7 @@ public class DashEffect extends CombatEffect {
 
     @Override
     protected void onUpdate(float delta, CombatParticleSystem ps) {
-
-    }
-
-    @Override
-    public void render(ShapeRenderer sr) {
-
-    }
-
-    @Override
-    public void update(float delta) {
-        super.update(delta);
+        // 修正：将粒子移动逻辑从 update(delta) 移到这里
         for (int i = 0; i < particleCount; i++) {
             if (particlesLife[i] > 0) {
                 particlesX[i] += particlesVX[i] * delta;
@@ -73,27 +60,25 @@ public class DashEffect extends CombatEffect {
     }
 
     @Override
-    public void draw(SpriteBatch batch) {
-        // 如果你有烟尘的 Texture，用 batch.draw()
-        // 这里为了通用，暂时不需要 Texture
-    }
-
-    @Override
-    public void drawDebug(ShapeRenderer shapeRenderer) {
-        // 使用 ShapeRenderer 绘制白色的气流圆点 (类似塞尔达的烟尘)
-        shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
+    public void renderShape(ShapeRenderer sr) { // 修正：重命名为 renderShape
+        // 使用 ShapeRenderer 绘制白色的气流圆点
+        sr.set(ShapeRenderer.ShapeType.Filled);
 
         for (int i = 0; i < particleCount; i++) {
             if (particlesLife[i] > 0) {
                 // 颜色随时间变透明：白色 -> 透明
                 float alpha = particlesLife[i] / 0.5f;
-                shapeRenderer.setColor(1f, 1f, 1f, alpha);
+                sr.setColor(1f, 1f, 1f, alpha);
 
                 // 大小随时间变小
                 float size = 4f * (particlesLife[i] / 0.5f);
-
-                shapeRenderer.circle(particlesX[i], particlesY[i], size);
+                sr.circle(particlesX[i], particlesY[i], size);
             }
         }
+    }
+
+    @Override
+    public void renderSprite(SpriteBatch batch) { // 修正：重命名为 renderSprite
+        // 如果没有贴图需求，留空即可
     }
 }

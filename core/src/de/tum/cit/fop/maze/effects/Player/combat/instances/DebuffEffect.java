@@ -21,7 +21,7 @@ public class DebuffEffect extends CombatEffect {
     }
 
     @Override
-    public void render(ShapeRenderer sr) {
+    public void renderShape(ShapeRenderer sr) { // 修正：重命名为 renderShape
         sr.setColor(0.4f, 0f, 0.6f, 0.4f);
         sr.circle(x, y + 40, 5 + MathUtils.sin(timer*5)*2); // 头顶小标记
     }

@@ -28,7 +28,7 @@ public class LaserEffect extends CombatEffect {
     }
 
     @Override
-    public void render(ShapeRenderer sr) {
+    public void renderShape(ShapeRenderer sr) { // 修正：重命名为 renderShape
         float p = timer / maxDuration;
 
         // 1. 核心亮白线

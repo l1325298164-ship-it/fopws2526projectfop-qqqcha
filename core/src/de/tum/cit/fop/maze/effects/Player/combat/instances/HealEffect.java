@@ -10,16 +10,16 @@ public class HealEffect extends CombatEffect {
 
     @Override
     protected void onUpdate(float delta, CombatParticleSystem ps) {
-        // 产生缓慢上升的气泡 (gravity=true 会让它们加速上升，模拟浮力)
+        // 产生缓慢上升的气泡
         if (timer < 0.5f) { // 只在前0.5秒生成
             ps.spawn(x, y, Color.LIME,
                     0, 50, // 初始向上速度
-                    5, 1.0f, false, true); // gravity=true 模拟上升浮力(在ParticleSystem里反向重力)
+                    5, 1.0f, false, true); // gravity=true 模拟上升浮力
         }
     }
 
     @Override
-    public void render(ShapeRenderer sr) {
+    public void renderShape(ShapeRenderer sr) { // 修正：重命名为 renderShape
         float p = timer / maxDuration;
         sr.setColor(0.2f, 1f, 0.2f, 1f - p);
 
