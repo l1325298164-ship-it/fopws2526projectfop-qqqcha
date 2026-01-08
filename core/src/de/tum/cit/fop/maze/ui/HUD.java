@@ -12,6 +12,9 @@ import de.tum.cit.fop.maze.abilities.DashAbility;
 import de.tum.cit.fop.maze.entities.Compass;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.game.achievement.AchievementManager;
+import de.tum.cit.fop.maze.game.achievement.AchievementPopup;
+import de.tum.cit.fop.maze.game.achievement.AchievementType;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
@@ -21,6 +24,9 @@ public class HUD {
     private BitmapFont font;
     private GameManager gameManager;
     private TextureManager textureManager;
+
+    // ✨ [新增] 成就弹窗
+    private AchievementPopup achievementPopup;
 
     // ❤ 生命值贴图
     private Texture heartFull;   // live_00
@@ -97,6 +103,9 @@ public class HUD {
         this.textureManager = TextureManager.getInstance();
         Logger.debug("HUD initialized with compass support");
         this.shapeRenderer = new ShapeRenderer();
+
+        // ✨ [新增] 初始化成就弹窗
+        this.achievementPopup = new AchievementPopup(this.font);
 
         manaBase = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
         manaFill = new Texture(Gdx.files.internal("HUD/manabar_progress_fill.png"));
@@ -246,9 +255,32 @@ public class HUD {
                 }
             }
 
+            // ✨ [新增] 8. 检查并渲染成就弹窗
+            renderAchievementPopup(uiBatch);
+
         } catch (Exception e) {
             Logger.debug("HUD failed");
+            e.printStackTrace();
         }
+    }
+
+    /**
+     * ✨ [新增] 渲染成就弹窗逻辑
+     */
+    private void renderAchievementPopup(SpriteBatch uiBatch) {
+        // 如果弹窗空闲，尝试从管理器获取下一个成就
+        if (!achievementPopup.isBusy()) {
+            AchievementManager am = gameManager.getAchievementManager();
+            if (am != null) {
+                AchievementType next = am.pollNotification();
+                if (next != null) {
+                    achievementPopup.show(next);
+                }
+            }
+        }
+
+        // 渲染（内部会处理是否显示）
+        achievementPopup.render(uiBatch);
     }
 
     /**

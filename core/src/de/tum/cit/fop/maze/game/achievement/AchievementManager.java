@@ -9,12 +9,16 @@ import de.tum.cit.fop.maze.game.score.ScoreConstants;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.StorageManager;
 
+import java.util.LinkedList;
+import java.util.Queue;
+
 /**
  * 成就管理器
  * <p>
  * 修正：
  * 1. 修复 E04 冲刺击杀计数器变量名 (totalDashKills_E04)。
  * 2. 修复 BOBA/HEART 物品识别问题，确保 ACH_03 能解锁。
+ * 3. [新增] 通知队列，用于 UI 弹窗展示。
  */
 public class AchievementManager implements GameListener {
 
@@ -22,6 +26,9 @@ public class AchievementManager implements GameListener {
     private final GameSaveData gameSaveData;
     private final StorageManager storageManager;
     private final Difficulty currentDifficulty;
+
+    // ✨ [新增] 待展示的成就队列
+    private final Queue<AchievementType> notificationQueue = new LinkedList<>();
 
     public AchievementManager(CareerData careerData,
                               GameSaveData gameSaveData,
@@ -31,6 +38,11 @@ public class AchievementManager implements GameListener {
         this.gameSaveData = gameSaveData;
         this.storageManager = storageManager;
         this.currentDifficulty = currentDifficulty;
+    }
+
+    // ✨ [新增] 获取并移除下一个待展示的成就 (供 HUD 调用)
+    public AchievementType pollNotification() {
+        return notificationQueue.poll();
     }
 
     @Override
@@ -60,7 +72,6 @@ public class AchievementManager implements GameListener {
             }
             case E04 -> {
                 if (isDashKill) {
-                    // 🛠️ 修正：使用 totalDashKills_E04 变量
                     careerData.totalDashKills_E04++;
                     if (careerData.totalDashKills_E04 >= ScoreConstants.TARGET_KILLS_E04_DASH)
                         unlock(AchievementType.ACH_07_SHELL_BREAKER);
@@ -83,9 +94,6 @@ public class AchievementManager implements GameListener {
     @Override
     public void onItemCollected(String itemType) {
         if (itemType == null) return;
-
-        // 🛠️ 修正：统一 HEART 和 BOBA 的逻辑
-        // 假设游戏中发出的事件 ItemType 是 "HEART" (根据 GameManager 代码推断)
 
         if ("HEART".equals(itemType) || "BOBA".equals(itemType)) {
             // ACH_09: 累计收集
@@ -148,6 +156,10 @@ public class AchievementManager implements GameListener {
         if (!careerData.unlockedAchievements.contains(type.id)) {
             careerData.unlockedAchievements.add(type.id);
             gameSaveData.recordNewAchievement(type.id);
+
+            // ✨ [新增] 加入通知队列，等待 HUD 抓取
+            notificationQueue.add(type);
+
             Logger.info("🏆 Achievement Unlocked: " + type.displayName);
             saveCareer();
         }
