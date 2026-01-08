@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20; // 🔥 [Fix] Import GL20
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -28,6 +29,8 @@ import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.game.GameSaveData;
+import de.tum.cit.fop.maze.game.score.LevelResult;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -62,6 +65,10 @@ public class GameScreen implements Screen {
     private boolean paused = false;
     private Stage pauseStage;
     private boolean pauseUIInitialized = false;
+
+    // ✨ [新增] GAME OVER
+    private boolean gameOverShown = false;
+    private Stage gameOverStage;
 
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
@@ -105,7 +112,13 @@ public class GameScreen implements Screen {
         input = new PlayerInputHandler();
 
         batch = game.getSpriteBatch();
-        gm = new GameManager(difficultyConfig);
+        
+        // ✨ [修复] 优先使用 MazeRunnerGame 中的 GameManager，避免重复创建
+        gm = game.getGameManager();
+        if (gm == null) {
+            gm = new GameManager(difficultyConfig);
+        }
+        
         maze = new MazeRenderer(gm, difficultyConfig);
         cam = new CameraManager(difficultyConfig);
 
@@ -160,6 +173,17 @@ public class GameScreen implements Screen {
         if (!paused && !console.isVisible()) {
             gm.update(delta);
             if (fogSystem != null) fogSystem.update(delta);
+            
+            // ✨ [新增] 检查关卡是否完成，跳转到结算界面
+            if (gm.isLevelCompletedPendingSettlement()) {
+                goToSettlementScreen();
+                return; // 跳过剩余渲染
+            }
+            
+            // ✨ [新增] 检查玩家是否死亡，显示游戏结束界面
+            if (gm.isPlayerDead() && !gameOverShown) {
+                showGameOverScreen();
+            }
         }
 
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
@@ -243,6 +267,12 @@ public class GameScreen implements Screen {
             pauseStage.act(delta);
             pauseStage.draw();
         }
+        
+        // ✨ [新增] 游戏结束界面渲染
+        if (gameOverShown && gameOverStage != null) {
+            gameOverStage.act(delta);
+            gameOverStage.draw();
+        }
     }
 
     // 提取出的辅助方法，保持 render 清晰
@@ -321,14 +351,132 @@ public class GameScreen implements Screen {
         batch.setProjectionMatrix(cam.getCamera().combined);
     }
 
-    // ... (保留 togglePause, initPauseUI, renderMazeBorderDecorations, dispose, resize, pause, resume, hide) ...
-    // 为了节省篇幅，假设以下方法保持原样
-    private void togglePause() { paused = !paused; if (paused) { if (pauseStage == null) initPauseUI(); Gdx.input.setInputProcessor(pauseStage); } else { Gdx.input.setInputProcessor(null); } }
-    private void initPauseUI() { pauseStage = new Stage(new ScreenViewport()); Table root = new Table(); root.setFillParent(true); pauseStage.addActor(root); Label scoreLabel = new Label("SCORE: " + gm.getScore(), game.getSkin(), "title"); root.add(scoreLabel).colspan(4).padTop(60).expandY().top().row(); Table buttonTable = new Table(); ButtonFactory bf = new ButtonFactory(game.getSkin()); float btnW = 350; float btnH = 90; float padding = 15; buttonTable.add(bf.create("CONTINUE", this::togglePause)).width(btnW).height(btnH).pad(padding); buttonTable.add(bf.create("RESET MAZE", () -> { game.resetMaze(difficultyConfig.difficulty); })).width(btnW).height(btnH).pad(padding); buttonTable.add(bf.create("MENU", () -> { game.goToMenu(); })).width(btnW).height(btnH).pad(padding); root.add(buttonTable).expandY().center(); pauseUIInitialized = true; }
-    private void renderMazeBorderDecorations(SpriteBatch batch) { int w = Gdx.graphics.getWidth(); int h = Gdx.graphics.getHeight(); int thickness = 1000; batch.draw(uiTop, 0, h - thickness+860, w, thickness-120); batch.draw(uiBottom, 0, 0-800, w, thickness-120); batch.draw(uiLeft, -600, 0, thickness-220, h); batch.draw(uiRight, w - thickness+810, 0, thickness-220, h); }
-    @Override public void resize(int w, int h) { worldViewport.update(w, h, true); if (uiStage != null) uiStage.getViewport().update(w, h, true); if (pauseStage != null) pauseStage.getViewport().update(w, h, true); if (console != null) console.resize(w, h); }
+    /**
+     * ✨ [新增] 跳转到结算界面
+     */
+    private void goToSettlementScreen() {
+        // 1. 计算关卡结果（理论最高分可根据关卡配置计算，这里使用固定值）
+        int theoreticalMaxScore = 5000; // TODO: 可以根据关卡实际配置计算
+        LevelResult result = gm.getLevelResult(theoreticalMaxScore);
+        
+        // 2. 获取存档数据
+        GameSaveData saveData = gm.getGameSaveData();
+        
+        // 3. 清除关卡完成标志
+        gm.clearLevelCompletedFlag();
+        
+        // 4. 跳转到结算界面
+        game.setScreen(new SettlementScreen(game, result, saveData));
+        
+        Logger.info("Navigating to SettlementScreen with score: " + result.finalScore);
+    }
+
+    /**
+     * ✨ [新增] 显示游戏结束界面
+     */
+    private void showGameOverScreen() {
+        gameOverShown = true;
+        gameOverStage = new Stage(new ScreenViewport());
+        
+        Table root = new Table();
+        root.setFillParent(true);
+        gameOverStage.addActor(root);
+        
+        // 标题
+        Label gameOverLabel = new Label("GAME OVER", game.getSkin(), "title");
+        gameOverLabel.setColor(Color.RED);
+        gameOverLabel.setFontScale(2.0f);
+        root.add(gameOverLabel).padBottom(30).row();
+        
+        // 最终分数
+        Label scoreLabel = new Label("Final Score: " + gm.getScore(), game.getSkin());
+        scoreLabel.setColor(Color.GOLD);
+        scoreLabel.setFontScale(1.5f);
+        root.add(scoreLabel).padBottom(50).row();
+        
+        // 按钮
+        Table buttonTable = new Table();
+        ButtonFactory bf = new ButtonFactory(game.getSkin());
+        float btnW = 300;
+        float btnH = 70;
+        float padding = 15;
+        
+        // 重试按钮
+        buttonTable.add(bf.create("RETRY", () -> {
+            game.resetMaze(difficultyConfig.difficulty);
+        })).width(btnW).height(btnH).pad(padding);
+        
+        // 返回菜单按钮
+        buttonTable.add(bf.create("MENU", () -> {
+            game.goToMenu();
+        })).width(btnW).height(btnH).pad(padding);
+        
+        root.add(buttonTable);
+        
+        Gdx.input.setInputProcessor(gameOverStage);
+    }
+
+    private void togglePause() { 
+        if (gameOverShown) return; // 游戏结束时禁止暂停
+        paused = !paused; 
+        if (paused) { 
+            if (pauseStage == null) initPauseUI(); 
+            Gdx.input.setInputProcessor(pauseStage); 
+        } else { 
+            Gdx.input.setInputProcessor(null); 
+        } 
+    }
+    
+    private void initPauseUI() { 
+        pauseStage = new Stage(new ScreenViewport()); 
+        Table root = new Table(); 
+        root.setFillParent(true); 
+        pauseStage.addActor(root); 
+        
+        Label scoreLabel = new Label("SCORE: " + gm.getScore(), game.getSkin(), "title"); 
+        root.add(scoreLabel).colspan(4).padTop(60).expandY().top().row(); 
+        
+        Table buttonTable = new Table(); 
+        ButtonFactory bf = new ButtonFactory(game.getSkin()); 
+        float btnW = 350; 
+        float btnH = 90; 
+        float padding = 15; 
+        
+        buttonTable.add(bf.create("CONTINUE", this::togglePause)).width(btnW).height(btnH).pad(padding); 
+        buttonTable.add(bf.create("RESET MAZE", () -> { game.resetMaze(difficultyConfig.difficulty); })).width(btnW).height(btnH).pad(padding); 
+        buttonTable.add(bf.create("MENU", () -> { game.goToMenu(); })).width(btnW).height(btnH).pad(padding); 
+        
+        root.add(buttonTable).expandY().center(); 
+        pauseUIInitialized = true; 
+    }
+    
+    private void renderMazeBorderDecorations(SpriteBatch batch) { 
+        int w = Gdx.graphics.getWidth(); 
+        int h = Gdx.graphics.getHeight(); 
+        int thickness = 1000; 
+        batch.draw(uiTop, 0, h - thickness+860, w, thickness-120); 
+        batch.draw(uiBottom, 0, 0-800, w, thickness-120); 
+        batch.draw(uiLeft, -600, 0, thickness-220, h); 
+        batch.draw(uiRight, w - thickness+810, 0, thickness-220, h); 
+    }
+    
+    @Override 
+    public void resize(int w, int h) { 
+        worldViewport.update(w, h, true); 
+        if (uiStage != null) uiStage.getViewport().update(w, h, true); 
+        if (pauseStage != null) pauseStage.getViewport().update(w, h, true); 
+        if (gameOverStage != null) gameOverStage.getViewport().update(w, h, true);
+        if (console != null) console.resize(w, h); 
+    }
+    
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-    @Override public void dispose() { maze.dispose(); if (console != null) console.dispose(); }
+    
+    @Override 
+    public void dispose() { 
+        maze.dispose(); 
+        if (console != null) console.dispose(); 
+        if (gameOverStage != null) gameOverStage.dispose();
+    }
 }

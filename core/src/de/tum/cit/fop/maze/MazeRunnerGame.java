@@ -91,7 +91,7 @@ public class MazeRunnerGame extends Game {
 
     // 🔥 [新增] 从存档加载游戏
     public void loadGame() {
-        StorageManager storage = new StorageManager();
+        StorageManager storage = StorageManager.getInstance();
         GameSaveData saveData = storage.loadGame();
 
         if (saveData == null) {
@@ -102,10 +102,16 @@ public class MazeRunnerGame extends Game {
 
         Logger.info("Loading game... Level: " + saveData.currentLevel);
 
-        // 初始化默认配置 (如果存档里没有存难度，只能用默认)
-        if (difficultyConfig == null) {
-            difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
+        // ✨ [修改] 从存档恢复难度配置
+        Difficulty savedDifficulty = Difficulty.NORMAL;
+        try {
+            if (saveData.difficulty != null && !saveData.difficulty.isEmpty()) {
+                savedDifficulty = Difficulty.valueOf(saveData.difficulty);
+            }
+        } catch (IllegalArgumentException e) {
+            Logger.warning("Invalid difficulty in save data: " + saveData.difficulty + ", using NORMAL");
         }
+        difficultyConfig = DifficultyConfig.of(savedDifficulty);
 
         // 创建新的 GameManager
         gameManager = new GameManager(difficultyConfig);
@@ -120,7 +126,7 @@ public class MazeRunnerGame extends Game {
     // 🔥 [新增] 强制开始新游戏 (带清理)
     public void startNewGameFromMenu() {
         // 1. 清理存档
-        new StorageManager().deleteSave();
+        StorageManager.getInstance().deleteSave();
 
         // 2. 初始化配置
         difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);

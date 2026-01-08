@@ -17,6 +17,7 @@ import de.tum.cit.fop.maze.game.achievement.AchievementManager;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 import de.tum.cit.fop.maze.game.event.GameEventSource;
 import de.tum.cit.fop.maze.game.score.DamageSource;
+import de.tum.cit.fop.maze.game.score.LevelResult;
 import de.tum.cit.fop.maze.game.score.ScoreManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
@@ -83,6 +84,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private ExitDoor currentExitDoor = null;
     private float levelTransitionTimer = 0f;
     private static final float LEVEL_TRANSITION_DELAY = 0.5f;
+    
+    // ✨ [新增] 关卡完成标志，用于 GameScreen 跳转到结算界面
+    private boolean levelCompletedPendingSettlement = false;
 
     private int currentLevel = 1;
     private PortalEffectManager playerSpawnPortal;
@@ -93,6 +97,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             throw new IllegalArgumentException("difficultyConfig must not be null");
         }
         this.difficultyConfig = difficultyConfig;
+
+        // ✨ [重要] 先清理旧的监听器，防止监听器泄漏
+        GameEventSource eventSource = GameEventSource.getInstance();
+        eventSource.clearListeners();
 
         // ✨ [集成] 初始化成就系统与事件监听
         this.gameSaveData = new GameSaveData(); // 基础会话数据
@@ -108,11 +116,27 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         );
 
         // 注册到全局事件源（实现自动分发）
-        GameEventSource eventSource = GameEventSource.getInstance();
         eventSource.addListener(this.scoreManager);
         eventSource.addListener(this.achievementManager);
 
         resetGame();
+    }
+    
+    /**
+     * ✨ [新增] 清理资源，移除监听器
+     * 在 GameManager 不再使用时调用
+     */
+    public void dispose() {
+        GameEventSource eventSource = GameEventSource.getInstance();
+        if (scoreManager != null) {
+            eventSource.removeListener(scoreManager);
+        }
+        if (achievementManager != null) {
+            eventSource.removeListener(achievementManager);
+            // 保存未保存的成就数据
+            achievementManager.saveIfNeeded();
+        }
+        Logger.info("GameManager disposed, listeners cleaned up");
     }
 
     private void resetGame() {
@@ -392,11 +416,66 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void nextLevel() {
+        // ✨ [修改] 不再直接 reset，而是标记等待结算界面处理
+        levelCompletedPendingSettlement = true;
+        Logger.gameEvent("Level " + currentLevel + " completed, pending settlement screen");
+    }
+    
+    /**
+     * ✨ [新增] 检查是否有待结算的关卡
+     */
+    public boolean isLevelCompletedPendingSettlement() {
+        return levelCompletedPendingSettlement;
+    }
+    
+    /**
+     * ✨ [新增] 获取关卡结算结果
+     * @param theoreticalMaxBaseScore 理论最高基础分（可传入固定值或根据关卡计算）
+     */
+    public LevelResult getLevelResult(int theoreticalMaxBaseScore) {
+        if (scoreManager == null) return null;
+        return scoreManager.calculateResult(theoreticalMaxBaseScore);
+    }
+    
+    /**
+     * ✨ [新增] 获取当前游戏存档数据（用于传递给结算界面）
+     */
+    public GameSaveData getGameSaveData() {
+        // 在返回前，同步最新的玩家状态到存档数据
+        if (gameSaveData != null && player != null) {
+            gameSaveData.currentLevel = currentLevel;
+            gameSaveData.lives = player.getLives();
+            gameSaveData.maxLives = player.getMaxLives();
+            gameSaveData.mana = (int) player.getMana();
+            gameSaveData.hasKey = player.hasKey();
+            gameSaveData.buffAttack = player.hasBuffAttack();
+            gameSaveData.buffRegen = player.hasBuffRegen();
+            gameSaveData.buffManaEfficiency = player.hasBuffManaEfficiency();
+            // ✨ [新增] 保存难度配置
+            if (difficultyConfig != null && difficultyConfig.difficulty != null) {
+                gameSaveData.difficulty = difficultyConfig.difficulty.name();
+            }
+        }
+        return gameSaveData;
+    }
+    
+    /**
+     * ✨ [新增] 清除关卡完成标志（结算界面处理后调用）
+     */
+    public void clearLevelCompletedFlag() {
+        levelCompletedPendingSettlement = false;
+    }
+    
+    /**
+     * ✨ [新增] 进入下一关（从结算界面调用）
+     */
+    public void proceedToNextLevel() {
         currentLevel++;
         if (currentLevel > GameConstants.MAX_LEVELS) {
             Logger.gameEvent("Game completed!");
             return;
         }
+        levelCompletedPendingSettlement = false;
         requestReset();
     }
 

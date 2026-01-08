@@ -45,7 +45,9 @@ public class ScoreManager implements GameListener {
         // 实时总分 = 历史分 + (本关基础分 - 本关扣分) * 倍率
         int currentLevelRaw = Math.max(0, levelBaseScore - levelPenalty);
         int currentLevelFinal = (int) (currentLevelRaw * config.scoreMultiplier);
-        return accumulatedScore + currentLevelFinal;
+        long totalScore = (long) accumulatedScore + currentLevelFinal;
+        // 防止整数溢出，限制最大分数为 Integer.MAX_VALUE
+        return (int) Math.min(totalScore, Integer.MAX_VALUE);
     }
 
     @Override
@@ -80,7 +82,7 @@ public class ScoreManager implements GameListener {
         } else if (itemType.startsWith("TREASURE")) {
             points = ScoreConstants.SCORE_TREASURE;
         } else if (itemType.equals("KEY")) {
-            points = 50;
+            points = ScoreConstants.SCORE_KEY;
         } else if (itemType.equals("FOG_CLEARED")) {
             points = ScoreConstants.SCORE_FOG_CLEARED;
         }

@@ -26,6 +26,9 @@ public class GameSaveData {
      * 注意：跨关卡时会累加，不要在单关重置时清零。
      */
     public int score = 0;
+    
+    /** ✨ [新增] 游戏难度（用于恢复存档时使用正确的难度配置） */
+    public String difficulty = "NORMAL";
 
     // --- 玩家状态 ---
     public int lives = 0;

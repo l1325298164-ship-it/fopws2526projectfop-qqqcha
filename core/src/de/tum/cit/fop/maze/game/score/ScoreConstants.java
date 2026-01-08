@@ -13,6 +13,7 @@ public class ScoreConstants {
     // === 物品得分 ===
     public static final int SCORE_HEART = 50;
     public static final int SCORE_TREASURE = 800;
+    public static final int SCORE_KEY = 50;  // 钥匙得分
     public static final int SCORE_FOG_CLEARED = 500;
 
     // === 【新增】 解决报错的别名映射 ===

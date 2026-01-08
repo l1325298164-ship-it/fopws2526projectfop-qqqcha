@@ -59,7 +59,7 @@ public class MenuScreen implements Screen {
 
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
-        this.storage = new StorageManager();
+        this.storage = StorageManager.getInstance();
 
         batch = new SpriteBatch();
         stage = new Stage(new ScreenViewport(), batch);
@@ -130,6 +130,18 @@ public class MenuScreen implements Screen {
 
         root.add(bf.create("CONTROLS", () ->
                         game.setScreen(new KeyMappingScreen(game, this))))
+                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
+                .padBottom(20).row();
+
+        // ✨ [新增] 成就按钮
+        root.add(bf.create("ACHIEVEMENTS", () ->
+                        game.setScreen(new AchievementScreen(game, this))))
+                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
+                .padBottom(20).row();
+
+        // ✨ [新增] 排行榜按钮
+        root.add(bf.create("LEADERBOARD", () ->
+                        game.setScreen(new LeaderboardScreen(game, this))))
                 .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
                 .padBottom(20).row();
 

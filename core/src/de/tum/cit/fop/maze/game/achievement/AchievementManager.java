@@ -27,8 +27,15 @@ public class AchievementManager implements GameListener {
     private final StorageManager storageManager;
     private final Difficulty currentDifficulty;
 
-    // ✨ [新增] 待展示的成就队列
+    // ✨ [新增] 待展示的成就队列 (限制大小防止内存溢出)
+    private static final int MAX_NOTIFICATION_QUEUE_SIZE = 50;
     private final Queue<AchievementType> notificationQueue = new LinkedList<>();
+    
+    // 延迟保存标记，避免频繁I/O
+    private boolean needsSave = false;
+    
+    // ✨ [新增] 本关受击次数（由 onPlayerDamage 累加）
+    private int currentLevelDamageTaken = 0;
 
     public AchievementManager(CareerData careerData,
                               GameSaveData gameSaveData,
@@ -88,7 +95,8 @@ public class AchievementManager implements GameListener {
 
     @Override
     public void onPlayerDamage(int currentHp, DamageSource source) {
-        gameSaveData.sessionDamageTaken++;
+        // ✨ [修复] 使用本地计数，避免与 ScoreManager 冲突
+        currentLevelDamageTaken++;
     }
 
     @Override
@@ -124,9 +132,13 @@ public class AchievementManager implements GameListener {
         }
 
         // ACH_11: 滴水不漏
-        if (gameSaveData.sessionDamageTaken <= ScoreConstants.TARGET_NO_DAMAGE_LIMIT) {
+        // ✨ [修复] 使用本地计数而非 gameSaveData
+        if (currentLevelDamageTaken <= ScoreConstants.TARGET_NO_DAMAGE_LIMIT) {
             unlock(AchievementType.ACH_11_SEALED_TIGHT);
         }
+        
+        // 重置本关计数
+        currentLevelDamageTaken = 0;
 
         // ACH_14: 复兴 (困难模式通关)
         if (levelNumber >= 3 && currentDifficulty == Difficulty.HARD) {
@@ -136,7 +148,7 @@ public class AchievementManager implements GameListener {
             }
         }
 
-        // 关卡结束时保存
+        // 关卡结束时保存（重要节点，立即保存）
         saveCareer();
     }
 
@@ -144,12 +156,27 @@ public class AchievementManager implements GameListener {
         if (!careerData.hasWatchedPV) {
             careerData.hasWatchedPV = true;
             unlock(AchievementType.ACH_01_TRAINING);
+            // PV观看是重要节点，立即保存
             saveCareer();
         }
     }
 
+    /**
+     * 强制保存（立即执行）
+     */
     public void forceSave() {
         saveCareer();
+    }
+    
+    /**
+     * 延迟保存（在合适的时机调用，如关卡结束、游戏暂停时）
+     * 避免频繁I/O操作影响性能
+     */
+    public void saveIfNeeded() {
+        if (needsSave) {
+            saveCareer();
+            needsSave = false;
+        }
     }
 
     private void unlock(AchievementType type) {
@@ -157,11 +184,16 @@ public class AchievementManager implements GameListener {
             careerData.unlockedAchievements.add(type.id);
             gameSaveData.recordNewAchievement(type.id);
 
-            // ✨ [新增] 加入通知队列，等待 HUD 抓取
-            notificationQueue.add(type);
+            // ✨ [新增] 加入通知队列，等待 HUD 抓取 (限制队列大小)
+            if (notificationQueue.size() < MAX_NOTIFICATION_QUEUE_SIZE) {
+                notificationQueue.add(type);
+            } else {
+                Logger.warning("Achievement notification queue is full, dropping: " + type.displayName);
+            }
 
             Logger.info("🏆 Achievement Unlocked: " + type.displayName);
-            saveCareer();
+            // 标记需要保存，但不立即保存（延迟保存策略）
+            needsSave = true;
         }
     }
 

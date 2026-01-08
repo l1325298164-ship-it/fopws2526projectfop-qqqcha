@@ -180,7 +180,9 @@ public class SettlementScreen implements Screen {
 
         // 新解锁成就
         if (!saveData.newAchievements.isEmpty()) {
-            statsTable.add(new Label("NEW ACHIEVEMENTS UNLOCKED!", game.getSkin())).colspan(2).padTop(20).color(Color.YELLOW).row();
+            Label achievementTitle = new Label("NEW ACHIEVEMENTS UNLOCKED!", game.getSkin());
+            achievementTitle.setColor(Color.YELLOW);
+            statsTable.add(achievementTitle).colspan(2).padTop(20).row();
 
             for (String achId : saveData.newAchievements) {
                 // 尝试查找成就名称
@@ -238,15 +240,24 @@ public class SettlementScreen implements Screen {
         // 1. 清理临时UI数据
         clearNewAchievements();
 
-        // 2. 保存游戏进度 (GameSaveData)
-        // 注意：这里保存的是已经累加了分数的 saveData
-        StorageManager storage = new StorageManager();
-        storage.saveGame(saveData);
-
-        // 3. 跳转
+        // 2. 准备保存数据
+        StorageManager storage = StorageManager.getInstance();
+        
         if (toNextLevel) {
-            game.goToGame(); // 重新进入 GameScreen
+            // ✨ [修改] 进入下一关前，增加关卡数并重置本关临时统计
+            saveData.currentLevel++;
+            saveData.levelBaseScore = 0;
+            saveData.levelPenalty = 0;
+            // score 已经在构造函数中累加过了，保持不变
+            
+            // 保存进度
+            storage.saveGame(saveData);
+            
+            // 重新加载游戏（会从存档恢复状态）
+            game.loadGame();
         } else {
+            // 返回菜单时保存当前进度
+            storage.saveGame(saveData);
             game.goToMenu();
         }
     }

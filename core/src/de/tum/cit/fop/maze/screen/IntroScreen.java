@@ -14,6 +14,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.game.achievement.AchievementManager;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 
 public class IntroScreen implements Screen {
@@ -283,6 +284,9 @@ public class IntroScreen implements Screen {
         if (exited) return;
         exited = true;
 
+        // ✨ [新增] PV播放完成后触发成就
+        notifyPVWatched();
+
         switch (exitType) {
             case NEXT_STAGE -> {
                 if (finishedListener != null) {
@@ -292,6 +296,18 @@ public class IntroScreen implements Screen {
             case TO_MENU -> game.goToMenu();
             case PV4_CHOICE -> {
                 // PV4 等按钮
+            }
+        }
+    }
+
+    /**
+     * ✨ [新增] 通知成就系统PV已观看完成
+     */
+    private void notifyPVWatched() {
+        if (game.getGameManager() != null) {
+            AchievementManager am = game.getGameManager().getAchievementManager();
+            if (am != null) {
+                am.onPVWatched();
             }
         }
     }
