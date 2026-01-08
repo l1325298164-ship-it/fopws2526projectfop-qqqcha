@@ -232,6 +232,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             fogSystem = null;
         }
 
+        // ✨ [修复] 添加空值检查，防止 player 为 null
+        if (player == null) {
+            Logger.error("Player is null after resetGame, cannot create spawn portal");
+            return;
+        }
+
         float px = player.getX() * GameConstants.CELL_SIZE;
         float py = player.getY() * GameConstants.CELL_SIZE;
 
@@ -241,7 +247,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         generateLevel();
 
-        compass = new Compass(player);
+        // ✨ [修复] 添加空值检查
+        if (player != null) {
+            compass = new Compass(player);
+        } else {
+            Logger.error("Player is null, cannot create Compass");
+        }
         bullets.clear();
         bobaBulletEffectManager.clearAllBullets(false);
 
@@ -742,6 +753,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public boolean canPlayerMoveTo(int x, int y) {
+        // ✨ [修复] 添加空值检查，防止数组越界
+        if (maze == null || maze.length == 0 || maze[0] == null || maze[0].length == 0) return false;
         if (x < 0 || y < 0 || y >= maze.length || x >= maze[0].length) return false;
         for (Enemy enemy : enemies) {
             if (enemy instanceof EnemyE04_CrystallizedCaramelShell) {
@@ -954,6 +967,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public PlayerInputHandler getInputHandler() { return  inputHandler; }
     public boolean isPlayerDead() { return player != null && player.isDead(); }
     public boolean isObstacleValidMove(int nx, int ny) {
+        // ✨ [修复] 添加空值检查，防止数组越界
+        if (maze == null || maze.length == 0 || maze[0] == null || maze[0].length == 0) return false;
         if (nx < 0 || ny < 0 || ny >= maze.length || nx >= maze[0].length) return false;
         if (maze[ny][nx] == 0) return false;
         for (ExitDoor door : exitDoors) if (door.getX() == nx && door.getY() == ny) return false;

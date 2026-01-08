@@ -323,13 +323,12 @@ public class QTEScreen_double implements Screen {
         // 渲染玩家
         drawPlayers();
 
-        batch.end();
-
-        // 2️⃣ 渲染波纹特效
-        shapeRenderer.setProjectionMatrix(camera.combined);
+        // 2️⃣ 渲染波纹特效（需要在 batch 内）
         if (rippleManager != null) {
-            rippleManager.render(shapeRenderer);
+            rippleManager.render(batch);
         }
+
+        batch.end();
 
         // 3️⃣ 渲染UI
         renderProgressBar(delta);

@@ -2,8 +2,10 @@ package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -38,6 +40,7 @@ public class EndlessScreen implements Screen {
     private MazeRenderer maze;
     private CameraManager cam;
     private SpriteBatch batch;
+    private ShapeRenderer shapeRenderer;
     private HUD hud;
     private PlayerInputHandler input;
     private DeveloperConsole console;
@@ -144,6 +147,7 @@ public class EndlessScreen implements Screen {
 
         input = new PlayerInputHandler();
         batch = game.getSpriteBatch();
+        shapeRenderer = new ShapeRenderer();
 
         // 🔥 关键修改：使用 MazeRunnerGame 中已创建的 GameManager
         if (game.getGameManager() != null) {
@@ -307,10 +311,29 @@ public class EndlessScreen implements Screen {
             }
         }
 
-        // D. 特效
-        gm.getKeyEffectManager().render(batch);
+        // D. 特效 (Sprite层)
         gm.getBobaBulletEffectManager().render(batch);
+        // ✨ [修复] 添加所有特效管理器的渲染（key特效现在在ItemEffectManager中）
+        if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderSprites(batch);
+        if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderSprites(batch);
+        if (gm.getCombatEffectManager() != null) gm.getCombatEffectManager().renderSprites(batch);
         batch.end();
+
+        // E. 特效粒子 (ShapeRenderer层)
+        if (gm.getItemEffectManager() != null) {
+            shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+            gm.getItemEffectManager().renderShapes(shapeRenderer);
+        }
+        if (gm.getTrapEffectManager() != null) {
+            shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+            gm.getTrapEffectManager().renderShapes(shapeRenderer);
+        }
+        if (gm.getCombatEffectManager() != null) {
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+            gm.getCombatEffectManager().renderShapes(shapeRenderer);
+        }
 
         /* ================= 渲染 UI (切换到屏幕坐标) ================= */
         renderUI();
@@ -1410,6 +1433,7 @@ public class EndlessScreen implements Screen {
     public void dispose() {
         if (maze != null) maze.dispose();
         if (console != null) console.dispose();
+        if (shapeRenderer != null) shapeRenderer.dispose();
         if (uiTop != null) uiTop.dispose();
         if (uiBottom != null) uiBottom.dispose();
         if (uiLeft != null) uiLeft.dispose();

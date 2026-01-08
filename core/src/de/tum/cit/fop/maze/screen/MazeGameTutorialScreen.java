@@ -737,9 +737,10 @@ public class MazeGameTutorialScreen implements Screen {
     @Override
     public void hide() {
         System.out.println("Tutorial screen hidden");
-        if (gm != null) {
-            gm.setTutorialMode(false);
-        }
+        // ✨ [修复] 删除不存在的 setTutorialMode() 方法调用
+        // if (gm != null) {
+        //     gm.setTutorialMode(false);
+        // }
     }
 
     @Override

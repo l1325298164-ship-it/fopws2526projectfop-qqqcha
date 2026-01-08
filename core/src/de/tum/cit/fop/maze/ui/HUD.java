@@ -284,7 +284,7 @@ public class HUD {
     }
 
     /**
-     * ✨ [新增] 渲染屏幕顶部的实时分数
+     * ✨ [新增] 渲染右上角的实时分数（与魔法值对齐）
      */
     private void renderScore(SpriteBatch uiBatch) {
         if (gameManager == null) return;
@@ -293,17 +293,25 @@ public class HUD {
         int currentScore = gameManager.getScore();
         String scoreText = "SCORE: " + currentScore;
 
-        // 临时设置大字体
-        font.getData().setScale(1.5f);
+        // 设置字体大小
+        font.getData().setScale(1.3f);
 
-        // 计算居中位置
+        // 计算右上角位置（与魔法条对齐）
         GlyphLayout layout = new GlyphLayout(font, scoreText);
-        float x = (Gdx.graphics.getWidth() - layout.width) / 2f;
-        float y = Gdx.graphics.getHeight() - SCORE_Y_OFFSET;
+        float rightMargin = 20f;  // 右侧边距
+        float x = Gdx.graphics.getWidth() - layout.width - rightMargin;
+        
+        // 魔法条位置计算（与renderManaBar保持一致）
+        float barWidth = Gdx.graphics.getWidth() * 0.66f;
+        float barHeight = barWidth * (32f / 256f);
+        float manaBarY = barHeight - 130f;  // 魔法条底部Y坐标
+        
+        // 分数显示在魔法条上方，留出间距
+        float y = manaBarY + barHeight + 25f;  // 魔法条顶部上方25像素
 
         // 绘制阴影
         font.setColor(0f, 0f, 0f, 0.5f);
-        font.draw(uiBatch, scoreText, x + 3, y - 3);
+        font.draw(uiBatch, scoreText, x + 2, y - 2);
 
         // 绘制金色正文
         font.setColor(Color.GOLD);
