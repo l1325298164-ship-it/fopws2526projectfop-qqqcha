@@ -8,19 +8,42 @@ import de.tum.cit.fop.maze.game.GameSaveData;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 
 /**
- * 统一存储管理器 (Storage Manager)
+ * 统一存储管理器 (Storage Manager) - 单例模式
  * <p>
  * 改进：
  * 增加了原子写入机制 (Write-to-temp -> Move)，防止存档损坏。
+ * 使用单例模式确保全局唯一实例。
  */
 public class StorageManager {
 
+    // ==========================================
+    // 单例模式实现
+    // ==========================================
+    private static StorageManager instance;
+
+    /**
+     * 获取单例实例
+     * @return StorageManager 单例对象
+     */
+    public static StorageManager getInstance() {
+        if (instance == null) {
+            instance = new StorageManager();
+        }
+        return instance;
+    }
+
+    // ==========================================
+    // 原有实现
+    // ==========================================
     private static final String SAVE_FILE_NAME = "save_data.json";
     private static final String CAREER_FILE_NAME = "career_data.json";
 
     private final Json json;
 
-    public StorageManager() {
+    /**
+     * 私有构造函数，防止外部直接实例化
+     */
+    private StorageManager() {
         this.json = new Json();
         this.json.setOutputType(JsonWriter.OutputType.json);
         this.json.setUsePrototypes(false);

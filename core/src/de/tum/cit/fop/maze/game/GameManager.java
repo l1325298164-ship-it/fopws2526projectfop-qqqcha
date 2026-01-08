@@ -13,11 +13,15 @@ import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.trap.*;
+import de.tum.cit.fop.maze.game.achievement.AchievementManager;
+import de.tum.cit.fop.maze.game.achievement.CareerData;
+import de.tum.cit.fop.maze.game.event.GameEventSource;
 import de.tum.cit.fop.maze.game.score.DamageSource;
 import de.tum.cit.fop.maze.game.score.ScoreManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.StorageManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -62,6 +66,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private BobaBulletManager bobaBulletEffectManager = new BobaBulletManager();
 
     private ScoreManager scoreManager;
+    // ✨ [集成] 成就管理器
+    private AchievementManager achievementManager;
+    private GameSaveData gameSaveData;
 
     private CatFollower cat;
     private Map<String, Float> gameVariables;
@@ -86,6 +93,25 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             throw new IllegalArgumentException("difficultyConfig must not be null");
         }
         this.difficultyConfig = difficultyConfig;
+
+        // ✨ [集成] 初始化成就系统与事件监听
+        this.gameSaveData = new GameSaveData(); // 基础会话数据
+        this.scoreManager = new ScoreManager(difficultyConfig);
+
+        StorageManager storageManager = StorageManager.getInstance();
+        CareerData careerData = storageManager.loadCareer();
+        this.achievementManager = new AchievementManager(
+                careerData,
+                this.gameSaveData,
+                storageManager,
+                difficultyConfig.difficulty
+        );
+
+        // 注册到全局事件源（实现自动分发）
+        GameEventSource eventSource = GameEventSource.getInstance();
+        eventSource.addListener(this.scoreManager);
+        eventSource.addListener(this.achievementManager);
+
         resetGame();
     }
 
@@ -146,8 +172,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         trapEffectManager = new TrapEffectManager();
         combatEffectManager = new CombatEffectManager();
 
-        scoreManager = new ScoreManager(difficultyConfig);
-
         levelTransitionInProgress = false;
         currentExitDoor = null;
         levelTransitionTimer = 0f;
@@ -155,27 +179,28 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.gameEvent("Game reset complete");
     }
 
-    // 🔥 [新增] 从存档恢复游戏状态
+    // ✨ [集成] 供 HUD 使用的 Getter
+    public AchievementManager getAchievementManager() {
+        return achievementManager;
+    }
+
     public void restoreState(GameSaveData data) {
         if (data == null) return;
 
-        // 1. 恢复关卡数
+        this.gameSaveData = data;
         this.currentLevel = data.currentLevel;
 
-        // 2. 恢复玩家属性
         if (player != null) {
             player.setLives(data.lives);
             player.setMaxLives(data.maxLives);
             player.setMana(data.mana);
             player.setHasKey(data.hasKey);
 
-            // 恢复 Buff (简单处理：如果有Buff标记，给一个较长时间的Buff)
             if (data.buffAttack) player.applyAttackBuff(9999f);
             if (data.buffRegen) player.applyRegenBuff(9999f);
             if (data.buffManaEfficiency) player.applyManaEfficiencyBuff(9999f);
         }
 
-        // 3. 恢复分数
         if (scoreManager != null) {
             scoreManager.restoreState(data);
         }
@@ -251,7 +276,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     else if (e instanceof EnemyE02_SmallCoffeeBean) tier = EnemyTier.E02;
                     else if (e instanceof EnemyE03_CaramelJuggernaut) tier = EnemyTier.E03;
                     else if (e instanceof EnemyE04_CrystallizedCaramelShell) tier = EnemyTier.E04;
-                    if (scoreManager != null) scoreManager.onEnemyKilled(tier, false);
+
+                    // 使用事件源通知监听器
+                    GameEventSource.getInstance().onEnemyKilled(tier, e.isHitByDash());
                 }
                 enemyIterator.remove();
             }
@@ -309,8 +336,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 else if (trap instanceof TrapT03_TeaShards) source = DamageSource.TRAP_SPIKE;
                 else if (trap instanceof TrapT04_Mud) source = DamageSource.TRAP_MUD;
 
-                if (scoreManager != null && source != DamageSource.UNKNOWN) {
-                    scoreManager.onPlayerDamage(player.getLives(), source);
+                if (source != DamageSource.UNKNOWN) {
+                    // 使用事件源通知监听器
+                    GameEventSource.getInstance().onPlayerDamage(player.getLives(), source);
                 }
 
                 float effectX = (trap.getX() + 0.5f) * GameConstants.CELL_SIZE;
@@ -358,7 +386,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionInProgress = true;
         currentExitDoor = door;
         levelTransitionTimer = 0f;
-        if (scoreManager != null) scoreManager.onLevelFinished(currentLevel);
+        // 使用事件源通知监听器
+        GameEventSource.getInstance().onLevelFinished(currentLevel);
         Logger.gameEvent("Level transition started at door " + door.getPositionString());
     }
 
@@ -376,7 +405,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public void onKeyCollected() {
         player.setHasKey(true);
         unlockAllExitDoors();
-        if (scoreManager != null) scoreManager.onItemCollected("KEY");
+        // 使用事件源通知监听器
+        GameEventSource.getInstance().onItemCollected("KEY");
         Logger.gameEvent("All exits unlocked");
     }
 
@@ -431,9 +461,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         obstacles.add(wall);
     }
 
-    private boolean isWalkableLine(int sx, int sy, int ex, int ey) {
-        if (sy != ey) return false;
-        for (int x = sx; x <= ex; x++) if (maze[sy][x] != 1) return false;
+    private boolean isWalkableLine(int sx, int sy, int x2, int y2) {
+        if (sy != y2) return false;
+        for (int x = sx; x <= x2; x++) if (maze[sy][x] != 1) return false;
         return true;
     }
 
@@ -668,7 +698,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 float effectY = (h.getY() + 0.5f) * GameConstants.CELL_SIZE;
                 if (itemEffectManager != null) itemEffectManager.spawnHeart(effectX, effectY);
                 h.onInteract(player);
-                if (scoreManager != null) scoreManager.onItemCollected("HEART");
+
+                // 使用事件源通知监听器
+                GameEventSource.getInstance().onItemCollected("HEART");
+
                 heartIterator.remove();
             }
         }
@@ -681,7 +714,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 float effectY = (t.getY() + 0.5f) * GameConstants.CELL_SIZE;
                 if (itemEffectManager != null) itemEffectManager.spawnTreasure(effectX, effectY);
                 t.onInteract(player);
-                if (scoreManager != null) scoreManager.onItemCollected("TREASURE");
+
+                // 使用事件源通知监听器
+                GameEventSource.getInstance().onItemCollected("TREASURE");
             }
         }
     }
@@ -732,8 +767,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 else if (enemy instanceof EnemyE03_CaramelJuggernaut) source = DamageSource.ENEMY_E03;
                 else if (enemy instanceof EnemyE04_CrystallizedCaramelShell) source = DamageSource.ENEMY_E04;
 
-                if (scoreManager != null && source != DamageSource.UNKNOWN) {
-                    scoreManager.onPlayerDamage(player.getLives(), source);
+                if (source != DamageSource.UNKNOWN) {
+                    // 使用事件源通知监听器
+                    GameEventSource.getInstance().onPlayerDamage(player.getLives(), source);
                 }
             }
         }
