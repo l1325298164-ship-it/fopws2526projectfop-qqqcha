@@ -6,49 +6,46 @@ import de.tum.cit.fop.maze.game.GameSaveData;
 import de.tum.cit.fop.maze.game.event.GameListener;
 import de.tum.cit.fop.maze.utils.Logger;
 
-/**
- * 分数管理器
- * <p>
- * 改进：
- * 增加了与 GameSaveData 的状态同步方法 (saveState/restoreState)。
- */
 public class ScoreManager implements GameListener {
 
     private final DifficultyConfig config;
 
+    // === 历史数据 (从存档恢复) ===
+    private int accumulatedScore = 0;
+
     // === 本关临时统计 ===
-    private int levelBaseScore = 0; // 基础分 (击杀 + 收集)
-    private int levelPenalty = 0;   // 累计扣分 (已乘倍率)
-    private int hitsTaken = 0;      // 受击次数
+    private int levelBaseScore = 0;
+    private int levelPenalty = 0;
+    private int hitsTaken = 0;
 
     public ScoreManager(DifficultyConfig config) {
         this.config = config;
     }
 
-    /**
-     * 将当前分数状态保存到存档数据对象中
-     * (应在 StorageManager.saveGame 前调用)
-     */
     public void saveState(GameSaveData data) {
         data.levelBaseScore = this.levelBaseScore;
         data.levelPenalty = this.levelPenalty;
-        data.sessionDamageTaken = this.hitsTaken; // 确保受击数同步
+        data.sessionDamageTaken = this.hitsTaken;
+        // 注意：总分已由 SettlementScreen 更新到 data.score，此处只需保存临时统计
     }
 
-    /**
-     * 从存档数据恢复分数状态
-     * (应在 StorageManager.loadGame 后调用)
-     */
     public void restoreState(GameSaveData data) {
+        // 当从存档恢复时，data.score 代表了之前的总分（如果是过关存档）
+        this.accumulatedScore = data.score;
+
+        // 恢复临时统计（如果是中途存档，这些值会有意义；如果是过关存档，通常为0）
         this.levelBaseScore = data.levelBaseScore;
         this.levelPenalty = data.levelPenalty;
         this.hitsTaken = data.sessionDamageTaken;
-        Logger.info("ScoreManager restored: Base=" + levelBaseScore + ", Penalty=" + levelPenalty);
+
+        Logger.info("ScoreManager Restored: Total=" + accumulatedScore + ", LevelBase=" + levelBaseScore);
     }
 
     public int getCurrentScore() {
-        int rawScore = Math.max(0, levelBaseScore - levelPenalty);
-        return (int) (rawScore * config.scoreMultiplier);
+        // 实时总分 = 历史分 + (本关基础分 - 本关扣分) * 倍率
+        int currentLevelRaw = Math.max(0, levelBaseScore - levelPenalty);
+        int currentLevelFinal = (int) (currentLevelRaw * config.scoreMultiplier);
+        return accumulatedScore + currentLevelFinal;
     }
 
     @Override
@@ -78,11 +75,12 @@ public class ScoreManager implements GameListener {
         if (itemType == null) return;
         int points = 0;
 
-        // 统一逻辑：HEART/BOBA 通常是同一个物品，这里只关注加分
         if (itemType.equals("HEART") || itemType.equals("BOBA")) {
             points = ScoreConstants.SCORE_HEART;
         } else if (itemType.startsWith("TREASURE")) {
             points = ScoreConstants.SCORE_TREASURE;
+        } else if (itemType.equals("KEY")) {
+            points = 50;
         } else if (itemType.equals("FOG_CLEARED")) {
             points = ScoreConstants.SCORE_FOG_CLEARED;
         }
@@ -95,7 +93,7 @@ public class ScoreManager implements GameListener {
 
     @Override
     public void onLevelFinished(int levelNumber) {
-        Logger.info("Level " + levelNumber + " finished. Calculating score...");
+        // 关卡结束逻辑主要在 SettlementScreen 处理
     }
 
     public LevelResult calculateResult(int theoreticalMaxBaseScore) {
@@ -119,7 +117,7 @@ public class ScoreManager implements GameListener {
         if (maxScore <= 0) return "S";
         double ratio = score / maxScore;
 
-        if (ratio >= 0.90 && config.scoreMultiplier >= 1.5) return "S";
+        if (ratio >= 0.90) return "S";
         if (ratio >= 0.70) return "A";
         if (ratio >= 0.50) return "B";
         if (ratio >= 0.30) return "C";

@@ -8,7 +8,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.abilities.AbilityManager;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
-import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager; // 引入残影管理器
+import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -16,13 +16,12 @@ import de.tum.cit.fop.maze.utils.Logger;
 public class Player extends GameObject {
     protected boolean isTutorial = false;
 
-    // 🔥 [Fix] 新增残影管理器
+    // 残影管理器
     private PlayerTrailManager trailManager;
 
     public Player(int x, int y) {
         super(x, y);
         initDefaults(x, y);
-        // 单人模式默认加载 P1 动画
         loadPlayer1Animations();
         this.playerIndex = PlayerIndex.P1;
         this.isTutorial = true;
@@ -43,7 +42,6 @@ public class Player extends GameObject {
         abilityManager = new AbilityManager(this, gameManager);
         Logger.gameEvent("Player spawned at " + getPositionString());
 
-        // 加载攻击贴图
         loadAttackAnimations(index);
     }
 
@@ -52,14 +50,11 @@ public class Player extends GameObject {
         this.worldY = y;
         this.targetX = x;
         this.targetY = y;
-        // 生命值
         this.lives = 200;
         this.maxLives = 200;
-        // 初始化残影管理器
         this.trailManager = new PlayerTrailManager();
     }
 
-    //双人模式
     public enum PlayerIndex {
         P1, P2
     }
@@ -82,12 +77,12 @@ public class Player extends GameObject {
 
     private boolean isDead = false;
 
-    // ===== 受伤无敌（i-frame）=====
+    // ===== 受伤无敌 =====
     private boolean damageInvincible = false;
     private float damageInvincibleTimer = 0f;
     private static final float DAMAGE_INVINCIBLE_TIME = 0.6f;
 
-    // ===== 受击闪烁（仅视觉）=====
+    // ===== 受击闪烁 =====
     private boolean hitFlash = false;
     private float hitFlashTimer = 0f;
     private static final float HIT_FLASH_TIME = 0.25f;
@@ -174,7 +169,6 @@ public class Player extends GameObject {
     private void loadAttackAnimations(PlayerIndex index) {
         String path = (index == PlayerIndex.P1) ? "Character/melee/player1.atlas" : "Character/magic/player2.atlas";
         String prefix = (index == PlayerIndex.P1) ? "player1" : "player2";
-
         try {
             TextureAtlas attackAtlas = new TextureAtlas(path);
             backAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions(prefix + "_back"), Animation.PlayMode.NORMAL);
@@ -202,23 +196,19 @@ public class Player extends GameObject {
             return;
         }
 
-        // ===== 动画时间更新 =====
         float animationSpeed = 1f / getMoveDelayMultiplier();
         stateTime += delta * animationSpeed * ANIM_SPEED_MULTIPLIER;
 
         if (!isMovingAnim) stateTime = 0f;
         isMovingAnim = false;
 
-        // ===== 获取当前帧（用于残影）=====
         Animation<TextureRegion> currentAnim = getCurrentAnimation();
         TextureRegion currentFrame = currentAnim.getKeyFrame(isAttacking ? attackAnimTimer : stateTime, !isAttacking);
 
-        // 🔥 [Fix] 更新残影管理器
         if (trailManager != null) {
             trailManager.update(delta, worldX, worldY, isDashInvincible(), currentFrame);
         }
 
-        // ===== 攻击动画推进 =====
         if (isAttacking) {
             attackAnimTimer += delta;
             if (attackAnimTimer >= ATTACK_DURATION) {
@@ -227,26 +217,19 @@ public class Player extends GameObject {
             }
         }
 
-        // ===== 状态更新 =====
         updateStatusEffects(delta);
         updateMana(delta);
 
-        // ===== Ability =====
         if (abilityManager != null) {
             abilityManager.update(delta);
         }
 
-        // ===== Buff Logic =====
         updateBuffs(delta);
-
         dashJustEnded = false;
-
-        // ===== 连续移动 =====
         updateContinuousMovement(delta);
     }
 
     private void updateStatusEffects(float delta) {
-        // 无敌
         if (damageInvincible) {
             damageInvincibleTimer += delta;
             if (damageInvincibleTimer >= DAMAGE_INVINCIBLE_TIME) {
@@ -254,7 +237,6 @@ public class Player extends GameObject {
                 damageInvincibleTimer = 0f;
             }
         }
-        // 闪烁
         if (hitFlash) {
             hitFlashTimer += delta;
             if (hitFlashTimer >= HIT_FLASH_TIME) {
@@ -262,7 +244,6 @@ public class Player extends GameObject {
                 hitFlashTimer = 0f;
             }
         }
-        // Dash 无敌
         if (dashInvincible) {
             dashInvincibleTimer += delta;
             if (dashInvincibleTimer >= DASH_DURATION) {
@@ -271,7 +252,6 @@ public class Player extends GameObject {
                 dashJustEnded = true;
             }
         }
-        // Dash 加速
         if (dashSpeedBoost) {
             dashSpeedTimer += delta;
             if (dashSpeedTimer >= DASH_DURATION) {
@@ -279,12 +259,10 @@ public class Player extends GameObject {
                 dashSpeedTimer = 0f;
             }
         }
-        // 减速
         if (slowed) {
             slowTimer -= delta;
             if (slowTimer <= 0f) slowed = false;
         }
-        // 移动冷却
         if (moving) {
             moveTimer += delta;
             if (moveTimer >= MOVE_COOLDOWN) moving = false;
@@ -344,8 +322,6 @@ public class Player extends GameObject {
         }
     }
 
-    /* ====================== DASH API ====================== */
-
     public void startDash() {
         dashInvincible = true;
         dashSpeedBoost = true;
@@ -355,8 +331,6 @@ public class Player extends GameObject {
     }
 
     public boolean isDashInvincible() { return dashInvincible; }
-
-    /* ====================== RENDER ====================== */
 
     private Animation<TextureRegion> getCurrentAnimation() {
         if (isAttacking) {
@@ -380,7 +354,6 @@ public class Player extends GameObject {
     public void drawSprite(SpriteBatch batch) {
         if (!active || isDead) return;
 
-        // 🔥 [Fix] 先绘制残影（位于底层）
         if (trailManager != null) {
             trailManager.render(batch);
         }
@@ -402,8 +375,6 @@ public class Player extends GameObject {
         batch.draw(frame, drawX, drawY, drawW, drawH);
         batch.setColor(1, 1, 1, 1);
     }
-
-    // ... (保留其他 Getter, Setter, methods 如 move, useAbility, heal 等，逻辑不变) ...
 
     public boolean useMana(int manaCost) {
         if (buffManaEfficiency) {
@@ -562,8 +533,6 @@ public class Player extends GameObject {
         this.regenTimer = 0f;
         this.notificationMessage = "";
         if (abilityManager != null) abilityManager.reset();
-
-        // 🔥 [Fix] 重置残影
         if (trailManager != null) trailManager.dispose();
         trailManager = new PlayerTrailManager();
     }
@@ -571,6 +540,36 @@ public class Player extends GameObject {
     public String getPositionString() { return "(" + x + ", " + y + ")"; }
     public Direction getDirection() { return direction; }
     public boolean isDashing(){ return dashInvincible; }
+
+    // ==========================================
+    // 🔥 [Fix] 新增 Setter 和 Buff 接口
+    // ==========================================
+
+    public void setLives(int lives) {
+        this.lives = lives;
+        if (this.lives > this.maxLives) this.lives = this.maxLives;
+    }
+
+    public void setMaxLives(int maxLives) {
+        this.maxLives = maxLives;
+    }
+
+    public void setMana(float mana) {
+        this.mana = mana;
+        if (this.mana > this.maxMana) this.mana = this.maxMana;
+    }
+
+    public void applyAttackBuff(float duration) {
+        activateAttackBuff();
+    }
+
+    public void applyRegenBuff(float duration) {
+        activateRegenBuff();
+    }
+
+    public void applyManaEfficiencyBuff(float duration) {
+        activateManaBuff();
+    }
 
     public void activateAttackBuff() {
         if (!buffAttack) {
@@ -606,7 +605,6 @@ public class Player extends GameObject {
     }
     public void setMovingAnim(boolean moving) { this.isMovingAnim = moving; }
 
-    // 释放资源
     public void dispose() {
         if (trailManager != null) trailManager.dispose();
     }

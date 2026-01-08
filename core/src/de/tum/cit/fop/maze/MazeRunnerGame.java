@@ -15,12 +15,14 @@ import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.game.GameSaveData; // 引入存档数据
 import de.tum.cit.fop.maze.screen.*;
 import de.tum.cit.fop.maze.tools.MazeRunnerGameHolder;
 import de.tum.cit.fop.maze.tools.PVAnimationCache;
 import de.tum.cit.fop.maze.tools.PVNode;
 import de.tum.cit.fop.maze.tools.PVPipeline;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.StorageManager; // 引入存储管理器
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 import java.util.List;
@@ -68,27 +70,17 @@ public class MazeRunnerGame extends Game {
     public void startNewGame(Difficulty difficulty) {
         Logger.debug("Start new game with difficulty = " + difficulty);
 
-        // 🔥 创建配置 - 根据难度调整生命值
         this.difficultyConfig = createDifficultyConfig(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig);
         this.activeGameScreen = null;
 
         if (difficulty == Difficulty.ENDLESS) {
             System.out.println("🎮 直接进入无尽模式");
-
-            // 清理可能存在的旧屏幕
             if (getScreen() != null) {
-                System.out.println("清理旧屏幕: " + getScreen().getClass().getSimpleName());
                 getScreen().hide();
             }
-
-            // 创建新的无尽模式屏幕
             EndlessScreen endlessScreen = new EndlessScreen(this, difficultyConfig);
             setScreen(endlessScreen);
-
-            // 立即验证
-            System.out.println("✅ 当前屏幕: " +
-                    (getScreen() != null ? getScreen().getClass().getSimpleName() : "null"));
             return;
         }
 
@@ -97,38 +89,65 @@ public class MazeRunnerGame extends Game {
         setScreen(new StoryLoadingScreen(this));
     }
 
-    // 🔥 新增：创建配置的方法
-    private DifficultyConfig createDifficultyConfig(Difficulty difficulty) {
-        // 先获取基础配置
-        DifficultyConfig baseConfig = DifficultyConfig.of(difficulty);
+    // 🔥 [新增] 从存档加载游戏
+    public void loadGame() {
+        StorageManager storage = new StorageManager();
+        GameSaveData saveData = storage.loadGame();
 
-        // 🔥 对于无尽模式，我们需要重新创建配置对象
-        if (difficulty == Difficulty.ENDLESS) {
-            // 创建一个新的配置对象，继承无尽模式的设置但生命值为200
-            return new DifficultyConfig(
-                    difficulty.ENDLESS,40, 40, 0,           // 地图（0钥匙）
-                    1, 1, 1, 1,           // 敌人
-                    10, 5, 3, 2,        // 陷阱
-                    200,                // 🔥 生命值改为200
-                    1.4f, 1.3f, 0       // 其他参数
-            );
+        if (saveData == null) {
+            Logger.error("Load failed: No save data found.");
+            startNewGameFromMenu(); // 降级处理
+            return;
         }
 
+        Logger.info("Loading game... Level: " + saveData.currentLevel);
+
+        // 初始化默认配置 (如果存档里没有存难度，只能用默认)
+        if (difficultyConfig == null) {
+            difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
+        }
+
+        // 创建新的 GameManager
+        gameManager = new GameManager(difficultyConfig);
+
+        // 恢复状态
+        gameManager.restoreState(saveData);
+
+        // 切换屏幕
+        setScreen(new GameScreen(this, difficultyConfig));
+    }
+
+    // 🔥 [新增] 强制开始新游戏 (带清理)
+    public void startNewGameFromMenu() {
+        // 1. 清理存档
+        new StorageManager().deleteSave();
+
+        // 2. 初始化配置
+        difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
+        gameManager = new GameManager(difficultyConfig);
+
+        // 3. 进入游戏
+        setScreen(new GameScreen(this, difficultyConfig));
+    }
+
+    private DifficultyConfig createDifficultyConfig(Difficulty difficulty) {
+        DifficultyConfig baseConfig = DifficultyConfig.of(difficulty);
+        if (difficulty == Difficulty.ENDLESS) {
+            return new DifficultyConfig(
+                    difficulty.ENDLESS,40, 40, 0,
+                    1, 1, 1, 1,
+                    10, 5, 3, 2,
+                    200,
+                    1.4f, 1.3f, 0
+            );
+        }
         return baseConfig;
     }
 
-    public enum PV4Result {
-        START,
-        EXIT
-    }
+    public enum PV4Result { START, EXIT }
 
     public enum StoryStage {
-        STORY_BEGIN,
-        MAZE_GAME_TUTORIAL,
-        PV4,
-        MODE_MENU,
-        MAZE_GAME,
-        MAIN_MENU
+        STORY_BEGIN, MAZE_GAME_TUTORIAL, PV4, MODE_MENU, MAZE_GAME, MAIN_MENU
     }
 
     private StoryStage stage = StoryStage.MAIN_MENU;
@@ -140,11 +159,8 @@ public class MazeRunnerGame extends Game {
     @Override
     public void create() {
         System.out.println("🎮 MazeRunnerGame.create() 开始");
-        System.out.println("   Gdx版本: " + Gdx.app.getVersion());
-        System.out.println("   图形尺寸: " + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
-
-        MazeRunnerGameHolder.init(this); // ⭐ 必须最先
-        assets = new AssetManager();   // ⭐ 全局唯一
+        MazeRunnerGameHolder.init(this);
+        assets = new AssetManager();
         difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
         gameManager = new GameManager(difficultyConfig);
 
@@ -153,39 +169,22 @@ public class MazeRunnerGame extends Game {
         TextureAtlas uiAtlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
         skin = new Skin(Gdx.files.internal("ui/skinbutton.json"), uiAtlas);
 
-        // ✨ 新增：动态创建一个纯白色像素并放入 Skin
         com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
         pixmap.setColor(com.badlogic.gdx.graphics.Color.WHITE);
         pixmap.fill();
         com.badlogic.gdx.graphics.Texture whiteTexture = new com.badlogic.gdx.graphics.Texture(pixmap);
         skin.add("white", new com.badlogic.gdx.graphics.g2d.TextureRegion(whiteTexture));
-        pixmap.dispose(); // 用完 Pixmap 记得销毁
+        pixmap.dispose();
+
         initializeSoundManager();
         goToMenu();
     }
 
-    // 🔥 添加：调试版本的 setScreen 方法
     @Override
     public void setScreen(Screen screen) {
         String oldScreen = getScreen() != null ? getScreen().getClass().getSimpleName() : "null";
         String newScreen = screen != null ? screen.getClass().getSimpleName() : "null";
-
-        System.out.println("=== 屏幕切换 ===");
-        System.out.println("   从: " + oldScreen);
-        System.out.println("   到: " + newScreen);
-
-        // 如果是切换到 GameScreen 且当前是 EndlessScreen，打印调用栈
-        if (oldScreen.contains("EndlessScreen") && newScreen.contains("GameScreen")) {
-            System.out.println("⚠️ 警告：EndlessScreen 被 GameScreen 替换！");
-            System.out.println("   调用栈:");
-            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-            for (int i = 2; i < Math.min(stackTrace.length, 8); i++) {
-                System.out.println("      " + stackTrace[i].getClassName() +
-                        "." + stackTrace[i].getMethodName() +
-                        ":" + stackTrace[i].getLineNumber());
-            }
-        }
-
+        System.out.println("=== 屏幕切换: " + oldScreen + " -> " + newScreen + " ===");
         super.setScreen(screen);
     }
 
@@ -194,31 +193,14 @@ public class MazeRunnerGame extends Game {
        ========================= */
 
     private void buildStoryPipeline() {
-        // ⭐ 预热 PV（一次性）
         PVAnimationCache.get("pv/1/PV_1.atlas", "PV_1");
         PVAnimationCache.get("pv/2/PV_2.atlas", "PV_2");
         PVAnimationCache.get("pv/3/PV_3.atlas", "PV_3");
         storyPipeline = new PVPipeline(this, List.of(
-                new PVNode(
-                        "pv/1/PV_1.atlas",
-                        "PV_1",
-                        AudioType.PV_1,
-                        IntroScreen.PVExit.NEXT_STAGE
-                ),
-                new PVNode(
-                        "pv/2/PV_2.atlas",
-                        "PV_2",
-                        AudioType.PV_2,
-                        IntroScreen.PVExit.NEXT_STAGE
-                ),
-                new PVNode(
-                        "pv/3/PV_3.atlas",
-                        "PV_3",
-                        AudioType.PV_3,
-                        IntroScreen.PVExit.NEXT_STAGE
-                )
+                new PVNode("pv/1/PV_1.atlas", "PV_1", AudioType.PV_1, IntroScreen.PVExit.NEXT_STAGE),
+                new PVNode("pv/2/PV_2.atlas", "PV_2", AudioType.PV_2, IntroScreen.PVExit.NEXT_STAGE),
+                new PVNode("pv/3/PV_3.atlas", "PV_3", AudioType.PV_3, IntroScreen.PVExit.NEXT_STAGE)
         ));
-
         storyPipeline.onFinished(() -> {
             stage = StoryStage.MAZE_GAME_TUTORIAL;
             setScreen(new MazeGameTutorialScreen(this, difficultyConfig));
@@ -228,7 +210,6 @@ public class MazeRunnerGame extends Game {
     public void startStoryFromBeginning() {
         difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
         gameManager = new GameManager(difficultyConfig);
-
         stage = StoryStage.STORY_BEGIN;
         advanceStory();
     }
@@ -238,71 +219,32 @@ public class MazeRunnerGame extends Game {
 
     public void advanceStory() {
         Logger.debug("advanceStory ENTER, stage = " + stage);
-
-
         switch (stage) {
-
-            case STORY_BEGIN -> {
-                buildStoryPipeline();
-                storyPipeline.start();
-            }
-
+            case STORY_BEGIN -> { buildStoryPipeline(); storyPipeline.start(); }
             case MAZE_GAME_TUTORIAL -> {
                 stage = StoryStage.PV4;
-
-                Animation<TextureRegion> pv4 =
-                        PVAnimationCache.get("pv/4/PV_4.atlas", "PV_4");
-
-                setScreen(new IntroScreen(
-                        this,
-                        pv4,
-                        IntroScreen.PVExit.PV4_CHOICE,
-                        AudioType.PV_4,
-                        null
-                ));
+                Animation<TextureRegion> pv4 = PVAnimationCache.get("pv/4/PV_4.atlas", "PV_4");
+                setScreen(new IntroScreen(this, pv4, IntroScreen.PVExit.PV4_CHOICE, AudioType.PV_4, null));
             }
-
-            case PV4 -> {
-                stage = StoryStage.MODE_MENU;
-                setScreen(new ChapterSelectScreen(this));
-            }
-
-            case MODE_MENU -> {
-                stage = StoryStage.MAZE_GAME;
-                setScreen(new GameScreen(this, difficultyConfig));
-            }
-
-            default -> {
-                Logger.debug("advanceStory ignored at stage = " + stage);
-            }
+            case PV4 -> { stage = StoryStage.MODE_MENU; setScreen(new ChapterSelectScreen(this)); }
+            case MODE_MENU -> { stage = StoryStage.MAZE_GAME; setScreen(new GameScreen(this, difficultyConfig)); }
+            default -> Logger.debug("advanceStory ignored at stage = " + stage);
         }
-
     }
-
-    /* =========================
-       Tutorial / PV4
-       ========================= */
 
     public void onTutorialFinished(MazeGameTutorialScreen tutorial) {
         if (stage == StoryStage.MAZE_GAME_TUTORIAL) {
-            Gdx.app.postRunnable(() -> {
-                advanceStory();
-            });
+            Gdx.app.postRunnable(this::advanceStory);
         }
     }
 
-    public void onTutorialFailed(
-            MazeGameTutorialScreen tutorial,
-            MazeGameTutorialScreen.MazeGameTutorialResult result
-    ) {
+    public void onTutorialFailed(MazeGameTutorialScreen tutorial, MazeGameTutorialScreen.MazeGameTutorialResult result) {
         stage = StoryStage.MAIN_MENU;
         setScreen(new MenuScreen(this));
     }
 
     public void onPV4Choice(PV4Result result) {
         if (stage != StoryStage.PV4) return;
-
-
         if (result == PV4Result.START) {
             saveProgress();
             stage = StoryStage.MODE_MENU;
@@ -311,85 +253,44 @@ public class MazeRunnerGame extends Game {
             stage = StoryStage.MAIN_MENU;
             setScreen(new MenuScreen(this));
         }
-
     }
 
-    /* =========================
-       Navigation
-       ========================= */
-
     public void goToMenu() {
-        System.out.println("🔄 goToMenu() 被调用");
-
-        // 如果当前在无尽模式，需要特殊处理
-        if (getScreen() instanceof EndlessScreen) {
-            System.out.println("   当前在无尽模式，正常返回菜单");
-        }
-
-        Screen old = getScreen();
+        if (getScreen() instanceof EndlessScreen) return;
         resetGameState();
         setScreen(new MenuScreen(this));
     }
+
     public void exitGame() {
-        // 先做必要清理
         dispose();
-
-        // 通知 LibGDX 退出
         Gdx.app.exit();
-
-        // ⚠️ 桌面端保险（防止某些 IDE 卡住）
         System.exit(0);
     }
+
     public void goToGame() {
-        System.out.println("⚠️ goToGame() 被调用！");
-        System.out.println("   当前屏幕: " + (getScreen() != null ? getScreen().getClass().getSimpleName() : "null"));
-
-        // 如果当前已经在无尽模式，不要切换到 GameScreen
-        if (getScreen() instanceof EndlessScreen) {
-            System.out.println("❌ 阻止：当前已在无尽模式，不切换到 GameScreen");
-            return;
-        }
-
+        if (getScreen() instanceof EndlessScreen) return;
         if (difficultyConfig == null) {
             difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
             gameManager = new GameManager(difficultyConfig);
         }
-
         Screen old = getScreen();
         setScreen(new GameScreen(this, difficultyConfig));
         if (old != null) old.dispose();
     }
 
-    /* =========================
-       Audio
-       ========================= */
-
     private void initializeSoundManager() {
         audioManager = AudioManager.getInstance();
-
         audioManager.setMasterVolume(1.0f);
         audioManager.setMusicVolume(0.6f);
         audioManager.setSfxVolume(0.8f);
-
         audioManager.setMusicEnabled(true);
         audioManager.setSfxEnabled(true);
-
         AudioConfig uiConfig = audioManager.getAudioConfig(AudioType.UI_CLICK);
         if (uiConfig != null) uiConfig.setPersistent(true);
     }
 
-    public AudioManager getSoundManager() {
-        return audioManager;
-    }
-
-    /* =========================
-       Utils / Cleanup
-       ========================= */
-
-    private void saveProgress() {
-        Logger.debug("Progress saved (PV4)");
-    }
-
+    public AudioManager getSoundManager() { return audioManager; }
+    private void saveProgress() { Logger.debug("Progress saved (PV4)"); }
     private void resetGameState() {
         stage = StoryStage.MAIN_MENU;
         gameManager = null;
@@ -397,63 +298,34 @@ public class MazeRunnerGame extends Game {
         activeGameScreen = null;
     }
 
-    public SpriteBatch getSpriteBatch() {
-        return spriteBatch;
-    }
-
-    public Skin getSkin() {
-        return skin;
-    }
+    public SpriteBatch getSpriteBatch() { return spriteBatch; }
+    public Skin getSkin() { return skin; }
 
     @Override
     public void dispose() {
-        System.out.println("🗑️ MazeRunnerGame.dispose()");
         if (spriteBatch != null) spriteBatch.dispose();
         if (skin != null) skin.dispose();
         if (audioManager != null) audioManager.dispose();
         TextureManager.getInstance().dispose();
     }
 
-
-/* =========================
-   Game Logic / Reset
-   ========================= */
-
-    /**
-     * 专门用于在游戏过程中快速重置当前关卡，不跑剧情，不显示 StoryLoading
-     */
     public void resetMaze(Difficulty difficulty) {
-        Logger.debug("Resetting maze without story flow, difficulty: " + difficulty);
-
-        // 1. 重新生成配置和管理器
         this.difficultyConfig = DifficultyConfig.of(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig);
-
-        // 2. 清理旧的 Screen 引用
         this.activeGameScreen = null;
-
-        // 3. 直接进入 GameScreen
-        // 注意：这里不需要设置 StoryStage，因为我们只是在“重玩”当前阶段
         setScreen(new GameScreen(this, difficultyConfig));
     }
 
     public void debugEnterTutorial() {
-        Logger.debug("DEBUG: Enter Tutorial (standalone)");
-
         stage = StoryStage.MAZE_GAME_TUTORIAL;
         storyPipeline = null;
-
         difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
         gameManager = new GameManager(difficultyConfig);
-
-        // ✅ 正确加载 PV4
         AssetManager am = getAssets();
         if (!am.isLoaded("pv/4/PV_4.atlas")) {
             am.load("pv/4/PV_4.atlas", TextureAtlas.class);
             am.finishLoadingAsset("pv/4/PV_4.atlas");
         }
-
         setScreen(new MazeGameTutorialScreen(this, difficultyConfig));
     }
-
 }
