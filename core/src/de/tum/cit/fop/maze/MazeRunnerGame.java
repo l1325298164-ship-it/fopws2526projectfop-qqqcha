@@ -276,6 +276,8 @@ public class MazeRunnerGame extends Game {
     }
 
     public void exitGame() {
+        // ✨ [新增] 确保所有异步保存完成
+        StorageManager.getInstance().flushAllSaves();
         dispose();
         Gdx.app.exit();
         System.exit(0);

@@ -148,16 +148,16 @@ public class AchievementManager implements GameListener {
             }
         }
 
-        // 关卡结束时保存（重要节点，立即保存）
-        saveCareer();
+        // 关卡结束时保存（重要节点，同步保存）
+        saveCareerSync();
     }
 
     public void onPVWatched() {
         if (!careerData.hasWatchedPV) {
             careerData.hasWatchedPV = true;
             unlock(AchievementType.ACH_01_TRAINING);
-            // PV观看是重要节点，立即保存
-            saveCareer();
+            // PV观看是重要节点，同步保存
+            saveCareerSync();
         }
     }
 
@@ -200,6 +200,15 @@ public class AchievementManager implements GameListener {
     private void saveCareer() {
         if (storageManager != null) {
             storageManager.saveCareer(careerData);
+        }
+    }
+    
+    /**
+     * ✨ [新增] 同步保存生涯数据（用于关键节点）
+     */
+    private void saveCareerSync() {
+        if (storageManager != null) {
+            storageManager.saveCareerSync(careerData);
         }
     }
 }

@@ -250,14 +250,24 @@ public class SettlementScreen implements Screen {
             saveData.levelPenalty = 0;
             // score 已经在构造函数中累加过了，保持不变
             
-            // 保存进度
-            storage.saveGame(saveData);
+            // ✨ [新增] 同步分数到 ScoreManager（确保下一关时分数正确）
+            if (game.getGameManager() != null && game.getGameManager().getScoreManager() != null) {
+                // 通过 restoreState 更新 ScoreManager 的 accumulatedScore
+                GameSaveData tempData = new GameSaveData();
+                tempData.score = saveData.score;  // 使用累加后的总分
+                tempData.levelBaseScore = 0;
+                tempData.levelPenalty = 0;
+                game.getGameManager().getScoreManager().restoreState(tempData);
+            }
+            
+            // 保存进度（关键节点，使用同步保存）
+            storage.saveGameSync(saveData);
             
             // 重新加载游戏（会从存档恢复状态）
             game.loadGame();
         } else {
-            // 返回菜单时保存当前进度
-            storage.saveGame(saveData);
+            // 返回菜单时保存当前进度（关键节点，使用同步保存）
+            storage.saveGameSync(saveData);
             game.goToMenu();
         }
     }

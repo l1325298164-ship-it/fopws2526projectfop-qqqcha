@@ -36,6 +36,10 @@ import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final DifficultyConfig difficultyConfig;
     private float debugTimer = 0f;
+    
+    // ✨ [新增] 自动保存计时器
+    private float autoSaveTimer = 0f;
+    private static final float AUTO_SAVE_INTERVAL = 30.0f; // 每30秒自动保存一次
 
     public DifficultyConfig getDifficultyConfig() { return difficultyConfig; }
 
@@ -127,6 +131,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
      * 在 GameManager 不再使用时调用
      */
     public void dispose() {
+        // 1. 清理事件监听器
         GameEventSource eventSource = GameEventSource.getInstance();
         if (scoreManager != null) {
             eventSource.removeListener(scoreManager);
@@ -136,7 +141,55 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             // 保存未保存的成就数据
             achievementManager.saveIfNeeded();
         }
+        
+        // 2. 清理特效管理器
+        if (itemEffectManager != null) itemEffectManager.dispose();
+        if (trapEffectManager != null) trapEffectManager.dispose();
+        if (combatEffectManager != null) combatEffectManager.dispose();
+        if (players != null) for (Player p : players) p.dispose();
+        for (ExitDoor door : exitDoors) door.dispose();
+        for (Treasure t : treasures) t.dispose();
+        if (bobaBulletEffectManager != null) bobaBulletEffectManager.dispose();
+        if (playerSpawnPortal != null) playerSpawnPortal.dispose();
+        
+        // 3. 确保所有异步保存完成
+        StorageManager.getInstance().flushAllSaves();
         Logger.info("GameManager disposed, listeners cleaned up");
+    }
+    
+    /**
+     * ✨ [新增] 保存游戏进度（整合所有保存逻辑）
+     * 用于自动保存和手动保存
+     */
+    public void saveGameProgress() {
+        if (gameSaveData == null || player == null) return;
+        
+        // 同步最新状态到存档数据
+        gameSaveData.currentLevel = currentLevel;
+        gameSaveData.lives = player.getLives();
+        gameSaveData.maxLives = player.getMaxLives();
+        gameSaveData.mana = (int) player.getMana();
+        gameSaveData.hasKey = player.hasKey();
+        gameSaveData.buffAttack = player.hasBuffAttack();
+        gameSaveData.buffRegen = player.hasBuffRegen();
+        gameSaveData.buffManaEfficiency = player.hasBuffManaEfficiency();
+        
+        // 同步分数管理器状态
+        if (scoreManager != null) {
+            scoreManager.saveState(gameSaveData);
+            // ✨ [修复] 使用 saveData.score（已在 SettlementScreen 中累加），而不是 getCurrentScore()
+            // 因为 getCurrentScore() 返回的是 accumulatedScore + currentLevelFinal，
+            // 但 accumulatedScore 在关卡结束时还未更新，所以使用已累加的 saveData.score
+            // gameSaveData.score 已经在 SettlementScreen 中正确累加，这里不需要覆盖
+        }
+        
+        // 保存难度配置
+        if (difficultyConfig != null && difficultyConfig.difficulty != null) {
+            gameSaveData.difficulty = difficultyConfig.difficulty.name();
+        }
+        
+        // 异步保存（不阻塞主线程）
+        StorageManager.getInstance().saveGame(gameSaveData);
     }
 
     private void resetGame() {
@@ -338,6 +391,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (debugTimer >= 2.0f) {
             debugEnemiesAndBullets();
             debugTimer = 0f;
+        }
+        
+        // ✨ [新增] 自动保存逻辑
+        autoSaveTimer += delta;
+        if (autoSaveTimer >= AUTO_SAVE_INTERVAL) {
+            autoSaveTimer = 0f;
+            // 只在游戏进行中时自动保存（不在关卡过渡、暂停等状态）
+            if (!levelTransitionInProgress && player != null && !player.isDead()) {
+                saveGameProgress();
+                Logger.debug("Auto-save triggered (every " + AUTO_SAVE_INTERVAL + "s)");
+            }
         }
     }
 
@@ -872,16 +936,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public TrapEffectManager getTrapEffectManager() { return trapEffectManager; }
     public CombatEffectManager getCombatEffectManager() { return combatEffectManager; }
 
-    public void dispose() {
-        if (itemEffectManager != null) itemEffectManager.dispose();
-        if (trapEffectManager != null) trapEffectManager.dispose();
-        if (combatEffectManager != null) combatEffectManager.dispose();
-        if (players != null) for (Player p : players) p.dispose();
-        for (ExitDoor door : exitDoors) door.dispose();
-        for (Treasure t : treasures) t.dispose();
-        bobaBulletEffectManager.dispose();
-        playerSpawnPortal.dispose();
-    }
 
     public void setVariable(String key, float value) {
         if (gameVariables == null) gameVariables = new HashMap<>();

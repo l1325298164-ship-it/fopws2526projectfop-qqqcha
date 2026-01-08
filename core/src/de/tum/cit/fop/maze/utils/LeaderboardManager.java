@@ -70,9 +70,14 @@ public class LeaderboardManager {
             try {
                 Json json = new Json();
                 scores = json.fromJson(Array.class, HighScore.class, file);
+                if (scores == null) {
+                    scores = new Array<>();
+                }
                 sortAndTrim();
             } catch (Exception e) {
-                Logger.error("Failed to load leaderboard");
+                // 如果加载失败，使用空列表
+                scores = new Array<>();
+                Logger.warning("Failed to load leaderboard: " + e.getMessage());
             }
         }
     }
