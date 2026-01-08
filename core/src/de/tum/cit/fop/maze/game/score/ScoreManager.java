@@ -2,17 +2,15 @@ package de.tum.cit.fop.maze.game.score;
 
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.EnemyTier;
+import de.tum.cit.fop.maze.game.GameSaveData;
 import de.tum.cit.fop.maze.game.event.GameListener;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.game.score.ScoreConstants;
 
 /**
  * 分数管理器
  * <p>
- * 职责：
- * 1. 监听战斗和探索事件，实时计算基础分。
- * 2. 监听受伤事件，根据难度配置计算扣分。
- * 3. 在关卡结束时，对比理论满分计算评级 (Rank)。
+ * 改进：
+ * 增加了与 GameSaveData 的状态同步方法 (saveState/restoreState)。
  */
 public class ScoreManager implements GameListener {
 
@@ -28,9 +26,26 @@ public class ScoreManager implements GameListener {
     }
 
     /**
-     * 获取当前实时显示的预估分数 (用于 HUD 显示)
-     * 公式: (基础分 - 扣分) * 得分倍率
+     * 将当前分数状态保存到存档数据对象中
+     * (应在 StorageManager.saveGame 前调用)
      */
+    public void saveState(GameSaveData data) {
+        data.levelBaseScore = this.levelBaseScore;
+        data.levelPenalty = this.levelPenalty;
+        data.sessionDamageTaken = this.hitsTaken; // 确保受击数同步
+    }
+
+    /**
+     * 从存档数据恢复分数状态
+     * (应在 StorageManager.loadGame 后调用)
+     */
+    public void restoreState(GameSaveData data) {
+        this.levelBaseScore = data.levelBaseScore;
+        this.levelPenalty = data.levelPenalty;
+        this.hitsTaken = data.sessionDamageTaken;
+        Logger.info("ScoreManager restored: Base=" + levelBaseScore + ", Penalty=" + levelPenalty);
+    }
+
     public int getCurrentScore() {
         int rawScore = Math.max(0, levelBaseScore - levelPenalty);
         return (int) (rawScore * config.scoreMultiplier);
@@ -39,7 +54,6 @@ public class ScoreManager implements GameListener {
     @Override
     public void onEnemyKilled(EnemyTier tier, boolean isDashKill) {
         int points = 0;
-        // 使用常量定义
         switch (tier) {
             case E01 -> points = ScoreConstants.SCORE_E01_PEARL;
             case E02 -> points = ScoreConstants.SCORE_E02_COFFEE;
@@ -54,22 +68,18 @@ public class ScoreManager implements GameListener {
     @Override
     public void onPlayerDamage(int currentHp, DamageSource source) {
         hitsTaken++;
-
-        // 实际扣分 = 基础扣分 * 惩罚倍率 (Penalty Multiplier)
         int penalty = (int) (source.penaltyScore * config.penaltyMultiplier);
-
         levelPenalty += penalty;
         Logger.debug("Score Penalty - " + penalty + " (" + source + ")");
     }
 
     @Override
     public void onItemCollected(String itemType) {
+        if (itemType == null) return;
         int points = 0;
 
-        // 修复：改用 if-else 处理 startsWith 逻辑，兼容 "TREASURE_ATK" 等变体
-        if (itemType == null) return;
-
-        if (itemType.equals("HEART")) {
+        // 统一逻辑：HEART/BOBA 通常是同一个物品，这里只关注加分
+        if (itemType.equals("HEART") || itemType.equals("BOBA")) {
             points = ScoreConstants.SCORE_HEART;
         } else if (itemType.startsWith("TREASURE")) {
             points = ScoreConstants.SCORE_TREASURE;
@@ -107,21 +117,15 @@ public class ScoreManager implements GameListener {
 
     private String determineRank(int score, double maxScore) {
         if (maxScore <= 0) return "S";
-
         double ratio = score / maxScore;
 
-        if (ratio >= 0.90 && config.scoreMultiplier >= 1.5) {
-            return "S";
-        }
+        if (ratio >= 0.90 && config.scoreMultiplier >= 1.5) return "S";
         if (ratio >= 0.70) return "A";
         if (ratio >= 0.50) return "B";
         if (ratio >= 0.30) return "C";
         return "D";
     }
 
-    /**
-     * 重置管理器状态 (通常在进入新关卡时调用)
-     */
     public void reset() {
         levelBaseScore = 0;
         levelPenalty = 0;

@@ -12,14 +12,14 @@ import de.tum.cit.fop.maze.utils.StorageManager;
 /**
  * 成就管理器
  * <p>
- * 修正注记：
- * 1. 移除了高频 I/O 操作 (saveCareer)，仅在关卡结束或重要节点保存。
- * 2. 使用 ScoreConstants 统一阈值。
+ * 修正：
+ * 1. 修复 E04 冲刺击杀计数器变量名 (totalDashKills_E04)。
+ * 2. 修复 BOBA/HEART 物品识别问题，确保 ACH_03 能解锁。
  */
 public class AchievementManager implements GameListener {
 
     private final CareerData careerData;
-    private final GameSaveData gameSaveData; // 当前关卡快照
+    private final GameSaveData gameSaveData;
     private final StorageManager storageManager;
     private final Difficulty currentDifficulty;
 
@@ -60,8 +60,9 @@ public class AchievementManager implements GameListener {
             }
             case E04 -> {
                 if (isDashKill) {
-                    careerData.totalKills_E04++;
-                    if (careerData.totalKills_E04 >= ScoreConstants.TARGET_KILLS_E04_DASH)
+                    // 🛠️ 修正：使用 totalDashKills_E04 变量
+                    careerData.totalDashKills_E04++;
+                    if (careerData.totalDashKills_E04 >= ScoreConstants.TARGET_KILLS_E04_DASH)
                         unlock(AchievementType.ACH_07_SHELL_BREAKER);
                 }
             }
@@ -72,36 +73,39 @@ public class AchievementManager implements GameListener {
                 }
             }
         }
-        // 注意：此处不再调用 saveCareer()，避免战斗中频繁 I/O
     }
 
     @Override
     public void onPlayerDamage(int currentHp, DamageSource source) {
-        // 记录本关受击数 (GameSaveData 是当前关卡快照)
         gameSaveData.sessionDamageTaken++;
     }
 
     @Override
     public void onItemCollected(String itemType) {
-        if ("HEART".equals(itemType)) {
+        if (itemType == null) return;
+
+        // 🛠️ 修正：统一 HEART 和 BOBA 的逻辑
+        // 假设游戏中发出的事件 ItemType 是 "HEART" (根据 GameManager 代码推断)
+
+        if ("HEART".equals(itemType) || "BOBA".equals(itemType)) {
+            // ACH_09: 累计收集
             careerData.totalHeartsCollected++;
             if (careerData.totalHeartsCollected >= ScoreConstants.TARGET_HEARTS_COLLECTED) {
                 unlock(AchievementType.ACH_09_FREE_TOPPING);
             }
-        }
-        else if (itemType != null && itemType.startsWith("TREASURE")) {
-            careerData.collectedBuffTypes.add(itemType);
-            if (careerData.collectedBuffTypes.size() >= ScoreConstants.TARGET_TREASURE_TYPES) {
-                unlock(AchievementType.ACH_10_TREASURE_MASTER);
-            }
-        }
-        else if ("BOBA".equals(itemType)) {
+
+            // ACH_03: 首次收集 (Boba Rescue)
             if (!careerData.hasHealedOnce) {
                 careerData.hasHealedOnce = true;
                 unlock(AchievementType.ACH_03_BOBA_RESCUE);
             }
         }
-        // 注意：此处不再调用 saveCareer()
+        else if (itemType.startsWith("TREASURE")) {
+            careerData.collectedBuffTypes.add(itemType);
+            if (careerData.collectedBuffTypes.size() >= ScoreConstants.TARGET_TREASURE_TYPES) {
+                unlock(AchievementType.ACH_10_TREASURE_MASTER);
+            }
+        }
     }
 
     @Override
@@ -111,13 +115,12 @@ public class AchievementManager implements GameListener {
             unlock(AchievementType.ACH_02_FIRST_CUP);
         }
 
-        // ACH_11: 滴水不漏 (本关受击<=3)
-        // 依赖 GameSaveData (当前关卡快照) 的准确性
+        // ACH_11: 滴水不漏
         if (gameSaveData.sessionDamageTaken <= ScoreConstants.TARGET_NO_DAMAGE_LIMIT) {
             unlock(AchievementType.ACH_11_SEALED_TIGHT);
         }
 
-        // ACH_14: 复兴 (困难模式通关) - 假设 level 3 是最后一关
+        // ACH_14: 复兴 (困难模式通关)
         if (levelNumber >= 3 && currentDifficulty == Difficulty.HARD) {
             if (!careerData.hasClearedHardMode) {
                 careerData.hasClearedHardMode = true;
@@ -125,7 +128,7 @@ public class AchievementManager implements GameListener {
             }
         }
 
-        // 关卡结束是非常好的保存时机
+        // 关卡结束时保存
         saveCareer();
     }
 
@@ -137,9 +140,6 @@ public class AchievementManager implements GameListener {
         }
     }
 
-    /**
-     * 强制手动保存 (建议在 暂停菜单 或 退出游戏 时调用)
-     */
     public void forceSave() {
         saveCareer();
     }
@@ -147,11 +147,8 @@ public class AchievementManager implements GameListener {
     private void unlock(AchievementType type) {
         if (!careerData.unlockedAchievements.contains(type.id)) {
             careerData.unlockedAchievements.add(type.id);
-            // 通知当前关卡UI显示弹窗
             gameSaveData.recordNewAchievement(type.id);
             Logger.info("🏆 Achievement Unlocked: " + type.displayName);
-
-            // 重要成就可以立即保存防止丢失
             saveCareer();
         }
     }

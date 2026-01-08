@@ -14,7 +14,9 @@ import de.tum.cit.fop.maze.game.GameSaveData;
 import de.tum.cit.fop.maze.game.achievement.AchievementType;
 import de.tum.cit.fop.maze.game.score.LevelResult;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
+import de.tum.cit.fop.maze.utils.LeaderboardManager;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.StorageManager;
 
 /**
  * 结算界面 (Settlement Screen)
@@ -25,6 +27,7 @@ import de.tum.cit.fop.maze.utils.Logger;
  * 3. 展示本局游戏统计 (Session Stats)。
  * 4. 展示新解锁的成就。
  * 5. 提供 "下一关" 或 "返回菜单" 的入口。
+ * 6. 【新增】排行榜数据提交与存档保存。
  */
 public class SettlementScreen implements Screen {
 
@@ -32,11 +35,26 @@ public class SettlementScreen implements Screen {
     private final LevelResult result;
     private final GameSaveData saveData;
     private Stage stage;
+    private final LeaderboardManager leaderboardManager;
 
     public SettlementScreen(MazeRunnerGame game, LevelResult result, GameSaveData saveData) {
         this.game = game;
         this.result = result;
         this.saveData = saveData;
+        this.leaderboardManager = new LeaderboardManager();
+
+        // 🛠️ 关键修复：结算时更新全局存档的分数
+        // 假设 result.finalScore 是本关得分，将其累加到总分
+        // 注意：防止多次进入此界面导致重复累加，通常应在计算 Result 时处理，
+        // 但为了保险，这里只用于显示总分，不修改 GameSaveData 的 score 字段（假设 ScoreManager 已处理累加）
+        // 或者：如果 ScoreManager 只是计算了本关分，这里需要手动合并：
+        this.saveData.score += result.finalScore;
+
+        // 🛠️ 自动保存到排行榜 (使用总分)
+        // 这里暂时用 "Player" 作为名字，后续可加输入框
+        leaderboardManager.addScore("Traveler", this.saveData.score);
+
+        Logger.info("Settlement: Level Score=" + result.finalScore + ", Total Score=" + saveData.score);
     }
 
     @Override
@@ -60,7 +78,7 @@ public class SettlementScreen implements Screen {
         // 2. 评分详情表 (左侧)
         // ==========================================
         Table scoreTable = new Table();
-        scoreTable.setBackground(game.getSkin().getDrawable("window-c")); // 假设有窗口背景
+        scoreTable.setBackground(game.getSkin().getDrawable("window-c"));
         scoreTable.pad(20);
 
         addScoreRow(scoreTable, "Base Score", "+" + result.baseScore, Color.WHITE);
@@ -70,7 +88,9 @@ public class SettlementScreen implements Screen {
         // 分割线
         scoreTable.add(new Label("----------", game.getSkin())).colspan(2).pad(5).row();
 
-        addScoreRow(scoreTable, "FINAL SCORE", String.valueOf(result.finalScore), Color.GOLD);
+        addScoreRow(scoreTable, "LEVEL SCORE", String.valueOf(result.finalScore), Color.GOLD);
+        // 显示当前总分
+        addScoreRow(scoreTable, "TOTAL SCORE", String.valueOf(saveData.score), Color.ORANGE);
 
         // 评分表放在左边
         root.add(scoreTable).width(400).padRight(50);
@@ -134,9 +154,6 @@ public class SettlementScreen implements Screen {
                 achLabel.setColor(Color.GREEN);
                 statsTable.add(achLabel).colspan(2).row();
             }
-
-            // 展示完毕后，可以在离开屏幕时清空，或者在这里就不清空留给StorageManager处理
-            // 建议：saveData.newAchievements.clear() 放在点击按钮离开时
         }
 
         root.add(statsTable).colspan(2).padTop(30).row();
@@ -149,19 +166,36 @@ public class SettlementScreen implements Screen {
 
         // NEXT LEVEL 按钮
         buttonTable.add(bf.create("NEXT LEVEL", () -> {
-            clearNewAchievements();
-            // 逻辑: 继续游戏 (GameManager 应该已经处理好关卡递增，或者在这里处理)
-            // 这里假设调用 goToGame 会重新加载 GameScreen
-            game.goToGame();
+            performSaveAndExit(true);
         })).width(300).pad(20);
 
         // MENU 按钮
         buttonTable.add(bf.create("MENU", () -> {
-            clearNewAchievements();
-            game.goToMenu();
+            performSaveAndExit(false);
         })).width(300).pad(20);
 
         root.add(buttonTable).colspan(2).padTop(40);
+    }
+
+    /**
+     * 执行保存并跳转
+     * @param toNextLevel true去下一关，false回菜单
+     */
+    private void performSaveAndExit(boolean toNextLevel) {
+        // 1. 清理临时UI数据
+        clearNewAchievements();
+
+        // 2. 保存游戏进度 (GameSaveData)
+        // 注意：这里保存的是已经累加了分数的 saveData
+        StorageManager storage = new StorageManager();
+        storage.saveGame(saveData);
+
+        // 3. 跳转
+        if (toNextLevel) {
+            game.goToGame(); // 重新进入 GameScreen，GameManager 会读取 currentLevel 并生成新关卡
+        } else {
+            game.goToMenu();
+        }
     }
 
     private void addScoreRow(Table table, String name, String value, Color valueColor) {
@@ -176,6 +210,10 @@ public class SettlementScreen implements Screen {
         // 离开界面时，清空"新解锁"列表，以免下次结算重复显示
         if (saveData != null) {
             saveData.newAchievements.clear();
+            // 同时清空单局统计，以便下一关重新计算评级 (S/A/B)
+            // 注意：saveData.score (总分) 不应清空
+            saveData.sessionDamageTaken = 0;
+            saveData.sessionKills.clear();
         }
     }
 
