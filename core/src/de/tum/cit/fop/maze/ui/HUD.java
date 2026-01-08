@@ -65,8 +65,8 @@ public class HUD {
 
     // ===== 技能图标：冲刺 =====
     private Texture dashIcon;
-
-    private static final int DASH_MAX_CHARGES = 2;
+    // ===== 技能图标：近战 Melee =====
+    private Texture meleeIcon;
 
     // ===== Mana UI =====
     private ShapeRenderer shapeRenderer;
@@ -74,11 +74,13 @@ public class HUD {
     // UI 尺寸
     private static final int DASH_ICON_SIZE = 200;
     private static final int DASH_ICON_SPACING = 10;
+    private static final int MELEE_ICON_SIZE = 160; // 👈 比 Dash 小一档（推荐 150~170）
+
     // ===== Dash UI 布局 =====
 
     private static final int DASH_UI_MARGIN_X = 20; // 距离左边
     private static final int DASH_UI_MARGIN_Y = 20; // 距离下边
-
+    private static final int MELEE_UI_OFFSET_X = DASH_ICON_SIZE + 20;
     // 🔥 [Treasure] 新增：Buff 图标
     private Texture iconAtk;
     private Texture iconRegen;
@@ -113,7 +115,7 @@ public class HUD {
         heartHalf = new Texture(Gdx.files.internal("HUD/live_001.png"));
 
         dashIcon = new Texture(Gdx.files.internal("HUD/icon_dash.png"));
-
+        meleeIcon = new Texture(Gdx.files.internal("HUD/icon_melee.png")); // ⭐ 近战图标
         // 🐱 加载 HUD 小猫 Atlas
         catAtlas = new TextureAtlas(Gdx.files.internal("Character/cat/cat.atlas"));
 
@@ -176,6 +178,7 @@ public class HUD {
             renderCompassAsUI(uiBatch);
             // 7. 技能图标
             renderDashIcon(uiBatch);
+            renderMeleeIcon(uiBatch);
 
             // ============================================
             // 🔥 [Treasure] 左侧 Buff 状态栏 (图标 + 大字)
@@ -278,10 +281,27 @@ public class HUD {
         float barHeight = barWidth * (32f / 256f);
         float x = (Gdx.graphics.getWidth() - barWidth) / 2f - 50;
         float y = barHeight - 130;
+        float fillInsetLeft  = barWidth * 0.04f;
+        float fillInsetRight = barWidth * 0.04f;
+
+// ⭐ 统一轨道定义（非常重要）
+        float fillStartX = x + fillInsetLeft;
+        float fillWidth  = barWidth - fillInsetLeft - fillInsetRight;
+        float capWidth = manaFill.getWidth() * 0.09f; // 8%，你可以微调
+        float liquidPercent = Math.max(0f, percent);
+        float liquidWidth = (fillWidth - capWidth * 2) * liquidPercent;
 
         // --- 1. 底座渲染 ---
         uiBatch.setColor(1f, 1f, 1f, 1f);
-        uiBatch.draw(manaBase, x, y, barWidth, barHeight);
+        float baseInset = barWidth * 0.03f; // ⭐ 左右各 1% = 总共 2%
+
+        uiBatch.draw(
+                manaBase,
+                x + baseInset,
+                y,
+                barWidth - baseInset * 2,
+                barHeight
+        );
 
         if (percent > 0f) {
             // --- 2. 进度条主体 (基础填充) ---
@@ -292,26 +312,87 @@ public class HUD {
 
                 uiBatch.setColor(1f, 0.7f, 0.9f, 1f);
                 uiBatch.draw(
-                        fillRegion,
-                        x, y,
-                        barWidth * percent,
-                        barHeight
+                        manaFill,
+                        fillStartX,
+                        y,
+                        capWidth,
+                        barHeight,
+                        0, 0,
+                        (int)capWidth,
+                        manaFill.getHeight(),
+                        false, false
                 );
+
+// 中间液体（随 percent 变化）
+                if (liquidWidth > 0) {
+                    uiBatch.draw(
+                            manaFill,
+                            fillStartX + capWidth,
+                            y,
+                            liquidWidth,
+                            barHeight,
+                            (int)capWidth, 0,
+                            (int)(manaFill.getWidth() - capWidth * 2),
+                            manaFill.getHeight(),
+                            false, false
+                    );
+                }
+
+// 右端帽（只有 percent > 0 时才画）
+                if (percent > 0f) {
+                    uiBatch.draw(
+                            manaFill,
+                            fillStartX + capWidth + liquidWidth,
+                            y,
+                            capWidth,
+                            barHeight,
+                            manaFill.getWidth() - (int)capWidth,
+                            0,
+                            (int)capWidth,
+                            manaFill.getHeight(),
+                            false, false
+                    );
+                }
             }
 
             // --- 3. 启用：renderManaGlowEffect (呼吸立体光) ---
-            renderManaGlowEffect(uiBatch, x, y, barWidth, barHeight, percent);
+            renderManaGlowEffect(
+                    uiBatch,
+                    fillStartX,
+                    y,
+                    fillWidth,
+                    barHeight,
+                    percent
+            );
 
             // --- 4. 超长粒子拖尾逻辑 ---
-            updateAndRenderLongTrail(uiBatch, x, y, barWidth, barHeight, percent);
+            updateAndRenderLongTrail(
+                    uiBatch,
+                    fillStartX,
+                    y,
+                    fillWidth,
+                    barHeight,
+                    percent
+            );
 
             // --- 5. 圆柱体高光带 (覆盖在呼吸光之上) ---
             uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE);
             uiBatch.setColor(1f, 1f, 1f, 0.35f);
-            uiBatch.draw(TextureManager.getInstance().getWhitePixel(),
-                    x+120, y + barHeight * 0.52f,
-                    barWidth * percent * 0.8f,
-                    barHeight * 0.07f);
+            float highlightHeight = barHeight * 0.07f;
+            float highlightY = y + barHeight * 0.52f;
+
+// ⭐ 不要铺满整个液体，稍微短一点更像圆柱反光
+            float highlightWidth = fillWidth * percent * 0.82f;
+
+            if (highlightWidth > 0f) {
+                uiBatch.draw(
+                        TextureManager.getInstance().getWhitePixel(),
+                        fillStartX+95,
+                        highlightY,
+                        highlightWidth,
+                        highlightHeight
+                );
+            }
             uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
         }
 
@@ -321,8 +402,8 @@ public class HUD {
             float decoWidth = barWidth * 0.12f;
 
             // 🎯 轨道起点和终点（你可以微调 0.08 / 0.92 之类）
-            float startCenterX = x + barWidth * 0.08f;   // 6% 处
-            float endCenterX   = x + barWidth * 0.90f;   // 94% 处
+            float startCenterX = x + barWidth * 0.10f;   // 6% 处
+            float endCenterX   = x + barWidth * 0.87f;   // 94% 处
 
             // 百分比夹一下，防止超界
             float t = Math.max(0f, Math.min(1f, percent));
@@ -347,78 +428,115 @@ public class HUD {
     /**
      * 负责管内液体的立体感呼吸光
      */
-    private void renderManaGlowEffect(SpriteBatch uiBatch, float x, float y, float w, float h, float percent) {
-        if (manaGlow == null) return;
+
+    private void renderManaGlowEffect(
+            SpriteBatch uiBatch,
+            float fillStartX,
+            float y,
+            float fillWidth,
+            float h,
+            float percent
+    ) {
+        if (manaGlow == null || percent <= 0f) return;
 
         manaGlowTime += Gdx.graphics.getDeltaTime();
-        // 呼吸频率
+
         float glowAlpha = 0.4f + 0.3f * (float)Math.sin(manaGlowTime * 3.0f);
 
-        uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE);
-        uiBatch.setColor(1f, 0.8f, 0.95f, glowAlpha); // 粉色高光
+        uiBatch.setBlendFunction(
+                com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA,
+                com.badlogic.gdx.graphics.GL20.GL_ONE
+        );
+        uiBatch.setColor(1f, 0.8f, 0.95f, glowAlpha);
 
         int srcW = (int)(manaGlow.getWidth() * percent);
         if (srcW > 0) {
-            TextureRegion glowRegion = new TextureRegion(manaGlow, 0, 0, srcW, manaGlow.getHeight());
+            TextureRegion glowRegion =
+                    new TextureRegion(manaGlow, 0, 0, srcW, manaGlow.getHeight());
 
-            // 绘制在管子中心，高度稍微压缩以体现圆柱感
-            uiBatch.draw(glowRegion, x, y + h * 0.15f, w * percent, h * 0.7f);
+            uiBatch.draw(
+                    glowRegion,
+                    fillStartX,
+                    y + h * 0.15f,
+                    fillWidth * percent,
+                    h * 0.7f
+            );
         }
 
-        uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
+        uiBatch.setBlendFunction(
+                com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA,
+                com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA
+        );
         uiBatch.setColor(1f, 1f, 1f, 1f);
     }
+
 
     /**
      * 负责末端的喷射和超长拖尾
      */
-    private void updateAndRenderLongTrail(SpriteBatch uiBatch, float x, float y, float w, float h, float percent) {
-        if (manaGlow == null) return;
+    private void updateAndRenderLongTrail(
+            SpriteBatch uiBatch,
+            float fillStartX,
+            float y,
+            float fillWidth,
+            float h,
+            float percent
+    ) {
+        if (manaGlow == null || percent <= 0f) return;
 
-        float endX = x + (w * percent);
+        float endX = fillStartX + fillWidth * percent;
         float delta = Gdx.graphics.getDeltaTime();
 
-        // --- 1. 粒子生成 (高度收缩 1/3) ---
-        float centerOffset = h / 3f; // 计算 1/3 的偏移（上下各缩掉 1/6）
-        float activeHeight = h * (2f/3f); // 粒子活动的有效高度
+        float centerOffset = h / 3f;
+        float activeHeight = h * (2f / 3f);
 
+        // === 粒子生成 ===
         for (int i = 0; i < 6; i++) {
             if (particles.size() < 150) {
                 ManaParticle p = new ManaParticle();
                 p.x = endX;
-                // ⭐ 粒子高度限制在中心 2/3 区域内
                 p.y = y + centerOffset + (float)(Math.random() * activeHeight);
 
-                p.vx = (float) (Math.random() * -300 - 150);
-                p.vy = (float) (Math.random() * 40 - 20); // 垂直抖动也稍微收窄
+                p.vx = (float)(Math.random() * -300 - 150);
+                p.vy = (float)(Math.random() * 40 - 20);
                 p.life = 1.2f + (float)Math.random() * 0.8f;
 
-                // ⭐ 颜色改为金色 (亮黄 r=1, g=0.9, b=0.2)
                 p.color = new Color(1.0f, 0.85f, 0.3f, 1f);
                 particles.add(p);
             }
         }
 
-        // --- 2. 渲染逻辑 (加法混合增强金光) ---
-        uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE);
+        // === 粒子渲染 ===
+        uiBatch.setBlendFunction(
+                com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA,
+                com.badlogic.gdx.graphics.GL20.GL_ONE
+        );
+
         for (int i = particles.size() - 1; i >= 0; i--) {
             ManaParticle p = particles.get(i);
             p.life -= delta;
-            if (p.life <= 0 || p.x < x) {
-                particles.remove(i); continue;
+
+            // ⭐ 统一使用 fillStartX 作为消失边界
+            if (p.life <= 0 || p.x < fillStartX) {
+                particles.remove(i);
+                continue;
             }
 
             p.x += p.vx * delta;
             p.y += p.vy * delta;
             p.vx *= 0.97f;
 
-            // 粒子绘制
             float size = 14f * (p.life / 2.0f);
             uiBatch.setColor(p.color.r, p.color.g, p.color.b, p.life * 0.7f);
-            uiBatch.draw(manaGlow, p.x - size/2, p.y - size/2, size, size);
+            uiBatch.draw(manaGlow, p.x - size / 2, p.y - size / 2, size, size);
         }
-        uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+        uiBatch.setBlendFunction(
+                com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA,
+                com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA
+        );
     }
+
 
     private void renderDashIcon(SpriteBatch uiBatch) {
         if (dashIcon == null) return;
@@ -440,10 +558,10 @@ public class HUD {
         // --- 1. 金色滤镜分级 ---
         if (dashCharges >= 2) {
             // 满层：金光闪闪 (亮黄色 + 稍微一点点橘)
-            uiBatch.setColor(1.0f, 0.9f, 0.4f, 1f);
+            uiBatch.setColor(1.0f, 0.9f, 0.8f, 1f);
         } else if (dashCharges == 1) {
             // 一层：暗金色
-            uiBatch.setColor(0.8f, 0.7f, 0.3f, 1f);
+            uiBatch.setColor(0.8f, 0.9f, 0.8f, 1f);
         } else {
             // 0层：废旧金属色 (暗灰带点棕)
             uiBatch.setColor(0.25f, 0.25f, 0.2f, 0.8f);
@@ -484,6 +602,46 @@ public class HUD {
         uiBatch.setColor(1f, 1f, 1f, 1f);
         font.getData().setScale(1.2f);
     }
+
+    private void renderMeleeIcon(SpriteBatch uiBatch) {
+        if (meleeIcon == null) return;
+        if (gameManager == null || gameManager.getPlayer() == null) return;
+
+        // 找到近战技能
+        de.tum.cit.fop.maze.abilities.MeleeAttackAbility melee = null;
+        for (Ability a : gameManager.getPlayer().getAbilityManager().getAbilities().values()) {
+            if (a instanceof de.tum.cit.fop.maze.abilities.MeleeAttackAbility m) {
+                melee = m;
+                break;
+            }
+        }
+        if (melee == null) return;
+
+        float progress = melee.getCooldownProgress(); // 0~1
+        boolean actuallyOnCooldown = progress > 0f && progress < 1f;
+
+        float x = DASH_UI_MARGIN_X + MELEE_UI_OFFSET_X;
+        float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - MELEE_ICON_SIZE) / 2f;
+
+
+        // === 1. 状态颜色 ===
+        if (!actuallyOnCooldown) {
+            // ✅ 初始状态 or 冷却完成：正常亮
+            uiBatch.setColor(1f, 1f, 1f, 1f);
+        } else if (progress > 0.85f) {
+            // 🔥 快好了
+            uiBatch.setColor(1f, 0.6f, 0.6f, 1f);
+        } else {
+            // ⏳ 冷却中
+            uiBatch.setColor(0.35f, 0.35f, 0.35f, 0.85f);
+        }
+
+        uiBatch.draw(meleeIcon, x, y, MELEE_ICON_SIZE, MELEE_ICON_SIZE);
+
+        uiBatch.setColor(1f, 1f, 1f, 1f);
+    }
+
+
 
     private void renderCat(SpriteBatch uiBatch) {
         if (gameManager == null || gameManager.getPlayer() == null) return;
@@ -690,6 +848,7 @@ public class HUD {
         if (manaGlow != null) manaGlow.dispose();
         if (manadeco_1 != null) manadeco_1.dispose();
         if (dashIcon != null) dashIcon.dispose();
+        if (meleeIcon != null) meleeIcon.dispose();
         Logger.debug("HUD disposed");
     }
 
