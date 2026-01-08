@@ -16,6 +16,8 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.KeyBindingManager.GameAction;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
 /**
  * 按键设置菜单
@@ -43,31 +45,28 @@ public class KeyMappingScreen implements Screen {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
-        // 获取皮肤 (假设你在 GameManager 或 Game 类里加载了 skin，如果没有请替换为你的皮肤路径)
-        // 这里假设 game.getSkin() 存在，如果不存在，你需要用 new Skin(Gdx.files.internal("ui/uiskin.json"))
         skin = game.getSkin();
 
-        Table table = new Table();
-        table.setFillParent(true);
-        // table.setDebug(true); // 调试布局时可以打开
-        stage.addActor(table);
+        // 1. 主表格
+        Table rootTable = new Table();
+        rootTable.setFillParent(true);
+        stage.addActor(rootTable);
 
-        // 标题
+        // --- 标题 ---
         Label titleLabel = new Label("CONTROLS SETTINGS", skin);
         titleLabel.setFontScale(1.5f);
-        table.add(titleLabel).colspan(2).padBottom(40).row();
+        rootTable.add(titleLabel).padBottom(50).row(); // 标题下方的间距加大到 50
 
-        // 遍历所有动作，动态生成设置行
+        // 2. 内容表格 (放按键列表)
+        Table contentTable = new Table();
+
         for (GameAction action : GameAction.values()) {
-            // 动作名称标签 (左边)
-            String actionName = action.name().replace("_", " "); // 把 MOVE_UP 变成 MOVE UP 稍微好看点
+            String actionName = action.name().replace("_", " ");
             Label nameLabel = new Label(actionName, skin);
 
-            // 当前按键按钮 (右边)
             String keyName = KeyBindingManager.getInstance().getKeyName(action);
             TextButton keyButton = new TextButton(keyName, skin);
 
-            // 给按钮添加点击事件
             keyButton.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
@@ -77,26 +76,40 @@ public class KeyMappingScreen implements Screen {
                 }
             });
 
-            table.add(nameLabel).left().padRight(20);
-            // 把 .padBottom(10) 移到 .row() 之前
-            table.add(keyButton).width(150).height(40).padBottom(10).row();
+            // 🔥 修改点 1：文字和按钮中间的空隙，从 20 改成 50
+            contentTable.add(nameLabel).left().padRight(500);
+
+            // 🔥 修改点 2：每一行的上下间距，从 10 改成 25
+            contentTable.add(keyButton).width(150).height(40).padBottom(10).row();
         }
 
-        // 🔥 新增：恢复默认按钮
+        // 3. 滚动窗格
+        com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle scrollStyle = new com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle();
+        if (skin.has("white", com.badlogic.gdx.graphics.g2d.TextureRegion.class)) {
+            com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable knob = new com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(skin.getRegion("white"));
+            knob.setMinWidth(10);
+            scrollStyle.vScrollKnob = knob;
+        }
+
+        com.badlogic.gdx.scenes.scene2d.ui.ScrollPane scrollPane = new com.badlogic.gdx.scenes.scene2d.ui.ScrollPane(contentTable, scrollStyle);
+        scrollPane.setScrollingDisabled(true, false);
+        scrollPane.setFadeScrollBars(false);
+
+        // 把滚动窗格加进去
+        rootTable.add(scrollPane).expand().fill().row();
+
+        // 4. 底部按钮区
+        Table bottomTable = new Table();
+
         TextButton resetButton = new TextButton("Default", skin);
         resetButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                // 1. 调用数据重置
                 KeyBindingManager.getInstance().resetToDefaults();
-
-                // 2. 刷新当前界面 (最简单的刷新方法就是重新 setScreen 一次自己)
-                // 这样所有按钮上的文字就会自动更新回 "UP", "DOWN" 等
                 game.setScreen(new KeyMappingScreen(game, previousScreen));
             }
         });
 
-        // 返回按钮
         TextButton backButton = new TextButton("Back", skin);
         backButton.addListener(new ClickListener() {
             @Override
@@ -106,13 +119,12 @@ public class KeyMappingScreen implements Screen {
             }
         });
 
-        // 将两个按钮并排放在底部
-        // 先加 Reset 按钮
-        table.add(resetButton).width(150).height(50).padTop(40).padRight(20);
-        // 再加 Back 按钮
-        table.add(backButton).width(150).height(50).padTop(40);
-    }
+        // 🔥 修改点 3：底部两个按钮中间的间距，从 20 改成 60
+        bottomTable.add(resetButton).width(150).height(50).padRight(300);
+        bottomTable.add(backButton).width(150).height(50);
 
+        rootTable.add(bottomTable).padTop(40);
+    }
     /**
      * 开始重新绑定流程
      */

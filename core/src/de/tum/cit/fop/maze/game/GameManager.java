@@ -38,6 +38,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final List<Enemy> enemies = new ArrayList<>();
     private final List<Trap> traps = new ArrayList<>();
     private final List<Heart> hearts = new ArrayList<>();
+    private final List<HeartContainer> heartContainers = new ArrayList<>();
     private final List<Treasure> treasures = new ArrayList<>();
     private final List<ExitDoor> exitDoors = new ArrayList<>();
     private final Array<BobaBullet> bullets = new Array<>();
@@ -102,6 +103,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         enemies.clear();
         traps.clear();
         hearts.clear();
+        heartContainers.clear();
         treasures.clear();
         // 🔥 注意：exitDoors 不清空，只重置状态
         for (ExitDoor door : exitDoors) {
@@ -308,6 +310,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             e.update(delta, this);
 
             if (e.isDead() || !e.isActive()) {
+                if (e.isDead() && e instanceof EnemyE04_CrystallizedCaramelShell) {
+                    handleEnemyDrop(e);
+                }
                 enemyIterator.remove();
             }
         }
@@ -1307,6 +1312,26 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     public int getMouseTileY() {
         return mouseTileY;
+    }
+    // 🔥 [HP-UP] 掉落判定逻辑
+    private void handleEnemyDrop(Enemy enemy) {
+        // 33% 概率
+        if (Math.random() < 0.33) {
+            int x = enemy.getX();
+            int y = enemy.getY();
+
+            // 创建道具
+            HeartContainer container = new HeartContainer(x, y);
+
+            // 加入管理列表
+            heartContainers.add(container);
+
+            Logger.gameEvent("✨ E04 掉落了焦糖核心！");
+        }
+    }
+    // 🔥 [HP-UP] Getter
+    public List<HeartContainer> getHeartContainers() {
+        return heartContainers;
     }
 
 
