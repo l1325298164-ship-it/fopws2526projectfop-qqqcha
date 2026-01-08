@@ -15,7 +15,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.game.achievement.Achievement;
 import de.tum.cit.fop.maze.game.achievement.AchievementManager;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 import de.tum.cit.fop.maze.utils.Logger;
