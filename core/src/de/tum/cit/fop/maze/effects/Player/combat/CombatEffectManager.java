@@ -80,6 +80,36 @@ public class CombatEffectManager {
         effects.add(new FloatingTextEffect(x, y, text, color, font));
     }
 
+    // 1. 冲刺特效：需要坐标和角度
+    // 对应 DashEffect(float x, float y, float directionAngle)
+    public void spawnDash(float x, float y, float directionAngle) {
+        effects.add(new DashEffect(x, y, directionAngle));
+    }
+
+    // 2. 火焰魔法：目前逻辑是全方位(360度)喷射，仅需坐标
+    // 对应 FireMagicEffect(float x, float y)
+    public void spawnFireMagic(float x, float y) {
+        effects.add(new FireMagicEffect(x, y));
+    }
+
+    // 3. 治疗特效：仅需坐标
+    // 对应 HealEffect(float x, float y)
+    public void spawnHeal(float x, float y) {
+        effects.add(new HealEffect(x, y));
+    }
+
+    // 4. 负面状态：目前没有区分类型，仅需坐标
+    // 对应 DebuffEffect(float x, float y)
+    public void spawnDebuff(float x, float y) {
+        effects.add(new DebuffEffect(x, y));
+    }
+
+    // 5. 激光特效：需要起点和终点
+    // 对应 LaserEffect(float startX, float startY, float endX, float endY)
+    public void spawnLaser(float startX, float startY, float endX, float endY) {
+        effects.add(new LaserEffect(startX, startY, endX, endY));
+    }
+
     // 如果你有其他的生成方法，请保留...
 
     public void dispose() {
