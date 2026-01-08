@@ -24,10 +24,10 @@ public class QTERipple implements Pool.Poolable {
     public void init(float centerX, float centerY) {
         this.x = centerX;
         this.y = centerY;
-        this.radius = 20f;       // 初始稍大一点
-        this.maxRadius = 350f;   // 扩散范围
+        this.radius = 50f;       // 增大初始半径，确保一开始就清晰可见
+        this.maxRadius = 400f;   // 增大扩散范围，让效果更明显
         this.currentTime = 0f;
-        this.maxTime = 0.8f;     // 加快节奏，0.8秒散开
+        this.maxTime = 1.2f;     // 延长持续时间，让玩家能看清楚
         this.active = true;
 
         randomizeColor();
@@ -60,14 +60,16 @@ public class QTERipple implements Pool.Poolable {
         // 这是一个快速冲出去然后变慢的曲线
         float t = 1f - (float) Math.pow(2, -10 * progress);
 
-        radius = 20f + (maxRadius - 20f) * t;
+        radius = 50f + (maxRadius - 50f) * t;
 
-        // 透明度：快速淡出
-        // 前 20% 时间渐显，后 80% 时间渐隐
-        if (progress < 0.2f) {
-            color.a = progress / 0.2f;
+        // 透明度：优化可见性
+        // 前 10% 时间快速渐显到全亮，中间 60% 保持全亮，后 30% 渐隐
+        if (progress < 0.1f) {
+            color.a = progress / 0.1f;  // 快速渐显
+        } else if (progress < 0.7f) {
+            color.a = 1f;  // 保持全亮，确保可见
         } else {
-            color.a = 1f - (progress - 0.2f) / 0.8f;
+            color.a = 1f - (progress - 0.7f) / 0.3f;  // 最后30%渐隐
         }
     }
 

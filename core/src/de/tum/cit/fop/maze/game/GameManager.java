@@ -504,11 +504,76 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
     
     /**
+     * ✨ [新增] 计算理论最高基础分
+     * 根据关卡中实际存在的敌人、物品等计算理论最高分
+     */
+    public int calculateTheoreticalMaxBaseScore() {
+        int maxScore = 0;
+        
+        // 1. 计算所有敌人的击杀分数
+        for (Enemy enemy : enemies) {
+            if (enemy == null || enemy.isDead()) continue;
+            
+            if (enemy instanceof EnemyE01_CorruptedPearl) {
+                maxScore += de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_E01_PEARL;
+            } else if (enemy instanceof EnemyE02_SmallCoffeeBean) {
+                maxScore += de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_E02_COFFEE;
+            } else if (enemy instanceof EnemyE03_CaramelJuggernaut) {
+                maxScore += de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_E03_CARAMEL;
+            } else if (enemy instanceof EnemyE04_CrystallizedCaramelShell) {
+                maxScore += de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_E04_SHELL;
+            }
+            // Boss敌人：目前游戏中可能没有Boss敌人，如果将来添加，需要根据实际的Boss类名来检查
+            // 例如：else if (enemy instanceof EnemyBoss) { maxScore += SCORE_BOSS; }
+        }
+        
+        // 2. 计算所有物品的收集分数
+        // 心/波霸
+        maxScore += hearts.size() * de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_HEART;
+        
+        // 宝藏
+        maxScore += treasures.size() * de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_TREASURE;
+        
+        // 钥匙
+        maxScore += keys.size() * de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_KEY;
+        
+        // 3. 迷雾清除分数（如果迷雾系统存在且激活）
+        if (fogSystem != null && fogSystem.isActive()) {
+            maxScore += de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_FOG_CLEARED;
+        }
+        
+        // 4. 如果计算出的分数为0，使用基于难度配置的估算值作为后备
+        if (maxScore == 0) {
+            // 基于DifficultyConfig中的敌人数量估算
+            maxScore = difficultyConfig.enemyE01PearlCount * de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_E01_PEARL
+                    + difficultyConfig.enemyE02CoffeeBeanCount * de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_E02_COFFEE
+                    + difficultyConfig.enemyE03CaramelCount * de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_E03_CARAMEL
+                    + difficultyConfig.enemyE04ShellCount * de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_E04_SHELL
+                    + difficultyConfig.keyCount * de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_KEY;
+        }
+        
+        return maxScore;
+    }
+    
+    /**
      * ✨ [新增] 获取关卡结算结果
-     * @param theoreticalMaxBaseScore 理论最高基础分（可传入固定值或根据关卡计算）
+     * 自动计算理论最高基础分
+     */
+    public LevelResult getLevelResult() {
+        if (scoreManager == null) return null;
+        int theoreticalMaxBaseScore = calculateTheoreticalMaxBaseScore();
+        return scoreManager.calculateResult(theoreticalMaxBaseScore);
+    }
+    
+    /**
+     * ✨ [保留] 获取关卡结算结果（兼容旧代码）
+     * @param theoreticalMaxBaseScore 理论最高基础分（如果传入0或负数，将自动计算）
      */
     public LevelResult getLevelResult(int theoreticalMaxBaseScore) {
         if (scoreManager == null) return null;
+        if (theoreticalMaxBaseScore <= 0) {
+            theoreticalMaxBaseScore = calculateTheoreticalMaxBaseScore();
+        }
         return scoreManager.calculateResult(theoreticalMaxBaseScore);
     }
     

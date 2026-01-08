@@ -355,9 +355,8 @@ public class GameScreen implements Screen {
      * ✨ [新增] 跳转到结算界面
      */
     private void goToSettlementScreen() {
-        // 1. 计算关卡结果（理论最高分可根据关卡配置计算，这里使用固定值）
-        int theoreticalMaxScore = 5000; // TODO: 可以根据关卡实际配置计算
-        LevelResult result = gm.getLevelResult(theoreticalMaxScore);
+        // 1. 计算关卡结果（自动计算理论最高分）
+        LevelResult result = gm.getLevelResult();
         
         // 2. 获取存档数据
         GameSaveData saveData = gm.getGameSaveData();

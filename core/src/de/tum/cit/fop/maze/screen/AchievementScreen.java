@@ -115,9 +115,20 @@ public class AchievementScreen implements Screen {
         infoTable.add(nameLabel).left().row();
 
         // 成就描述
-        Label descLabel = new Label(type.description, game.getSkin());
+        String description = type.description;
+        // 为未实现的成就添加标记
+        boolean isNotImplemented = (type == AchievementType.ACH_12_MINE_EXPERT || type == AchievementType.ACH_13_TRUE_RECIPE);
+        if (isNotImplemented) {
+            description += " [未实装]";
+        }
+        Label descLabel = new Label(description, game.getSkin());
         descLabel.setFontScale(0.8f);
-        descLabel.setColor(isUnlocked ? Color.LIGHT_GRAY : Color.DARK_GRAY);
+        // 未实现的成就使用特殊颜色
+        if (isNotImplemented) {
+            descLabel.setColor(Color.ORANGE); // 橙色标记未实现
+        } else {
+            descLabel.setColor(isUnlocked ? Color.LIGHT_GRAY : Color.DARK_GRAY);
+        }
         descLabel.setWrap(true);
         infoTable.add(descLabel).width(500).left().row();
 
@@ -154,6 +165,10 @@ public class AchievementScreen implements Screen {
                 return "Progress: " + careerData.totalHeartsCollected + " / " + ScoreConstants.TARGET_HEARTS_COLLECTED;
             case ACH_10_TREASURE_MASTER:
                 return "Progress: " + careerData.collectedBuffTypes.size() + " / " + ScoreConstants.TARGET_TREASURE_TYPES;
+            case ACH_11_SEALED_TIGHT:
+                // ACH_11是关卡级别的成就，无法显示累计进度
+                // 显示提示信息
+                return "Complete any level with ≤3 hits";
             default:
                 return null; // 无进度的成就
         }

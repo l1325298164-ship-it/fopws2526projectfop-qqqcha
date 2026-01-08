@@ -17,6 +17,10 @@ public class CombatEffectManager {
     private final List<CombatEffect> effects;
     private final CombatParticleSystem particleSystem; // 粒子系统
     private final BitmapFont font;
+    
+    // 性能监控
+    private int maxEffectsInFrame = 0;
+    private int effectsRemovedByLimit = 0;
 
     public CombatEffectManager() {
         this.effects = new ArrayList<>();
@@ -47,6 +51,9 @@ public class CombatEffectManager {
                 iterator.remove();
             }
         }
+        
+        // 3. 更新性能统计
+        maxEffectsInFrame = Math.max(maxEffectsInFrame, effects.size());
     }
 
     /**
@@ -75,14 +82,30 @@ public class CombatEffectManager {
     // ===== 生成接口 =====
     
     /**
-     * 安全添加特效，如果超过最大数量则移除最旧的特效
+     * 安全添加特效，如果超过最大数量则优先移除快结束的特效
+     * 这样可以避免移除重要的、刚开始的特效
      */
     private void safeAddEffect(CombatEffect effect) {
         if (effects.size() >= MAX_EFFECTS) {
-            // 移除最旧的特效（列表第一个）
-            if (!effects.isEmpty()) {
+            // 优先移除快结束的特效（剩余时间最短的）
+            CombatEffect oldestEffect = null;
+            float minRemainingTime = Float.MAX_VALUE;
+            
+            for (CombatEffect e : effects) {
+                float remainingTime = e.maxDuration - e.timer;
+                if (remainingTime < minRemainingTime && remainingTime > 0) {
+                    minRemainingTime = remainingTime;
+                    oldestEffect = e;
+                }
+            }
+            
+            // 如果找到了快结束的特效，移除它；否则移除列表第一个
+            if (oldestEffect != null) {
+                effects.remove(oldestEffect);
+            } else if (!effects.isEmpty()) {
                 effects.remove(0);
             }
+            effectsRemovedByLimit++;
         }
         effects.add(effect);
     }
@@ -127,7 +150,36 @@ public class CombatEffectManager {
 
     // 如果你有其他的生成方法，请保留...
 
+    /**
+     * 获取性能统计信息（用于调试）
+     */
+    public String getPerformanceStats() {
+        return String.format(
+                "战斗特效 - 当前数量: %d, 历史最大: %d, 因限制移除: %d",
+                effects.size(),
+                maxEffectsInFrame,
+                effectsRemovedByLimit
+        );
+    }
+    
+    /**
+     * 重置性能统计
+     */
+    public void resetPerformanceStats() {
+        maxEffectsInFrame = 0;
+        effectsRemovedByLimit = 0;
+    }
+    
+    /**
+     * 获取当前特效数量
+     */
+    public int getActiveEffectCount() {
+        return effects.size();
+    }
+    
     public void dispose() {
+        // 清空所有特效列表，防止内存泄漏
+        effects.clear();
         if (font != null) font.dispose();
         particleSystem.clear();
     }

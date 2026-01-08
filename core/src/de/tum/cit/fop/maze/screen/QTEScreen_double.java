@@ -526,15 +526,20 @@ public class QTEScreen_double implements Screen {
         if (rippleManager == null) return;
 
         // 根据玩家类型在对应位置生成波纹
+        // 注意：需要实时计算坐标，因为barX和barY可能还没更新
+        float currentBarWidth = camera.viewportWidth * BAR_WIDTH_RATIO;
+        float currentBarX = camera.position.x - currentBarWidth / 2f;
+        float currentBarY = camera.position.y - camera.viewportHeight / 2f + BAR_Y_OFFSET;
+        
         float centerX, centerY;
 
         if (player == PlayerType.PLAYER_A) {
-            centerX = barX + barWidth * (0.25f); // 左边1/4处
+            centerX = currentBarX + currentBarWidth * (0.25f); // 左边1/4处
         } else {
-            centerX = barX + barWidth * (0.75f); // 右边3/4处
+            centerX = currentBarX + currentBarWidth * (0.75f); // 右边3/4处
         }
 
-        centerY = barY + BAR_HEIGHT / 2f;
+        centerY = currentBarY + BAR_HEIGHT / 2f;
 
         rippleManager.spawnRipple(centerX, centerY);
     }

@@ -188,7 +188,12 @@ public class AchievementManager implements GameListener {
             if (notificationQueue.size() < MAX_NOTIFICATION_QUEUE_SIZE) {
                 notificationQueue.add(type);
             } else {
-                Logger.warning("Achievement notification queue is full, dropping: " + type.displayName);
+                // 队列满时，移除最旧的成就通知，添加新的（FIFO策略）
+                AchievementType removed = notificationQueue.poll();
+                notificationQueue.add(type);
+                Logger.warning("Achievement notification queue is full, dropping oldest: " + 
+                        (removed != null ? removed.displayName : "null") + 
+                        ", adding new: " + type.displayName);
             }
 
             Logger.info("🏆 Achievement Unlocked: " + type.displayName);

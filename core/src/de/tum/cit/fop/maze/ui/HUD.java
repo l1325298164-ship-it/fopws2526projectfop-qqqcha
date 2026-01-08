@@ -291,7 +291,7 @@ public class HUD {
 
         // 获取分数 (假设 GameManager 代理了 ScoreManager 的分数获取)
         int currentScore = gameManager.getScore();
-        String scoreText = "SCORE: " + currentScore;
+        String scoreText = "SCORE: " + formatScore(currentScore);
 
         // 设置字体大小
         font.getData().setScale(1.3f);
@@ -652,6 +652,13 @@ public class HUD {
         if (manaFill != null) manaFill.dispose();
         if (manaGlow != null) manaGlow.dispose();
         Logger.debug("HUD disposed");
+    }
+    
+    /**
+     * 格式化分数，添加千位分隔符
+     */
+    private String formatScore(int score) {
+        return String.format("%,d", score);
     }
 
     // 在 HUD 类成员变量区添加

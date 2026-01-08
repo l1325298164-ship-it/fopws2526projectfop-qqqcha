@@ -1,12 +1,10 @@
 package de.tum.cit.fop.maze.effects.QTE;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
 
@@ -28,15 +26,15 @@ public class QTERippleManager {
     }
 
     /**
-     * 程序化生成一张 128x128 的柔和圆环纹理
-     * 这样就不需要找美工要素材了
+     * 程序化生成一张 256x256 的柔和圆环纹理
+     * 增大纹理尺寸，确保拉伸时更清晰可见
      */
     private void createRippleTexture() {
-        int size = 128;
+        int size = 256;  // 从128增加到256，提高清晰度
         int center = size / 2;
         Pixmap pixmap = new Pixmap(size, size, Pixmap.Format.RGBA8888);
 
-        // 遍历每个像素，画一个柔和的圆环
+        // 遍历每个像素，画一个更宽更明显的圆环
         for (int x = 0; x < size; x++) {
             for (int y = 0; y < size; y++) {
                 double dx = x - center;
@@ -44,15 +42,15 @@ public class QTERippleManager {
                 double dist = Math.sqrt(dx * dx + dy * dy);
                 double normalizedDist = dist / (size / 2.0);
 
-                // 核心算法：在半径 0.7 处最亮，向两侧衰减
-                // 模拟一个宽度约为 0.3 的光环
+                // 核心算法：加宽圆环，让效果更明显
+                // 圆环范围从0.4到1.0，中心在0.7，宽度约0.6
                 float alpha = 0f;
-                if (normalizedDist > 0.5 && normalizedDist < 1.0) {
-                    // 距离中心 0.75 处 alpha 为 1，边缘为 0
-                    float delta = (float) Math.abs(normalizedDist - 0.75);
-                    // 0.25 是半宽
-                    if (delta < 0.25f) {
-                        alpha = 1f - (delta / 0.25f);
+                if (normalizedDist > 0.4 && normalizedDist < 1.0) {
+                    // 距离中心 0.7 处 alpha 为 1，向两侧衰减
+                    float delta = (float) Math.abs(normalizedDist - 0.7f);
+                    // 0.3 是半宽，让圆环更宽更明显
+                    if (delta < 0.3f) {
+                        alpha = 1f - (delta / 0.3f);
                         // 让衰减更平滑 (三次缓动)
                         alpha = alpha * alpha * (3 - 2 * alpha);
                     }
@@ -66,6 +64,8 @@ public class QTERippleManager {
         }
 
         rippleTexture = new Texture(pixmap);
+        // 设置线性过滤，避免拉伸时模糊
+        rippleTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         pixmap.dispose();
     }
 

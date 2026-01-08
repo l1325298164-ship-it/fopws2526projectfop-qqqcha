@@ -89,9 +89,12 @@ public class SettlementScreen implements Screen {
         scoreTable.setBackground(game.getSkin().getDrawable("window-c"));
         scoreTable.pad(20);
 
-        addScoreRow(scoreTable, "Base Score", "+" + result.baseScore, Color.WHITE);
-        addScoreRow(scoreTable, "Penalty", "-" + result.penaltyScore, Color.SCARLET);
-        addScoreRow(scoreTable, "Multiplier", "x" + result.scoreMultiplier, Color.CYAN);
+        addScoreRow(scoreTable, "Base Score", "+" + formatScore(result.baseScore), Color.WHITE);
+        addScoreRow(scoreTable, "Penalty", "-" + formatScore(result.penaltyScore), Color.SCARLET);
+        
+        // 改进倍率显示：显示难度信息
+        String multiplierText = getMultiplierText(result.scoreMultiplier);
+        addScoreRow(scoreTable, "Multiplier", multiplierText, Color.CYAN);
 
         // 分割线
         scoreTable.add(new Label("----------", game.getSkin())).colspan(2).pad(5).row();
@@ -280,6 +283,31 @@ public class SettlementScreen implements Screen {
         table.row();
     }
 
+    /**
+     * 格式化分数，添加千位分隔符
+     */
+    private String formatScore(int score) {
+        return String.format("%,d", score);
+    }
+    
+    /**
+     * 获取倍率显示文本，包含难度信息
+     */
+    private String getMultiplierText(float multiplier) {
+        // 根据倍率判断难度（如果可能的话）
+        String difficultyHint = "";
+        if (multiplier >= 1.5f) {
+            difficultyHint = " (Hard)";
+        } else if (multiplier >= 1.2f) {
+            difficultyHint = " (Normal)";
+        } else if (multiplier >= 1.0f) {
+            difficultyHint = " (Easy)";
+        } else if (multiplier >= 2.0f) {
+            difficultyHint = " (Endless)";
+        }
+        return String.format("x%.1f%s", multiplier, difficultyHint);
+    }
+    
     private void clearNewAchievements() {
         // 离开界面时，清空"新解锁"列表
         if (saveData != null) {
