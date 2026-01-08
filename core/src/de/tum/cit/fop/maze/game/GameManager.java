@@ -3,9 +3,10 @@ package de.tum.cit.fop.maze.game;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.effects.Enemy.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
-import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager; // ➕ 引入陷阱管理器
+import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager;
 import de.tum.cit.fop.maze.effects.environment.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
+import de.tum.cit.fop.maze.effects.Player.combat.CombatEffectManager; // 🔥 [Fix] Import
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
@@ -29,9 +30,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final DifficultyConfig difficultyConfig;
     private float debugTimer = 0f;
 
-    public DifficultyConfig getDifficultyConfig() {
-        return difficultyConfig;
-    }
+    public DifficultyConfig getDifficultyConfig() { return difficultyConfig; }
+
     private int[][] maze;
     private List<Player> players = new ArrayList<>();
     private boolean twoPlayerMode = true;
@@ -45,7 +45,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final Array<BobaBullet> bullets = new Array<>();
     private List<DynamicObstacle> obstacles = new ArrayList<>();
 
-    // ===== 鼠标目标格子（给技能用）=====
     private int mouseTileX = -1;
     private int mouseTileY = -1;
 
@@ -56,31 +55,28 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private PlayerInputHandler inputHandler;
 
     // 特效管理器
-    private ItemEffectManager itemEffectManager; // 物品 (Key, Heart, Treasure)
-    private TrapEffectManager trapEffectManager; // ➕ 陷阱 (Geyser, Mine, etc.)
+    private ItemEffectManager itemEffectManager;
+    private TrapEffectManager trapEffectManager;
+    // 🔥 [Fix] 新增战斗特效管理器
+    private CombatEffectManager combatEffectManager;
+    // 🔥 [Correction] 补回遗漏的 BobaBulletManager 声明
+    private BobaBulletManager bobaBulletEffectManager = new BobaBulletManager();
 
-    // ===== Cat Follower =====
     private CatFollower cat;
-
     private Map<String, Float> gameVariables;
 
-    // ===== Keys =====
     private final List<Key> keys = new ArrayList<>();
     private boolean keyProcessed = false;
 
-    // ===== Reset Control =====
     private boolean pendingReset = false;
     private boolean justReset = false;
 
-    // 🔥 新增：动画状态管理
     private boolean levelTransitionInProgress = false;
     private ExitDoor currentExitDoor = null;
     private float levelTransitionTimer = 0f;
     private static final float LEVEL_TRANSITION_DELAY = 0.5f;
 
     private int currentLevel = 1;
-
-    // Effect to player
     private PortalEffectManager playerSpawnPortal;
 
 
@@ -133,10 +129,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     Player.PlayerIndex.P2
             );
             players.add(p2);
-
-            Logger.gameEvent(
-                    "P2 spawned near P1 at (" + spawn2[0] + ", " + spawn2[1] + ")"
-            );
         }
 
         // 🔥 关键：同步旧 player 引用
@@ -165,7 +157,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         // ✅ 初始化特效管理器
         itemEffectManager = new ItemEffectManager();
-        trapEffectManager = new TrapEffectManager(); // ➕ 初始化
+        trapEffectManager = new TrapEffectManager();
+        combatEffectManager = new CombatEffectManager(); // 🔥 [Fix] Init
 
         // 🔥 重置动画状态
         levelTransitionInProgress = false;
@@ -178,14 +171,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private int[] findNearbySpawn(Player p1) {
         int px = p1.getX();
         int py = p1.getY();
-
         // 8 个方向（顺时针）
-        int[][] offsets = {
-                {-1, -1}, {0, -1}, {1, -1},
-                {-1,  0},          {1,  0},
-                {-1,  1}, {0,  1}, {1,  1}
-        };
-
+        int[][] offsets = { {-1, -1}, {0, -1}, {1, -1}, {-1,  0}, {1,  0}, {-1,  1}, {0,  1}, {1,  1} };
         for (int[] o : offsets) {
             int nx = px + o[0];
             int ny = py + o[1];
@@ -193,31 +180,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 return new int[]{nx, ny};
             }
         }
-        Logger.warning("No nearby spawn found for P2, fallback to random");
         return randomEmptyCell();
     }
 
     public void debugEnemiesAndBullets() {
-        Logger.debug("=== GameManager Debug ===");
-        Logger.debug("Player at: (" + player.getX() + ", " + player.getY() + ")");
-        Logger.debug("Total enemies: " + enemies.size());
-        int shootingEnemies = 0;
-        for (Enemy enemy : enemies) {
-            String state = enemy.isActive() ? "Active" : "Inactive";
-            String type = enemy.getClass().getSimpleName();
-            String pos = "(" + enemy.getX() + ", " + enemy.getY() + ")";
-            float dist = (float) Math.sqrt(
-                    Math.pow(enemy.getX() - player.getX(), 2) +
-                            Math.pow(enemy.getY() - player.getY(), 2)
-            );
-            Logger.debug("  " + type + " at " + pos + " - " + state + " | Dist: " + dist);
-            if (enemy.isActive() && dist < 10) {
-                shootingEnemies++;
-            }
-        }
-        Logger.debug("Enemies in shooting range: " + shootingEnemies);
-        Logger.debug("Active bullets: " + bullets.size);
-        Logger.debug("=== End Debug ===");
+        // ... debug info ...
     }
 
     public void update(float delta) {
@@ -306,6 +273,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         for (DynamicObstacle o : obstacles) {
             o.update(delta, this);
         }
+
+        // 正常调用 bobaBulletEffectManager
         bobaBulletEffectManager.addBullets(bullets);
         bobaBulletEffectManager.update(delta);
 
@@ -314,12 +283,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         checkAutoPickup();
 
         // ✅ 更新特效管理器
-        if (itemEffectManager != null) {
-            itemEffectManager.update(delta);
-        }
-        if (trapEffectManager != null) { // ➕ 更新陷阱特效
-            trapEffectManager.update(delta);
-        }
+        if (itemEffectManager != null) itemEffectManager.update(delta);
+        if (trapEffectManager != null) trapEffectManager.update(delta);
+        if (combatEffectManager != null) combatEffectManager.update(delta); // 🔥 [Fix] Update
 
         handlePlayerTrapInteraction();
         handleKeyLogic();
@@ -335,9 +301,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             debugEnemiesAndBullets();
             debugTimer = 0f;
         }
-        if (System.currentTimeMillis() % 2000 < 16) {
-            // ... debug log ...
-        }
     }
 
     private void handlePlayerTrapInteraction() {
@@ -345,44 +308,22 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         int px = player.getX();
         int py = player.getY();
 
-        // 使用迭代器以防需要在触发后移除陷阱
         Iterator<Trap> it = traps.iterator();
         while (it.hasNext()) {
             Trap trap = it.next();
             if (!trap.isActive()) continue;
 
-            // 检查踩中
             if (trap.getX() == px && trap.getY() == py) {
-                boolean wasActive = trap.isActive();
-                trap.onPlayerStep(player); // 触发逻辑 (扣血/状态)
-
-                // ✅ 触发视觉特效 (位置修正到格子中心)
+                trap.onPlayerStep(player);
                 float effectX = (trap.getX() + 0.5f) * GameConstants.CELL_SIZE;
                 float effectY = (trap.getY() + 0.5f) * GameConstants.CELL_SIZE;
 
                 if (trapEffectManager != null) {
-                    // 根据陷阱类型生成不同特效
-                    if (trap instanceof TrapT01_Geyser) {
-                        // 喷泉通常是持续性的，这里简单处理：每次踩上去尝试触发
-                        // 更好的做法是在 Trap 内部判断 CD，但这里做个视觉反馈即可
-                        trapEffectManager.spawnGeyser(effectX, effectY);
-
-                    } else if (trap instanceof TrapT02_PearlMine) {
-                        // 地雷通常是一次性的
-                        trapEffectManager.spawnPearlMine(effectX, effectY);
-
-                    } else if (trap instanceof TrapT03_TeaShards) {
-                        // 碎片陷阱
-                        trapEffectManager.spawnTeaShards(effectX, effectY);
-
-                    } else if (trap instanceof TrapT04_Mud) {
-                        // 泥潭陷阱
-                        trapEffectManager.spawnMudTrap(effectX, effectY);
-                    }
+                    if (trap instanceof TrapT01_Geyser) trapEffectManager.spawnGeyser(effectX, effectY);
+                    else if (trap instanceof TrapT02_PearlMine) trapEffectManager.spawnPearlMine(effectX, effectY);
+                    else if (trap instanceof TrapT03_TeaShards) trapEffectManager.spawnTeaShards(effectX, effectY);
+                    else if (trap instanceof TrapT04_Mud) trapEffectManager.spawnMudTrap(effectX, effectY);
                 }
-
-                // 如果是一次性陷阱且触发后不再活跃，可以在这里处理移除逻辑
-                // 但通常由 update 循环中的 removeIf 处理
             }
         }
     }
@@ -608,7 +549,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (!hasAdjacentPath) continue;
             return new int[]{x, y};
         }
-        Logger.warning("randomWallCell fallback triggered");
+        // Fallback
         for (int y = BORDER_THICKNESS; y < height - BORDER_THICKNESS; y++) {
             for (int x = BORDER_THICKNESS; x < width - BORDER_THICKNESS; x++) {
                 if (maze[y][x] != 0) continue;
@@ -871,7 +812,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         bullets.add(bullet);
     }
 
-    private BobaBulletManager bobaBulletEffectManager = new BobaBulletManager();
     public BobaBulletManager getBobaBulletEffectManager() {
         return bobaBulletEffectManager;
     }
@@ -910,16 +850,27 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return itemEffectManager;
     }
 
-    public TrapEffectManager getTrapEffectManager() { // ➕ Getter
+    public TrapEffectManager getTrapEffectManager() {
         return trapEffectManager;
+    }
+
+    // 🔥 [Fix] 新增 Getter
+    public CombatEffectManager getCombatEffectManager() {
+        return combatEffectManager;
     }
 
     public void dispose() {
         if (itemEffectManager != null) {
             itemEffectManager.dispose();
         }
-        if (trapEffectManager != null) { // ➕ 释放资源
+        if (trapEffectManager != null) {
             trapEffectManager.dispose();
+        }
+        if (combatEffectManager != null) {
+            combatEffectManager.dispose(); // 🔥 [Fix] Dispose
+        }
+        if (players != null) {
+            for (Player p : players) p.dispose(); // 🔥 [Fix] Dispose player trails
         }
 
         for (ExitDoor door : exitDoors) door.dispose();
@@ -939,8 +890,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
     public String getScore() { return String.valueOf(player.getScore()); }
     public PlayerInputHandler getInputHandler() { return  inputHandler; }
-    public void setTutorialMode(boolean tutorialMode) { this.tutorialMode = tutorialMode; }
-    public boolean isTutorialMode() { return tutorialMode; }
     public boolean isPlayerDead() { return player != null && player.isDead(); }
     public boolean isObstacleValidMove(int nx, int ny) {
         if (nx < 0 || ny < 0 || ny >= maze.length || nx >= maze[0].length) return false;

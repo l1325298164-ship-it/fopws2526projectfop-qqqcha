@@ -2,7 +2,9 @@ package de.tum.cit.fop.maze.abilities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.effects.Player.combat.CombatEffectManager;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
 public class DashAbility extends Ability {
@@ -46,6 +48,25 @@ public class DashAbility extends Ability {
     protected void onActivate(Player player, GameManager gameManager) {
         charges--;
         player.startDash();
+
+        // 🔥 [Fix] 触发冲刺特效
+        CombatEffectManager fx = gameManager.getCombatEffectManager();
+        if (fx != null) {
+            float angle = 0f;
+            // 根据玩家朝向决定喷射方向
+            switch (player.getDirection()) {
+                case RIGHT -> angle = 0f;
+                case UP -> angle = 90f;
+                case LEFT -> angle = 180f;
+                case DOWN -> angle = 270f;
+            }
+
+            // 计算特效生成位置（玩家中心）
+            float px = player.getWorldX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+            float py = player.getWorldY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+
+            fx.spawnDash(px, py, angle);
+        }
     }
 
     /* ================= Active ================= */
@@ -57,7 +78,7 @@ public class DashAbility extends Ability {
 
     @Override
     protected void onDeactivate() {
-        // Dash 时间结束（如果你 Player 里需要回调，可以以后加）
+        // Dash 时间结束
     }
 
     /* ================= Update ================= */
