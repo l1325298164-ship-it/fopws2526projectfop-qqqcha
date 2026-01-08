@@ -1369,11 +1369,6 @@ public class EndlessScreen implements Screen {
         root.add(bf.create("continue", this::togglePause))
                 .width(400).height(80).padBottom(20).row();
 
-        root.add(bf.create("setting", () -> {
-                    // TODO: 打开设置界面
-                }))
-                .width(400).height(80).padBottom(20).row();
-
         root.add(bf.create("menu", () -> {
                     game.goToMenu();
                 }))

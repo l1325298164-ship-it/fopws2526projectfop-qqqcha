@@ -293,11 +293,17 @@ public class GameScreen implements Screen {
                 @Override public void onMenuInput() {}
             }, Player.PlayerIndex.P2);
         }
-        if (gm.isTwoPlayerMode() && gm.getPlayers().size() > 1) {
-            Player p2 = gm.getPlayers().get(1);
-            Ability ability = p2.getAbilityManager().getAbility(0);
-            if (ability instanceof MagicAbility m) {
-                if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) m.activate(p2, gm);
+        // ✨ [修复] 优化双人模式检查，提高代码健壮性
+        if (gm.isTwoPlayerMode()) {
+            List<Player> players = gm.getPlayers();
+            if (players != null && players.size() > 1) {
+                Player p2 = players.get(1);
+                if (p2 != null) {
+                    Ability ability = p2.getAbilityManager().getAbility(0);
+                    if (ability instanceof MagicAbility m) {
+                        if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) m.activate(p2, gm);
+                    }
+                }
             }
         }
     }

@@ -132,10 +132,15 @@ public class MenuScreen implements Screen {
             }
         })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
 
-        // ✨ [新增] SETTINGS 按钮（打开设置子菜单）
-        root.add(bf.create("SETTINGS", this::showSettingsMenu))
-                .width(buttonWidth).height(BUTTON_HEIGHT)
-                .padBottom(buttonPadding).row();
+        // 🔥 4. DIFFICULTY 按钮（从SETTINGS子菜单恢复）
+        root.add(bf.create("DIFFICULTY", () -> {
+            game.setScreen(new DifficultySelectScreen(game, this));
+        })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
+
+        // 🔥 5. CONTROLS 按钮（从SETTINGS子菜单恢复）
+        root.add(bf.create("CONTROLS", () -> {
+            game.setScreen(new KeyMappingScreen(game, this));
+        })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
 
         // ✨ [新增] INFO 按钮（打开信息子菜单）
         root.add(bf.create("INFO", this::showInfoMenu))
@@ -153,42 +158,6 @@ public class MenuScreen implements Screen {
         bottomRight.bottom().right();
         bottomRight.add(musicButton).size(100).padRight(40).padBottom(20);
         stage.addActor(bottomRight);
-    }
-
-    /**
-     * ✨ [新增] 显示设置子菜单
-     */
-    private void showSettingsMenu() {
-        Dialog settingsDialog = new Dialog(" SETTINGS ", game.getSkin()) {
-            @Override
-            protected void result(Object object) {
-                // 对话框关闭时不做任何操作
-            }
-        };
-
-        ButtonFactory bf = new ButtonFactory(game.getSkin());
-        Table contentTable = new Table();
-
-        float subButtonWidth = getButtonWidth() * 0.8f;
-
-        // 难度设置
-        contentTable.add(bf.create("DIFFICULTY", () -> {
-            settingsDialog.hide();
-            game.setScreen(new DifficultySelectScreen(game, this));
-        })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
-
-        // 按键设置
-        contentTable.add(bf.create("CONTROLS", () -> {
-            settingsDialog.hide();
-            game.setScreen(new KeyMappingScreen(game, this));
-        })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
-
-        // 返回按钮
-        contentTable.add(bf.create("BACK", () -> settingsDialog.hide()))
-                .width(subButtonWidth).height(BUTTON_HEIGHT).row();
-
-        settingsDialog.getContentTable().add(contentTable);
-        settingsDialog.show(stage);
     }
 
     /**

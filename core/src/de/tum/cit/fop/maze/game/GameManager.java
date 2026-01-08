@@ -774,21 +774,51 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     private void generateEnemies() {
-        for (int i = 0; i < difficultyConfig.enemyE01PearlCount; i++) enemies.add(new EnemyE01_CorruptedPearl(randomEmptyCell()[0], randomEmptyCell()[1]));
-        for (int i = 0; i < difficultyConfig.enemyE02CoffeeBeanCount; i++) enemies.add(new EnemyE02_SmallCoffeeBean(randomEmptyCell()[0], randomEmptyCell()[1]));
-        for (int i = 0; i < difficultyConfig.enemyE03CaramelCount; i++) enemies.add(new EnemyE03_CaramelJuggernaut(randomEmptyCell()[0], randomEmptyCell()[1]));
-        for (int i = 0; i < difficultyConfig.enemyE04ShellCount; i++) enemies.add(new EnemyE04_CrystallizedCaramelShell(randomEmptyCell()[0], randomEmptyCell()[1]));
+        // ✨ [修复] 性能优化：避免重复调用randomEmptyCell()
+        for (int i = 0; i < difficultyConfig.enemyE01PearlCount; i++) {
+            int[] pos = randomEmptyCell();
+            enemies.add(new EnemyE01_CorruptedPearl(pos[0], pos[1]));
+        }
+        for (int i = 0; i < difficultyConfig.enemyE02CoffeeBeanCount; i++) {
+            int[] pos = randomEmptyCell();
+            enemies.add(new EnemyE02_SmallCoffeeBean(pos[0], pos[1]));
+        }
+        for (int i = 0; i < difficultyConfig.enemyE03CaramelCount; i++) {
+            int[] pos = randomEmptyCell();
+            enemies.add(new EnemyE03_CaramelJuggernaut(pos[0], pos[1]));
+        }
+        for (int i = 0; i < difficultyConfig.enemyE04ShellCount; i++) {
+            int[] pos = randomEmptyCell();
+            enemies.add(new EnemyE04_CrystallizedCaramelShell(pos[0], pos[1]));
+        }
     }
 
     private void generateTraps() {
-        for (int i = 0; i < difficultyConfig.trapT01GeyserCount; i++) traps.add(new TrapT01_Geyser(randomEmptyCell()[0], randomEmptyCell()[1], 3f));
-        for (int i = 0; i < difficultyConfig.trapT02PearlMineCount; i++) traps.add(new TrapT02_PearlMine(randomEmptyCell()[0], randomEmptyCell()[1], this));
-        for (int i = 0; i < difficultyConfig.trapT03TeaShardCount; i++) traps.add(new TrapT03_TeaShards(randomEmptyCell()[0], randomEmptyCell()[1]));
-        for (int i = 0; i < difficultyConfig.trapT04MudTileCount; i++) traps.add(new TrapT04_Mud(randomEmptyCell()[0], randomEmptyCell()[1]));
+        // ✨ [修复] 性能优化：避免重复调用randomEmptyCell()
+        for (int i = 0; i < difficultyConfig.trapT01GeyserCount; i++) {
+            int[] pos = randomEmptyCell();
+            traps.add(new TrapT01_Geyser(pos[0], pos[1], 3f));
+        }
+        for (int i = 0; i < difficultyConfig.trapT02PearlMineCount; i++) {
+            int[] pos = randomEmptyCell();
+            traps.add(new TrapT02_PearlMine(pos[0], pos[1], this));
+        }
+        for (int i = 0; i < difficultyConfig.trapT03TeaShardCount; i++) {
+            int[] pos = randomEmptyCell();
+            traps.add(new TrapT03_TeaShards(pos[0], pos[1]));
+        }
+        for (int i = 0; i < difficultyConfig.trapT04MudTileCount; i++) {
+            int[] pos = randomEmptyCell();
+            traps.add(new TrapT04_Mud(pos[0], pos[1]));
+        }
     }
 
     private void generateHearts() {
-        for (int i = 0; i < 10; i++) hearts.add(new Heart(randomEmptyCell()[0], randomEmptyCell()[1]));
+        // ✨ [修复] 性能优化：避免重复调用randomEmptyCell()
+        for (int i = 0; i < 10; i++) {
+            int[] pos = randomEmptyCell();
+            hearts.add(new Heart(pos[0], pos[1]));
+        }
     }
 
     private void generateTreasures() {
@@ -804,6 +834,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     private int[] randomEmptyCell() {
+        // ✨ [修复] 添加空值检查，防止数组越界
+        if (maze == null || maze.length == 0 || maze[0] == null || maze[0].length == 0) {
+            Logger.error("randomEmptyCell: Maze is not initialized");
+            return new int[]{1, 1}; // 返回默认安全位置
+        }
+        
         int x, y;
         int width = maze[0].length;
         int height = maze.length;
@@ -812,7 +848,15 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             x = random(1, width - 2);
             y = random(1, height - 2);
             attempts++;
-            if (attempts > 500) return new int[]{player.getX(), player.getY()};
+            if (attempts > 500) {
+                // ✨ [修复] 检查player是否为null，提供安全默认值
+                if (player != null) {
+                    return new int[]{player.getX(), player.getY()};
+                } else {
+                    Logger.warning("randomEmptyCell: Max attempts reached, player is null, using default");
+                    return new int[]{1, 1}; // 安全默认位置
+                }
+            }
         } while (maze[y][x] == 0 || isOccupied(x, y));
         return new int[]{x, y};
     }
