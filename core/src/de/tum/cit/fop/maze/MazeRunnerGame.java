@@ -130,17 +130,25 @@ public class MazeRunnerGame extends Game {
         setScreen(new GameScreen(this, difficultyConfig));
     }
 
+    // 🔥 新增：创建配置的方法
     private DifficultyConfig createDifficultyConfig(Difficulty difficulty) {
+        // 先获取基础配置
         DifficultyConfig baseConfig = DifficultyConfig.of(difficulty);
+
+        // 🔥 对于无尽模式，我们需要重新创建配置对象
         if (difficulty == Difficulty.ENDLESS) {
+            // 创建一个新的配置对象，继承无尽模式的设置但生命值为200
             return new DifficultyConfig(
-                    difficulty.ENDLESS,40, 40, 0,
-                    1, 1, 1, 1,
-                    10, 5, 3, 2,
-                    200,
-                    1.4f, 1.3f, 0
+                    Difficulty.ENDLESS, // 1. 难度
+                    40, 40, 0,          // 2-4. 宽, 高, 出口数
+                    1, 1, 1, 1,         // 5-8. 敌人数量 (E01-E04)
+                    10, 5, 3, 2,        // 9-12. 陷阱数量 (T01-T04)
+                    200,                // 13. 初始生命值 (这里改为200)
+                    1.4f, 1.3f, 0,      // 14-16. 敌人血量倍率, 伤害倍率, 钥匙数
+                    2.0f, 1.2f          // 17-18. 【补全】 分数倍率, 惩罚倍率
             );
         }
+
         return baseConfig;
     }
 
