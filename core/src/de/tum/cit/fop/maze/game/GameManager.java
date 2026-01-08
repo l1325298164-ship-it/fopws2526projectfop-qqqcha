@@ -6,13 +6,15 @@ import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager;
 import de.tum.cit.fop.maze.effects.environment.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
-import de.tum.cit.fop.maze.effects.Player.combat.CombatEffectManager; // 🔥 [Fix] Import
+import de.tum.cit.fop.maze.effects.Player.combat.CombatEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.trap.*;
+import de.tum.cit.fop.maze.game.score.DamageSource; // 确保导入了正确的枚举
+import de.tum.cit.fop.maze.game.score.ScoreManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -57,10 +59,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     // 特效管理器
     private ItemEffectManager itemEffectManager;
     private TrapEffectManager trapEffectManager;
-    // 🔥 [Fix] 新增战斗特效管理器
     private CombatEffectManager combatEffectManager;
-    // 🔥 [Correction] 补回遗漏的 BobaBulletManager 声明
     private BobaBulletManager bobaBulletEffectManager = new BobaBulletManager();
+
+    // 分数管理器
+    private ScoreManager scoreManager;
 
     private CatFollower cat;
     private Map<String, Float> gameVariables;
@@ -105,7 +108,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         traps.clear();
         hearts.clear();
         treasures.clear();
-        // 🔥 注意：exitDoors 不清空，只重置状态
         for (ExitDoor door : exitDoors) {
             if (door != null) {
                 door.resetDoor();
@@ -131,7 +133,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             players.add(p2);
         }
 
-        // 🔥 关键：同步旧 player 引用
         syncSinglePlayerRef();
 
         cat = null;
@@ -141,7 +142,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             fogSystem = null;
         }
 
-        // 🔥 玩家出生传送阵（一次性）
         float px = player.getX() * GameConstants.CELL_SIZE;
         float py = player.getY() * GameConstants.CELL_SIZE;
 
@@ -155,12 +155,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         bullets.clear();
         bobaBulletEffectManager.clearAllBullets(false);
 
-        // ✅ 初始化特效管理器
         itemEffectManager = new ItemEffectManager();
         trapEffectManager = new TrapEffectManager();
-        combatEffectManager = new CombatEffectManager(); // 🔥 [Fix] Init
+        combatEffectManager = new CombatEffectManager();
 
-        // 🔥 重置动画状态
+        scoreManager = new ScoreManager(difficultyConfig);
+
         levelTransitionInProgress = false;
         currentExitDoor = null;
         levelTransitionTimer = 0f;
@@ -171,7 +171,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private int[] findNearbySpawn(Player p1) {
         int px = p1.getX();
         int py = p1.getY();
-        // 8 个方向（顺时针）
         int[][] offsets = { {-1, -1}, {0, -1}, {1, -1}, {-1,  0}, {1,  0}, {-1,  1}, {0,  1}, {1,  1} };
         for (int[] o : offsets) {
             int nx = px + o[0];
@@ -194,7 +193,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             inputHandler.update(delta, this, Player.PlayerIndex.P2);
         }
 
-        // 🔥 强制修正粒子中心
         if (playerSpawnPortal != null) {
             float cx = (player.getX() + 0.5f) * GameConstants.CELL_SIZE;
             float cy = (player.getY() + 0.15f) * GameConstants.CELL_SIZE;
@@ -208,7 +206,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         }
 
-        // 🔥 如果关卡过渡正在进行，只更新相关逻辑
         if (levelTransitionInProgress) {
             if (currentExitDoor != null) {
                 currentExitDoor.update(delta, this);
@@ -223,7 +220,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             return;
         }
 
-        // 正常游戏逻辑
         for (Player p : players) {
             if (!p.isDead()) {
                 p.update(delta);
@@ -246,7 +242,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             fogSystem.update(delta);
         }
 
-        // ===== 🔥 更新陷阱 =====
         for (Trap trap : traps) {
             if (trap.isActive()) {
                 trap.update(delta);
@@ -259,6 +254,18 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             e.update(delta, this);
 
             if (e.isDead() || !e.isActive()) {
+                if (e.isDead()) {
+                    boolean isDashKill = false;
+                    EnemyTier tier = EnemyTier.E01; // 默认
+                    if (e instanceof EnemyE01_CorruptedPearl) tier = EnemyTier.E01;
+                    else if (e instanceof EnemyE02_SmallCoffeeBean) tier = EnemyTier.E02;
+                    else if (e instanceof EnemyE03_CaramelJuggernaut) tier = EnemyTier.E03;
+                    else if (e instanceof EnemyE04_CrystallizedCaramelShell) tier = EnemyTier.E04;
+
+                    if (scoreManager != null) {
+                        scoreManager.onEnemyKilled(tier, isDashKill);
+                    }
+                }
                 enemyIterator.remove();
             }
         }
@@ -274,7 +281,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             o.update(delta, this);
         }
 
-        // 正常调用 bobaBulletEffectManager
         bobaBulletEffectManager.addBullets(bullets);
         bobaBulletEffectManager.update(delta);
 
@@ -282,10 +288,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         handleDashHitEnemies();
         checkAutoPickup();
 
-        // ✅ 更新特效管理器
         if (itemEffectManager != null) itemEffectManager.update(delta);
         if (trapEffectManager != null) trapEffectManager.update(delta);
-        if (combatEffectManager != null) combatEffectManager.update(delta); // 🔥 [Fix] Update
+        if (combatEffectManager != null) combatEffectManager.update(delta);
 
         handlePlayerTrapInteraction();
         handleKeyLogic();
@@ -303,6 +308,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
 
+    // 🔥 [Fix] 修复了 TRAP 无法解析的问题
     private void handlePlayerTrapInteraction() {
         if (levelTransitionInProgress || player == null || player.isDead()) return;
         int px = player.getX();
@@ -315,6 +321,21 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
             if (trap.getX() == px && trap.getY() == py) {
                 trap.onPlayerStep(player);
+
+                // ✅ 根据陷阱类型判断 DamageSource
+                DamageSource source = DamageSource.UNKNOWN;
+                if (trap instanceof TrapT01_Geyser) source = DamageSource.TRAP_GEYSER;
+                else if (trap instanceof TrapT02_PearlMine) source = DamageSource.TRAP_MINE;
+                else if (trap instanceof TrapT03_TeaShards) source = DamageSource.TRAP_SPIKE;
+                else if (trap instanceof TrapT04_Mud) source = DamageSource.TRAP_MUD;
+
+                if (scoreManager != null) {
+                    // 如果源是未知的（比如非伤害陷阱），可能不需要扣分，或者扣很少
+                    if (source != DamageSource.UNKNOWN) {
+                        scoreManager.onPlayerDamage(player.getLives(), source);
+                    }
+                }
+
                 float effectX = (trap.getX() + 0.5f) * GameConstants.CELL_SIZE;
                 float effectY = (trap.getY() + 0.5f) * GameConstants.CELL_SIZE;
 
@@ -360,6 +381,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionInProgress = true;
         currentExitDoor = door;
         levelTransitionTimer = 0f;
+
+        if (scoreManager != null) {
+            scoreManager.onLevelFinished(currentLevel);
+        }
+
         Logger.gameEvent("Level transition started at door " + door.getPositionString());
     }
 
@@ -379,6 +405,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public void onKeyCollected() {
         player.setHasKey(true);
         unlockAllExitDoors();
+        if (scoreManager != null) scoreManager.onItemCollected("KEY");
         Logger.gameEvent("All exits unlocked");
     }
 
@@ -549,7 +576,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (!hasAdjacentPath) continue;
             return new int[]{x, y};
         }
-        // Fallback
         for (int y = BORDER_THICKNESS; y < height - BORDER_THICKNESS; y++) {
             for (int x = BORDER_THICKNESS; x < width - BORDER_THICKNESS; x++) {
                 if (maze[y][x] != 0) continue;
@@ -758,6 +784,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     itemEffectManager.spawnHeart(effectX, effectY);
                 }
                 h.onInteract(player);
+
+                if (scoreManager != null) scoreManager.onItemCollected("HEART");
+
                 heartIterator.remove();
             }
         }
@@ -772,6 +801,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     itemEffectManager.spawnTreasure(effectX, effectY);
                 }
                 t.onInteract(player);
+
+                if (scoreManager != null) scoreManager.onItemCollected("TREASURE");
             }
         }
     }
@@ -816,6 +847,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return bobaBulletEffectManager;
     }
 
+    // 🔥 [Fix] 修复了 ENEMY 无法解析的问题
     private void handlePlayerEnemyCollision() {
         if (levelTransitionInProgress) return;
         Player player = this.player;
@@ -825,6 +857,19 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
                 if (player.isDashInvincible()) continue;
                 player.takeDamage(enemy.getAttackDamage());
+
+                // ✅ 根据敌人类型判断 DamageSource
+                DamageSource source = DamageSource.UNKNOWN;
+                if (enemy instanceof EnemyE01_CorruptedPearl) source = DamageSource.ENEMY_E01;
+                else if (enemy instanceof EnemyE02_SmallCoffeeBean) source = DamageSource.ENEMY_E02;
+                else if (enemy instanceof EnemyE03_CaramelJuggernaut) source = DamageSource.ENEMY_E03;
+                else if (enemy instanceof EnemyE04_CrystallizedCaramelShell) source = DamageSource.ENEMY_E04;
+
+                if (scoreManager != null) {
+                    if (source != DamageSource.UNKNOWN) {
+                        scoreManager.onPlayerDamage(player.getLives(), source);
+                    }
+                }
             }
         }
     }
@@ -842,37 +887,18 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
 
-    public PortalEffectManager getPlayerSpawnPortal() {
-        return playerSpawnPortal;
-    }
-
-    public ItemEffectManager getItemEffectManager() {
-        return itemEffectManager;
-    }
-
-    public TrapEffectManager getTrapEffectManager() {
-        return trapEffectManager;
-    }
-
-    // 🔥 [Fix] 新增 Getter
-    public CombatEffectManager getCombatEffectManager() {
-        return combatEffectManager;
-    }
+    public PortalEffectManager getPlayerSpawnPortal() { return playerSpawnPortal; }
+    public ItemEffectManager getItemEffectManager() { return itemEffectManager; }
+    public TrapEffectManager getTrapEffectManager() { return trapEffectManager; }
+    public CombatEffectManager getCombatEffectManager() { return combatEffectManager; }
 
     public void dispose() {
-        if (itemEffectManager != null) {
-            itemEffectManager.dispose();
-        }
-        if (trapEffectManager != null) {
-            trapEffectManager.dispose();
-        }
-        if (combatEffectManager != null) {
-            combatEffectManager.dispose(); // 🔥 [Fix] Dispose
-        }
+        if (itemEffectManager != null) itemEffectManager.dispose();
+        if (trapEffectManager != null) trapEffectManager.dispose();
+        if (combatEffectManager != null) combatEffectManager.dispose();
         if (players != null) {
-            for (Player p : players) p.dispose(); // 🔥 [Fix] Dispose player trails
+            for (Player p : players) p.dispose();
         }
-
         for (ExitDoor door : exitDoors) door.dispose();
         for (Treasure t : treasures) t.dispose();
         bobaBulletEffectManager.dispose();
@@ -888,7 +914,15 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (gameVariables == null) return 1.0f;
         return gameVariables.getOrDefault(key, 1.0f);
     }
-    public String getScore() { return String.valueOf(player.getScore()); }
+
+    public int getScore() {
+        return scoreManager != null ? scoreManager.getCurrentScore() : 0;
+    }
+
+    public ScoreManager getScoreManager() {
+        return scoreManager;
+    }
+
     public PlayerInputHandler getInputHandler() { return  inputHandler; }
     public boolean isPlayerDead() { return player != null && player.isDead(); }
     public boolean isObstacleValidMove(int nx, int ny) {

@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
@@ -22,12 +23,11 @@ import de.tum.cit.fop.maze.utils.StorageManager;
  * 结算界面 (Settlement Screen)
  * <p>
  * 职责：
- * 1. 展示关卡评分详情 (基础分、扣分、倍率、最终得分)。
- * 2. 展示评级印章 (S/A/B/C/D)。
- * 3. 展示本局游戏统计 (Session Stats)。
+ * 1. 展示关卡评分详情。
+ * 2. 展示评级印章。
+ * 3. 排行榜交互（打破纪录时输入名字）。
  * 4. 展示新解锁的成就。
- * 5. 提供 "下一关" 或 "返回菜单" 的入口。
- * 6. 【新增】排行榜数据提交与存档保存。
+ * 5. 下一关/返回菜单。
  */
 public class SettlementScreen implements Screen {
 
@@ -37,46 +37,54 @@ public class SettlementScreen implements Screen {
     private Stage stage;
     private final LeaderboardManager leaderboardManager;
 
+    // ✨ [新增] 控制排行榜输入的标志位
+    private boolean isHighScore = false;
+    private boolean scoreSubmitted = false;
+
     public SettlementScreen(MazeRunnerGame game, LevelResult result, GameSaveData saveData) {
         this.game = game;
         this.result = result;
         this.saveData = saveData;
         this.leaderboardManager = new LeaderboardManager();
 
-        // 🛠️ 关键修复：结算时更新全局存档的分数
-        // 假设 result.finalScore 是本关得分，将其累加到总分
-        // 注意：防止多次进入此界面导致重复累加，通常应在计算 Result 时处理，
-        // 但为了保险，这里只用于显示总分，不修改 GameSaveData 的 score 字段（假设 ScoreManager 已处理累加）
-        // 或者：如果 ScoreManager 只是计算了本关分，这里需要手动合并：
+        // 🛠️ 累加分数
         this.saveData.score += result.finalScore;
 
-        // 🛠️ 自动保存到排行榜 (使用总分)
-        // 这里暂时用 "Player" 作为名字，后续可加输入框
-        leaderboardManager.addScore("Traveler", this.saveData.score);
+        // 🛠️ [修改] 移除自动提交，改为检查是否破纪录
+        this.isHighScore = leaderboardManager.isHighScore(this.saveData.score);
 
-        Logger.info("Settlement: Level Score=" + result.finalScore + ", Total Score=" + saveData.score);
+        Logger.info("Settlement: Level Score=" + result.finalScore +
+                ", Total Score=" + saveData.score +
+                ", HighScore? " + isHighScore);
     }
 
     @Override
     public void show() {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+        setupUI();
+    }
 
+    private void setupUI() {
         Table root = new Table();
         root.setFillParent(true);
         // root.setDebug(true); // 调试布局时可开启
         stage.addActor(root);
 
         // ==========================================
-        // 1. 标题 (LEVEL CLEARED)
+        // 1. 标题 (LEVEL COMPLETED)
         // ==========================================
         Label titleLabel = new Label("LEVEL COMPLETED", game.getSkin(), "title");
         titleLabel.setColor(Color.GOLD);
-        root.add(titleLabel).padBottom(40).colspan(2).row();
+        root.add(titleLabel).padBottom(30).colspan(2).row();
 
         // ==========================================
-        // 2. 评分详情表 (左侧)
+        // 2. 核心布局 (左侧分数，右侧评级与输入框)
         // ==========================================
+        Table leftPanel = new Table();
+        Table rightPanel = new Table();
+
+        // --- 左侧：评分详情表 ---
         Table scoreTable = new Table();
         scoreTable.setBackground(game.getSkin().getDrawable("window-c"));
         scoreTable.pad(20);
@@ -92,52 +100,85 @@ public class SettlementScreen implements Screen {
         // 显示当前总分
         addScoreRow(scoreTable, "TOTAL SCORE", String.valueOf(saveData.score), Color.ORANGE);
 
-        // 评分表放在左边
-        root.add(scoreTable).width(400).padRight(50);
+        leftPanel.add(scoreTable).width(400);
 
-        // ==========================================
-        // 3. 评级印章 (右侧)
-        // ==========================================
-        Table rankTable = new Table();
-
+        // --- 右侧：评级印章 ---
         Label rankTitle = new Label("RANK", game.getSkin());
-        rankTable.add(rankTitle).row();
+        rightPanel.add(rankTitle).row();
 
         // 巨大的评级字母
         Label rankLabel = new Label(result.rank, game.getSkin(), "title");
         rankLabel.setFontScale(4.0f); // 放大字体
+        setRankColor(rankLabel, result.rank);
+        rightPanel.add(rankLabel).pad(10).row();
 
-        // 根据评级设置颜色
-        switch (result.rank) {
-            case "S" -> rankLabel.setColor(1f, 0.84f, 0f, 1f); // 金色
-            case "A" -> rankLabel.setColor(0.75f, 0.75f, 0.75f, 1f); // 银色
-            case "B" -> rankLabel.setColor(0.8f, 0.5f, 0.2f, 1f); // 铜色
-            default  -> rankLabel.setColor(Color.WHITE);
-        }
-        rankTable.add(rankLabel).pad(20).row();
-
-        // 如果是S级，可以加一句评语
         if ("S".equals(result.rank)) {
             Label praise = new Label("EXCELLENT!", game.getSkin());
             praise.setColor(Color.GOLD);
-            rankTable.add(praise);
+            rightPanel.add(praise).row();
         }
 
-        root.add(rankTable).row();
+        // --- 右侧：✨ 排行榜输入逻辑 ---
+        if (isHighScore && !scoreSubmitted) {
+            Table inputTable = new Table();
+            inputTable.setBackground(game.getSkin().getDrawable("window-c"));
+            inputTable.pad(15);
+
+            Label newRecordLabel = new Label("NEW HIGH SCORE!", game.getSkin());
+            newRecordLabel.setColor(Color.YELLOW);
+            newRecordLabel.setFontScale(0.8f);
+
+            // 名字输入框 (需 Skin 支持 TextField)
+            TextField nameField = new TextField("Traveler", game.getSkin());
+            nameField.setMessageText("Enter Name");
+            nameField.setAlignment(Align.center);
+
+            ButtonFactory bf = new ButtonFactory(game.getSkin());
+
+            inputTable.add(newRecordLabel).padBottom(5).row();
+            inputTable.add(nameField).width(200).padBottom(10).row();
+            inputTable.add(bf.create("SUBMIT", () -> {
+                String name = nameField.getText();
+                if (name == null || name.trim().isEmpty()) name = "Unknown";
+
+                // 提交分数
+                leaderboardManager.addScore(name, saveData.score);
+                scoreSubmitted = true;
+
+                // 刷新 UI
+                inputTable.clear();
+                Label submittedLabel = new Label("Score Submitted!", game.getSkin());
+                submittedLabel.setColor(Color.GREEN);
+                inputTable.add(submittedLabel);
+
+            })).width(120).height(40);
+
+            rightPanel.add(inputTable).padTop(20);
+
+        } else if (scoreSubmitted) {
+            Label submittedLabel = new Label("Score Submitted!", game.getSkin());
+            submittedLabel.setColor(Color.GREEN);
+            rightPanel.add(submittedLabel).padTop(20);
+        }
+
+        // 将左右面板加入根布局
+        root.add(leftPanel).padRight(30);
+        root.add(rightPanel).padLeft(30);
+        root.row();
 
         // ==========================================
-        // 4. 本局统计 & 新成就 (下方)
+        // 3. 本局统计 & 新成就 (下方)
         // ==========================================
         Table statsTable = new Table();
         statsTable.defaults().pad(10);
 
-        // 4.1 统计信息
+        // 统计信息
         int totalKills = saveData.sessionKills.values().stream().mapToInt(Integer::intValue).sum();
         statsTable.add(new Label("Session Kills: " + totalKills, game.getSkin()));
         statsTable.add(new Label("Damage Taken: " + saveData.sessionDamageTaken, game.getSkin()));
         statsTable.row();
 
-        // 4.2 新解锁成就
+        // 新解锁成就
         if (!saveData.newAchievements.isEmpty()) {
             statsTable.add(new Label("NEW ACHIEVEMENTS UNLOCKED!", game.getSkin())).colspan(2).padTop(20).color(Color.YELLOW).row();
 
@@ -159,7 +200,7 @@ public class SettlementScreen implements Screen {
         root.add(statsTable).colspan(2).padTop(30).row();
 
         // ==========================================
-        // 5. 按钮栏 (底部)
+        // 4. 按钮栏 (底部)
         // ==========================================
         Table buttonTable = new Table();
         ButtonFactory bf = new ButtonFactory(game.getSkin());
@@ -178,6 +219,18 @@ public class SettlementScreen implements Screen {
     }
 
     /**
+     * 设置评级颜色
+     */
+    private void setRankColor(Label label, String rank) {
+        switch (rank) {
+            case "S" -> label.setColor(1f, 0.84f, 0f, 1f); // 金色
+            case "A" -> label.setColor(0.75f, 0.75f, 0.75f, 1f); // 银色
+            case "B" -> label.setColor(0.8f, 0.5f, 0.2f, 1f); // 铜色
+            default  -> label.setColor(Color.WHITE);
+        }
+    }
+
+    /**
      * 执行保存并跳转
      * @param toNextLevel true去下一关，false回菜单
      */
@@ -192,7 +245,7 @@ public class SettlementScreen implements Screen {
 
         // 3. 跳转
         if (toNextLevel) {
-            game.goToGame(); // 重新进入 GameScreen，GameManager 会读取 currentLevel 并生成新关卡
+            game.goToGame(); // 重新进入 GameScreen
         } else {
             game.goToMenu();
         }
@@ -207,11 +260,10 @@ public class SettlementScreen implements Screen {
     }
 
     private void clearNewAchievements() {
-        // 离开界面时，清空"新解锁"列表，以免下次结算重复显示
+        // 离开界面时，清空"新解锁"列表
         if (saveData != null) {
             saveData.newAchievements.clear();
-            // 同时清空单局统计，以便下一关重新计算评级 (S/A/B)
-            // 注意：saveData.score (总分) 不应清空
+            // 同时清空单局统计
             saveData.sessionDamageTaken = 0;
             saveData.sessionKills.clear();
         }
