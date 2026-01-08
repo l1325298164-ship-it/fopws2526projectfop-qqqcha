@@ -567,8 +567,15 @@ public class GameScreen implements Screen {
                 .width(btnW).height(btnH).pad(padding);
 
         // SETTINGS
-        buttonTable.add(bf.create("SETTINGS", () -> { /* TODO */ }))
-                .width(btnW).height(btnH).pad(padding);
+        buttonTable.add(bf.create("SETTINGS", () -> {
+            game.setScreen(
+                    new SettingsScreen(
+                            game,
+                            SettingsScreen.SettingsSource.PAUSE_MENU,
+                            game.getScreen() // 当前 GameScreen
+                    )
+            );
+        })).width(btnW).height(btnH).pad(padding);
 
         // BACK TO MENU (增加宽度以容纳文字)
         buttonTable.add(bf.create("MENU", () -> {

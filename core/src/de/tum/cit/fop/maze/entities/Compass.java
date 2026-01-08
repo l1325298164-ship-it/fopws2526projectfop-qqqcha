@@ -65,52 +65,73 @@ public class Compass {
     /* ================= 渲染 ================= */
 
     public void drawAsUI(SpriteBatch batch) {
-        if (!active || nearestExit == null) return;
-
-        float margin = 10f; // 距离屏幕边缘
+        float margin = 10f;
 
         float x = Gdx.graphics.getWidth()
-                - baseSprite.getWidth() * baseSprite.getScaleX()
-                - margin-60;
+                - getUIWidth()
+                - margin - 60;
 
-        float y = margin+50;
+        float y = margin + 50;
 
+        drawAsUIAt(batch, x, y);
+    }
+
+
+    public void dispose() {
+        baseTexture.dispose();
+        needleTexture.dispose();
+    }
+    public float getUIWidth() {
+        return baseSprite.getWidth() * baseSprite.getScaleX();
+    }
+
+    public float getUIHeight() {
+        return baseSprite.getHeight() * baseSprite.getScaleY();
+    }
+
+    public void drawAsUIAt(SpriteBatch batch, float x, float y) {
+        if (!active || nearestExit == null) return;
+
+        // ===== 方向计算（和原来完全一致）=====
         float dx = nearestExit.getX() - player.getX();
         float dy = nearestExit.getY() - player.getY();
         float angle =
                 MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees - 90f;
-// ===== Base Shadow =====
-        baseSprite.setPosition(x + 6f, y - 6f);   // 阴影偏移更大
-        baseSprite.setColor(0f, 0f, 0f, 0.25f);   // 更柔的黑
+
+        // ===== Base Shadow =====
+        baseSprite.setPosition(x + 6f, y - 6f);
+        baseSprite.setColor(0f, 0f, 0f, 0.25f);
         baseSprite.draw(batch);
 
-// ===== Base =====
+        // ===== Base =====
         baseSprite.setPosition(x, y);
         baseSprite.setColor(1f, 1f, 1f, 1f);
         baseSprite.draw(batch);
 
-// ===== Needle center（唯一正确的中心点）=====
-        float centerX = x + baseSprite.getWidth() * baseSprite.getScaleX() / 2f-76;
-        float centerY = y + baseSprite.getHeight() * baseSprite.getScaleY() / 2f -105;
+        // ===== 正确中心点（你原来算的那套）=====
+        float baseCenterX =
+                x + baseSprite.getWidth() * baseSprite.getScaleX() / 2f;
+        float baseCenterY =
+                y + baseSprite.getHeight() * baseSprite.getScaleY() / 2f;
 
-// ===== Needle Shadow =====
+// 👉 魔法数字只作用在 needle
+        float centerX = baseCenterX - 76f;
+        float centerY = baseCenterY - 105f;
+
+        // ===== Needle Shadow =====
         needleSprite.setCenter(centerX + 3f, centerY - 3f);
         needleSprite.setRotation(angle);
         needleSprite.setColor(0f, 0f, 0f, 0.35f);
         needleSprite.draw(batch);
 
-// ===== Needle =====
+        // ===== Needle =====
         needleSprite.setCenter(centerX, centerY);
         needleSprite.setRotation(angle);
         needleSprite.setColor(
                 nearestExit.isLocked() ? Color.YELLOW : Color.GREEN
         );
         needleSprite.draw(batch);
-
     }
 
-    public void dispose() {
-        baseTexture.dispose();
-        needleTexture.dispose();
-    }
+
 }

@@ -55,7 +55,10 @@ public class MenuScreen implements Screen {
 
     private final float BUTTON_WIDTH  = 800f;
     private final float BUTTON_HEIGHT = 80f;
-
+    public enum SettingsSource {
+        MAIN_MENU,
+        PAUSE_MENU
+    }
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
 
@@ -120,6 +123,17 @@ public class MenuScreen implements Screen {
                         game.setScreen(new KeyMappingScreen(game, this))))
                 .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
                 .padBottom(20).row();
+        root.add(bf.create("SETTINGS", () ->
+                        game.setScreen(
+                                new SettingsScreen(
+                                        game,
+                                        SettingsScreen.SettingsSource.MAIN_MENU,
+                                        this
+                                )
+                        )))
+                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
+                .padBottom(20)
+                .row();
 
         root.add(bf.create("EXIT", game::exitGame))
                 .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
