@@ -99,6 +99,8 @@ public class MagicAbility extends Ability {
         switch (phase) {
 
             case IDLE -> {
+                player.startCasting();
+
                 aoeCenterX = gm.getMouseTileX();
                 aoeCenterY = gm.getMouseTileY();
                 aimingTimer = 0f;
@@ -112,6 +114,7 @@ public class MagicAbility extends Ability {
             }
 
             case EXECUTED -> {
+                player.startCasting();
                 castHeal(gm);
                 startInternalCooldown(COOLDOWN_SUCCESS);
             }
