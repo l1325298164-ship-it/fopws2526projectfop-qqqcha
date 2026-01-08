@@ -151,115 +151,276 @@ public class HUD {
      */
     public void renderInGameUI(SpriteBatch uiBatch) {
         try {
-            // 2. 生命值（❤显示）
-            renderLivesAsHearts(uiBatch);
-
-            // 3. 关卡信息
-            font.setColor(Color.CYAN);
-            font.draw(uiBatch, "start: " + gameManager.getCurrentLevel(),
-                    20, Gdx.graphics.getHeight() - 120);
-
-            // 4. 操作说明
-            font.setColor(Color.WHITE);
-            font.draw(uiBatch, "direction buttons to move，Shift to sprint",
-                    20, Gdx.graphics.getHeight() - 160);
-
-            // 5. 纹理模式提示
-            TextureManager.TextureMode currentMode = textureManager.getCurrentMode();
-            if (currentMode != TextureManager.TextureMode.COLOR) {
-                font.setColor(Color.GREEN);
-                font.draw(uiBatch, "mode: " + currentMode + " (F1-F4 to switch)",
-                        Gdx.graphics.getWidth() - 250,
-                        Gdx.graphics.getHeight() - 20);
+            if (gameManager.isTwoPlayerMode()) {
+                renderTwoPlayerHUD(uiBatch);
+            } else {
+                renderSinglePlayerHUD(uiBatch);
             }
-            renderManaBar(uiBatch);
-            renderCat(uiBatch);
-            // 6. 指南针
-            renderCompassAsUI(uiBatch);
-            // 7. 技能图标
-            renderDashIcon(uiBatch);
-            renderMeleeIcon(uiBatch);
-
-            // ============================================
-            // 🔥 [Treasure] 左侧 Buff 状态栏 (图标 + 大字)
-            // ============================================
-
-            de.tum.cit.fop.maze.entities.Player player = gameManager.getPlayer();
-
-            if (player != null) {
-                float startX = 20;
-                float startY = Gdx.graphics.getHeight() - 250;
-                float iconSize = 48; // 图标大小
-                float gap = 60;      // 行间距加大，防止挤在一起
-
-                // 1. 攻击 Buff (红色)
-                if (player.hasBuffAttack()) {
-                    // 画图标
-                    if (iconAtk != null) uiBatch.draw(iconAtk, startX, startY, iconSize, iconSize);
-
-                    // 画文字 (字体放大)
-                    font.getData().setScale(2.0f); // 🔥 字体放大到 2.0
-                    font.setColor(Color.RED);
-                    font.draw(uiBatch, "ATK +50%", startX + iconSize + 10, startY + 35);
-
-                    startY -= gap;
-                }
-
-                // 2. 回血 Buff (绿色)
-                if (player.hasBuffRegen()) {
-                    if (iconRegen != null) uiBatch.draw(iconRegen, startX, startY, iconSize, iconSize);
-
-                    font.getData().setScale(2.0f);
-                    font.setColor(Color.GREEN);
-                    font.draw(uiBatch, "REGEN ON", startX + iconSize + 10, startY + 35);
-
-                    startY -= gap;
-                }
-
-                // 3. 耗蓝 Buff (青色)
-                if (player.hasBuffManaEfficiency()) {
-                    if (iconMana != null) uiBatch.draw(iconMana, startX, startY, iconSize, iconSize);
-
-                    font.getData().setScale(2.0f);
-                    font.setColor(Color.CYAN);
-                    font.draw(uiBatch, "MANA COST -50%", startX + iconSize + 10, startY + 35);
-
-                    startY -= gap;
-                }
-
-                // ⚠️ 还原字体设置 (非常重要，否则界面其他地方会乱)
-                font.setColor(Color.WHITE);
-                font.getData().setScale(1.2f); // 还原回默认大小
-
-                // ============================================
-                // 🔥 [Treasure] 屏幕中央飘字 (超大字体通知)
-                // ============================================
-                String msg = player.getNotificationMessage();
-                if (msg != null && !msg.isEmpty()) {
-                    float w = Gdx.graphics.getWidth();
-                    float h = Gdx.graphics.getHeight();
-
-                    // 设置超大字体
-                    font.getData().setScale(2.5f); // 🔥 2.5倍大小
-
-                    // 阴影
-                    font.setColor(Color.BLACK);
-                    font.draw(uiBatch, msg, w / 2f - 200 + 3, h / 2f + 100 - 3);
-
-                    // 正文
-                    font.setColor(Color.YELLOW);
-                    font.draw(uiBatch, msg, w / 2f - 200, h / 2f + 100);
-
-                    // 还原
-                    font.setColor(Color.WHITE);
-                    font.getData().setScale(1.2f);
-                }
-            }
-
         } catch (Exception e) {
             Logger.debug("HUD failed: " + e.getMessage());
         }
     }
+
+    private void renderSinglePlayerHUD(SpriteBatch uiBatch) {
+
+            try {
+                var player = gameManager.getPlayer();
+                if (player == null) return;
+
+                float barWidth = Gdx.graphics.getWidth() * 0.66f;
+                float x = (Gdx.graphics.getWidth() - barWidth) / 2f - 50;
+                float y = 50;
+
+                renderManaBarForPlayer(uiBatch, player, x, y, barWidth);
+                // 2. 生命值（❤显示）
+                renderLivesAsHearts(uiBatch);
+
+                // 3. 关卡信息
+                font.setColor(Color.CYAN);
+                font.draw(uiBatch, "start: " + gameManager.getCurrentLevel(),
+                        20, Gdx.graphics.getHeight() - 120);
+
+                // 4. 操作说明
+                font.setColor(Color.WHITE);
+                font.draw(uiBatch, "direction buttons to move，Shift to sprint",
+                        20, Gdx.graphics.getHeight() - 160);
+
+                // 5. 纹理模式提示
+                TextureManager.TextureMode currentMode = textureManager.getCurrentMode();
+                if (currentMode != TextureManager.TextureMode.COLOR) {
+                    font.setColor(Color.GREEN);
+                    font.draw(uiBatch, "mode: " + currentMode + " (F1-F4 to switch)",
+                            Gdx.graphics.getWidth() - 250,
+                            Gdx.graphics.getHeight() - 20);
+                }
+                renderCat(uiBatch);
+                // 6. 指南针
+                renderCompassAsUI(uiBatch);
+                // 7. 技能图标
+                renderDashIcon(uiBatch);
+                renderMeleeIcon(uiBatch);
+
+                // ============================================
+                // 🔥 [Treasure] 左侧 Buff 状态栏 (图标 + 大字)
+                // ============================================
+
+
+                if (player != null) {
+                    float startX = 20;
+                    float startY = Gdx.graphics.getHeight() - 250;
+                    float iconSize = 48; // 图标大小
+                    float gap = 60;      // 行间距加大，防止挤在一起
+
+                    // 1. 攻击 Buff (红色)
+                    if (player.hasBuffAttack()) {
+                        // 画图标
+                        if (iconAtk != null) uiBatch.draw(iconAtk, startX, startY, iconSize, iconSize);
+
+                        // 画文字 (字体放大)
+                        font.getData().setScale(2.0f); // 🔥 字体放大到 2.0
+                        font.setColor(Color.RED);
+                        font.draw(uiBatch, "ATK +50%", startX + iconSize + 10, startY + 35);
+
+                        startY -= gap;
+                    }
+
+                    // 2. 回血 Buff (绿色)
+                    if (player.hasBuffRegen()) {
+                        if (iconRegen != null) uiBatch.draw(iconRegen, startX, startY, iconSize, iconSize);
+
+                        font.getData().setScale(2.0f);
+                        font.setColor(Color.GREEN);
+                        font.draw(uiBatch, "REGEN ON", startX + iconSize + 10, startY + 35);
+
+                        startY -= gap;
+                    }
+
+                    // 3. 耗蓝 Buff (青色)
+                    if (player.hasBuffManaEfficiency()) {
+                        if (iconMana != null) uiBatch.draw(iconMana, startX, startY, iconSize, iconSize);
+
+                        font.getData().setScale(2.0f);
+                        font.setColor(Color.CYAN);
+                        font.draw(uiBatch, "MANA COST -50%", startX + iconSize + 10, startY + 35);
+
+                        startY -= gap;
+                    }
+
+                    // ⚠️ 还原字体设置 (非常重要，否则界面其他地方会乱)
+                    font.setColor(Color.WHITE);
+                    font.getData().setScale(1.2f); // 还原回默认大小
+
+                    // ============================================
+                    // 🔥 [Treasure] 屏幕中央飘字 (超大字体通知)
+                    // ============================================
+                    String msg = player.getNotificationMessage();
+                    if (msg != null && !msg.isEmpty()) {
+                        float w = Gdx.graphics.getWidth();
+                        float h = Gdx.graphics.getHeight();
+
+                        // 设置超大字体
+                        font.getData().setScale(2.5f); // 🔥 2.5倍大小
+
+                        // 阴影
+                        font.setColor(Color.BLACK);
+                        font.draw(uiBatch, msg, w / 2f - 200 + 3, h / 2f + 100 - 3);
+
+                        // 正文
+                        font.setColor(Color.YELLOW);
+                        font.draw(uiBatch, msg, w / 2f - 200, h / 2f + 100);
+
+                        // 还原
+                        font.setColor(Color.WHITE);
+                        font.getData().setScale(1.2f);
+                    }
+                }
+
+            } catch (Exception e) {
+                Logger.debug("HUD failed: " + e.getMessage());
+            }
+
+
+
+
+
+    }
+    private void renderTwoPlayerHUD(SpriteBatch uiBatch) {
+        var players = gameManager.getPlayers();
+        if (players == null || players.isEmpty()) return;
+
+        float barWidth = 320f;
+        float y = 50;
+
+        // P1 - 左下
+        renderManaBarForPlayer(
+                uiBatch,
+                players.get(0),
+                40,
+                y,
+                barWidth
+        );
+
+        // P2 - 右下
+        if (players.size() > 1) {
+            renderManaBarForPlayer(
+                    uiBatch,
+                    players.get(1),
+                    Gdx.graphics.getWidth() - barWidth - 40,
+                    y,
+                    barWidth
+            );
+        }
+    }
+
+    private void drawSimplePlayerInfo(
+            SpriteBatch batch,
+            de.tum.cit.fop.maze.entities.Player player,
+            float x,
+            float y,
+            String label
+    ) {
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.2f);
+
+        font.draw(batch, label, x, y);
+        font.draw(batch, "HP: " + player.getLives(), x, y - 20);
+        font.draw(batch, "MP: " + player.getMana(), x, y - 40);
+    }
+    private void renderManaBarForPlayer(
+            SpriteBatch uiBatch,
+            de.tum.cit.fop.maze.entities.Player player,
+            float x,
+            float y,
+            float barWidth
+    ) {
+        if (player == null || manaFill == null || manaBase == null) return;
+
+        // === 百分比（先不做平滑，避免双人互相干扰）===
+        float percent = Math.max(
+                0f,
+                Math.min(1f, player.getMana() / (float) player.getMaxMana())
+        );
+
+        float barHeight = barWidth * (32f / 256f);
+
+        float fillInsetLeft  = barWidth * 0.04f;
+        float fillInsetRight = barWidth * 0.04f;
+
+        float fillStartX = x + fillInsetLeft;
+        float fillWidth  = barWidth - fillInsetLeft - fillInsetRight;
+
+        float capWidth = manaFill.getWidth() * 0.09f;
+        float liquidWidth = (fillWidth - capWidth * 2) * percent;
+
+        // === 底座 ===
+        uiBatch.setColor(1f, 1f, 1f, 1f);
+        uiBatch.draw(manaBase, x, y, barWidth, barHeight);
+
+        if (percent <= 0f) return;
+
+        // === 左帽 ===
+        uiBatch.draw(
+                manaFill,
+                fillStartX,
+                y,
+                capWidth,
+                barHeight,
+                0, 0,
+                (int) capWidth,
+                manaFill.getHeight(),
+                false, false
+        );
+
+        // === 中段 ===
+        if (liquidWidth > 0) {
+            uiBatch.draw(
+                    manaFill,
+                    fillStartX + capWidth,
+                    y,
+                    liquidWidth,
+                    barHeight,
+                    (int) capWidth,
+                    0,
+                    manaFill.getWidth() - (int) (capWidth * 2),
+                    manaFill.getHeight(),
+                    false, false
+            );
+        }
+
+        // === 右帽 ===
+        uiBatch.draw(
+                manaFill,
+                fillStartX + capWidth + liquidWidth,
+                y,
+                capWidth,
+                barHeight,
+                manaFill.getWidth() - (int) capWidth,
+                0,
+                (int) capWidth,
+                manaFill.getHeight(),
+                false, false
+        );
+
+        // === 特效 ===
+        renderManaGlowEffect(uiBatch, fillStartX, y, fillWidth, barHeight, percent);
+        updateAndRenderLongTrail(uiBatch, fillStartX, y, fillWidth, barHeight, percent);
+
+        // === 装饰 ===
+        if (manadeco_1 != null) {
+            float decoWidth = barWidth * 0.12f;
+            float startCenterX = x + barWidth * 0.10f;
+            float endCenterX   = x + barWidth * 0.87f;
+
+            float decoCenterX = startCenterX + (endCenterX - startCenterX) * percent;
+            float decoX = decoCenterX - decoWidth * 0.5f;
+
+            uiBatch.draw(manadeco_1, decoX, y, decoWidth, barHeight);
+        }
+    }
+
+
+
+
 
     public void renderManaBar(SpriteBatch uiBatch) {
         if (gameManager == null || gameManager.getPlayer() == null) return;

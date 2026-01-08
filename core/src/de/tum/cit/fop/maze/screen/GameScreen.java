@@ -3,10 +3,12 @@ package de.tum.cit.fop.maze.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -277,15 +279,7 @@ public class GameScreen implements Screen {
 
         /* ================= 清屏 ================= */
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
-        batch.setProjectionMatrix(cam.getCamera().combined);
 
-        /* =========================================================
-           ① 地板 + 门背后呼吸光（Portal Back）
-           ========================================================= */
-        batch.begin();
-        maze.renderFloor(batch);
-
-        /* ================= 更新 ================= */
         if (!console.isVisible()) {
 
             // 🔥 [Console] 获取时间流速变量 (默认 1.0)
@@ -298,6 +292,17 @@ public class GameScreen implements Screen {
             // 注意：这里需要把 gameDelta 传进去，这样相机的跟随速度也会随时间变慢
             cam.update(gameDelta, gm.getPlayer(), gm);
         }
+
+        worldViewport.apply();
+        batch.setProjectionMatrix(cam.getCamera().combined);
+
+        /* =========================================================
+           ① 地板 + 门背后呼吸光（Portal Back）
+           ========================================================= */
+        batch.begin();
+        maze.renderFloor(batch);
+
+
         // 🔥 关键修复：使用防御性副本避免 ConcurrentModificationException
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
@@ -592,7 +597,9 @@ public class GameScreen implements Screen {
 
 
     private void renderUI() {
-
+        // ===== 保存 batch 状态 =====
+        Matrix4 oldProjection = batch.getProjectionMatrix().cpy();
+        Color oldColor = batch.getColor().cpy();
         // ===== 1. UI SpriteBatch（HUD / 装饰）=====
         uiStage.getViewport().apply();
         batch.setProjectionMatrix(uiStage.getCamera().combined);
@@ -601,13 +608,8 @@ public class GameScreen implements Screen {
 
         // 边框装饰（如果这是 UI 装饰，放这里）
         renderMazeBorderDecorations(batch);
-
-        // HUD 主体（猫 / 心 / Dash / 指南针）
+        // HUD
         hud.renderInGameUI(batch);
-
-        // Mana 条（必须在 batch.begin/end 内）
-        hud.renderManaBar(batch);
-
         batch.end();
 
         // ===== 2. Scene2D UI =====
@@ -621,6 +623,10 @@ public class GameScreen implements Screen {
 
         // ===== 4. 恢复世界相机（非常重要）=====
         batch.setProjectionMatrix(cam.getCamera().combined);
+
+        // ===== 🔥 恢复 batch 状态（关键）=====
+        batch.setColor(oldColor);
+        batch.setProjectionMatrix(oldProjection);
     }
 
 
