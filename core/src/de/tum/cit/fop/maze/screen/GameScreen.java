@@ -108,14 +108,14 @@ public class GameScreen implements Screen {
         uiBottom = new Texture("Wallpaper/HUD_down.png");
         uiLeft = new Texture("Wallpaper/HUD_left.png");
         uiRight = new Texture("Wallpaper/HUD_right.png");
-//        uiTop.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiBottom.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiLeft.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiRight.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+
         input = new PlayerInputHandler();
 
         batch = game.getSpriteBatch();
-        gm = new GameManager(difficultyConfig);
+        gm = new GameManager(
+                difficultyConfig,
+                game.isTwoPlayerMode() // ⭐ 从 Settings 来的值
+        );
         maze = new MazeRenderer(gm,difficultyConfig);
         cam = new CameraManager(difficultyConfig);
         float mazeW = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;
@@ -128,7 +128,6 @@ public class GameScreen implements Screen {
         );
         uiStage = new Stage(new ScreenViewport(), batch);
         hud = new HUD(gm);
-        game.setActiveGameScreen(this);
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
     }
@@ -249,26 +248,7 @@ public class GameScreen implements Screen {
 
                 }, Player.PlayerIndex.P2);
             }
-            // ===== Magic 鼠标技能（P2）=====
-            if (gm.isTwoPlayerMode() && gm.getPlayers().size() > 1) {
-
-                Player p2 = gm.getPlayers().get(1);
-                Ability ability = p2.getAbilityManager().getAbility(0);
-
-                if (ability instanceof MagicAbility m) {
-
-                    // 只监听「再次按下」
-                    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
-
-                        // 统一走 Ability 的 onActivate 状态机
-                        m.activate(p2, gm);
-                    }
-                }
-            }
-
-
-
-        }
+      }
 
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {
@@ -424,11 +404,6 @@ public class GameScreen implements Screen {
                 p.getAbilityManager().drawAbilities(batch, shapeRenderer, p);
             }
         }
-
-
-
-
-
 
 // ===== 雾（一定在这里）=====
         batch.begin();

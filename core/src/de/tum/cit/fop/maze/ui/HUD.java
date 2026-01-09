@@ -94,6 +94,9 @@ public class HUD {
 
     // ❤ 抖动动画相关
     private int lastLives = -1;
+    private final Map<Player.PlayerIndex, Integer> lastLivesMap = new HashMap<>();
+    private final Map<Player.PlayerIndex, Boolean> shakingMap = new HashMap<>();
+    private final Map<Player.PlayerIndex, Float> shakeTimerMap = new HashMap<>();
 
     private boolean shaking = false;
     private float shakeTimer = 0f;
@@ -390,7 +393,7 @@ public class HUD {
         float barWidth = 500f;
         float marginX  = 40f;
         float marginY  = 30f;
-
+        renderReviveProgressBar(uiBatch);
         // P1 - 左下
         renderManaBarForPlayer(
                 uiBatch,
@@ -450,22 +453,72 @@ public class HUD {
 
     }
 
+    private void renderReviveProgressBar(SpriteBatch batch) {
+        if (!gameManager.isTwoPlayerMode()) return;
+        if (!gameManager.isReviving()) return;
 
+        Player target = gameManager.getRevivingTarget();
+        if (target == null) return; // ⭐ 防止极端帧状态
 
-    private void drawSimplePlayerInfo(
-            SpriteBatch batch,
-            de.tum.cit.fop.maze.entities.Player player,
-            float x,
-            float y,
-            String label
-    ) {
+        float progress = Math.min(1f, gameManager.getReviveProgress());
+
+        float barWidth  = 420f;
+        float barHeight = 24f;
+
+        float x = (Gdx.graphics.getWidth() - barWidth) / 2f-30;
+        float y = Gdx.graphics.getHeight()  - 290;
+
+        // 背景
+        batch.setColor(0f, 0f, 0f, 0.65f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x, y,
+                barWidth, barHeight
+        );
+
+        // 填充
+        batch.setColor(0.2f, 0.9f, 0.3f, 0.9f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x + 2,
+                y + 2,
+                (barWidth - 4) * progress,
+                barHeight - 4
+        );
+
+        // 文本
+        font.getData().setScale(1.4f);
         font.setColor(Color.WHITE);
-        font.getData().setScale(1.2f);
 
-        font.draw(batch, label, x, y);
-        font.draw(batch, "HP: " + player.getLives(), x, y - 20);
-        font.draw(batch, "MP: " + player.getMana(), x, y - 40);
+        String text = "REVIVING " +
+                (target.getPlayerIndex() == Player.PlayerIndex.P1 ? "P1" : "P2");
+
+        font.draw(batch, text,
+                x + barWidth / 2f - 70,
+                y + barHeight + 26
+        );
+
+        // 还原
+        font.getData().setScale(1.2f);
+        batch.setColor(1f, 1f, 1f, 1f);
     }
+
+
+
+//    private void drawSimplePlayerInfo(
+//            SpriteBatch batch,
+//            de.tum.cit.fop.maze.entities.Player player,
+//            float x,
+//            float y,
+//            String label
+//    ) {
+//        font.setColor(Color.WHITE);
+//        font.getData().setScale(1.2f);
+//
+//        font.draw(batch, label, x, y);
+//        font.draw(batch, "HP: " + player.getLives(), x, y - 20);
+//        font.draw(batch, "MP: " + player.getMana(), x, y - 40);
+//    }
     private void renderManaBarForPlayer(
             SpriteBatch uiBatch,
             Player player,
@@ -1027,9 +1080,17 @@ public class HUD {
     }
 
     private void renderLivesAsHearts(SpriteBatch uiBatch, Player player, int startX, int startY,boolean mirror )
-    {
-        if (player == null) return;          // ⭐ 新增：防空
+    {  if (player == null) return;          // ⭐ 新增：防空
         boolean useIceShader = mirror && iceHeartShader != null;
+
+
+        Player.PlayerIndex idx = player.getPlayerIndex();
+
+        int lastLives = lastLivesMap.getOrDefault(idx, -1);
+        boolean shaking = shakingMap.getOrDefault(idx, false);
+        float shakeTimer = shakeTimerMap.getOrDefault(idx, 0f);
+
+
 
 // ===== P2 自动染色（只根据方向）=====
         if (mirror) {
@@ -1153,7 +1214,9 @@ public class HUD {
         }
         uiBatch.setColor(1f, 1f, 1f, 1f);
 
-
+        lastLivesMap.put(idx, lives);
+        shakingMap.put(idx, shaking);
+        shakeTimerMap.put(idx, shakeTimer);
     }
 
     /**
@@ -1249,8 +1312,12 @@ public class HUD {
         if (manaBaseP1 != null) manaBaseP1.dispose();
         if (manaFillP1 != null) manaFillP1.dispose();
         if (manaGlowP1 != null) manaGlowP1.dispose();
+        if (sparkleAtlas != null) sparkleAtlas.dispose();
 
-        if (manaBaseP2 != null) manaBaseP2.dispose();
+        if (manaBaseP2 != manaBaseP1 && manaBaseP2 != null) {
+            manaBaseP2.dispose();
+        }
+
         if (manaFillP2 != null) manaFillP2.dispose();
         if (manaGlowP2 != null) manaGlowP2.dispose();
 

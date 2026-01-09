@@ -39,6 +39,7 @@ public class MagicAbility extends Ability {
 
     private int aoeTileRadius = 2;
     private float aoeVisualRadius = 2.5f * GameConstants.CELL_SIZE;
+    private boolean inputConsumedThisFrame = false;
 
     private int aoeCenterX;
     private int aoeCenterY;
@@ -83,13 +84,23 @@ public class MagicAbility extends Ability {
 
     @Override
     public boolean canActivate(Player player) {
-        return phase != Phase.COOLDOWN && player.getMana() >= manaCost;
+
+        if (player.getMana() < manaCost) return false;
+
+        return switch (phase) {
+            case IDLE, AIMING, EXECUTED -> true;
+            case COOLDOWN -> false;
+        };
     }
+
 
     /* ================= Activate ================= */
 
     @Override
     protected void onActivate(Player player, GameManager gm) {
+        // 🔒 同一帧内，Magic 只能推进一次状态
+        if (inputConsumedThisFrame) return;
+        inputConsumedThisFrame = true;
         this.gameManager = gm;
 
         switch (phase) {
@@ -104,6 +115,7 @@ public class MagicAbility extends Ability {
             }
 
             case AIMING -> {
+                if (phaseTimer < 0.1f) return;
                 castAOE(gm);
                 waitTimer = 0f;
                 setPhase(Phase.EXECUTED);
@@ -157,7 +169,7 @@ public class MagicAbility extends Ability {
     @Override
     public void update(float delta) {
         super.update(delta);
-
+        inputConsumedThisFrame = false;
         // ⭐ 核心：统一累加
         phaseTimer += delta;
 

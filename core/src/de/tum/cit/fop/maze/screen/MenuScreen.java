@@ -119,10 +119,7 @@ public class MenuScreen implements Screen {
                 .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
                 .padBottom(20).row();
 
-        root.add(bf.create("CONTROLS", () ->
-                        game.setScreen(new KeyMappingScreen(game, this))))
-                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
-                .padBottom(20).row();
+
         root.add(bf.create("SETTINGS", () ->
                         game.setScreen(
                                 new SettingsScreen(
