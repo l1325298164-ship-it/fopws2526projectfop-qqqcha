@@ -118,7 +118,6 @@ public class HUD {
     private ShapeRenderer shapeRenderer;
     //粒子特效列表
     private final Map<Integer, List<ManaParticle>> manaParticlesMap = new HashMap<>();
-
     // ===== Bottom Center HUD Offset =====
     private static final float CAT_Y_OFFSET = -150f;        // 🐱 下移 50px
     private static final float COMPASS_Y_OFFSET = 650f;   // 🧭 下移 120px
