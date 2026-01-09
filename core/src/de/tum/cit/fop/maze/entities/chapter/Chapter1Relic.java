@@ -5,8 +5,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.GameObject;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.game.ChapterContext;
 import de.tum.cit.fop.maze.game.GameConstants;
-import de.tum.cit.fop.maze.tools.ChapterContext;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 

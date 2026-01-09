@@ -142,7 +142,7 @@ public class MazeGameTutorialScreen implements Screen {
                 0,
                 0,
                 gm,
-                Player.PlayerIndex.P1,gm
+                Player.PlayerIndex.P1
         );
         tutorialPlayer.enableTutorialMode();
         tutorialPlayer.setPosition(0, 0);

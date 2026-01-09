@@ -18,22 +18,18 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.abilities.Ability;
-import de.tum.cit.fop.maze.abilities.MagicAbility;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1RelicDialog;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.entities.trap.Trap;
-import de.tum.cit.fop.maze.game.Difficulty;
-import de.tum.cit.fop.maze.game.DifficultyConfig;
-import de.tum.cit.fop.maze.game.GameConstants;
-import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.game.*;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
-import de.tum.cit.fop.maze.tools.ChapterContext;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.tools.DeveloperConsole;
@@ -42,7 +38,7 @@ import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.*;
 
-public class GameScreen implements Screen {
+public class GameScreen implements Screen, Chapter1RelicListener {
     private Viewport worldViewport;
     private Stage uiStage;
     private FogSystem fogSystem;
@@ -66,6 +62,19 @@ public class GameScreen implements Screen {
     private boolean paused = false;
     private Stage pauseStage;
     private boolean pauseUIInitialized = false;
+
+    @Override
+    public void onChapter1RelicRequested(Chapter1Relic relic) {
+        Chapter1RelicDialog dialog =
+                new Chapter1RelicDialog(
+                        game.getSkin(),
+                        relic);
+        dialog.setOnRead(() -> gm.readChapter1Relic(relic));
+        dialog.setOnDiscard(() -> gm.discardChapter1Relic(relic));
+
+        dialog.show(uiStage);
+    }
+
 
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
@@ -129,6 +138,9 @@ public class GameScreen implements Screen {
                 difficultyConfig,
                 game.isTwoPlayerMode() // ⭐ 从 Settings 来的值
         );
+        gm.setChapter1RelicListener(this);
+
+
         maze = new MazeRenderer(gm,difficultyConfig);
         cam = new CameraManager(difficultyConfig);
         float mazeW = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;

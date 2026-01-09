@@ -14,7 +14,6 @@ import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
-import de.tum.cit.fop.maze.tools.ChapterContext;
 import de.tum.cit.fop.maze.utils.Logger;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -23,7 +22,6 @@ import java.util.HashMap;
 import java.util.Map;
 import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
-import static de.tum.cit.fop.maze.tools.MazeRunnerGameHolder.game;
 
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final DifficultyConfig difficultyConfig;
@@ -1537,27 +1535,51 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         return null;
     }
-    public void openChapter1RelicDialog(Chapter1Relic relic) {
-        // TODO：这里接 UI
-        Logger.gameEvent("Chapter 1 Relic dialog opened");
 
-        // 临时测试用：
-        // readChapter1Relic(relic);
-    }
+
     public void readChapter1Relic(Chapter1Relic relic) {
-        chapterContext.markChapter1RelicRead();
+        if (chapterContext != null) {
+            chapterContext.markChapter1RelicRead();
+        }
         relic.onRead();
     }
 
     public void discardChapter1Relic(Chapter1Relic relic) {
         relic.onDiscard();
     }
-
-    public void requestChapter1Relic(Chapter1Relic relic) {
-        game.getScreenManager().openChapter1RelicDialog(relic);
+    private Chapter1RelicListener chapter1RelicListener;
+    public void setChapter1RelicListener(Chapter1RelicListener listener) {
+        this.chapter1RelicListener = listener;
     }
 
 
+    public void requestChapter1Relic(Chapter1Relic relic) {
+        if (chapter1RelicListener != null) {
+            chapter1RelicListener.onChapter1RelicRequested(relic);
+        } else {
+            Logger.warning(
+                    "Chapter1Relic requested but no Chapter1RelicListener registered"
+            );
+        }
+    }
 
+
+    public void onTreasureOpened(Player player, Treasure treasure) {
+
+        if (chapterContext != null && chapterContext.shouldSpawnChapter1Relic()) {
+
+            Chapter1Relic relic = new Chapter1Relic(
+                    treasure.getX(),
+                    treasure.getY(),
+                    chapterContext
+            );
+
+            spawnChapter1Relic(relic);
+            return;
+        }
+
+        // 否则走原 Buff 逻辑
+        applyTreasureBuff(player);
+    }
 
 }

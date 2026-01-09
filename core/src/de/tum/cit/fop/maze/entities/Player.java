@@ -14,8 +14,6 @@ import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.utils.Logger;
 
-import static de.tum.cit.fop.maze.tools.MazeRunnerGameHolder.game;
-
 public class Player extends GameObject {
     protected boolean isTutorial = false;
 
@@ -59,6 +57,9 @@ public class Player extends GameObject {
         );
     }
 
+    public void requestChapter1RelicFromTreasure(Treasure treasure) {
+        gm.onTreasureOpened(this, treasure);
+    }
 
 
     //双人模式
@@ -286,98 +287,50 @@ private boolean damageInvincible = false;
 
 
     /// //////////////////////////
-    public Player(int x, int y, GameManager gameManager, PlayerIndex index, GameManager gm) {
+    public Player(int x, int y, GameManager gameManager, PlayerIndex index) {
         super(x, y);
+
         this.isTutorial = false;
-        this.gm = gm;
+        this.gm = gameManager;          // ✅ 只保留一个
+        this.playerIndex = index;
+
         this.lives = 200;
-          this.maxLives = 200;
+        this.maxLives = 200;
+
         this.worldX = x;
         this.worldY = y;
         this.targetX = x;
         this.targetY = y;
-        this.playerIndex = index;
+
+        // ===== 加载动画 =====
         if (playerIndex == PlayerIndex.P2) {
             loadPlayer2Animations();
-            // ===== 施法动画（magic）=====
+
             castAtlas = new TextureAtlas("Character/magic/player2.atlas");
-
-            frontCastAnim = new Animation<>(0.08f,
-                    castAtlas.findRegions("player2_front"),
-                    Animation.PlayMode.NORMAL);
-
-            backCastAnim = new Animation<>(0.08f,
-                    castAtlas.findRegions("player2_back"),
-                    Animation.PlayMode.NORMAL);
-
-            leftCastAnim = new Animation<>(0.08f,
-                    castAtlas.findRegions("player2_left"),
-                    Animation.PlayMode.NORMAL);
-
-            rightCastAnim = new Animation<>(0.08f,
-                    castAtlas.findRegions("player2_right"),
-                    Animation.PlayMode.NORMAL);
+            frontCastAnim = new Animation<>(0.08f, castAtlas.findRegions("player2_front"));
+            backCastAnim  = new Animation<>(0.08f, castAtlas.findRegions("player2_back"));
+            leftCastAnim  = new Animation<>(0.08f, castAtlas.findRegions("player2_left"));
+            rightCastAnim = new Animation<>(0.08f, castAtlas.findRegions("player2_right"));
         } else {
             loadPlayer1Animations();
         }
 
-
-
-
-
+        // ===== Ability 系统 =====
         abilityManager = new AbilityManager(this, gameManager);
 
         Logger.gameEvent("Player spawned at " + getPositionString());
 
-        // 加载攻击贴图 (请根据你的文件名修改)
-        if (playerIndex == PlayerIndex.P1) {
+        // ===== 攻击动画 =====
+        TextureAtlas attackAtlas = (playerIndex == PlayerIndex.P1)
+                ? new TextureAtlas("Character/melee/player1.atlas")
+                : new TextureAtlas("Character/magic/player2.atlas");
 
-            TextureAtlas attackAtlas =
-                    new TextureAtlas("Character/melee/player1.atlas");
-
-            backAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player1_back"),
-                    Animation.PlayMode.NORMAL);
-
-            frontAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player1_front"),
-                    Animation.PlayMode.NORMAL);
-
-            leftAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player1_left"),
-                    Animation.PlayMode.NORMAL);
-
-            rightAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player1_right"),
-                    Animation.PlayMode.NORMAL);
-
-        } else { // ===== P2 =====
-
-            TextureAtlas attackAtlas =
-                    new TextureAtlas("Character/magic/player2.atlas");
-
-            backAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player2_back"),
-                    Animation.PlayMode.NORMAL);
-
-            frontAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player2_front"),
-                    Animation.PlayMode.NORMAL);
-
-            leftAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player2_left"),
-                    Animation.PlayMode.NORMAL);
-
-            rightAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player2_right"),
-                    Animation.PlayMode.NORMAL);
-        }
-
-
-
-
-
+        backAtkAnim  = new Animation<>(0.08f, attackAtlas.findRegions(playerIndex == PlayerIndex.P1 ? "player1_back" : "player2_back"));
+        frontAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions(playerIndex == PlayerIndex.P1 ? "player1_front" : "player2_front"));
+        leftAtkAnim  = new Animation<>(0.08f, attackAtlas.findRegions(playerIndex == PlayerIndex.P1 ? "player1_left" : "player2_left"));
+        rightAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions(playerIndex == PlayerIndex.P1 ? "player1_right" : "player2_right"));
     }
+
 
     private void loadPlayer1Animations() {
         frontAtlas = new TextureAtlas("Character/player1/front.atlas");
@@ -920,6 +873,7 @@ private boolean damageInvincible = false;
         castAnimTimer = 0f;
     }
     public void requestChapter1Relic(Chapter1Relic relic) {
+        if (isTutorial) return; // tutorial 不弹
         gm.requestChapter1Relic(relic);
     }
 
