@@ -87,6 +87,7 @@ public class SettingsScreen implements Screen {
         content.padBottom(80);
 
         ScrollPane scrollPane = new ScrollPane(content, createScrollPaneStyle());
+        stage.setScrollFocus(scrollPane);
         scrollPane.setFadeScrollBars(false);
         scrollPane.setScrollingDisabled(true, false);
         scrollPane.setOverscroll(false, false);
