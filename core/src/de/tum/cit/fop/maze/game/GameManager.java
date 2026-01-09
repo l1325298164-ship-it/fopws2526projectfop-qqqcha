@@ -1216,6 +1216,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     hit = shell.occupiesCell(cx, cy);
                 }
 
+
                 // ===============================
                 // 🔹 其他普通 1x1 敌人
                 // ===============================
