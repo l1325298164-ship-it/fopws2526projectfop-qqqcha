@@ -941,7 +941,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     /* ---------- Treasures ---------- */
     private void generateTreasures() {
         // 🔥 [Treasure] 智能生成 3 个宝箱
-        int targetCount = 50;
+        int targetCount = 20;
         int spawned = 0;
         int attempts = 0;
 
@@ -1671,5 +1671,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
 
-
+    public boolean isViewingChapterRelic() {
+        return viewingChapterRelic;
+    }
 }

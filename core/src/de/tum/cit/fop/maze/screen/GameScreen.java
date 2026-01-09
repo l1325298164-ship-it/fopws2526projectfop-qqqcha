@@ -65,26 +65,38 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
     @Override
     public void onChapter1RelicRequested(Chapter1Relic relic) {
+
+        // 1️⃣ 通知 GameManager：进入查看态（停游戏逻辑）
         gm.enterChapterRelicView();
+
         Chapter1RelicDialog dialog =
                 new Chapter1RelicDialog(
-                        this.game.getSkin(),
-                        relic);
+                        game.getSkin(),
+                        relic
+                );
+
         dialog.setOnRead(() -> {
             gm.exitChapterRelicView();
             dialog.hide();
-            Gdx.input.setInputProcessor();
+
+            // ✅ 关闭后：把输入还给“游戏”
+            Gdx.input.setInputProcessor(null);
         });
 
         dialog.setOnDiscard(() -> {
             gm.exitChapterRelicView();
             dialog.hide();
-            Gdx.input.setInputProcessor();
+
+            // ✅ 关闭后：把输入还给“游戏”
+            Gdx.input.setInputProcessor(null);
         });
 
         dialog.show(uiStage);
+
+        // 2️⃣ 打开 Dialog 时：输入只给 UI
         Gdx.input.setInputProcessor(uiStage);
     }
+
 
 
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
@@ -225,7 +237,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         // 2. 只有在 [控制台关闭] 且 [非转场期间] 才允许玩家操作
         // 🔥 修复：这里原来漏了 !console.isVisible()
-        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress()) {
+        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !gm.isViewingChapterRelic() ) {
 
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
 
