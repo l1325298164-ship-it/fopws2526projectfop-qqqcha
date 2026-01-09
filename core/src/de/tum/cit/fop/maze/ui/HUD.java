@@ -52,7 +52,6 @@ public class HUD {
     private TextureRegion sparkleFlower;  // P2 🌸
 
 
-
     private BitmapFont font;
     private GameManager gameManager;
     private TextureManager textureManager;
@@ -117,7 +116,9 @@ public class HUD {
     //粒子特效列表
     private final Map<Integer, List<ManaParticle>> manaParticlesMap = new HashMap<>();
 
-
+    // ===== Bottom Center HUD Offset =====
+    private static final float CAT_Y_OFFSET = -150f;        // 🐱 下移 50px
+    private static final float COMPASS_Y_OFFSET = 570f;   // 🧭 下移 120px
     // UI 尺寸
     private static final int DASH_ICON_SIZE = 200;
     private static final int DASH_ICON_SPACING = 10;
@@ -129,7 +130,7 @@ public class HUD {
     private Texture dashIconP2;
 
     private static final int DASH_UI_MARGIN_X = 20; // 距离左边
-    private static final int DASH_UI_MARGIN_Y = 20; // 距离下边
+    private static final int DASH_UI_MARGIN_Y = 90; // 距离下边
     private static final int MELEE_UI_OFFSET_X = DASH_ICON_SIZE + 20;
     // 🔥 [Treasure] 新增：Buff 图标
     private Texture iconAtk;
@@ -880,8 +881,22 @@ public class HUD {
 
         float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - MELEE_ICON_SIZE) / 2f;
 
-        // —— 原颜色逻辑 그대로 ——
         uiBatch.draw(meleeIcon, x, y, MELEE_ICON_SIZE, MELEE_ICON_SIZE);
+
+        // ===== 冷却遮罩（和 Dash 同逻辑）=====
+        if (onCooldown) {
+            float maskHeight = MELEE_ICON_SIZE * (1f - progress);
+            uiBatch.setColor(0f, 0f, 0f, 0.5f);
+            uiBatch.draw(
+                    TextureManager.getInstance().getWhitePixel(),
+                    x,
+                    y,
+                    MELEE_ICON_SIZE,
+                    maskHeight
+            );
+            uiBatch.setColor(1f, 1f, 1f, 1f);
+        }
+
     }
     private void renderMagicIcon(
             SpriteBatch batch,
@@ -902,7 +917,10 @@ public class HUD {
         MagicAbility.Phase phase = magic.getPhase();
         float time = magic.getPhaseTime();
 
-        float size = MELEE_ICON_SIZE;
+        float baseSize = MELEE_ICON_SIZE;
+        float size = mirror
+                ? baseSize * 1.15f   // ⭐ 右侧 Magic 放大 15%
+                : baseSize;
         float baseX = getIconX(DASH_ICON_SIZE, mirror);
         float x = mirror
                 ? baseX - MELEE_UI_OFFSET_X
@@ -1270,10 +1288,15 @@ public class HUD {
 
         // ===== 计算各自位置（相对不变）=====
         float catX = centerX - catW / 2f;
-        float catY = baseY;
+        float catY = baseY + CAT_Y_OFFSET;
 
         float compassX = centerX - compassW / 2f;
-        float compassY = catY + catH + CAT_COMPASS_GAP;
+        float compassY =
+                catY
+                        + catH
+                        + CAT_COMPASS_GAP
+                        + COMPASS_Y_OFFSET;
+
 
         // ===== 画 =====
         renderCatAt(uiBatch, catX, catY);
