@@ -41,7 +41,7 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
         collisionDamage = 8;
         attack = 8;
 
-        moveSpeed = 1.5f;           // 🔥 更慢的移动速度
+        moveSpeed = 1.0f;           // 🔥 更慢的移动速度
         moveInterval = 0.8f;        // 🔥 移动间隔更长
         changeDirInterval = 1.8f;
         detectRange = 8f;           // 🔥 检测范围更大
@@ -297,10 +297,10 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
 
     @Override
     public void update(float delta, GameManager gm) {
-        // 🔥 更新动画时间
+
         animTime += delta;
 
-        // 🔥 如果是破碎状态，只更新破碎动画
+        // ===== 破碎状态只播动画 =====
         if (isShellBroken) {
             shellBreakTimer += delta;
             if (shellBreakTimer >= SHELL_BREAK_DURATION) {
@@ -317,19 +317,27 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
 
         updateHitFlash(delta);
 
-        Player player = gm.getPlayer();
-        float dist = distanceTo(player);
+        // ✅ 唯一目标来源（2x2 用中心）
+        Player target = gm.getNearestAlivePlayer(
+                x + GRID_SIZE / 2,
+                y + GRID_SIZE / 2
+        );
 
-        // 🔥 简单的AI
-        if (dist <= detectRange) {
-            chasePlayer(gm, player);
+        if (target != null) {
+            float dist = distanceTo(target);
+
+            if (dist <= detectRange) {
+                chaseTarget(gm, target);
+            } else {
+                tryMoveRandom(delta, gm);
+            }
         } else {
             tryMoveRandom(delta, gm);
         }
 
         moveContinuously(delta);
 
-        // 🔥 更新连续坐标
+        // ===== 连续坐标推进 =====
         if (isMoving) {
             float dx = targetX - worldX;
             float dy = targetY - worldY;
@@ -347,15 +355,15 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
         }
     }
 
+
     /* ================== 行为辅助 ================== */
 
-    private void chasePlayer(GameManager gm, Player player) {
+    private void chaseTarget(GameManager gm, Player target) {
         if (isMoving) return;
 
-        int dx = Integer.compare(player.getX(), x);
-        int dy = Integer.compare(player.getY(), y);
+        int dx = Integer.compare(target.getX(), x);
+        int dy = Integer.compare(target.getY(), y);
 
-        // 只走正交
         if (Math.abs(dx) > Math.abs(dy)) {
             dy = 0;
         } else {
@@ -365,11 +373,11 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
         int nx = x + dx;
         int ny = y + dy;
 
-        // 🔥 使用2x2的移动检查
         if (canMoveTo(nx, ny, gm)) {
             startMoveTo(nx, ny);
         }
     }
+
 
     private float distanceTo(Player p) {
         // 🔥 使用2x2的中心位置计算距离

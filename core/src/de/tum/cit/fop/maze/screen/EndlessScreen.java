@@ -261,8 +261,8 @@ public class EndlessScreen implements Screen {
 
         }
         // 🔥 关键修复：相机更新必须放在这里，确保玩家位置已更新
-        if (gm != null && gm.getPlayer() != null && !paused && !console.isVisible()) {
-            cam.update(gameDelta, gm.getPlayer(), gm);
+        if (gm != null && !paused && !console.isVisible()) {
+            cam.update(gameDelta, gm);
         }
 
         // 🔥 减少调试输出频率（每2秒一次）
@@ -277,10 +277,6 @@ public class EndlessScreen implements Screen {
         // 3. 【核心修复】设置世界坐标矩阵
         // 先获取相机矩阵
         Matrix4 cameraMatrix = cam.getCamera().combined;
-
-        // 调试输出相机矩阵信息
-        System.out.println("Camera combined matrix: " + cameraMatrix);
-
         // 设置到 batch
         batch.setProjectionMatrix(cameraMatrix);
 
