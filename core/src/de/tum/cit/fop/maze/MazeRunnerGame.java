@@ -64,8 +64,12 @@ public class MazeRunnerGame extends Game {
     }
 
     public void resumeGame() {
-
+        if (getScreen() instanceof GameScreen gs) {
+            // 恢复输入
+            Gdx.input.setInputProcessor(null);
+        }
     }
+
 
     public GameManager getGameManager() {
         return gameManager;

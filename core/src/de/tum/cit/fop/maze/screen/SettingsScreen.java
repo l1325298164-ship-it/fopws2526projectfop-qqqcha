@@ -31,16 +31,28 @@ public class SettingsScreen implements Screen {
         this.previousScreen = previousScreen;
     }
     private void goBack() {
-        if (game.consumeTwoPlayerModeDirty()) {
-            game.restartCurrentGame(); // 🔥 强制 reset
+
+        // 只有从暂停菜单进入设置，才需要重开游戏
+        if (source == SettingsSource.PAUSE_MENU &&
+                game.consumeTwoPlayerModeDirty()) {
+
+            game.restartCurrentGame(); // ✅ 这时才 reset
             return;
         }
 
+        // 主菜单：只是改配置，不开游戏
         switch (source) {
             case MAIN_MENU -> game.setScreen(new MenuScreen(game));
-            case PAUSE_MENU -> game.resumeGame();
+            case PAUSE_MENU -> {
+                if (previousScreen != null) {
+                    game.setScreen(previousScreen); // ⭐ 核心
+                } else {
+                    game.resumeGame(); // 兜底
+                }
+            }
         }
     }
+
 
     @Override
     public void show() {

@@ -112,10 +112,10 @@ public class GameScreen implements Screen {
         input = new PlayerInputHandler();
 
         batch = game.getSpriteBatch();
-        gm = game.getGameManager();
-        if (gm == null) {
-            gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
-        }
+        gm = new GameManager(
+                difficultyConfig,
+                game.isTwoPlayerMode() // ⭐ 从 Settings 来的值
+        );
         maze = new MazeRenderer(gm,difficultyConfig);
         cam = new CameraManager(difficultyConfig);
         float mazeW = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;

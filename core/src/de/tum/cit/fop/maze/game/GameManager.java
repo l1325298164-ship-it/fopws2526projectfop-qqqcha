@@ -521,24 +521,54 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     // 🔥 新增：检查玩家是否到达出口
     private void checkExitReached() {
-        Player p = player;
+
+        if (levelTransitionInProgress) return;
+
+        // ===== 单人模式：保持原逻辑 =====
+        if (!twoPlayerMode) {
+            Player p = player;
+
+            for (ExitDoor door : exitDoors) {
+                if (!door.isLocked() &&
+                        door.isActive() &&
+                        door.getX() == p.getX() &&
+                        door.getY() == p.getY()) {
+
+                    door.onPlayerStep(p);
+                    startLevelTransition(door);
+                    return;
+                }
+            }
+            return;
+        }
+
+        // ===== 双人模式：两人必须同时在门上 =====
+        Player p1 = getPlayerByIndex(Player.PlayerIndex.P1);
+        Player p2 = getPlayerByIndex(Player.PlayerIndex.P2);
+
+        if (p1 == null || p2 == null) return;
+        if (p1.isDead() || p2.isDead()) return;
 
         for (ExitDoor door : exitDoors) {
-            if (!door.isLocked() &&
-                    door.isActive() &&
-                    door.getX() == p.getX() &&
-                    door.getY() == p.getY() &&
-                    !levelTransitionInProgress) { // 🔥 防止重复触发
+            if (!door.isLocked() || !door.isActive()) continue;
 
-                // 触发门动画
-                door.onPlayerStep(p);
+            boolean p1OnDoor =
+                    p1.getX() == door.getX() &&
+                            p1.getY() == door.getY();
 
-                // 开始关卡过渡
+            boolean p2OnDoor =
+                    p2.getX() == door.getX() &&
+                            p2.getY() == door.getY();
+
+            if (p1OnDoor && p2OnDoor) {
+                // ⭐ 用 P1 触发即可（动画/逻辑只需要一次）
+                door.onPlayerStep(p1);
                 startLevelTransition(door);
                 return;
             }
         }
     }
+
 
     // 🔥 新增：开始关卡过渡
     private void startLevelTransition(ExitDoor door) {
