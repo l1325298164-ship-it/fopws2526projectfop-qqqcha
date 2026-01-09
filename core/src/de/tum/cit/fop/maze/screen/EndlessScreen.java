@@ -46,7 +46,7 @@ public class EndlessScreen implements Screen {
     private PlayerInputHandler input;
     private DeveloperConsole console;
     private Texture uiTop, uiBottom, uiLeft, uiRight;
-
+    private ShapeRenderer shapeRenderer;
     // ===== 暂停相关 =====
     private boolean paused = false;
     private Stage pauseStage;
@@ -62,7 +62,6 @@ public class EndlessScreen implements Screen {
     private boolean endlessGameOver = false;         // 游戏是否结束标志
     private Stage endlessGameOverStage;              // 游戏结束界面舞台
     private boolean endlessGameOverUIInitialized = false; // 游戏结束UI是否初始化
-    private ShapeRenderer shapeRenderer;
 
     // ===== 物品生成相关 =====
     private float heartSpawnTimer = 0f;              // 血包生成计时器
@@ -133,9 +132,8 @@ public class EndlessScreen implements Screen {
             System.out.println("✅ EndlessScreen 已初始化，跳过重复初始化");
             return;
         }
-
-        System.out.println("🚀 第一次初始化 EndlessScreen");
         shapeRenderer = new ShapeRenderer();
+        System.out.println("🚀 第一次初始化 EndlessScreen");
         // 只加载一次 UI 纹理
         try {
             uiTop = new Texture("Wallpaper/HUD_up.png");
@@ -150,15 +148,9 @@ public class EndlessScreen implements Screen {
         input = new PlayerInputHandler();
         batch = game.getSpriteBatch();
 
-        // 🔥 关键修改：使用 MazeRunnerGame 中已创建的 GameManager
-        if (game.getGameManager() != null) {
-            gm = game.getGameManager();
-            System.out.println("✅ 使用 MazeRunnerGame 的 GameManager");
-        } else {
-            // 如果 gameManager 不存在，才创建一个
-            gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
-            System.out.println("⚠️ 创建新的 GameManager");
-        }
+        // ✅ Endless 模式始终使用全新的 GameManager
+        gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
+
 
         // 初始化其他组件
         cam = new CameraManager(difficultyConfig);
@@ -322,7 +314,7 @@ public class EndlessScreen implements Screen {
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
 
-// ===== Ability AOE / Targeting Debug =====
+// ===== Ability AOE / Targeting（完全照 GameScreen）=====
         shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
 
         for (Player p : gm.getPlayers()) {
@@ -330,8 +322,6 @@ public class EndlessScreen implements Screen {
                 p.getAbilityManager().drawAbilities(batch, shapeRenderer, p);
             }
         }
-
-
 
 
 
@@ -391,8 +381,7 @@ public class EndlessScreen implements Screen {
             System.out.println("   敌人总数: " + gm.getEnemies().size() + " 个");
         }
 
-        // 检查玩家死亡
-        if (isEndlessGameOver()) {
+        if (!endlessGameOver && isEndlessGameOver()) {
             endlessGameOver = true;
             showEndlessGameOverScreen();
             return;
@@ -1476,7 +1465,6 @@ public class EndlessScreen implements Screen {
         if (uiRight != null) uiRight.dispose();
         if (pauseStage != null) pauseStage.dispose();
         if (endlessGameOverStage != null) endlessGameOverStage.dispose();
-        if (shapeRenderer != null) shapeRenderer.dispose();
         heartCreationTimes.clear();
     }
 }

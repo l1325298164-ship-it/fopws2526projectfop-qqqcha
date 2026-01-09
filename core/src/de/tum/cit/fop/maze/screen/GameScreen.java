@@ -405,11 +405,6 @@ public class GameScreen implements Screen {
             }
         }
 
-
-
-
-
-
 // ===== 雾（一定在这里）=====
         batch.begin();
         float fogX, fogY;
