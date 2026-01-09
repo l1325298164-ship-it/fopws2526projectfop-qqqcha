@@ -1,7 +1,6 @@
 package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.utils.Array;
-import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
@@ -9,11 +8,13 @@ import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
+import de.tum.cit.fop.maze.tools.ChapterContext;
 import de.tum.cit.fop.maze.utils.Logger;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -33,7 +34,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     private boolean revivePending = false;
     private float reviveTimer = 0f;
-
+    private final ChapterContext  chapterContext;
     public DifficultyConfig getDifficultyConfig() {
         return difficultyConfig;
     }
@@ -85,14 +86,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 //    private final MazeRunnerGame game;
 
     /* ================= 生命周期 ================= */
-    public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode) {
+    public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode,ChapterContext chapterContext) {
+        this.chapterContext = chapterContext;
         this.inputHandler = new PlayerInputHandler();
         this.difficultyConfig = difficultyConfig;
         this.twoPlayerMode = twoPlayerMode;
         resetGame();
     }
 
-
+    public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode) {
+        this(difficultyConfig,twoPlayerMode,null);
+    }
 
     private void resetGame() {
         gameVariables = new HashMap<>();
@@ -1532,6 +1536,22 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         return null;
     }
+    public void openChapter1RelicDialog(Chapter1Relic relic) {
+        // TODO：这里接 UI
+        Logger.gameEvent("Chapter 1 Relic dialog opened");
+
+        // 临时测试用：
+        // readChapter1Relic(relic);
+    }
+    public void readChapter1Relic(Chapter1Relic relic) {
+        chapterContext.markChapter1RelicRead();
+        relic.onRead();
+    }
+
+    public void discardChapter1Relic(Chapter1Relic relic) {
+        relic.onDiscard();
+    }
+
 
 
 

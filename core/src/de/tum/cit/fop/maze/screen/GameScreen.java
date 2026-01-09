@@ -33,6 +33,7 @@ import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
+import de.tum.cit.fop.maze.tools.ChapterContext;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.tools.DeveloperConsole;
@@ -45,6 +46,8 @@ public class GameScreen implements Screen {
     private Viewport worldViewport;
     private Stage uiStage;
     private FogSystem fogSystem;
+    private final ChapterContext chapterContext;
+
 
 
     private final MazeRunnerGame game;
@@ -91,15 +94,25 @@ public class GameScreen implements Screen {
 
 
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
+        this(game, difficultyConfig, null);
+    }
+    public GameScreen(
+            MazeRunnerGame game,
+            DifficultyConfig difficultyConfig,
+            ChapterContext chapterContext
+    ) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
-        if (difficultyConfig.difficulty == Difficulty.HARD) {
+        this.chapterContext = chapterContext;
+
+        // ⭐ 所有规则只写在这里
+        if (difficultyConfig.difficulty == Difficulty.HARD
+                || (chapterContext != null && chapterContext.enableFogOverride())) {
             fogSystem = new FogSystem();
         } else {
             fogSystem = null;
         }
     }
-
     @Override
     public void show() {
 

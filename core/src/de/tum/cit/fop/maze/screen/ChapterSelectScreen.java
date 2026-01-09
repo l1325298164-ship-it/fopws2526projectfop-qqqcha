@@ -40,11 +40,12 @@ public class ChapterSelectScreen implements Screen {
             public void clicked(InputEvent event, float x, float y) {
 
                 Difficulty difficulty = Difficulty.NORMAL;
-                DifficultyConfig config = DifficultyConfig.of(difficulty);
 
-                game.startNewGame(difficulty);
-                game.advanceStory();
-                game.setScreen(new GameScreen(game, config));
+                // 只初始化游戏数据，不走剧情
+                game.resetMaze(difficulty);
+
+                // 或者（等价）
+                // game.setScreen(new GameScreen(game, DifficultyConfig.of(difficulty)));
             }
         });
 
