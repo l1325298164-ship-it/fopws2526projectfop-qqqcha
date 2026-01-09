@@ -8,41 +8,16 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.abilities.AbilityManager;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.utils.Logger;
 
+import static de.tum.cit.fop.maze.tools.MazeRunnerGameHolder.game;
+
 public class Player extends GameObject {
     protected boolean isTutorial = false;
-    public Player(int x, int y) {
-        super(x, y);
-
-        this.worldX = x;
-        this.worldY = y;
-        this.targetX = x;
-        this.targetY = y;
-
-        this.playerIndex = PlayerIndex.P1;
-        this.isTutorial = true;
-
-        // ===== 生命值随便给个安全值 =====
-        this.lives = 1;
-        this.maxLives = 1;
-
-        // ===== 贴图 & 动画（必须）=====
-        frontAtlas = new TextureAtlas("Character/player1/front.atlas");
-        backAtlas  = new TextureAtlas("Character/player1/back.atlas");
-        leftAtlas  = new TextureAtlas("Character/player1/left.atlas");
-        rightAtlas = new TextureAtlas("Character/player1/right.atlas");
-
-        frontAnim = new Animation<>(0.1f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
-        backAnim  = new Animation<>(0.1f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
-        leftAnim  = new Animation<>(0.1f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
-        rightAnim = new Animation<>(0.1f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
-
-        this.abilityManager = null;
-    }
 
     /**
      * 双人模式复活专用
@@ -127,6 +102,7 @@ private boolean damageInvincible = false;
     private boolean hitFlash = false;
     private float hitFlashTimer = 0f;
     private static final float HIT_FLASH_TIME = 0.25f;
+    private final GameManager gm;
 
     // ===== 移动 =====
     private boolean moving = false;
@@ -300,15 +276,21 @@ private boolean damageInvincible = false;
 
     // ===== 分数 =====
     private int score = 0;
+    public void enableTutorialMode() {
+        this.isTutorial = true;
+    }
 
+    public void disableTutorialMode() {
+        this.isTutorial = false;
+    }
 
 
     /// //////////////////////////
-    public Player(int x, int y, GameManager gameManager,PlayerIndex index) {
+    public Player(int x, int y, GameManager gameManager, PlayerIndex index, GameManager gm) {
         super(x, y);
-//        this.lives = GameConstants.MAX_LIVES;
-//        this.maxLives = GameConstants.MAX_LIVES;
-          this.lives = 200;
+        this.isTutorial = false;
+        this.gm = gm;
+        this.lives = 200;
           this.maxLives = 200;
         this.worldX = x;
         this.worldY = y;
@@ -937,5 +919,9 @@ private boolean damageInvincible = false;
         isCasting = true;
         castAnimTimer = 0f;
     }
+    public void requestChapter1Relic(Chapter1Relic relic) {
+        gm.requestChapter1Relic(relic);
+    }
+
 
 }

@@ -13,7 +13,6 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
-import de.tum.cit.fop.maze.entities.TutorialPlayer;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -42,11 +41,9 @@ public class MazeGameTutorialScreen implements Screen {
     private final MazeRunnerGame game;
     private final DifficultyConfig config;
     private GameManager gm;
-    private Texture backgroundTexture;
     // === EXIT 提示文字 ===
     private float exitHintTimer = 0f;
 
-    private OrthographicCamera camera;
     private OrthographicCamera hudCamera;
     private ShapeRenderer shapeRenderer;
     // === Player Foot Offset ===
@@ -88,7 +85,6 @@ public class MazeGameTutorialScreen implements Screen {
 
     // Input handling
     private boolean upPressed, downPressed, leftPressed, rightPressed;
-    private float upTimer, downTimer, leftTimer, rightTimer;
 
     public MazeGameTutorialScreen(MazeRunnerGame game, DifficultyConfig config) {
         this.game = game;
@@ -137,8 +133,20 @@ public class MazeGameTutorialScreen implements Screen {
         goalTexture = new Texture(Gdx.files.internal("ui/goal_icon.png"));
         findSpawnByCode(); // 注意：这里用的是「屏幕坐标」
 
-        tutorialPlayer = new TutorialPlayer(0, 0);
+        // === Tutorial 专用 GameManager（只给 Player 用）===
+        gm = new GameManager(config, false);
+        gm.setTutorialMode(true);
+
+// === 创建真正的 Player（但开启 tutorial 模式）===
+        tutorialPlayer = new Player(
+                0,
+                0,
+                gm,
+                Player.PlayerIndex.P1,gm
+        );
+        tutorialPlayer.enableTutorialMode();
         tutorialPlayer.setPosition(0, 0);
+
 
         // 同步屏幕坐标 → Player world 坐标
         syncPlayerToEntity();

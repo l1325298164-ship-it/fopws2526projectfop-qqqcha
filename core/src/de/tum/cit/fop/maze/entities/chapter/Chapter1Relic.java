@@ -8,17 +8,26 @@ import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.tools.ChapterContext;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class Chapter1Relic extends GameObject {
 
     private final ChapterContext chapterContext;
-    private boolean removed = false;
+
+    /** 本局是否移除（丢弃 or 阅读后） */
+    private boolean removedThisRun = false;
 
     private static Texture relicTexture;
 
     public Chapter1Relic(int x, int y, ChapterContext chapterContext) {
         super(x, y);
         this.chapterContext = chapterContext;
+
+        // ⭐ 如果已经阅读过，根本不生成
+        if (chapterContext.isChapter1RelicRead()) {
+            removedThisRun = true;
+            return;
+        }
 
         if (relicTexture == null) {
             relicTexture = new Texture("Items/chapter1_relic.png");
@@ -29,43 +38,43 @@ public class Chapter1Relic extends GameObject {
 
     @Override
     public void onInteract(Player player) {
-        if (removed) return;
+        if (removedThisRun) return;
 
-        // 👉 第一版：先直接调用 UI（下一步实现）
-        player.openChapter1RelicDialog(this, chapterContext);
+        // ⚠️ Entity 不直接创建 UI
+        // 只通知 Player / GameManager
+        player.requestChapter1Relic(this);
     }
 
-    /** 玩家选择【阅读】 */
+    /* ================= 玩家选择结果 ================= */
+
+    /** 玩家选择【阅读】 → 永久消失 */
     public void onRead() {
         chapterContext.markChapter1RelicRead();
-        removed = true;
-        Logger.gameEvent("📖 Chapter 1 Relic READ");
+        removedThisRun = true;
+        Logger.gameEvent("📖 Chapter 1 Relic READ (permanent)");
     }
 
-    /** 玩家选择【丢弃】 */
+    /** 玩家选择【丢弃】 → 本局消失，下次还会生成 */
     public void onDiscard() {
-        removed = true;
-        Logger.gameEvent("🗑 Chapter 1 Relic DISCARDED (will respawn next time)");
+        removedThisRun = true;
+        Logger.gameEvent("🗑 Chapter 1 Relic DISCARDED (respawn next run)");
     }
+
+    /* ================= GameObject ================= */
 
     @Override
     public boolean isInteractable() {
-        return !removed;
+        return !removedThisRun;
     }
 
     @Override
     public boolean isPassable() {
-        return true;
-    }
-
-    @Override
-    public void drawShape(ShapeRenderer shapeRenderer) {
-
+        return true; // 踩过去不阻挡
     }
 
     @Override
     public void drawSprite(SpriteBatch batch) {
-        if (removed) return;
+        if (removedThisRun || relicTexture == null) return;
 
         batch.draw(
                 relicTexture,
@@ -77,7 +86,14 @@ public class Chapter1Relic extends GameObject {
     }
 
     @Override
+    public void drawShape(ShapeRenderer shapeRenderer) {
+        // 不需要 Shape fallback
+    }
+
+    @Override
     public RenderType getRenderType() {
-        return null;
+        return TextureManager.getInstance().useSprite()
+                ? RenderType.SPRITE
+                : RenderType.SHAPE;
     }
 }

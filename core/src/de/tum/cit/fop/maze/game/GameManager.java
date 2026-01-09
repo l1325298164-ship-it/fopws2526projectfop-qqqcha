@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
+import static de.tum.cit.fop.maze.tools.MazeRunnerGameHolder.game;
 
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final DifficultyConfig difficultyConfig;
@@ -1552,6 +1553,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         relic.onDiscard();
     }
 
+    public void requestChapter1Relic(Chapter1Relic relic) {
+        game.getScreenManager().openChapter1RelicDialog(relic);
+    }
 
 
 
