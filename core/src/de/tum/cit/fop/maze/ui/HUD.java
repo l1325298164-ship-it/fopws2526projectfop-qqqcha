@@ -289,28 +289,22 @@ public class HUD {
     private void renderScore(SpriteBatch uiBatch) {
         if (gameManager == null) return;
 
-        // 获取分数 (假设 GameManager 代理了 ScoreManager 的分数获取)
+        // 获取分数
         int currentScore = gameManager.getScore();
         String scoreText = "SCORE: " + formatScore(currentScore);
 
         // 设置字体大小
-        font.getData().setScale(1.3f);
+        font.getData().setScale(1.5f);
 
-        // 计算右上角位置（与魔法条对齐）
+        // 计算右上角位置
         GlyphLayout layout = new GlyphLayout(font, scoreText);
-        float rightMargin = 20f;  // 右侧边距
+        float rightMargin = 30f;  // 右侧边距
+        float topMargin = 60f;    // 顶部边距
         float x = Gdx.graphics.getWidth() - layout.width - rightMargin;
-        
-        // 魔法条位置计算（与renderManaBar保持一致）
-        float barWidth = Gdx.graphics.getWidth() * 0.66f;
-        float barHeight = barWidth * (32f / 256f);
-        float manaBarY = barHeight - 130f;  // 魔法条底部Y坐标
-        
-        // 分数显示在魔法条上方，留出间距
-        float y = manaBarY + barHeight + 25f;  // 魔法条顶部上方25像素
+        float y = Gdx.graphics.getHeight() - topMargin;  // 🔧 修复：正确计算屏幕右上角位置
 
         // 绘制阴影
-        font.setColor(0f, 0f, 0f, 0.5f);
+        font.setColor(0f, 0f, 0f, 0.7f);
         font.draw(uiBatch, scoreText, x + 2, y - 2);
 
         // 绘制金色正文
