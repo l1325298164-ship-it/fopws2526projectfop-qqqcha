@@ -253,6 +253,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         } else {
             Logger.error("Player is null, cannot create Compass");
         }
+        
+        // ✨ [修复] 重置本关分数统计（新关卡开始时）
+        if (scoreManager != null) {
+            scoreManager.reset();
+        }
         bullets.clear();
         bobaBulletEffectManager.clearAllBullets(false);
 
@@ -278,6 +283,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         this.gameSaveData = data;
         this.currentLevel = data.currentLevel;
 
+        // ✨ [修复] 恢复状态后，需要重新生成对应关卡的迷宫和内容
+        // 因为迷宫是随机生成的，需要确保读档后生成的是对应关卡的新迷宫
+        resetGame();
+
+        // 重新恢复玩家状态（因为resetGame()会重置玩家）
         if (player != null) {
             player.setLives(data.lives);
             player.setMaxLives(data.maxLives);
