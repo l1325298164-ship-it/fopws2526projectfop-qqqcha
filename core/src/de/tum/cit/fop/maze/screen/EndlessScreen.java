@@ -2,6 +2,7 @@ package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Matrix4;
@@ -1260,6 +1261,10 @@ public class EndlessScreen implements Screen {
 
     // 🔥 修改：移除了无尽模式特殊UI的渲染
     private void renderUI() {
+        // ===== 保存 batch 状态 =====
+        Matrix4 oldProjection = batch.getProjectionMatrix().cpy();
+        Color oldColor = batch.getColor().cpy();
+
         batch.setProjectionMatrix(
                 new Matrix4().setToOrtho2D(
                         0, 0,
@@ -1270,15 +1275,16 @@ public class EndlessScreen implements Screen {
 
         batch.begin();
         renderMazeBorderDecorations(batch);
-
         hud.renderInGameUI(batch);
-
-        hud.renderManaBar(batch);
         batch.end();
         if (console != null) {
             console.render();
         }
-        batch.setProjectionMatrix(cam.getCamera().combined);
+        // ===== 🔥 恢复 batch 状态（关键）=====
+        batch.setColor(oldColor);
+        batch.setProjectionMatrix(oldProjection);
+
+
     }
     // 🔥 修改：使用与GameScreen一致的装饰渲染
     private void renderMazeBorderDecorations(SpriteBatch batch) {
