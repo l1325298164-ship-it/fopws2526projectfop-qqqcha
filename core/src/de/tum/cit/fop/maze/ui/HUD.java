@@ -538,13 +538,13 @@ public class HUD {
             manaGlow = manaGlowP2;
             manaDeco = manadeco_2;
         }
-        Logger.debug(
-                "[ManaBar] select textures | playerId=" + playerId +
-                        " base=" + (manaBase != null) +
-                        " fill=" + (manaFill != null) +
-                        " glow=" + (manaGlow != null) +
-                        " deco=" + (manaDeco != null)
-        );
+//        Logger.debug(
+//                "[ManaBar] select textures | playerId=" + playerId +
+//                        " base=" + (manaBase != null) +
+//                        " fill=" + (manaFill != null) +
+//                        " glow=" + (manaGlow != null) +
+//                        " deco=" + (manaDeco != null)
+//        );
 
 
         if (player == null || manaFill == null || manaBase == null) return;

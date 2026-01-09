@@ -69,9 +69,9 @@ public class MazeGenerator {
         cleanupSmallWalls(maze);
 
         long endTime = System.currentTimeMillis();
-        Logger.debug("Maze generation completed - Size: " + adjustedWidth + "x" + adjustedHeight);
-        Logger.debug("Configuration - Path: " + PATH_WIDTH + "x" + PATH_HEIGHT +
-            ", Wall: " + WALL_WIDTH + "x" + WALL_HEIGHT);
+//        Logger.debug("Maze generation completed - Size: " + adjustedWidth + "x" + adjustedHeight);
+//        Logger.debug("Configuration - Path: " + PATH_WIDTH + "x" + PATH_HEIGHT +
+//            ", Wall: " + WALL_WIDTH + "x" + WALL_HEIGHT);
         addOuterBorderWalls(maze);
         return maze;
     }

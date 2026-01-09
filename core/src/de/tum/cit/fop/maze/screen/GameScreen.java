@@ -65,14 +65,25 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
     @Override
     public void onChapter1RelicRequested(Chapter1Relic relic) {
+        gm.enterChapterRelicView();
         Chapter1RelicDialog dialog =
                 new Chapter1RelicDialog(
-                        game.getSkin(),
+                        this.game.getSkin(),
                         relic);
-        dialog.setOnRead(() -> gm.readChapter1Relic(relic));
-        dialog.setOnDiscard(() -> gm.discardChapter1Relic(relic));
+        dialog.setOnRead(() -> {
+            gm.exitChapterRelicView();
+            dialog.hide();
+            Gdx.input.setInputProcessor();
+        });
+
+        dialog.setOnDiscard(() -> {
+            gm.exitChapterRelicView();
+            dialog.hide();
+            Gdx.input.setInputProcessor();
+        });
 
         dialog.show(uiStage);
+        Gdx.input.setInputProcessor(uiStage);
     }
 
 
@@ -345,8 +356,8 @@ public class GameScreen implements Screen, Chapter1RelicListener {
                 // 检查陷阱是否实现了GameObject接口
                 if (t instanceof GameObject) {
                     items.add(new Item((GameObject)t, 45)); // 优先级45
-                    Logger.debug("添加陷阱到渲染列表: " + t.getClass().getSimpleName() +
-                            " at (" + t.getX() + "," + t.getY() + ")");
+//                    Logger.debug("添加陷阱到渲染列表: " + t.getClass().getSimpleName() +
+//                            " at (" + t.getX() + "," + t.getY() + ")");
                 } else {
                     Logger.warning("陷阱 " + t.getClass().getSimpleName() + " 没有实现GameObject接口");
                 }

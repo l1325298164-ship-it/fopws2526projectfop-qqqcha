@@ -41,7 +41,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private List<Player> players = new ArrayList<>();
     private boolean twoPlayerMode = true;
     private Player player;
-
+    private boolean viewingChapterRelic = false;
     private final List<Enemy> enemies = new ArrayList<>();
     private final List<Trap> traps = new ArrayList<>();
     private final List<Heart> hearts = new ArrayList<>();
@@ -239,7 +239,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
 
     public void update(float delta) {
-
+        if (viewingChapterRelic) {
+            return;
+        }
         inputHandler.update(delta, this, Player.PlayerIndex.P1);
 
          if (twoPlayerMode) {
@@ -1128,8 +1130,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     @Override
     public void onMenuInput() {
-
+        if (viewingChapterRelic) {
+            exitChapterRelicView();
+            Logger.debug("Exit ChapterRelic view by ESC");
+        }
     }
+
 
     private void checkAutoPickup() {
         if (levelTransitionInProgress) return;
@@ -1567,6 +1573,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     public void requestChapter1Relic(Chapter1Relic relic) {
         if (chapter1RelicListener != null) {
+            enterChapterRelicView();  // ⭐ 进入查看态
             chapter1RelicListener.onChapter1RelicRequested(relic);
         } else {
             Logger.warning(
@@ -1654,6 +1661,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     public List<Chapter1Relic> getChapterRelics() {
         return chapterRelics;
+    }
+    public void enterChapterRelicView() {
+        viewingChapterRelic = true;
+    }
+
+    public void exitChapterRelicView() {
+        viewingChapterRelic = false;
     }
 
 
