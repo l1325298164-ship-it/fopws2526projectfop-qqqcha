@@ -871,33 +871,41 @@ public class HUD {
         }
         if (melee == null) return;
 
-        float progress = melee.getCooldownProgress();
+        // ===== CD 进度 =====
+        float progress = melee.getCooldownProgress(); // 0~1
         boolean onCooldown = progress > 0f && progress < 1f;
+
+        // ===== 尺寸与位置（和之前逻辑保持一致）=====
+        float size = MELEE_ICON_SIZE;
 
         float dashX = getIconX(DASH_ICON_SIZE, mirror);
         float x = mirror
                 ? dashX - MELEE_UI_OFFSET_X
                 : dashX + MELEE_UI_OFFSET_X;
 
-        float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - MELEE_ICON_SIZE) / 2f;
+        float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - size) / 2f;
 
-        uiBatch.draw(meleeIcon, x, y, MELEE_ICON_SIZE, MELEE_ICON_SIZE);
-
-        // ===== 冷却遮罩（和 Dash 同逻辑）=====
+        // ===== 使用 shader（只在 CD 时）=====
         if (onCooldown) {
-            float maskHeight = MELEE_ICON_SIZE * (1f - progress);
-            uiBatch.setColor(0f, 0f, 0f, 0.5f);
-            uiBatch.draw(
-                    TextureManager.getInstance().getWhitePixel(),
-                    x,
-                    y,
-                    MELEE_ICON_SIZE,
-                    maskHeight
-            );
-            uiBatch.setColor(1f, 1f, 1f, 1f);
+            uiBatch.setShader(iceHeartShader);
+
+            // 关闭冰晶效果
+            iceHeartShader.setUniformf("u_intensity", 0.0f);
+
+            // 启用 CD 遮罩
+            iceHeartShader.setUniformf("u_cooldown", progress);
+            iceHeartShader.setUniformf("u_cdDarkness", 0.7f);
         }
 
+        // ===== 画 icon（不规则 alpha 会自动生效）=====
+        uiBatch.draw(meleeIcon, x, y, size, size);
+
+        // ===== 还原 shader =====
+        if (onCooldown) {
+            uiBatch.setShader(null);
+        }
     }
+
     private void renderMagicIcon(
             SpriteBatch batch,
             Player player,
@@ -1035,7 +1043,7 @@ public class HUD {
                     "u_intensity",
                     1.0f                // 1 = 完全冰化
             );
-
+            iceHeartShader.setUniformf("u_cooldown", -1.0f);
         }
         uiBatch.setColor(1f, 1f, 1f, 1f);
 
