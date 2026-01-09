@@ -240,14 +240,29 @@ public class HUD {
 
                     // 设置超大字体
                     font.getData().setScale(2.5f);
+                    
+                    // ✨ 支持多行文本显示
+                    String[] lines = msg.split("\n");
+                    float lineHeight = 60f; // 行间距（基于字体大小2.5f）
+                    float notificationStartY = h / 2f + 100 + (lines.length - 1) * lineHeight / 2f;
 
-                    // 阴影
-                    font.setColor(Color.BLACK);
-                    font.draw(uiBatch, msg, w / 2f - 200 + 3, h / 2f + 100 - 3);
+                    // 绘制每一行（带阴影）
+                    for (int i = 0; i < lines.length; i++) {
+                        String line = lines[i];
+                        if (line == null || line.isEmpty()) continue;
+                        
+                        GlyphLayout layout = new GlyphLayout(font, line);
+                        float x = w / 2f - layout.width / 2f;
+                        float y = notificationStartY - i * lineHeight;
 
-                    // 正文
-                    font.setColor(Color.YELLOW);
-                    font.draw(uiBatch, msg, w / 2f - 200, h / 2f + 100);
+                        // 阴影
+                        font.setColor(Color.BLACK);
+                        font.draw(uiBatch, line, x + 3, y - 3);
+
+                        // 正文
+                        font.setColor(Color.YELLOW);
+                        font.draw(uiBatch, line, x, y);
+                    }
 
                     // 还原
                     font.setColor(Color.WHITE);

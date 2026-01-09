@@ -363,17 +363,32 @@ public class GameScreen implements Screen {
     private void goToSettlementScreen() {
         // 1. 计算关卡结果（自动计算理论最高分）
         LevelResult result = gm.getLevelResult();
+        if (result == null) {
+            Logger.error("Failed to get level result! ScoreManager may be null.");
+            // 创建一个默认结果，防止闪退
+            result = new LevelResult(0, 0, 0, "D", 0, 1.0f);
+        }
         
         // 2. 获取存档数据
         GameSaveData saveData = gm.getGameSaveData();
+        if (saveData == null) {
+            Logger.error("Failed to get game save data!");
+            saveData = new GameSaveData();
+        }
         
         // 3. 清除关卡完成标志
         gm.clearLevelCompletedFlag();
         
         // 4. 跳转到结算界面
-        game.setScreen(new SettlementScreen(game, result, saveData));
-        
-        Logger.info("Navigating to SettlementScreen with score: " + result.finalScore);
+        try {
+            game.setScreen(new SettlementScreen(game, result, saveData));
+            Logger.info("Navigating to SettlementScreen with score: " + result.finalScore);
+        } catch (Exception e) {
+            Logger.error("Failed to create SettlementScreen: " + e.getMessage());
+            e.printStackTrace();
+            // 如果结算界面创建失败，返回菜单
+            game.goToMenu();
+        }
     }
 
     /**

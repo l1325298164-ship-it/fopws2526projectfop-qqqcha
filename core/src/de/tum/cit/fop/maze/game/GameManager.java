@@ -437,7 +437,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (!trap.isActive()) continue;
 
             if (trap.getX() == px && trap.getY() == py) {
+                int livesBefore = player.getLives();
                 trap.onPlayerStep(player);
+                int damage = livesBefore - player.getLives(); // 计算实际伤害
 
                 DamageSource source = DamageSource.UNKNOWN;
                 if (trap instanceof TrapT01_Geyser) source = DamageSource.TRAP_GEYSER;
@@ -445,9 +447,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 else if (trap instanceof TrapT03_TeaShards) source = DamageSource.TRAP_SPIKE;
                 else if (trap instanceof TrapT04_Mud) source = DamageSource.TRAP_MUD;
 
-                if (source != DamageSource.UNKNOWN) {
+                if (source != DamageSource.UNKNOWN && damage > 0) {
                     // 使用事件源通知监听器
                     GameEventSource.getInstance().onPlayerDamage(player.getLives(), source);
+                    
+                    // ✨ 显示伤害通知消息和扣分提示
+                    if (scoreManager != null && difficultyConfig != null) {
+                        int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
+                        player.showNotification("Trap Damage! -" + penalty + " pts (" + damage + " HP)");
+                    } else {
+                        player.showNotification("Trap Damage! -" + damage + " HP");
+                    }
                 }
 
                 float effectX = (trap.getX() + 0.5f) * GameConstants.CELL_SIZE;
@@ -976,6 +986,15 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                 // 使用事件源通知监听器
                 GameEventSource.getInstance().onItemCollected("HEART");
+                
+                // ✨ 显示通知消息和分数提示
+                if (scoreManager != null) {
+                    int scoreBefore = scoreManager.getCurrentScore();
+                    // 等待一帧让事件处理完成
+                    player.showNotification("Heart Collected! +" + de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_HEART + " pts");
+                } else {
+                    player.showNotification("Heart Collected! +50 pts");
+                }
 
                 heartIterator.remove();
             }
@@ -992,6 +1011,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                 // 使用事件源通知监听器
                 GameEventSource.getInstance().onItemCollected("TREASURE");
+                
+                // ✨ 追加分数提示到宝箱通知消息
+                if (scoreManager != null) {
+                    player.appendNotification("Treasure Collected! +" + de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_TREASURE + " pts");
+                } else {
+                    player.appendNotification("Treasure Collected! +800 pts");
+                }
             }
         }
     }
@@ -1034,7 +1060,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (!enemy.isActive() || enemy.isDead()) continue;
             if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
                 if (player.isDashInvincible()) continue;
-                player.takeDamage(enemy.getAttackDamage());
+                
+                int damage = enemy.getAttackDamage();
+                int livesBefore = player.getLives();
+                player.takeDamage(damage);
 
                 DamageSource source = DamageSource.UNKNOWN;
                 if (enemy instanceof EnemyE01_CorruptedPearl) source = DamageSource.ENEMY_E01;
@@ -1045,6 +1074,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 if (source != DamageSource.UNKNOWN) {
                     // 使用事件源通知监听器
                     GameEventSource.getInstance().onPlayerDamage(player.getLives(), source);
+                    
+                    // ✨ 显示伤害通知消息和扣分提示
+                    if (scoreManager != null && difficultyConfig != null) {
+                        int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
+                        player.showNotification("Enemy Damage! -" + penalty + " pts (" + damage + " HP)");
+                    } else {
+                        player.showNotification("Enemy Damage! -" + damage + " HP");
+                    }
                 }
             }
         }

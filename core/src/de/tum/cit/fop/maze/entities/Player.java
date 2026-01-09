@@ -593,6 +593,18 @@ public class Player extends GameObject {
         this.notificationMessage = msg;
         this.notificationTimer = 3.0f;
     }
+    
+    /**
+     * ✨ 追加通知消息到现有消息（用换行符分隔）
+     */
+    public void appendNotification(String msg) {
+        if (this.notificationMessage == null || this.notificationMessage.isEmpty()) {
+            this.notificationMessage = msg;
+        } else {
+            this.notificationMessage = this.notificationMessage + "\n" + msg;
+        }
+        this.notificationTimer = 3.0f; // 重置计时器
+    }
     public boolean hasBuffAttack() { return buffAttack; }
     public boolean hasBuffRegen() { return buffRegen; }
     public boolean hasBuffManaEfficiency() { return buffManaEfficiency; }

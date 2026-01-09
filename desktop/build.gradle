@@ -52,6 +52,3 @@ eclipse.project.name = appName + "-desktop"
 dependencies {
     implementation "com.badlogicgames.gdx:gdx-tools:1.12.1"
 }
-tasks.withType(JavaExec).configureEach {
-    jvmArgs "-XstartOnFirstThread"
-}

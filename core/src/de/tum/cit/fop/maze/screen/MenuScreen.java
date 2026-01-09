@@ -24,6 +24,7 @@ import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.tools.PerlinNoise;
+import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.StorageManager;
 
 public class MenuScreen implements Screen {
@@ -164,36 +165,64 @@ public class MenuScreen implements Screen {
      * ✨ [新增] 显示信息子菜单
      */
     private void showInfoMenu() {
-        Dialog infoDialog = new Dialog(" INFO ", game.getSkin()) {
-            @Override
-            protected void result(Object object) {
-                // 对话框关闭时不做任何操作
+        try {
+            if (game == null || game.getSkin() == null) {
+                Logger.error("Game or Skin is null in showInfoMenu!");
+                return;
             }
-        };
+            if (stage == null) {
+                Logger.error("Stage is null in showInfoMenu!");
+                return;
+            }
+            
+            Dialog infoDialog = new Dialog(" INFO ", game.getSkin()) {
+                @Override
+                protected void result(Object object) {
+                    // 对话框关闭时不做任何操作
+                }
+            };
 
-        ButtonFactory bf = new ButtonFactory(game.getSkin());
-        Table contentTable = new Table();
+            ButtonFactory bf = new ButtonFactory(game.getSkin());
+            Table contentTable = new Table();
 
-        float subButtonWidth = getButtonWidth() * 0.8f;
+            float subButtonWidth = getButtonWidth() * 0.8f;
 
-        // 成就列表
-        contentTable.add(bf.create("ACHIEVEMENTS", () -> {
-            infoDialog.hide();
-            game.setScreen(new AchievementScreen(game, this));
-        })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
+            // 成就列表
+            contentTable.add(bf.create("ACHIEVEMENTS", () -> {
+                try {
+                    infoDialog.hide();
+                    game.setScreen(new AchievementScreen(game, this));
+                } catch (Exception e) {
+                    Logger.error("Failed to open AchievementScreen: " + e.getMessage());
+                    e.printStackTrace();
+                    // 如果成就界面创建失败，显示错误消息
+                    infoDialog.hide();
+                }
+            })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
 
-        // 排行榜
-        contentTable.add(bf.create("LEADERBOARD", () -> {
-            infoDialog.hide();
-            game.setScreen(new LeaderboardScreen(game, this));
-        })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
+            // 排行榜
+            contentTable.add(bf.create("LEADERBOARD", () -> {
+                try {
+                    infoDialog.hide();
+                    game.setScreen(new LeaderboardScreen(game, this));
+                } catch (Exception e) {
+                    Logger.error("Failed to open LeaderboardScreen: " + e.getMessage());
+                    e.printStackTrace();
+                    // 如果排行榜界面创建失败，显示错误消息
+                    infoDialog.hide();
+                }
+            })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
 
-        // 返回按钮
-        contentTable.add(bf.create("BACK", () -> infoDialog.hide()))
-                .width(subButtonWidth).height(BUTTON_HEIGHT).row();
+            // 返回按钮
+            contentTable.add(bf.create("BACK", () -> infoDialog.hide()))
+                    .width(subButtonWidth).height(BUTTON_HEIGHT).row();
 
-        infoDialog.getContentTable().add(contentTable);
-        infoDialog.show(stage);
+            infoDialog.getContentTable().add(contentTable);
+            infoDialog.show(stage);
+        } catch (Exception e) {
+            Logger.error("Failed to show info menu: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     // 🔥 显示覆盖存档确认框
