@@ -9,6 +9,7 @@ import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -23,6 +24,7 @@ public class MeleeAttackAbility extends Ability {
 
     private static final float HIT_TIME = 0.12f;
     private GameManager gameManager;
+
     /* ===== 攻击区域 ===== */
     private final List<int[]> attackTiles = new ArrayList<>();
 
@@ -31,37 +33,54 @@ public class MeleeAttackAbility extends Ability {
     private boolean damageDone = false;
 
     /* ===== Debug ===== */
-    private static final Color DEBUG_COLOR =
-            new Color(1f, 0.2f, 0.2f, 0.3f);
+    private static final Color DEBUG_COLOR = new Color(1f, 0.9f, 0f, 0.5f);
 
     public MeleeAttackAbility() {
+        // 使用正确的冷却时间（原版是0.4f）
         super(
                 "Sword Slash",
                 "Slash enemies in front of you",
-                0.8f,   // 冷却
-                0.25f   // 持续（挥刀时间）
+                0.8f,      // cooldown
+                HIT_TIME   // duration = 命中窗口
         );
-        this.manaCost = 10;
-    }
 
-    /* ================= 生命周期 ================= */
+        this.manaCost = 10; // 如果没有法力消耗，设为0
+    }
 
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
-        this.gameManager = gameManager;
 
-        player.startAttack();
+        this.gameManager = gameManager;
 
         attackTimer = 0f;
         damageDone = false;
 
         calculateAttackTiles(player);
+        player.startAttack();
 
         AudioManager.getInstance().play(AudioType.UI_CLICK);
+
+        // ⭐⭐ 手动开始冷却
+        ready = false;
+        cooldownTimer = 0f;
     }
 
+
+
     @Override
-    protected void updateActive(float delta) {
+    protected boolean shouldConsumeMana() {
+        return manaCost > 0; // 只有有法力消耗时才消耗法力
+    }
+
+
+
+    @Override
+    public void update(float delta) {
+        super.update(delta);
+
+        // 如果这一轮攻击有效 → 才推进攻击计时
+        if (gameManager == null) return;
+
         attackTimer += delta;
 
         if (!damageDone && attackTimer >= HIT_TIME) {
@@ -70,72 +89,54 @@ public class MeleeAttackAbility extends Ability {
         }
     }
 
+
+
     @Override
-    protected void onDeactivate() {
-        attackTiles.clear();
-        attackTimer = 0f;
-        damageDone = false;
-        gameManager = null;
+    protected boolean shouldBecomeActive() {
+        return false;   // ❗ 不进入 active 生命周期
     }
 
-    /* ================= 攻击逻辑 ================= */
 
     private void calculateAttackTiles(Player player) {
         attackTiles.clear();
-
         int px = player.getX();
         int py = player.getY();
-        Player.Direction dir = player.getDirection();
 
-        // 包含自身，防止贴脸
-        attackTiles.add(new int[]{px, py});
-
-        switch (dir) {
+        // 攻击面前两格
+        switch (player.getDirection()) {
             case UP -> {
                 attackTiles.add(new int[]{px, py + 1});
-                attackTiles.add(new int[]{px - 1, py + 1});
-                attackTiles.add(new int[]{px + 1, py + 1});
+                attackTiles.add(new int[]{px, py + 2});
             }
             case DOWN -> {
                 attackTiles.add(new int[]{px, py - 1});
-                attackTiles.add(new int[]{px - 1, py - 1});
-                attackTiles.add(new int[]{px + 1, py - 1});
+                attackTiles.add(new int[]{px, py - 2});
             }
             case LEFT -> {
                 attackTiles.add(new int[]{px - 1, py});
-                attackTiles.add(new int[]{px - 1, py - 1});
-                attackTiles.add(new int[]{px - 1, py + 1});
+                attackTiles.add(new int[]{px - 2, py});
             }
             case RIGHT -> {
                 attackTiles.add(new int[]{px + 1, py});
-                attackTiles.add(new int[]{px + 1, py - 1});
-                attackTiles.add(new int[]{px + 1, py + 1});
+                attackTiles.add(new int[]{px + 2, py});
             }
-        }
-
-        if (level >= 3) {
-            extendRange(dir, px, py);
-        }
-    }
-
-    private void extendRange(Player.Direction dir, int px, int py) {
-        switch (dir) {
-            case UP -> attackTiles.add(new int[]{px, py + 2});
-            case DOWN -> attackTiles.add(new int[]{px, py - 2});
-            case LEFT -> attackTiles.add(new int[]{px - 2, py});
-            case RIGHT -> attackTiles.add(new int[]{px + 2, py});
         }
     }
 
     private void dealDamage(GameManager gameManager) {
-        int damage = baseDamage + (level - 1) * damagePerLevel;
+        if (gameManager == null) return;
+        int damage = (int)((baseDamage + (level - 1) * damagePerLevel));
 
         Set<Enemy> hitEnemies = new HashSet<>();
 
+        // 遍历所有受影响的格子，对其中的敌人造成伤害
         for (int[] tile : attackTiles) {
-            for (Enemy enemy : gameManager.getEnemiesAt(tile[0], tile[1])) {
-                if (enemy != null && !enemy.isDead() && hitEnemies.add(enemy)) {
-                    enemy.takeDamage(damage);
+            List<Enemy> enemies = gameManager.getEnemiesAt(tile[0], tile[1]);
+            if (enemies != null) {
+                for (Enemy enemy : enemies) {
+                    if (enemy != null && !enemy.isDead() && hitEnemies.add(enemy)) {
+                        enemy.takeDamage(damage);
+                    }
                 }
             }
         }
@@ -166,11 +167,6 @@ public class MeleeAttackAbility extends Ability {
 
     @Override
     protected void onUpgrade() {
-
-        if (level == 4) {
-            baseDamage += 1;
-        }
-
-        // 2 / 3 / 5 级效果你以后再扩
+        // 升级逻辑通过 getLevel() 动态计算 damage 实现
     }
 }

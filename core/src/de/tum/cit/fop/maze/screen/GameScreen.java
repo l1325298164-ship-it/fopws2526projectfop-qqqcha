@@ -3,10 +3,12 @@ package de.tum.cit.fop.maze.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -106,14 +108,14 @@ public class GameScreen implements Screen {
         uiBottom = new Texture("Wallpaper/HUD_down.png");
         uiLeft = new Texture("Wallpaper/HUD_left.png");
         uiRight = new Texture("Wallpaper/HUD_right.png");
-//        uiTop.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiBottom.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiLeft.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiRight.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+
         input = new PlayerInputHandler();
 
         batch = game.getSpriteBatch();
-        gm = new GameManager(difficultyConfig);
+        gm = new GameManager(
+                difficultyConfig,
+                game.isTwoPlayerMode() // ⭐ 从 Settings 来的值
+        );
         maze = new MazeRenderer(gm,difficultyConfig);
         cam = new CameraManager(difficultyConfig);
         float mazeW = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;
@@ -126,7 +128,6 @@ public class GameScreen implements Screen {
         );
         uiStage = new Stage(new ScreenViewport(), batch);
         hud = new HUD(gm);
-        game.setActiveGameScreen(this);
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
     }
@@ -247,26 +248,7 @@ public class GameScreen implements Screen {
 
                 }, Player.PlayerIndex.P2);
             }
-            // ===== Magic 鼠标技能（P2）=====
-            if (gm.isTwoPlayerMode() && gm.getPlayers().size() > 1) {
-
-                Player p2 = gm.getPlayers().get(1);
-                Ability ability = p2.getAbilityManager().getAbility(0);
-
-                if (ability instanceof MagicAbility m) {
-
-                    // 只监听「再次按下」
-                    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
-
-                        // 统一走 Ability 的 onActivate 状态机
-                        m.activate(p2, gm);
-                    }
-                }
-            }
-
-
-
-        }
+      }
 
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {
@@ -277,15 +259,7 @@ public class GameScreen implements Screen {
 
         /* ================= 清屏 ================= */
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
-        batch.setProjectionMatrix(cam.getCamera().combined);
 
-        /* =========================================================
-           ① 地板 + 门背后呼吸光（Portal Back）
-           ========================================================= */
-        batch.begin();
-        maze.renderFloor(batch);
-
-        /* ================= 更新 ================= */
         if (!console.isVisible()) {
 
             // 🔥 [Console] 获取时间流速变量 (默认 1.0)
@@ -296,8 +270,19 @@ public class GameScreen implements Screen {
             float gameDelta = delta * timeScale;
 
             // 注意：这里需要把 gameDelta 传进去，这样相机的跟随速度也会随时间变慢
-            cam.update(gameDelta, gm.getPlayer(), gm);
+            cam.update(gameDelta, gm);
         }
+
+        worldViewport.apply();
+        batch.setProjectionMatrix(cam.getCamera().combined);
+
+        /* =========================================================
+           ① 地板 + 门背后呼吸光（Portal Back）
+           ========================================================= */
+        batch.begin();
+        maze.renderFloor(batch);
+
+
         // 🔥 关键修复：使用防御性副本避免 ConcurrentModificationException
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
@@ -419,11 +404,6 @@ public class GameScreen implements Screen {
                 p.getAbilityManager().drawAbilities(batch, shapeRenderer, p);
             }
         }
-
-
-
-
-
 
 // ===== 雾（一定在这里）=====
         batch.begin();
@@ -571,8 +551,15 @@ public class GameScreen implements Screen {
                 .width(btnW).height(btnH).pad(padding);
 
         // SETTINGS
-        buttonTable.add(bf.create("SETTINGS", () -> { /* TODO */ }))
-                .width(btnW).height(btnH).pad(padding);
+        buttonTable.add(bf.create("SETTINGS", () -> {
+            game.setScreen(
+                    new SettingsScreen(
+                            game,
+                            SettingsScreen.SettingsSource.PAUSE_MENU,
+                            game.getScreen() // 当前 GameScreen
+                    )
+            );
+        })).width(btnW).height(btnH).pad(padding);
 
         // BACK TO MENU (增加宽度以容纳文字)
         buttonTable.add(bf.create("MENU", () -> {
@@ -601,7 +588,9 @@ public class GameScreen implements Screen {
 
 
     private void renderUI() {
-
+        // ===== 保存 batch 状态 =====
+        Matrix4 oldProjection = batch.getProjectionMatrix().cpy();
+        Color oldColor = batch.getColor().cpy();
         // ===== 1. UI SpriteBatch（HUD / 装饰）=====
         uiStage.getViewport().apply();
         batch.setProjectionMatrix(uiStage.getCamera().combined);
@@ -610,13 +599,8 @@ public class GameScreen implements Screen {
 
         // 边框装饰（如果这是 UI 装饰，放这里）
         renderMazeBorderDecorations(batch);
-
-        // HUD 主体（猫 / 心 / Dash / 指南针）
+        // HUD
         hud.renderInGameUI(batch);
-
-        // Mana 条（必须在 batch.begin/end 内）
-        hud.renderManaBar(batch);
-
         batch.end();
 
         // ===== 2. Scene2D UI =====
@@ -630,6 +614,10 @@ public class GameScreen implements Screen {
 
         // ===== 4. 恢复世界相机（非常重要）=====
         batch.setProjectionMatrix(cam.getCamera().combined);
+
+        // ===== 🔥 恢复 batch 状态（关键）=====
+        batch.setColor(oldColor);
+        batch.setProjectionMatrix(oldProjection);
     }
 
 

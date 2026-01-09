@@ -4,7 +4,9 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.Align;
@@ -14,7 +16,7 @@ import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 
 public class DifficultySelectScreen implements Screen {
-
+    private Texture backgroundTexture;
     private final MazeRunnerGame game;
     private final Screen backScreen;
     private Stage stage;
@@ -27,9 +29,20 @@ public class DifficultySelectScreen implements Screen {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
+// ===== 背景 =====
+        backgroundTexture = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+// ↑ 你可以换成任意图片路径
+
+        Image background = new Image(backgroundTexture);
+        background.setFillParent(true);
+        stage.addActor(background);
+
+// ===== UI Root =====
         Table root = new Table();
         root.setFillParent(true);
         stage.addActor(root);
+
+
 
         Label title = new Label("SELECT DIFFICULTY", game.getSkin(), "title");
         title.setAlignment(Align.center);
@@ -102,6 +115,7 @@ public class DifficultySelectScreen implements Screen {
 
     @Override public void dispose() {
         stage.dispose();
+        if (backgroundTexture != null) backgroundTexture.dispose();
     }
 
     @Override public void show() {

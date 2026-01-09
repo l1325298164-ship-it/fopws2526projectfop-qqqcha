@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -25,6 +26,10 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
     private float rotation = 0f;
     private float rotationSpeed = 180f; // 度/秒
     // 🔥 动画相关
+    public int getCollisionDamage() {
+        return collisionDamage;
+    }
+
     private Animation<TextureRegion> anim;
     private float animTime = 0f;
     public EnemyE02_SmallCoffeeBean(int x, int y) {
@@ -57,6 +62,16 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
 
+    }
+    public boolean collidesWithPlayer(Player p) {
+        float dx = (p.getX() + 0.5f) - worldX;
+        float dy = (p.getY() + 0.5f) - worldY;
+
+        float distSq = dx * dx + dy * dy;
+
+        // 碰撞半径（你可以调）
+        float radius = 0.6f;
+        return distSq <= radius * radius;
     }
 
     /* ================== 渲染 ================== */

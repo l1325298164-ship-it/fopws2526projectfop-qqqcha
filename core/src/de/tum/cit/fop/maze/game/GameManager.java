@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
@@ -26,6 +27,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private final DifficultyConfig difficultyConfig;
     private float debugTimer = 0f;
 
+    // ===== Endless Co-op Revive =====
+    private static final float REVIVE_DELAY = 10f;
+    // ===== 双人复活系统 =====
+
+    private boolean revivePending = false;
+    private float reviveTimer = 0f;
 
     public DifficultyConfig getDifficultyConfig() {
         return difficultyConfig;
@@ -75,19 +82,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     //effect to player
     private PortalEffectManager playerSpawnPortal;
-
+//    private final MazeRunnerGame game;
 
     /* ================= 生命周期 ================= */
-    public GameManager(DifficultyConfig difficultyConfig) {
+    public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode) {
         this.inputHandler = new PlayerInputHandler();
-        if (difficultyConfig == null) {
-            throw new IllegalArgumentException("difficultyConfig must not be null");
-        }
         this.difficultyConfig = difficultyConfig;
-
-        // ⚠️ 一定要在最后
+        this.twoPlayerMode = twoPlayerMode;
         resetGame();
     }
+
+
 
     private void resetGame() {
         gameVariables = new HashMap<>();
@@ -134,6 +139,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             Logger.gameEvent(
                     "P2 spawned near P1 at (" + spawn2[0] + ", " + spawn2[1] + ")"
             );
+
+            // ===== Reset revive system =====
+            revivePending = false;
+            reviveTimer = 0f;
         }
 
 // 🔥 关键：同步旧 player 引用
@@ -192,7 +201,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         // ⚠️ 如果 8 格全满，兜底：随机一个
         Logger.warning("No nearby spawn found for P2, fallback to random");
-        return randomEmptyCell();
+        return null;
     }
 
     public void debugEnemiesAndBullets() {
@@ -270,6 +279,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 p.update(delta);
             }
         }
+
+        updateEndlessRevive(delta);
+        
         boolean fogOn = fogSystem != null && fogSystem.isActive();
 
 // Hard + 雾 → 启用猫
@@ -373,27 +385,118 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         }
     }
+    public float getReviveProgress() {
+        if (!revivePending) return 0f;
+        return Math.min(1f, reviveTimer / REVIVE_DELAY);
+    }
+
+    private Player lastReviveTarget = null;
+
+    private void updateEndlessRevive(float delta) {
+
+
+
+        if (!twoPlayerMode) return;
+
+        Player p1 = getPlayerByIndex(Player.PlayerIndex.P1);
+        Player p2 = getPlayerByIndex(Player.PlayerIndex.P2);
+        if (p1 == null || p2 == null) return;
+
+        boolean p1Dead = p1.isDead();
+        boolean p2Dead = p2.isDead();
+
+        // 双死 → 不处理（EndlessScreen 会 GameOver）
+        if (p1Dead && p2Dead) {
+            revivePending = false;
+            reviveTimer = 0f;
+            return;
+        }
+
+        // 一死一活
+        if (p1Dead ^ p2Dead) {
+            Player alive = p1Dead ? p2 : p1;
+            Player dead  = p1Dead ? p1 : p2;
+
+            // 🔥 如果复活对象发生变化，重置计时
+            if (dead != lastReviveTarget) {
+                reviveTimer = 0f;
+                lastReviveTarget = dead;
+            }
+
+            revivePending = true;
+            reviveTimer += delta;
+
+            if (reviveTimer >= REVIVE_DELAY) {
+                revivePlayer(dead, alive);
+                revivePending = false;
+                reviveTimer = 0f;
+                lastReviveTarget = null;
+            }
+        }else {
+            // 🔥 都活着 或 都死 → 清状态
+            revivePending = false;
+            reviveTimer = 0f;
+            lastReviveTarget = null;
+        }
+
+    }
+
+    private void revivePlayer(Player dead, Player alive) {
+        int[] spawn = findNearbySpawn(alive);
+        if (spawn == null) {
+            spawn = new int[]{alive.getX(), alive.getY()};
+        }
+        dead.reviveAt(
+                spawn[0],
+                spawn[1],
+                10
+        );
+
+        Logger.gameEvent(
+                "Revived " + dead.getPlayerIndex() + " near " + alive.getPlayerIndex()
+        );
+    }
+
+
+    public Player getNearestAlivePlayer(int x, int y) {
+        Player nearest = null;
+        float bestDist = Float.MAX_VALUE;
+
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
+
+            float dx = p.getX() - x;
+            float dy = p.getY() - y;
+            float dist = dx * dx + dy * dy;
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                nearest = p;
+            }
+        }
+        return nearest;
+    }
+
 
     private void handlePlayerTrapInteraction() {
-        if (levelTransitionInProgress || player == null || player.isDead()) return;
+        if (levelTransitionInProgress) return;
 
-        int px = player.getX();
-        int py = player.getY();
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
 
-        for (Trap trap : traps) {
-            if (!trap.isActive()) continue;
+            int px = p.getX();
+            int py = p.getY();
 
-            // 检查玩家是否在陷阱上
-            if (trap.getX() == px && trap.getY() == py) {
-                trap.onPlayerStep(player);
+            for (Trap trap : traps) {
+                if (!trap.isActive()) continue;
 
-                // 🔥 调试：输出陷阱交互
-                if (trap instanceof TrapT01_Geyser) {
-                    Logger.debug("玩家在T01陷阱上: 位置(" + px + "," + py + ")");
+                if (trap.getX() == px && trap.getY() == py) {
+                    trap.onPlayerStep(p);
                 }
             }
         }
     }
+
     private void updateCompass() {
         if (compass == null) return;
 
@@ -418,24 +521,54 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     // 🔥 新增：检查玩家是否到达出口
     private void checkExitReached() {
-        Player p = player;
+
+        if (levelTransitionInProgress) return;
+
+        // ===== 单人模式：保持原逻辑 =====
+        if (!twoPlayerMode) {
+            Player p = player;
+
+            for (ExitDoor door : exitDoors) {
+                if (!door.isLocked() &&
+                        door.isActive() &&
+                        door.getX() == p.getX() &&
+                        door.getY() == p.getY()) {
+
+                    door.onPlayerStep(p);
+                    startLevelTransition(door);
+                    return;
+                }
+            }
+            return;
+        }
+
+        // ===== 双人模式：两人必须同时在门上 =====
+        Player p1 = getPlayerByIndex(Player.PlayerIndex.P1);
+        Player p2 = getPlayerByIndex(Player.PlayerIndex.P2);
+
+        if (p1 == null || p2 == null) return;
+        if (p1.isDead() || p2.isDead()) return;
 
         for (ExitDoor door : exitDoors) {
-            if (!door.isLocked() &&
-                    door.isActive() &&
-                    door.getX() == p.getX() &&
-                    door.getY() == p.getY() &&
-                    !levelTransitionInProgress) { // 🔥 防止重复触发
+            if (!door.isLocked() || !door.isActive()) continue;
 
-                // 触发门动画
-                door.onPlayerStep(p);
+            boolean p1OnDoor =
+                    p1.getX() == door.getX() &&
+                            p1.getY() == door.getY();
 
-                // 开始关卡过渡
+            boolean p2OnDoor =
+                    p2.getX() == door.getX() &&
+                            p2.getY() == door.getY();
+
+            if (p1OnDoor && p2OnDoor) {
+                // ⭐ 用 P1 触发即可（动画/逻辑只需要一次）
+                door.onPlayerStep(p1);
                 startLevelTransition(door);
                 return;
             }
         }
     }
+
 
     // 🔥 新增：开始关卡过渡
     private void startLevelTransition(ExitDoor door) {
@@ -566,10 +699,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     private boolean isOccupied(int x, int y) {
         // 玩家
-        if (player != null && player.getX() == x && player.getY() == y) {
-            return true;
+        for (Player p : players) {
+            if (p != null && p.getX() == x && p.getY() == y) return true;
         }
-
         // 敌人
         for (Enemy e : enemies) {
             if (e.isActive() && e.getX() == x && e.getY() == y) {
@@ -988,55 +1120,52 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private void checkAutoPickup() {
         if (levelTransitionInProgress) return;
 
-        int px = player.getX();
-        int py = player.getY();
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
 
-        // ===== 钥匙 =====
-        Iterator<Key> keyIterator = keys.iterator();
-        while (keyIterator.hasNext()) {
-            Key key = keyIterator.next();
-            if (!key.isActive()) continue;
+            int px = p.getX();
+            int py = p.getY();
 
-            if (key.getX() == px && key.getY() == py) {
-                float effectX = key.getX() * GameConstants.CELL_SIZE;
-                float effectY = key.getY() * GameConstants.CELL_SIZE;
+            // ===== 钥匙 =====
+            Iterator<Key> keyIterator = keys.iterator();
+            while (keyIterator.hasNext()) {
+                Key key = keyIterator.next();
+                if (!key.isActive()) continue;
 
-                if (key.getTexture() != null) {
-                    keyEffectManager.spawnKeyEffect(effectX, effectY, key.getTexture());
+                if (key.getX() == px && key.getY() == py) {
+                    float effectX = key.getX() * GameConstants.CELL_SIZE;
+                    float effectY = key.getY() * GameConstants.CELL_SIZE;
+
+                    if (key.getTexture() != null) {
+                        keyEffectManager.spawnKeyEffect(effectX, effectY, key.getTexture());
+                    }
+
+                    key.onInteract(p);
+                    keyIterator.remove();
+                    onKeyCollected();
+                    break;
                 }
-
-                key.onInteract(player);
-                keyIterator.remove();
-                onKeyCollected();
-                break;
             }
-        }
 
-        // ===== 爱心 =====
-        Iterator<Heart> heartIterator = hearts.iterator();
-        while (heartIterator.hasNext()) {
-            Heart h = heartIterator.next();
-            if (h.isActive() && h.getX() == px && h.getY() == py) {
-                h.onInteract(player);
-                heartIterator.remove();
+            // ===== 爱心 =====
+            Iterator<Heart> heartIterator = hearts.iterator();
+            while (heartIterator.hasNext()) {
+                Heart h = heartIterator.next();
+                if (h.isActive() && h.getX() == px && h.getY() == py) {
+                    h.onInteract(p);
+                    heartIterator.remove();
+                }
             }
-        }
 
-        // ===== 宝箱 (Treasure) =====
-        Iterator<Treasure> treasureIterator = treasures.iterator();
-        while (treasureIterator.hasNext()) {
-            Treasure t = treasureIterator.next();
-
-            // 只要玩家踩上去，并且宝箱还没开
-            if (t.isInteractable() && t.getX() == px && t.getY() == py) {
-                // 触发开箱逻辑 (Player.java 会获得 Buff)
-                t.onInteract(player);
-
-                // ⚠️ 注意：宝箱打开后不移除 (remove)，因为它要变成开箱状态留在原地
-                // 所以这里不需要 treasureIterator.remove();
+            // ===== 宝箱 =====
+            for (Treasure t : treasures) {
+                if (t.isInteractable() && t.getX() == px && t.getY() == py) {
+                    t.onInteract(p);
+                }
             }
         }
     }
+
 
     /**
      * Enemy 专用移动判定
@@ -1130,37 +1259,94 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private void handlePlayerEnemyCollision() {
         if (levelTransitionInProgress) return;
 
-        Player player = this.player;
-        if (player == null || player.isDead()) return;
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
+            if (p.isDashInvincible()) continue;
 
-        for (Enemy enemy : enemies) {
-            if (!enemy.isActive() || enemy.isDead()) continue;
+            for (Enemy enemy : enemies) {
+                if (enemy == null || !enemy.isActive() || enemy.isDead()) continue;
 
-            if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
-                if (player.isDashInvincible()) {
-                    continue;
+                boolean hit = false;
+
+                // 🔥 连续移动敌人（E02）
+                if (enemy instanceof EnemyE02_SmallCoffeeBean e02) {
+
+                    // 玩家中心 vs 敌人 world 坐标
+                    float px = p.getX() + 0.5f;
+                    float py = p.getY() + 0.5f;
+
+                    float dx = px - e02.getWorldX();
+                    float dy = py - e02.getWorldY();
+
+                    float radius = 0.6f; // ⭐ 可调，0.5~0.7 都行
+                    hit = (dx * dx + dy * dy) <= radius * radius;
+
+                } else {
+                    // 🔹 原有格子敌人逻辑（E01 / E03 / E04）
+                    hit = (enemy.getX() == p.getX() &&
+                            enemy.getY() == p.getY());
                 }
-                player.takeDamage(enemy.getAttackDamage());
+
+                if (hit) {
+                    p.takeDamage(enemy.getCollisionDamage());
+                }
             }
         }
     }
+
+
 
     private void handleDashHitEnemies() {
         if (levelTransitionInProgress) return;
 
-        Player player = this.player;
-        if (player == null) return;
-        if (!player.isDashing()) return;
+        for (Player p : players) {
+            if (p == null || !p.isDashing()) continue;
 
-        for (Enemy enemy : enemies) {
-            if (!enemy.isActive() || enemy.isDead()) continue;
+            // 玩家中心（连续坐标）
+            float px = p.getWorldX() + 0.5f;
+            float py = p.getWorldY() + 0.5f;
 
-            if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
-                enemy.markHitByDash();   // ⭐ E04关键
-                enemy.takeDamage(2);
+            for (Enemy enemy : enemies) {
+                if (enemy == null || !enemy.isActive() || enemy.isDead()) continue;
+
+                boolean hit = false;
+
+                // ===============================
+                // 🔥 E02：连续移动敌人（圆形判定）
+                // ===============================
+                if (enemy instanceof EnemyE02_SmallCoffeeBean e02) {
+                    float dx = px - e02.getWorldX();
+                    float dy = py - e02.getWorldY();
+                    float radius = 0.7f; // Dash 命中宽容度
+                    hit = (dx * dx + dy * dy) <= radius * radius;
+                }
+
+                // ===============================
+                // 🔥 E04：2x2 占格敌人
+                // ===============================
+                else if (enemy instanceof EnemyE04_CrystallizedCaramelShell shell) {
+                    int cx = (int) px;
+                    int cy = (int) py;
+                    hit = shell.occupiesCell(cx, cy);
+                }
+
+                // ===============================
+                // 🔹 其他普通 1x1 敌人
+                // ===============================
+                else {
+                    hit = (enemy.getX() == (int) px &&
+                            enemy.getY() == (int) py);
+                }
+
+                if (hit) {
+                    // ⭐ 顺序非常重要
+                    enemy.markHitByDash();
+                    enemy.takeDamage(2);
+                }
             }
         }
     }
+
 
     public KeyEffectManager getKeyEffectManager() {
         return keyEffectManager;
@@ -1283,9 +1469,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public CatFollower getCat() {
         return cat;
     }
-    public void setTwoPlayerMode(boolean enabled) {
-        this.twoPlayerMode = enabled;
-    }
     private void syncSinglePlayerRef() {
         if (!players.isEmpty()) {
             player = players.get(0); // P1 永远是主玩家
@@ -1332,6 +1515,22 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     // 🔥 [HP-UP] Getter
     public List<HeartContainer> getHeartContainers() {
         return heartContainers;
+    }
+    public boolean isReviving() {
+        return revivePending;
+    }
+    public Player getRevivingTarget() {
+        if (!revivePending) return null;
+
+        Player p1 = getPlayerByIndex(Player.PlayerIndex.P1);
+        Player p2 = getPlayerByIndex(Player.PlayerIndex.P2);
+
+        if (p1 == null || p2 == null) return null;
+
+        if (p1.isDead() && !p2.isDead()) return p1;
+        if (p2.isDead() && !p1.isDead()) return p2;
+
+        return null;
     }
 
 

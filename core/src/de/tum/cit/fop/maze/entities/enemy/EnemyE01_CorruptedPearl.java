@@ -121,74 +121,73 @@ public class EnemyE01_CorruptedPearl extends Enemy {
 
     @Override
     public void update(float delta, GameManager gm) {
-        // ===== 动画时间推进 =====
+
         if (isMoving) {
             stateTime += delta;
         } else {
             stateTime = 0f;
         }
 
-
         if (!active) return;
 
         updateHitFlash(delta);
 
-        Player player = gm.getPlayer();
-        float dist = distanceTo(player);
+        // ✅ 唯一合法目标来源
+        Player target = gm.getNearestAlivePlayer(x, y);
+        if (target == null) return;
+
+        float dist = distanceTo(target);
 
         shootCooldown -= delta;
 
         state = (dist <= detectRange)
                 ? EnemyState.ATTACK
                 : EnemyState.PATROL;
-// ===== 攻击表现驱动 =====
+
+        // ===== 攻击表现驱动 =====
         if (isAttacking) {
             attackTimer += delta;
 
-            // 到达开火时间点
             if (attackTimer >= ATTACK_WINDUP) {
-                shootAt(player, gm);
+                shootAt(target, gm);
                 shootCooldown = SHOOT_INTERVAL;
-
-                // 进入“开火闪烁阶段”
                 attackTimer = -ATTACK_FLASH;
             }
 
-            // 闪烁结束，攻击结束
             if (attackTimer >= 0f) {
                 isAttacking = false;
                 attackTimer = 0f;
             }
 
-            // ⛔ 攻击时不移动
             return;
         }
+
         switch (state) {
             case PATROL -> patrol(delta, gm);
-            case ATTACK -> combat(delta, gm, player, dist);
+            case ATTACK -> combat(delta, gm, target, dist);
         }
 
-        // ⭐⭐⭐ 连续移动真正执行在这里
         moveContinuously(delta);
     }
+
 
     private void patrol(float delta, GameManager gm) {
         tryMoveRandom(delta, gm);
     }
 
-    private void combat(float delta, GameManager gm, Player player, float dist) {
+    private void combat(float delta, GameManager gm, Player target, float dist) {
 
         float idealDistance = detectRange * 0.5f;
+
         if (shootCooldown <= 0f && !isAttacking) {
             isAttacking = true;
             attackTimer = 0f;
         }
-        // ❗ 这里先用“简单版追逐”，避免瞬移问题
-        if (!isMoving) {
-            int dx = Integer.compare(player.getX(), x);
-            int dy = Integer.compare(player.getY(), y);
 
-            // 只走正交方向
+        if (!isMoving) {
+            int dx = Integer.compare(target.getX(), x);
+            int dy = Integer.compare(target.getY(), y);
+
             if (Math.abs(dx) > Math.abs(dy)) {
                 dy = 0;
             } else {
@@ -210,22 +209,24 @@ public class EnemyE01_CorruptedPearl extends Enemy {
         }
 
         if (shootCooldown <= 0f) {
-            shootAt(player, gm);
+            shootAt(target, gm);
             shootCooldown = SHOOT_INTERVAL;
         }
     }
 
-    private void shootAt(Player player, GameManager gm) {
-        float dx = player.getX() - x;
-        float dy = player.getY() - y;
+
+    private void shootAt(Player target, GameManager gm) {
+        float dx = target.getX() - x;
+        float dy = target.getY() - y;
 
         BobaBullet bullet = new BobaBullet(
                 x + 0.5f, y + 0.5f, dx, dy, attack
         );
 
         gm.spawnProjectile(bullet);
-        Logger.debug("✅ E01 发射 BobaBullet");
+        Logger.debug("✅ E01 发射 BobaBullet → " + target.getPlayerIndex());
     }
+
 
     private float distanceTo(Player p) {
         float dx = p.getX() - x;

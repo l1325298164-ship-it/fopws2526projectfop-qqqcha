@@ -43,31 +43,35 @@ public class EnemyBullet extends GameObject {
 
         realX += moveX;
         realY += moveY;
-        traveled += Math.sqrt(moveX*moveX + moveY*moveY);
+        traveled += Math.sqrt(moveX * moveX + moveY * moveY);
 
-        // 同步格子坐标
         this.x = (int) realX;
         this.y = (int) realY;
 
-        // 1. 撞墙检测
+        // 撞墙
         if (gm.getMazeCell(x, y) == 0) {
-            active = false; // 普通子弹直接销毁
+            active = false;
             return;
         }
 
-        // 2. 射程限制
+        // 射程
         if (traveled >= maxRange) {
             active = false;
             return;
         }
 
-        // 3. 命中玩家
-        Player player = gm.getPlayer();
-        if (player.collidesWith(this)) {
-            player.takeDamage(damage);
-            active = false;
+        // ✅ 命中任意玩家
+        for (Player p : gm.getPlayers()) {
+            if (p == null || p.isDead()) continue;
+
+            if (p.collidesWith(this)) {
+                p.takeDamage(damage);
+                active = false;
+                return;
+            }
         }
     }
+
 
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {

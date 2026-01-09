@@ -32,9 +32,9 @@ public class PackPV {
         // 执行打包（记得把路径改成你小猫素材的路径）
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/finished/T04", // 假设你的大猫原图在这里
-                root + "/assets/ani/T04", // 输出到 assets
-                "T04"                // 输出文件名
+                root + "/assets_raw/pv4", // 假设你的大猫原图在这里
+                root + "/assets/pv/4", // 输出到 assets
+                "PV_4"                // 输出文件名
         );
 
         System.out.println("Cat atlas packed successfully with 0.25x scale.");

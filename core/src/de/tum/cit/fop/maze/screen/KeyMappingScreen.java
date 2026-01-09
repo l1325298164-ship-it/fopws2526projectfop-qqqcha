@@ -94,7 +94,7 @@ public class KeyMappingScreen implements Screen {
         com.badlogic.gdx.scenes.scene2d.ui.ScrollPane scrollPane = new com.badlogic.gdx.scenes.scene2d.ui.ScrollPane(contentTable, scrollStyle);
         scrollPane.setScrollingDisabled(true, false);
         scrollPane.setFadeScrollBars(false);
-
+        stage.setScrollFocus(scrollPane);
         // 把滚动窗格加进去
         rootTable.add(scrollPane).expand().fill().row();
 

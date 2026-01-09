@@ -2,9 +2,12 @@ package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -15,6 +18,7 @@ import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -42,7 +46,7 @@ public class EndlessScreen implements Screen {
     private PlayerInputHandler input;
     private DeveloperConsole console;
     private Texture uiTop, uiBottom, uiLeft, uiRight;
-
+    private ShapeRenderer shapeRenderer;
     // ===== 暂停相关 =====
     private boolean paused = false;
     private Stage pauseStage;
@@ -128,9 +132,8 @@ public class EndlessScreen implements Screen {
             System.out.println("✅ EndlessScreen 已初始化，跳过重复初始化");
             return;
         }
-
+        shapeRenderer = new ShapeRenderer();
         System.out.println("🚀 第一次初始化 EndlessScreen");
-
         // 只加载一次 UI 纹理
         try {
             uiTop = new Texture("Wallpaper/HUD_up.png");
@@ -145,15 +148,9 @@ public class EndlessScreen implements Screen {
         input = new PlayerInputHandler();
         batch = game.getSpriteBatch();
 
-        // 🔥 关键修改：使用 MazeRunnerGame 中已创建的 GameManager
-        if (game.getGameManager() != null) {
-            gm = game.getGameManager();
-            System.out.println("✅ 使用 MazeRunnerGame 的 GameManager");
-        } else {
-            // 如果 gameManager 不存在，才创建一个
-            gm = new GameManager(difficultyConfig);
-            System.out.println("⚠️ 创建新的 GameManager");
-        }
+        // ✅ Endless 模式始终使用全新的 GameManager
+        gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
+
 
         // 初始化其他组件
         cam = new CameraManager(difficultyConfig);
@@ -247,6 +244,15 @@ public class EndlessScreen implements Screen {
     // ===== 主渲染循环 =====
     @Override
     public void render(float delta) {
+
+        Vector3 world = cam.getCamera().unproject(
+                new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
+        );
+
+        int tileX = (int)(world.x / GameConstants.CELL_SIZE);
+        int tileY = (int)(world.y / GameConstants.CELL_SIZE);
+
+        gm.setMouseTargetTile(tileX, tileY);
         // 1. 逻辑更新 (保持放在最前面)
         handleInput(delta);
         float timeScale = console.isVisible() ? 0f : gm.getVariable("time_scale");
@@ -260,8 +266,8 @@ public class EndlessScreen implements Screen {
 
         }
         // 🔥 关键修复：相机更新必须放在这里，确保玩家位置已更新
-        if (gm != null && gm.getPlayer() != null && !paused && !console.isVisible()) {
-            cam.update(gameDelta, gm.getPlayer(), gm);
+        if (gm != null && !paused && !console.isVisible()) {
+            cam.update(gameDelta, gm);
         }
 
         // 🔥 减少调试输出频率（每2秒一次）
@@ -276,10 +282,6 @@ public class EndlessScreen implements Screen {
         // 3. 【核心修复】设置世界坐标矩阵
         // 先获取相机矩阵
         Matrix4 cameraMatrix = cam.getCamera().combined;
-
-        // 调试输出相机矩阵信息
-        System.out.println("Camera combined matrix: " + cameraMatrix);
-
         // 设置到 batch
         batch.setProjectionMatrix(cameraMatrix);
 
@@ -312,12 +314,34 @@ public class EndlessScreen implements Screen {
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
 
+// ===== Ability AOE / Targeting（完全照 GameScreen）=====
+        shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+
+        for (Player p : gm.getPlayers()) {
+            if (p.getAbilityManager() != null) {
+                p.getAbilityManager().drawAbilities(batch, shapeRenderer, p);
+            }
+        }
+
+
+
         /* ================= 渲染 UI (切换到屏幕坐标) ================= */
         renderUI();
 
         // 4. 暂停和结束界面 (它们使用 Stage，会自动管理自己的投影矩阵)
-        if (paused) renderPauseScreen(delta);
+        if (paused) {
+            if (!pauseUIInitialized) {
+                initPauseUI();
+            }
+
+            Gdx.input.setInputProcessor(pauseStage);
+            pauseStage.act(delta);
+            pauseStage.draw();
+            return; // ⛔ 必须 return
+        }
         if (endlessGameOver && endlessGameOverStage != null) renderGameOverScreen(delta);
+
+
     }
 
     // ===== 无尽模式核心更新方法 =====
@@ -357,9 +381,7 @@ public class EndlessScreen implements Screen {
             System.out.println("   敌人总数: " + gm.getEnemies().size() + " 个");
         }
 
-        // 检查玩家死亡
-        if (gm.getPlayer().isDead()) {
-            System.out.println("💀 玩家死亡，游戏结束");
+        if (!endlessGameOver && isEndlessGameOver()) {
             endlessGameOver = true;
             showEndlessGameOverScreen();
             return;
@@ -404,17 +426,35 @@ public class EndlessScreen implements Screen {
         }
     }
 
+    private boolean isEndlessGameOver() {
+        if (!gm.isTwoPlayerMode()) {
+            return gm.getPlayer().isDead();
+        }
+
+        for (Player p : gm.getPlayers()) {
+            if (!p.isDead()) return false;
+        }
+        return true;
+    }
+
     // ===== 计算玩家生命值百分比 =====
     private float calculatePlayerHealthPercentage() {
-        Player player = gm.getPlayer();
-        if (player == null) return 100f;
+        if (!gm.isTwoPlayerMode()) {
+            return gm.getPlayer().getLives() / (float) difficultyConfig.initialLives * 100f;
+        }
 
-        int maxLives = difficultyConfig.initialLives;
-        int currentLives = player.getLives();
-        if (maxLives <= 0) return 100f;
-
-        return (currentLives / (float)maxLives) * 100f;
+        int total = 0;
+        int alive = 0;
+        for (Player p : gm.getPlayers()) {
+            if (!p.isDead()) {
+                total += p.getLives();
+                alive++;
+            }
+        }
+        if (alive == 0) return 0;
+        return (total / (float)(alive * difficultyConfig.initialLives)) * 100f;
     }
+
 
     // ===== 动态敌人生成间隔 =====
     private float getDynamicEnemySpawnInterval(float healthPercent) {
@@ -953,7 +993,9 @@ public class EndlessScreen implements Screen {
         List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
         for (Enemy enemy : enemiesCopy) {
             if (enemy != null && enemy.isActive() && enemy.getX() == x && enemy.getY() == y) {
-                return true;
+                if (enemy instanceof EnemyE04_CrystallizedCaramelShell e04) {
+                    if (e04.occupiesCell(x, y)) return true;
+                }
             }
         }
 
@@ -1136,7 +1178,7 @@ public class EndlessScreen implements Screen {
 
     // ===== 辅助方法 =====
     private boolean isEndlessMode() {
-        return difficultyConfig.keyCount == 0;
+        return difficultyConfig.difficulty == Difficulty.ENDLESS;
     }
 
     private void handleInput(float delta) {
@@ -1228,7 +1270,12 @@ public class EndlessScreen implements Screen {
         }
 
         // 玩家（最高优先级）
-        items.add(new Item(gm.getPlayer(), 100));
+        for (Player p : gm.getPlayers()) {
+            if (!p.isDead()) {
+                items.add(new Item(p, 100));
+            }
+        }
+
 
         // 敌人
         List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
@@ -1260,6 +1307,10 @@ public class EndlessScreen implements Screen {
 
     // 🔥 修改：移除了无尽模式特殊UI的渲染
     private void renderUI() {
+        // ===== 保存 batch 状态 =====
+        Matrix4 oldProjection = batch.getProjectionMatrix().cpy();
+        Color oldColor = batch.getColor().cpy();
+
         batch.setProjectionMatrix(
                 new Matrix4().setToOrtho2D(
                         0, 0,
@@ -1270,15 +1321,16 @@ public class EndlessScreen implements Screen {
 
         batch.begin();
         renderMazeBorderDecorations(batch);
-
         hud.renderInGameUI(batch);
-
-        hud.renderManaBar(batch);
         batch.end();
         if (console != null) {
             console.render();
         }
-        batch.setProjectionMatrix(cam.getCamera().combined);
+        // ===== 🔥 恢复 batch 状态（关键）=====
+        batch.setColor(oldColor);
+        batch.setProjectionMatrix(oldProjection);
+
+
     }
     // 🔥 修改：使用与GameScreen一致的装饰渲染
     private void renderMazeBorderDecorations(SpriteBatch batch) {
@@ -1292,16 +1344,7 @@ public class EndlessScreen implements Screen {
         batch.draw(uiRight,  w - thickness+810, 0, thickness-220, h);
     }
 
-    // 🔥 修改：使暂停界面渲染与GameScreen一致
-    private void renderPauseScreen(float delta) {
-        if (!pauseUIInitialized) {
-            initPauseUI();
-        }
 
-        Gdx.input.setInputProcessor(pauseStage);
-        pauseStage.act(delta);
-        pauseStage.draw();
-    }
 
     private void renderGameOverScreen(float delta) {
         if (!endlessGameOverUIInitialized) {
@@ -1324,10 +1367,13 @@ public class EndlessScreen implements Screen {
             Gdx.input.setInputProcessor(pauseStage);
         } else {
             Gdx.input.setInputProcessor(null);
+            pauseUIInitialized = false;
+            pauseStage = null;
         }
 
-        Gdx.app.log("EndlessScreen", paused ? "pause" : "continue");
+        Gdx.app.log("EndlessScreen", paused ? "Paused" : "Resumed");
     }
+
 
     // 🔥 修改：使暂停界面与GameScreen一致
     private void initPauseUI() {
@@ -1336,44 +1382,47 @@ public class EndlessScreen implements Screen {
         root.setFillParent(true);
         pauseStage.addActor(root);
 
-        // 🔥 修改：使用与GameScreen一致的标题
-        root.add(new Label("PAUSED", game.getSkin(), "title"))
-                .padBottom(40).row();
+        // 标题
+        Label title = new Label("PAUSED", game.getSkin(), "title");
+        root.add(title).padBottom(40).row();
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 
-        // 🔥 修改：使用与GameScreen一致的按钮尺寸和文本
-        root.add(bf.create("continue", this::togglePause))
-                .width(400).height(80).padBottom(20).row();
+        float btnW = 350;
+        float btnH = 90;
+        float pad  = 15;
 
-        root.add(bf.create("setting", () -> {
-                    // TODO: 打开设置界面
-                }))
-                .width(400).height(80).padBottom(20).row();
+        // CONTINUE
+        root.add(bf.create("CONTINUE", this::togglePause))
+                .width(btnW).height(btnH).pad(pad).row();
 
-        root.add(bf.create("menu", () -> {
-                    game.goToMenu();
-                }))
-                .width(400).height(80).padBottom(40).row();
+        // RESET（无尽模式）
+        root.add(bf.create("RESET", () -> {
+            paused = false;
+            pauseUIInitialized = false;
 
-        // 如果是无尽模式，显示无尽模式得分
-        if (isEndlessMode()) {
-            root.add(new Label(
-                    "level" + endlessWave + " | score: " + calculateEndlessScore(),
-                    game.getSkin()
-            ));
-        } else {
-            root.add(new Label(
-                    "score: " + gm.getScore(),
-                    game.getSkin()
-            ));
-        }
+            game.startNewGame(Difficulty.ENDLESS);
+            game.goToGame();
+        })).width(btnW).height(btnH).pad(pad).row();
+
+        // SETTINGS（⭐ 关键）
+        root.add(bf.create("SETTINGS", () -> {
+            game.setScreen(
+                    new SettingsScreen(
+                            game,
+                            SettingsScreen.SettingsSource.PAUSE_MENU,
+                            this   // ⭐ 非常重要
+                    )
+            );
+        })).width(btnW).height(btnH).pad(pad).row();
+
+        // MENU
+        root.add(bf.create("MENU", game::goToMenu))
+                .width(btnW).height(btnH).pad(pad);
 
         pauseUIInitialized = true;
-        if (game.hasRunningGame()) {
-            root.add(bf.create("reset", game::resumeGame));
-        }
     }
+
 
     // ===== LibGDX Screen接口方法 =====
     @Override

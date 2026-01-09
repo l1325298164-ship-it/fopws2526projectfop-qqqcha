@@ -225,15 +225,14 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
     public void update(float delta, GameManager gm) {
         if (!active) return;
 
-        // 🔥 更新动画时间（即使不移动也播放待机动画）
+        // ===== 动画时间 =====
         if (state == EnemyState.IDLE) {
-            // 待机时慢速播放动画
             stateTime += delta * 0.5f;
         }
 
         updateHitFlash(delta);
 
-        // 🔥 更新AOE动画时间
+        // ===== AOE 动画 =====
         if (isAoeActive) {
             aoeAnimTime += delta;
             if (aoeAnimTime >= AOE_ANIM_DURATION) {
@@ -242,31 +241,36 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
             }
         }
 
-        Player player = gm.getPlayer();
-        float dist = distanceTo(player);
+        // ✅ 唯一目标来源
+        Player target = gm.getNearestAlivePlayer(x, y);
+        if (target == null) {
+            state = EnemyState.IDLE;
+            moveContinuously(delta);
+            return;
+        }
 
+        float dist = distanceTo(target);
         aoeCooldown -= delta;
 
-        // 激活逻辑
-        boolean canSeePlayer =
+        boolean canSeeTarget =
                 dist <= detectRange &&
-                        !hasWallBetween(player, gm);
+                        !hasWallBetween(target, gm);
 
-        if (canSeePlayer) {
+        if (canSeeTarget) {
             state = EnemyState.ATTACK;
-            // 🔥 面向玩家
-            updateDirection(player);
+            updateDirection(target);
         } else {
             state = EnemyState.IDLE;
         }
 
         if (state == EnemyState.ATTACK) {
-            chasePlayer(delta, gm, player);
-            tryAOEAttack(player, gm);
+            chasePlayer(delta, gm, target);
+            tryAOEAttack(target, gm);
         }
 
         moveContinuously(delta);
     }
+
 
     private void updateDirection(Player player) {
         int dx = player.getX() - x;
@@ -307,24 +311,23 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
         return false; // 没被墙挡住
     }
 
-    private void tryAOEAttack(Player player, GameManager gm) {
-
+    private void tryAOEAttack(Player target, GameManager gm) {
         if (aoeCooldown > 0f) return;
 
-        if (isPlayerInAOE(player) && !hasWallBetween(player, gm)) {
-            // 🔥 触发AOE攻击
-            player.takeDamage(AOE_DAMAGE);
+        for (Player p : gm.getPlayers()) {
+            if (p == null || p.isDead()) continue;
 
-            // 🔥 激活AOE动画
-            isAoeActive = true;
-            aoeAnimTime = 0f;
+            if (isPlayerInAOE(p) && !hasWallBetween(p, gm)) {
+                p.takeDamage(AOE_DAMAGE);
 
-            // 🔥 可以在这里添加音效
-            // AudioManager.getInstance().play(AudioType.ENEMY_AOE);
+                isAoeActive = true;
+                aoeAnimTime = 0f;
+            }
         }
 
         aoeCooldown = AOE_INTERVAL;
     }
+
 
     /* ================== 追击 ================== */
 

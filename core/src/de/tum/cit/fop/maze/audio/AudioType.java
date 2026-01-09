@@ -14,10 +14,10 @@ public enum AudioType {
     PLAYER_HIT_WALL("sounds/sfx/player/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
     PLAYER_ATTACKED("sounds/sfx/player/attacked01.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
     // === PV ===
-    PV_1("sounds/pv/PV1_bgm.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
-    PV_2("sounds/pv/PV_2_.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
-    PV_3("sounds/pv/PV_3_.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
-    PV_4("sounds/pv/PV_4_.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_1("sounds/pv/PV1.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_2("sounds/pv/PV2.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_3("sounds/pv/PV3.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_4("sounds/pv/PV4.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
 
 
 
@@ -36,7 +36,7 @@ public enum AudioType {
 
     //Tutorial
     TUTORIAL_MAIN_BGM(
-            "sounds/temprorary/Sugar Faultline.mp3",
+            "sounds/pv/Crystal Sugarquake.mp3",
             AudioCategory.MUSIC,
             true,   // isMusic
             0.6f,
