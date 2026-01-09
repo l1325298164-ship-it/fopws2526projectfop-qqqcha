@@ -4,14 +4,16 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.assets.AssetManager;
-import com.badlogic.gdx.graphics.g2d.Animation;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.*;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.Window;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import de.tum.cit.fop.maze.audio.AudioConfig;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.game.ChapterContext;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -162,16 +164,61 @@ public class MazeRunnerGame extends Game {
         gameManager = new GameManager(difficultyConfig, twoPlayerMode);
 
         spriteBatch = new SpriteBatch();
+// ✨ 新增：动态创建一个纯白色像素并放入 Skin
 
         TextureAtlas uiAtlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
         skin = new Skin(Gdx.files.internal("ui/skinbutton.json"), uiAtlas);
-
-        // ✨ 新增：动态创建一个纯白色像素并放入 Skin
         com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
         pixmap.setColor(com.badlogic.gdx.graphics.Color.WHITE);
         pixmap.fill();
         com.badlogic.gdx.graphics.Texture whiteTexture = new com.badlogic.gdx.graphics.Texture(pixmap);
         skin.add("white", new com.badlogic.gdx.graphics.g2d.TextureRegion(whiteTexture));
+// ===== 注册默认 WindowStyle（给 Dialog / ChapterRelic 用）=====
+        if (!skin.has("default", Window.WindowStyle.class)) {
+
+            Window.WindowStyle windowStyle = new Window.WindowStyle();
+
+            // 1️⃣ 标题字体（Dialog 必须）
+            windowStyle.titleFont = skin.getFont("default-font");
+
+            // 2️⃣ 背景（用你已有的 white 像素，做糖果色半透明底）
+            Drawable bg = skin.newDrawable(
+                    "white",
+                    new Color(1f, 0.95f, 0.9f, 0.96f) // 奶油糖色 🌸
+            );
+            windowStyle.background = bg;
+
+            // 3️⃣ 标题字体颜色（可选，但好看）
+            windowStyle.titleFontColor = new Color(0.55f, 0.2f, 0.2f, 1f);
+
+            skin.add("default", windowStyle);
+
+            Logger.debug("✅ Default WindowStyle registered");
+        }
+// ================= ScrollPane Style =================
+        ScrollPane.ScrollPaneStyle scrollStyle = new ScrollPane.ScrollPaneStyle();
+
+// 背景（可透明）
+        scrollStyle.background =
+                skin.newDrawable("white", new Color(0, 0, 0, 0.0f));
+
+// 垂直滚动条
+        scrollStyle.vScroll =
+                skin.newDrawable("white", new Color(1, 1, 1, 0.15f));
+        scrollStyle.vScrollKnob =
+                skin.newDrawable("white", new Color(1, 1, 1, 0.5f));
+
+// 横向滚动条（可不用，但最好给）
+        scrollStyle.hScroll =
+                skin.newDrawable("white", new Color(1, 1, 1, 0.15f));
+        scrollStyle.hScrollKnob =
+                skin.newDrawable("white", new Color(1, 1, 1, 0.5f));
+
+// 注册为 default（⭐关键）
+        skin.add("default", scrollStyle);
+
+        BitmapFont font = new BitmapFont(); // 或你加载的字体
+        skin.add("default-font-BF", font);
         pixmap.dispose(); // 用完 Pixmap 记得销毁
         initializeSoundManager();
         goToMenu();
@@ -480,6 +527,21 @@ public class MazeRunnerGame extends Game {
         boolean dirty = twoPlayerModeDirty;
         twoPlayerModeDirty = false;
         return dirty;
+    }
+    public void startChapterGame(
+            Difficulty difficulty,
+            ChapterContext chapterContext
+    ) {
+        this.currentDifficulty = difficulty;
+        this.difficultyConfig = DifficultyConfig.of(difficulty);
+
+        this.gameManager = new GameManager(
+                this.difficultyConfig,
+                this.twoPlayerMode,
+                chapterContext   // ⭐ 唯一传入点
+        );
+
+        setScreen(new GameScreen(this, difficultyConfig, chapterContext));
     }
 
 

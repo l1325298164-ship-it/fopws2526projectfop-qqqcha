@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.entities.chapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
@@ -64,9 +65,10 @@ public class Chapter1RelicDialog extends Dialog {
             "will cease to exist."
     );
 
-    private static final String BG_PATH = "chapter/relic_bg.png";
+    private static final String BG_PATH = "chapters/relic_bg.png";
 
     public Chapter1RelicDialog(Skin skin, Chapter1Relic relic) {
+        // ❗ 不要标题
         super("", skin);
         this.relic = relic;
 
@@ -74,37 +76,56 @@ public class Chapter1RelicDialog extends Dialog {
         setMovable(false);
         setResizable(false);
 
-        /* ================== 半透明遮罩 ================== */
-        Drawable dim = skin.newDrawable("white", new Color(0, 0, 0, 0.65f));
-        getContentTable().setBackground(dim);
+        // ❗ 强制隐藏 title 区域
+        getTitleLabel().setVisible(false);
+        getTitleTable().clear();
 
         /* ================== 背景图 ================== */
         Texture bgTex = new Texture(Gdx.files.internal(BG_PATH));
         Drawable bgDrawable = new TextureRegionDrawable(bgTex);
 
+        float bgW = bgTex.getWidth();
+        float bgH = bgTex.getHeight();
+
         Table content = getContentTable();
-        content.pad(40);
+        content.clear();
         content.setBackground(bgDrawable);
 
-        /* ================== 文本 Label ================== */
-        textLabel = new Label("", skin);
+        /* ================== 文本 ================== */
+        // ✅ 明确指定字体（必须）
+        BitmapFont font = skin.getFont("default-font-BF");
+
+        Label.LabelStyle labelStyle = new Label.LabelStyle();
+        labelStyle.font = font;
+        labelStyle.fontColor = Color.BLACK; // ⭐关键：别用白色（背景是亮色）
+
+        textLabel = new Label("", labelStyle);
         textLabel.setWrap(true);
-        textLabel.setAlignment(Align.left);
+        textLabel.setAlignment(Align.topLeft);
 
-        scrollPane = new ScrollPane(textLabel);
+// 🔥 防止父级透明度影响
+        textLabel.getColor().a = 1f;
+
+        scrollPane = new ScrollPane(textLabel, skin);
         scrollPane.setFadeScrollBars(false);
-        scrollPane.setScrollingDisabled(true, true); // 初始不可滚动
+        scrollPane.setScrollingDisabled(true, true);
 
-        content.add(scrollPane).width(620).height(420);
+// ⭐ ScrollPane 自身也强制不透明
+        scrollPane.getColor().a = 1f;
 
+        // ⭐ 用 padding 控制内容区域
+        content.pad(60);
+        content.add(scrollPane).expand().fill();
+        content.invalidateHierarchy();
+        this.layout();
         refreshText();
-
+        unlockNextLine();
         /* ================== 按钮 ================== */
-        button("📖 阅读", true);
-        button("🗑 丢弃", false);
+        button("read", true);
+        button("dispose", false);
 
         /* ================== 输入：点击 / 滚轮 ================== */
-        addListener(new InputListener() {
+        scrollPane.addListener(new InputListener() {
 
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
@@ -123,18 +144,21 @@ public class Chapter1RelicDialog extends Dialog {
                 }
                 return false;
             }
-        });
+        });s
 
-        pack();
+        // ❗ 不用 pack()
+        setSize(bgW, bgH);
         setPosition(
                 (Gdx.graphics.getWidth() - getWidth()) / 2f,
                 (Gdx.graphics.getHeight() - getHeight()) / 2f
         );
+
     }
 
     /* ================== 解锁逻辑 ================== */
 
     private void unlockNextLine() {
+        System.out.println("Unlocked lines = " + unlockedLines);
         if (unlockedLines < lines.size()) {
             unlockedLines++;
             refreshText();
@@ -142,7 +166,7 @@ public class Chapter1RelicDialog extends Dialog {
 
         if (unlockedLines >= lines.size()) {
             fullyUnlocked = true;
-            scrollPane.setScrollingDisabled(true, false); // 解锁滚动
+            scrollPane.setScrollingDisabled(true, false);
         }
     }
 
@@ -157,6 +181,7 @@ public class Chapter1RelicDialog extends Dialog {
     @Override
     protected void result(Object object) {
         boolean read = (Boolean) object;
+        System.out.println("Dialog result = " + read);
 
         if (read) {
             relic.onRead();

@@ -8,7 +8,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
-import de.tum.cit.fop.maze.game.GameConstants;
 
 public class LoreDialog extends Group {
 
@@ -67,13 +66,13 @@ public class LoreDialog extends Group {
 
         /* ===== 标题 ===== */
         Label title = new Label(titleText, skin, "title");
-        title.setAlignment(Align.CENTER);
+        title.setAlignment(Align.center);
         root.add(title).expandX().fillX().padBottom(20).row();
 
         /* ===== 文本 ScrollPane ===== */
         Label contentLabel = new Label(content, skin);
         contentLabel.setWrap(true);
-        contentLabel.setAlignment(Align.TOP_LEFT);
+        contentLabel.setAlignment(Align.topLeft);
 
         ScrollPane scrollPane = new ScrollPane(contentLabel, skin);
         scrollPane.setFadeScrollBars(false);
@@ -113,7 +112,7 @@ public class LoreDialog extends Group {
         root.add(btnTable).center();
     }
 
-    public static String buildLoreText(List<Section> sections) {
+    public static String buildLoreText(java.util.List<Section> sections) {
         StringBuilder sb = new StringBuilder();
 
         for (Section s : sections) {
@@ -124,6 +123,25 @@ public class LoreDialog extends Group {
             }
         }
         return sb.toString();
+    }
+    public static class Section {
+        public final String type;   // "divider" 或 "text"
+        public final String value;  // 文本内容（divider 时可以为空）
+
+        public Section(String type, String value) {
+            this.type = type;
+            this.value = value;
+        }
+
+        // 便捷工厂方法：正文
+        public static Section text(String value) {
+            return new Section("text", value);
+        }
+
+        // 便捷工厂方法：分隔线
+        public static Section divider() {
+            return new Section("divider", "");
+        }
     }
 
 }

@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.game.ChapterContext;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 
@@ -41,11 +42,9 @@ public class ChapterSelectScreen implements Screen {
 
                 Difficulty difficulty = Difficulty.NORMAL;
 
-                // 只初始化游戏数据，不走剧情
-                game.resetMaze(difficulty);
+                ChapterContext chapterContext = ChapterContext.chapter1();
 
-                // 或者（等价）
-                // game.setScreen(new GameScreen(game, DifficultyConfig.of(difficulty)));
+                game.startChapterGame(difficulty, chapterContext);
             }
         });
 

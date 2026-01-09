@@ -23,7 +23,6 @@ public class Chapter1Relic extends GameObject {
         super(x, y);
         this.chapterContext = chapterContext;
 
-        // ⭐ 如果已经阅读过，根本不生成
         if (chapterContext.isChapter1RelicRead()) {
             removedThisRun = true;
             return;
@@ -92,8 +91,16 @@ public class Chapter1Relic extends GameObject {
 
     @Override
     public RenderType getRenderType() {
-        return TextureManager.getInstance().useSprite()
-                ? RenderType.SPRITE
-                : RenderType.SHAPE;
+        TextureManager.TextureMode mode =
+                TextureManager.getInstance().getCurrentMode();
+
+        if (mode == TextureManager.TextureMode.IMAGE
+                || mode == TextureManager.TextureMode.PIXEL) {
+            return RenderType.SPRITE;
+        }
+
+        return RenderType.SHAPE;
     }
+
+
 }

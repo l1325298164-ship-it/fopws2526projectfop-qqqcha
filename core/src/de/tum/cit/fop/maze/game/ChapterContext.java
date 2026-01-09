@@ -1,6 +1,5 @@
 package de.tum.cit.fop.maze.game;
 
-
 /**
  * ChapterContext
  *
@@ -22,8 +21,23 @@ public class ChapterContext {
 
     private final int chapterId;
 
-    public ChapterContext(int chapterId) {
+    private ChapterContext(int chapterId) {
         this.chapterId = chapterId;
+    }
+
+    /**
+     * Chapter 1 的工厂方法
+     * - 统一定义 Chapter 1 的初始规则
+     * - 所有 Chapter 1 的 GameContext 都必须从这里创建
+     */
+    public static ChapterContext chapter1() {
+        ChapterContext ctx = new ChapterContext(1);
+
+        // ===== Chapter 1 初始规则 =====
+        ctx.fogOverride = false;          // 是否强制雾（需要可改）
+        ctx.chapter1RelicRead = false;    // 初次进入一定没读过 relic
+
+        return ctx;
     }
 
     public int getChapterId() {
@@ -96,4 +110,3 @@ public class ChapterContext {
                 '}';
     }
 }
-
