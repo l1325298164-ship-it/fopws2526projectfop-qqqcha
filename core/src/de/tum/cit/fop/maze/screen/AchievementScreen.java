@@ -94,7 +94,11 @@ public class AchievementScreen implements Screen {
      */
     private Table createAchievementRow(AchievementType type, boolean isUnlocked) {
         Table row = new Table();
-        row.setBackground(game.getSkin().getDrawable("window-c"));
+        // 使用white drawable作为背景（已在MazeRunnerGame中添加到skin）
+        if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+            row.setBackground(game.getSkin().getDrawable("white"));
+            row.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+        }
         row.pad(10);
 
         // 左侧：状态图标

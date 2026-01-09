@@ -86,7 +86,11 @@ public class SettlementScreen implements Screen {
 
         // --- 左侧：评分详情表 ---
         Table scoreTable = new Table();
-        scoreTable.setBackground(game.getSkin().getDrawable("window-c"));
+        // 使用white drawable作为背景（已在MazeRunnerGame中添加到skin）
+        if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+            scoreTable.setBackground(game.getSkin().getDrawable("white"));
+            scoreTable.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+        }
         scoreTable.pad(20);
 
         addScoreRow(scoreTable, "Base Score", "+" + formatScore(result.baseScore), Color.WHITE);
@@ -124,7 +128,11 @@ public class SettlementScreen implements Screen {
         // --- 右侧：✨ 排行榜输入逻辑 ---
         if (isHighScore && !scoreSubmitted) {
             Table inputTable = new Table();
-            inputTable.setBackground(game.getSkin().getDrawable("window-c"));
+            // 使用white drawable作为背景（已在MazeRunnerGame中添加到skin）
+            if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+                inputTable.setBackground(game.getSkin().getDrawable("white"));
+                inputTable.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+            }
             inputTable.pad(15);
 
             Label newRecordLabel = new Label("NEW HIGH SCORE!", game.getSkin());
