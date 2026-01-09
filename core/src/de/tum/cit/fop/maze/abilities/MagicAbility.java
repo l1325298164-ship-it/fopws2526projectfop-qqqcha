@@ -14,7 +14,8 @@ public class MagicAbility extends Ability {
 
     /* ================= Phase ================= */
 
-    private enum Phase {
+    // ✅ 必须是 public，HUD 才能读
+    public enum Phase {
         IDLE,
         AIMING,      // AOE 预警
         EXECUTED,    // AOE 已释放，等待二段
@@ -22,6 +23,7 @@ public class MagicAbility extends Ability {
     }
 
     private Phase phase = Phase.IDLE;
+    private float phaseTimer = 0f;
 
     /* ================= Timers ================= */
 
@@ -80,14 +82,8 @@ public class MagicAbility extends Ability {
     }
 
     @Override
-    protected boolean shouldBecomeActive() {
-        return false;
-    }
-
-    @Override
     public boolean canActivate(Player player) {
-        if (phase == Phase.COOLDOWN) return false;
-        return player.getMana() >= manaCost;
+        return phase != Phase.COOLDOWN && player.getMana() >= manaCost;
     }
 
     /* ================= Activate ================= */
@@ -99,42 +95,83 @@ public class MagicAbility extends Ability {
         switch (phase) {
 
             case IDLE -> {
+                player.startCasting();
                 aoeCenterX = gm.getMouseTileX();
                 aoeCenterY = gm.getMouseTileY();
+
                 aimingTimer = 0f;
-                phase = Phase.AIMING;
+                setPhase(Phase.AIMING);
             }
 
             case AIMING -> {
                 castAOE(gm);
                 waitTimer = 0f;
-                phase = Phase.EXECUTED;
+                setPhase(Phase.EXECUTED);
             }
 
             case EXECUTED -> {
+                player.startCasting();
                 castHeal(gm);
                 startInternalCooldown(COOLDOWN_SUCCESS);
             }
         }
     }
 
+    @Override
+    protected void onUpgrade() {
+
+        switch (level) {
+
+            case 2 -> {
+                // AOE 半径 +1
+                aoeTileRadius += 1;
+                aoeVisualRadius = (aoeTileRadius + 0.5f) * GameConstants.CELL_SIZE;
+            }
+
+            case 3 -> {
+                // 基础治疗提升
+                baseHealPercent += 0.05f;
+            }
+
+            case 4 -> {
+                // 每命中一个敌人的额外治疗
+                extraPerEnemy += 0.01f;
+            }
+
+            case 5 -> {
+                // 再一次扩大范围（后期爽点）
+                aoeTileRadius += 1;
+                aoeVisualRadius = (aoeTileRadius + 0.5f) * GameConstants.CELL_SIZE;
+            }
+
+            case 6 -> {
+                // 成功施法冷却略微降低
+                currentCooldown = Math.max(3.5f, COOLDOWN_SUCCESS - 0.5f);
+            }
+        }
+    }
+
+
     /* ================= Update ================= */
 
     @Override
     public void update(float delta) {
         super.update(delta);
+
+        // ⭐ 核心：统一累加
+        phaseTimer += delta;
+
         if (phase == Phase.COOLDOWN && ready) {
-            phase = Phase.IDLE;
+            setPhase(Phase.IDLE);
         }
+
         if (phase == Phase.AIMING && gameManager != null) {
             aimingTimer += delta;
             aoeCenterX = gameManager.getMouseTileX();
             aoeCenterY = gameManager.getMouseTileY();
 
-            // 2s 内未再次按键 → 自动取消，无 CD
             if (aimingTimer >= AIMING_TIMEOUT) {
-                phase = Phase.IDLE;
-                aimingTimer = 0f;
+                setPhase(Phase.IDLE);
             }
         }
 
@@ -142,30 +179,33 @@ public class MagicAbility extends Ability {
             waitTimer += delta;
             if (waitTimer >= WAIT_SECOND_TIME) {
                 startInternalCooldown(COOLDOWN_FAIL);
-                // 🔥 关键：清理状态，防止重复进入
-                waitTimer = 0f;
             }
         }
     }
 
+    /* ================= Phase Helper ================= */
+
+    // ✅ 所有 phase 切换都走这里
+    private void setPhase(Phase newPhase) {
+        if (phase != newPhase) {
+            phase = newPhase;
+            phaseTimer = 0f;
+            aimingTimer = 0f;
+            waitTimer = 0f;
+        }
+    }
+
     private void startInternalCooldown(float cd) {
-        phase = Phase.COOLDOWN;
         currentCooldown = cd;
         ready = false;
         cooldownTimer = 0f;
-
-        // 🔒 清理所有阶段计时
-        aimingTimer = 0f;
-        waitTimer = 0f;
+        setPhase(Phase.COOLDOWN);
     }
 
     /* ================= AOE ================= */
 
     private void castAOE(GameManager gm) {
         hitEnemyCount = 0;
-
-        aoeCenterX = gm.getMouseTileX();
-        aoeCenterY = gm.getMouseTileY();
 
         for (Enemy enemy : gm.getEnemies()) {
             if (enemy == null || enemy.isDead()) continue;
@@ -188,10 +228,7 @@ public class MagicAbility extends Ability {
         for (Player p : gm.getPlayers()) {
             if (p == null || p.isDead()) continue;
 
-            int heal = Math.max(
-                    1,
-                    Math.round(p.getMaxLives() * healPercent)
-            );
+            int heal = Math.max(1, Math.round(p.getMaxLives() * healPercent));
             p.heal(heal);
         }
     }
@@ -204,24 +241,22 @@ public class MagicAbility extends Ability {
 
         sr.begin(ShapeRenderer.ShapeType.Line);
         sr.setColor(Color.PURPLE);
-
         sr.circle(
                 (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE,
                 (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE,
                 aoeVisualRadius
         );
-
         sr.end();
     }
 
-    /* ================= Upgrade ================= */
+    /* ================= HUD Getters ================= */
 
-    @Override
-    protected void onUpgrade() {
-        if (level == 2) aoeTileRadius += 1;
-        if (level == 3) baseHealPercent += 0.05f;
-        if (level == 4) extraPerEnemy += 0.01f;
-        if (level == 5) aoeTileRadius += 1;
+    public Phase getPhase() {
+        return phase;
+    }
+
+    public float getPhaseTime() {
+        return phaseTimer;
     }
 
     @Override

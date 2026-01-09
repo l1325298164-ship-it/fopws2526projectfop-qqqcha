@@ -94,9 +94,20 @@ private boolean damageInvincible = false;
     private float moveTimer = 0f;
     private static final float MOVE_COOLDOWN = 0.15f;
 
-    // 在 Player 类中现有的 Animation 变量下方添加：
+    //
     private TextureAtlas frontAtkAtlas, backAtkAtlas, leftAtkAtlas, rightAtkAtlas;
     private Animation<TextureRegion> frontAtkAnim, backAtkAnim, leftAtkAnim, rightAtkAnim;
+    // ===== Player2 Cast (Magic) 动画 =====
+    private TextureAtlas castAtlas;
+    private Animation<TextureRegion> frontCastAnim;
+    private Animation<TextureRegion> backCastAnim;
+    private Animation<TextureRegion> leftCastAnim;
+    private Animation<TextureRegion> rightCastAnim;
+
+    private boolean isCasting = false;
+    private float castAnimTimer = 0f;
+    private static final float CAST_DURATION = 0.8f;
+
 
     // 攻击状态控制
     private boolean isAttacking = false;
@@ -109,7 +120,7 @@ private boolean damageInvincible = false;
     // ===== Mana =====
     private float mana = 100;
     private float maxMana = 100;
-    private float manaRegenRate = 30.0f;
+    private float manaRegenRate = 5.0f;
 
     // ==========================================
     // 🔥 [Treasure] 新增：三种唯一 Buff 状态
@@ -133,8 +144,8 @@ private boolean damageInvincible = false;
     private boolean dashSpeedBoost = false;
     private float dashSpeedTimer = 0f;
 
-    public static final float DASH_DURATION = 0.8f;
-    public static final float DASH_SPEED_MULTIPLIER = 0.4f; // delay * 0.4 = 更快
+    public static final float DASH_DURATION = 1f;
+    public static final float DASH_SPEED_MULTIPLIER = 0.35f; // delay * 0.4 = 更快
 
     public boolean useMana(int manaCost) {
         if (buffManaEfficiency) {
@@ -267,6 +278,24 @@ private boolean damageInvincible = false;
         this.playerIndex = index;
         if (playerIndex == PlayerIndex.P2) {
             loadPlayer2Animations();
+            // ===== 施法动画（magic）=====
+            castAtlas = new TextureAtlas("Character/magic/player2.atlas");
+
+            frontCastAnim = new Animation<>(0.08f,
+                    castAtlas.findRegions("player2_front"),
+                    Animation.PlayMode.NORMAL);
+
+            backCastAnim = new Animation<>(0.08f,
+                    castAtlas.findRegions("player2_back"),
+                    Animation.PlayMode.NORMAL);
+
+            leftCastAnim = new Animation<>(0.08f,
+                    castAtlas.findRegions("player2_left"),
+                    Animation.PlayMode.NORMAL);
+
+            rightCastAnim = new Animation<>(0.08f,
+                    castAtlas.findRegions("player2_right"),
+                    Animation.PlayMode.NORMAL);
         } else {
             loadPlayer1Animations();
         }
@@ -365,14 +394,19 @@ private boolean damageInvincible = false;
             isMovingAnim = false;
             return;
         }
-
+        if (isCasting) {
+            castAnimTimer += delta;
+            if (castAnimTimer >= CAST_DURATION) {
+                isCasting = false;
+                castAnimTimer = 0f;
+            }
+        }
 
         if (inHitStun) {
             hitStunTimer -= delta;
             if (hitStunTimer <= 0f) {
                 inHitStun = false;
             }
-            return; // ⛔ 本帧不处理移动 / 能力
         }
         // ===== 动画 =====
         float animationSpeed = 1f / getMoveDelayMultiplier();
@@ -572,7 +606,9 @@ private boolean damageInvincible = false;
     }
 
     public void startAttack() {
-        if (isAttacking || isDead) return;
+
+        Logger.debug("🎬 startAttack() called, isAttacking=" + isAttacking);
+        if (isDead) return;
         isAttacking = true;
         attackAnimTimer = 0f;
         Logger.debug("Player attack started facing: " + direction);
@@ -641,14 +677,24 @@ private boolean damageInvincible = false;
         if (!active || isDead) return;
 
         Animation<TextureRegion> anim;
-        if (isAttacking) {
+
+        if (isCasting && playerIndex == PlayerIndex.P2) {
+            anim = switch (direction) {
+                case UP -> backCastAnim;
+                case LEFT -> leftCastAnim;
+                case RIGHT -> rightCastAnim;
+                default -> frontCastAnim;
+            };
+        }
+        else if (isAttacking) {
             anim = switch (direction) {
                 case UP -> backAtkAnim;
                 case LEFT -> leftAtkAnim;
                 case RIGHT -> rightAtkAnim;
                 default -> frontAtkAnim;
             };
-        } else {
+        }
+        else {
             anim = switch (direction) {
                 case UP -> backAnim;
                 case LEFT -> leftAnim;
@@ -657,8 +703,16 @@ private boolean damageInvincible = false;
             };
         }
 
+
+
         // 如果不在位移也不在攻击，getKeyFrame 会根据 stateTime(0) 返回该方向的站立帧
-        TextureRegion frame = anim.getKeyFrame(isAttacking ? attackAnimTimer : stateTime, !isAttacking);
+        TextureRegion frame = anim.getKeyFrame(
+                isCasting ? castAnimTimer :
+                        isAttacking ? attackAnimTimer :
+                                stateTime,
+                !isCasting && !isAttacking
+        );
+
 
         float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
         float scale = baseScale * VISUAL_SCALE;
@@ -667,9 +721,21 @@ private boolean damageInvincible = false;
         float drawX = worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f - drawW / 2f;
         float drawY = worldY * GameConstants.CELL_SIZE;
 
-        if (hitFlash && hitFlashTimer % 0.1f > 0.05f) batch.setColor(1, 1, 1, 0.6f);
-        else if (dashInvincible && dashInvincibleTimer % 0.1f > 0.05f) batch.setColor(0.8f, 0.9f, 1f, 0.7f);
-        else batch.setColor(1, 1, 1, 1);
+        if (!isCasting) {
+            if (hitFlash && hitFlashTimer % 0.1f > 0.05f) {
+                batch.setColor(1, 1, 1, 0.6f);
+            }
+            else if (dashInvincible && dashInvincibleTimer % 0.1f > 0.05f) {
+                batch.setColor(0.8f, 0.9f, 1f, 0.7f);
+            }
+            else {
+                batch.setColor(1, 1, 1, 1);
+            }
+        } else {
+            // ⭐ 施法时：始终正常显示
+            batch.setColor(1, 1, 1, 1);
+        }
+
 
         batch.draw(frame, drawX, drawY, drawW, drawH);
         batch.setColor(1, 1, 1, 1);
@@ -825,4 +891,12 @@ private boolean damageInvincible = false;
     public void setMovingAnim(boolean moving) {
         this.isMovingAnim = moving;
     }
+
+    public void startCasting() {
+        if (isDead) return;
+
+        isCasting = true;
+        castAnimTimer = 0f;
+    }
+
 }
