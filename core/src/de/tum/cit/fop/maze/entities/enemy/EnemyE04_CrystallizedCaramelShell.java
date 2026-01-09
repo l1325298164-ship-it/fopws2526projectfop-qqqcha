@@ -41,7 +41,7 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
         collisionDamage = 8;
         attack = 8;
 
-        moveSpeed = 1.5f;           // 🔥 更慢的移动速度
+        moveSpeed = 1.0f;           // 🔥 更慢的移动速度
         moveInterval = 0.8f;        // 🔥 移动间隔更长
         changeDirInterval = 1.8f;
         detectRange = 8f;           // 🔥 检测范围更大

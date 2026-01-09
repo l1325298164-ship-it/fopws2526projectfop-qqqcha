@@ -64,8 +64,11 @@ public class CameraManager {
         for (Player p : players) {
             if (p == null || p.isDead()) continue;
 
-            sumX += (p.getX() + 0.5f) * GameConstants.CELL_SIZE;
-            sumY += (p.getY() + 0.5f) * GameConstants.CELL_SIZE;
+            float px = (p.getX() + 0.5f) * GameConstants.CELL_SIZE;
+            float py = (p.getY() + 0.5f) * GameConstants.CELL_SIZE;
+
+            sumX += px;
+            sumY += py;
             count++;
         }
 
@@ -74,8 +77,36 @@ public class CameraManager {
         targetX = sumX / count;
         targetY = sumY / count;
 
+        // ===== clamp 到地图 =====
+        if (clampToMap) {
+            targetX = Math.max(
+                    camera.viewportWidth / 2f,
+                    Math.min(
+                            difficultyConfig.mazeWidth * GameConstants.CELL_SIZE - camera.viewportWidth / 2f,
+                            targetX
+                    )
+            );
+            targetY = Math.max(
+                    camera.viewportHeight / 2f,
+                    Math.min(
+                            difficultyConfig.mazeHeight * GameConstants.CELL_SIZE - camera.viewportHeight / 2f,
+                            targetY
+                    )
+            );
+        }
+
+        // ===== 平滑跟随 =====
+        float currentX = camera.position.x;
+        float currentY = camera.position.y;
+
+        float newX = currentX + (targetX - currentX) * smoothSpeed * deltaTime;
+        float newY = currentY + (targetY - currentY) * smoothSpeed * deltaTime;
+
+        camera.position.set(newX, newY, 0);
+        camera.update();
     }
-        public void centerOnPlayerImmediately(Player player) {
+
+    public void centerOnPlayerImmediately(Player player) {
         if (player == null) return;
 
         float playerPixelX = player.getX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2;
@@ -161,8 +192,7 @@ public class CameraManager {
     }
 
 
-    public void update(float delta, Player player) {
-    }
+
 
     public boolean isDebugZoom() {
         return debugForceZoomEnabled;

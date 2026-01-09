@@ -26,6 +26,10 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
     private float rotation = 0f;
     private float rotationSpeed = 180f; // 度/秒
     // 🔥 动画相关
+    public int getCollisionDamage() {
+        return collisionDamage;
+    }
+
     private Animation<TextureRegion> anim;
     private float animTime = 0f;
     public EnemyE02_SmallCoffeeBean(int x, int y) {

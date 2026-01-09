@@ -1174,7 +1174,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 }
 
                 if (hit) {
-                    p.takeDamage(enemy.getAttackDamage());
+                    p.takeDamage(enemy.getCollisionDamage());
                 }
             }
         }
@@ -1188,10 +1188,44 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         for (Player p : players) {
             if (p == null || !p.isDashing()) continue;
 
-            for (Enemy enemy : enemies) {
-                if (!enemy.isActive() || enemy.isDead()) continue;
+            // 玩家中心（连续坐标）
+            float px = p.getWorldX() + 0.5f;
+            float py = p.getWorldY() + 0.5f;
 
-                if (enemy.getX() == p.getX() && enemy.getY() == p.getY()) {
+            for (Enemy enemy : enemies) {
+                if (enemy == null || !enemy.isActive() || enemy.isDead()) continue;
+
+                boolean hit = false;
+
+                // ===============================
+                // 🔥 E02：连续移动敌人（圆形判定）
+                // ===============================
+                if (enemy instanceof EnemyE02_SmallCoffeeBean e02) {
+                    float dx = px - e02.getWorldX();
+                    float dy = py - e02.getWorldY();
+                    float radius = 0.7f; // Dash 命中宽容度
+                    hit = (dx * dx + dy * dy) <= radius * radius;
+                }
+
+                // ===============================
+                // 🔥 E04：2x2 占格敌人
+                // ===============================
+                else if (enemy instanceof EnemyE04_CrystallizedCaramelShell shell) {
+                    int cx = (int) px;
+                    int cy = (int) py;
+                    hit = shell.occupiesCell(cx, cy);
+                }
+
+                // ===============================
+                // 🔹 其他普通 1x1 敌人
+                // ===============================
+                else {
+                    hit = (enemy.getX() == (int) px &&
+                            enemy.getY() == (int) py);
+                }
+
+                if (hit) {
+                    // ⭐ 顺序非常重要
                     enemy.markHitByDash();
                     enemy.takeDamage(2);
                 }

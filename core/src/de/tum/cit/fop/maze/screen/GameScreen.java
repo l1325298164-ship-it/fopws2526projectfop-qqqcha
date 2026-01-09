@@ -290,7 +290,7 @@ public class GameScreen implements Screen {
             float gameDelta = delta * timeScale;
 
             // 注意：这里需要把 gameDelta 传进去，这样相机的跟随速度也会随时间变慢
-            cam.update(gameDelta, gm.getPlayer(), gm);
+            cam.update(gameDelta, gm);
         }
 
         worldViewport.apply();
