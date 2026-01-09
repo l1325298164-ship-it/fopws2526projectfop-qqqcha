@@ -108,14 +108,14 @@ public class GameScreen implements Screen {
         uiBottom = new Texture("Wallpaper/HUD_down.png");
         uiLeft = new Texture("Wallpaper/HUD_left.png");
         uiRight = new Texture("Wallpaper/HUD_right.png");
-//        uiTop.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiBottom.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiLeft.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-//        uiRight.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+
         input = new PlayerInputHandler();
 
         batch = game.getSpriteBatch();
-        gm = new GameManager(difficultyConfig);
+        gm = game.getGameManager();
+        if (gm == null) {
+            gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
+        }
         maze = new MazeRenderer(gm,difficultyConfig);
         cam = new CameraManager(difficultyConfig);
         float mazeW = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;
@@ -128,7 +128,6 @@ public class GameScreen implements Screen {
         );
         uiStage = new Stage(new ScreenViewport(), batch);
         hud = new HUD(gm);
-        game.setActiveGameScreen(this);
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
     }

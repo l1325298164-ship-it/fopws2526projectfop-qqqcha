@@ -152,7 +152,7 @@ public class EndlessScreen implements Screen {
             System.out.println("✅ 使用 MazeRunnerGame 的 GameManager");
         } else {
             // 如果 gameManager 不存在，才创建一个
-            gm = new GameManager(difficultyConfig);
+            gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
             System.out.println("⚠️ 创建新的 GameManager");
         }
 
@@ -355,8 +355,7 @@ public class EndlessScreen implements Screen {
         }
 
         // 检查玩家死亡
-        if (gm.getPlayer().isDead()) {
-            System.out.println("💀 玩家死亡，游戏结束");
+        if (isEndlessGameOver()) {
             endlessGameOver = true;
             showEndlessGameOverScreen();
             return;
@@ -401,17 +400,35 @@ public class EndlessScreen implements Screen {
         }
     }
 
+    private boolean isEndlessGameOver() {
+        if (!gm.isTwoPlayerMode()) {
+            return gm.getPlayer().isDead();
+        }
+
+        for (Player p : gm.getPlayers()) {
+            if (!p.isDead()) return false;
+        }
+        return true;
+    }
+
     // ===== 计算玩家生命值百分比 =====
     private float calculatePlayerHealthPercentage() {
-        Player player = gm.getPlayer();
-        if (player == null) return 100f;
+        if (!gm.isTwoPlayerMode()) {
+            return gm.getPlayer().getLives() / (float) difficultyConfig.initialLives * 100f;
+        }
 
-        int maxLives = difficultyConfig.initialLives;
-        int currentLives = player.getLives();
-        if (maxLives <= 0) return 100f;
-
-        return (currentLives / (float)maxLives) * 100f;
+        int total = 0;
+        int alive = 0;
+        for (Player p : gm.getPlayers()) {
+            if (!p.isDead()) {
+                total += p.getLives();
+                alive++;
+            }
+        }
+        if (alive == 0) return 0;
+        return (total / (float)(alive * difficultyConfig.initialLives)) * 100f;
     }
+
 
     // ===== 动态敌人生成间隔 =====
     private float getDynamicEnemySpawnInterval(float healthPercent) {
@@ -950,7 +967,9 @@ public class EndlessScreen implements Screen {
         List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
         for (Enemy enemy : enemiesCopy) {
             if (enemy != null && enemy.isActive() && enemy.getX() == x && enemy.getY() == y) {
-                return true;
+                if (enemy instanceof EnemyE04_CrystallizedCaramelShell e04) {
+                    if (e04.occupiesCell(x, y)) return true;
+                }
             }
         }
 
@@ -1133,7 +1152,7 @@ public class EndlessScreen implements Screen {
 
     // ===== 辅助方法 =====
     private boolean isEndlessMode() {
-        return difficultyConfig.keyCount == 0;
+        return difficultyConfig.difficulty == Difficulty.ENDLESS;
     }
 
     private void handleInput(float delta) {
@@ -1225,7 +1244,12 @@ public class EndlessScreen implements Screen {
         }
 
         // 玩家（最高优先级）
-        items.add(new Item(gm.getPlayer(), 100));
+        for (Player p : gm.getPlayers()) {
+            if (!p.isDead()) {
+                items.add(new Item(p, 100));
+            }
+        }
+
 
         // 敌人
         List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
@@ -1373,9 +1397,24 @@ public class EndlessScreen implements Screen {
 
         pauseUIInitialized = true;
         if (game.hasRunningGame()) {
-            root.add(bf.create("reset", game::resumeGame));
+            root.add(bf.create("reset", () -> {
+                game.startNewGame(Difficulty.ENDLESS);
+                game.goToGame();
+            }));
+
         }
     }
+//    private void setInputProcessorSafely() {
+//        if (endlessGameOver) {
+//            Gdx.input.setInputProcessor(endlessGameOverStage);
+//        } else if (paused) {
+//            Gdx.input.setInputProcessor(pauseStage);
+//        } else if (console != null && console.isVisible()) {
+//            Gdx.input.setInputProcessor(console.getStage());
+//        } else {
+//            Gdx.input.setInputProcessor(null);
+//        }
+//    }
 
     // ===== LibGDX Screen接口方法 =====
     @Override

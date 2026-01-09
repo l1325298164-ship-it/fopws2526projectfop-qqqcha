@@ -44,6 +44,47 @@ public class Player extends GameObject {
         this.abilityManager = null;
     }
 
+    /**
+     * 双人模式复活专用
+     */
+    public void reviveAt(int x, int y, int hp) {
+        // ===== 基础状态 =====
+        this.isDead = false;
+
+        this.lives = Math.min(hp, this.maxLives);
+        if (this.lives <= 0) {
+            this.lives = 1;
+        }
+
+        // ===== 位置 =====
+        setPosition(x, y);
+
+        // ===== 无敌帧（防止刚复活被秒）=====
+        this.damageInvincible = true;
+        this.damageInvincibleTimer = 0f;
+
+        this.hitFlash = false;
+        this.hitFlashTimer = 0f;
+
+        // ===== 移动 / 行为状态重置 =====
+        this.inHitStun = false;
+        this.hitStunTimer = 0f;
+
+        this.isAttacking = false;
+        this.attackAnimTimer = 0f;
+
+        this.isCasting = false;
+        this.castAnimTimer = 0f;
+
+        this.moving = false;
+        this.isMovingContinuous = false;
+
+        Logger.gameEvent(
+                "Player " + playerIndex + " revived at (" + x + "," + y + ") with HP=" + lives
+        );
+    }
+
+
 
     //双人模式
     public enum PlayerIndex {
@@ -74,8 +115,6 @@ private float worldX;
     private boolean hasKey = false;
     private int lives;
     private int maxLives;
-    private float invincibleTimer = 0;
-    private boolean isInvincible = false;
 
     private boolean isDead = false;
 //判定效果重新设计

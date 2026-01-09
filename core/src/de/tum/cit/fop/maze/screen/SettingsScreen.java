@@ -3,9 +3,12 @@ package de.tum.cit.fop.maze.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
@@ -28,17 +31,14 @@ public class SettingsScreen implements Screen {
         this.previousScreen = previousScreen;
     }
     private void goBack() {
+        if (game.consumeTwoPlayerModeDirty()) {
+            game.restartCurrentGame(); // 🔥 强制 reset
+            return;
+        }
+
         switch (source) {
-            case MAIN_MENU -> {
-                game.setScreen(new MenuScreen(game));
-            }
-            case PAUSE_MENU -> {
-                if (previousScreen != null) {
-                    game.setScreen(previousScreen);
-                } else {
-                    game.resumeGame(); // 兜底
-                }
-            }
+            case MAIN_MENU -> game.setScreen(new MenuScreen(game));
+            case PAUSE_MENU -> game.resumeGame();
         }
     }
 
@@ -58,6 +58,8 @@ public class SettingsScreen implements Screen {
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 // ===== 占位按钮（后面逐个替换）=====
+
+
         root.add(bf.create("Audio Settings (TODO)", () -> {}))
                 .width(400).height(70)
                 .padBottom(20)
@@ -68,16 +70,33 @@ public class SettingsScreen implements Screen {
                 .padBottom(20)
                 .row();
 
-        root.add(bf.create("Two Player Mode (TODO)", () -> {}))
+        // ===== Two Player Mode Toggle =====
+        final com.badlogic.gdx.scenes.scene2d.ui.TextButton twoPlayerBtn =
+                bf.create("Two Player Mode: " + (game.isTwoPlayerMode() ? "ON" : "OFF"), () -> {});
+
+        twoPlayerBtn.addListener(new InputListener() {
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                boolean newValue = !game.isTwoPlayerMode();
+                game.setTwoPlayerMode(newValue);
+
+                twoPlayerBtn.setText("Two Player Mode: " + (newValue ? "ON" : "OFF"));
+                return true;
+            }
+        });
+
+
+
+
+        root.add(twoPlayerBtn)
                 .width(400).height(70)
                 .padBottom(40)
                 .row();
 
         // ===== 返回 =====
-        root.add(bf.create("BACK", () -> {
-                    game.goToMenu(); // 暂时统一回主菜单
-                }))
-                .width(400).height(80);
+        root.add(bf.create("BACK", this::goBack))
+                .width(400)
+                .height(80);
     }
 
     @Override

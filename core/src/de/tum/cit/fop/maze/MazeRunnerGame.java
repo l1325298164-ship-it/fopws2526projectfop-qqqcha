@@ -30,35 +30,41 @@ import java.util.List;
  */
 public class MazeRunnerGame extends Game {
     private AssetManager assets;
+    private Difficulty currentDifficulty = Difficulty.NORMAL;
 
+    public Difficulty getCurrentDifficulty() {
+        return currentDifficulty != null ? currentDifficulty : Difficulty.NORMAL;
+    }
     public AssetManager getAssets() {
         return assets;
     }
     private SpriteBatch spriteBatch;
     private Skin skin;
     private AudioManager audioManager;
+    // MazeRunnerGame.java
+    private boolean twoPlayerMode = true;
+    public boolean isTwoPlayerMode() {
+        return twoPlayerMode;
+    }
+
+
 
     private GameManager gameManager;
     private DifficultyConfig difficultyConfig;
-    private GameScreen activeGameScreen;
 
     private PVPipeline storyPipeline;
 
     /* =========================
        Story / Flow
        ========================= */
-    public void setActiveGameScreen(GameScreen gs) {
-        this.activeGameScreen = gs;
-    }
 
     public boolean hasRunningGame() {
-        return activeGameScreen != null;
+        return getScreen() instanceof GameScreen
+                || getScreen() instanceof EndlessScreen;
     }
 
     public void resumeGame() {
-        if (activeGameScreen != null) {
-            setScreen(activeGameScreen);
-        }
+
     }
 
     public GameManager getGameManager() {
@@ -66,12 +72,14 @@ public class MazeRunnerGame extends Game {
     }
 
     public void startNewGame(Difficulty difficulty) {
+        this.currentDifficulty = difficulty;
         Logger.debug("Start new game with difficulty = " + difficulty);
 
-        // 🔥 创建配置 - 根据难度调整生命值
         this.difficultyConfig = createDifficultyConfig(difficulty);
-        this.gameManager = new GameManager(this.difficultyConfig);
-        this.activeGameScreen = null;
+        this.gameManager = new GameManager(
+                this.difficultyConfig,
+                this.twoPlayerMode
+        );
 
         if (difficulty == Difficulty.ENDLESS) {
             System.out.println("🎮 直接进入无尽模式");
@@ -145,8 +153,9 @@ public class MazeRunnerGame extends Game {
 
         MazeRunnerGameHolder.init(this); // ⭐ 必须最先
         assets = new AssetManager();   // ⭐ 全局唯一
-        difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
-        gameManager = new GameManager(difficultyConfig);
+        currentDifficulty = Difficulty.NORMAL;
+        difficultyConfig = DifficultyConfig.of(currentDifficulty);
+        gameManager = new GameManager(difficultyConfig, twoPlayerMode);
 
         spriteBatch = new SpriteBatch();
 
@@ -174,17 +183,7 @@ public class MazeRunnerGame extends Game {
         System.out.println("   从: " + oldScreen);
         System.out.println("   到: " + newScreen);
 
-        // 如果是切换到 GameScreen 且当前是 EndlessScreen，打印调用栈
-        if (oldScreen.contains("EndlessScreen") && newScreen.contains("GameScreen")) {
-            System.out.println("⚠️ 警告：EndlessScreen 被 GameScreen 替换！");
-            System.out.println("   调用栈:");
-            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-            for (int i = 2; i < Math.min(stackTrace.length, 8); i++) {
-                System.out.println("      " + stackTrace[i].getClassName() +
-                        "." + stackTrace[i].getMethodName() +
-                        ":" + stackTrace[i].getLineNumber());
-            }
-        }
+
 
         super.setScreen(screen);
     }
@@ -227,7 +226,7 @@ public class MazeRunnerGame extends Game {
 
     public void startStoryFromBeginning() {
         difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
-        gameManager = new GameManager(difficultyConfig);
+        gameManager = new GameManager(difficultyConfig, twoPlayerMode);
 
         stage = StoryStage.STORY_BEGIN;
         advanceStory();
@@ -352,7 +351,7 @@ public class MazeRunnerGame extends Game {
 
         if (difficultyConfig == null) {
             difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
-            gameManager = new GameManager(difficultyConfig);
+            gameManager = new GameManager(difficultyConfig, twoPlayerMode);
         }
 
         Screen old = getScreen();
@@ -392,9 +391,6 @@ public class MazeRunnerGame extends Game {
 
     private void resetGameState() {
         stage = StoryStage.MAIN_MENU;
-        gameManager = null;
-        difficultyConfig = null;
-        activeGameScreen = null;
     }
 
     public SpriteBatch getSpriteBatch() {
@@ -425,17 +421,23 @@ public class MazeRunnerGame extends Game {
     public void resetMaze(Difficulty difficulty) {
         Logger.debug("Resetting maze without story flow, difficulty: " + difficulty);
 
-        // 1. 重新生成配置和管理器
+        this.currentDifficulty = difficulty; // ✅ 记录
+
         this.difficultyConfig = DifficultyConfig.of(difficulty);
-        this.gameManager = new GameManager(this.difficultyConfig);
+        this.gameManager = new GameManager(
+                this.difficultyConfig,
+                this.twoPlayerMode
+        );
 
-        // 2. 清理旧的 Screen 引用
-        this.activeGameScreen = null;
+        // ENDLESS 单独处理（否则你会被强行送去 GameScreen）
+        if (difficulty == Difficulty.ENDLESS) {
+            setScreen(new EndlessScreen(this, difficultyConfig));
+            return;
+        }
 
-        // 3. 直接进入 GameScreen
-        // 注意：这里不需要设置 StoryStage，因为我们只是在“重玩”当前阶段
         setScreen(new GameScreen(this, difficultyConfig));
     }
+
 
     public void debugEnterTutorial() {
         Logger.debug("DEBUG: Enter Tutorial (standalone)");
@@ -444,7 +446,7 @@ public class MazeRunnerGame extends Game {
         storyPipeline = null;
 
         difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
-        gameManager = new GameManager(difficultyConfig);
+        gameManager = new GameManager(difficultyConfig, twoPlayerMode);
 
         // ✅ 正确加载 PV4
         AssetManager am = getAssets();
@@ -455,5 +457,26 @@ public class MazeRunnerGame extends Game {
 
         setScreen(new MazeGameTutorialScreen(this, difficultyConfig));
     }
+    public void restartCurrentGame() {
+        if (!hasRunningGame()) return;
+
+        Difficulty d = getCurrentDifficulty();
+        resetMaze(d); // ✅ 直接重开当前模式
+    }
+    private boolean twoPlayerModeDirty = false;
+
+    public void setTwoPlayerMode(boolean enabled) {
+        if (this.twoPlayerMode != enabled) {
+            this.twoPlayerMode = enabled;
+            this.twoPlayerModeDirty = true;
+        }
+    }
+
+    public boolean consumeTwoPlayerModeDirty() {
+        boolean dirty = twoPlayerModeDirty;
+        twoPlayerModeDirty = false;
+        return dirty;
+    }
+
 
 }
