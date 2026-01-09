@@ -505,20 +505,20 @@ public class HUD {
 
 
 
-    private void drawSimplePlayerInfo(
-            SpriteBatch batch,
-            de.tum.cit.fop.maze.entities.Player player,
-            float x,
-            float y,
-            String label
-    ) {
-        font.setColor(Color.WHITE);
-        font.getData().setScale(1.2f);
-
-        font.draw(batch, label, x, y);
-        font.draw(batch, "HP: " + player.getLives(), x, y - 20);
-        font.draw(batch, "MP: " + player.getMana(), x, y - 40);
-    }
+//    private void drawSimplePlayerInfo(
+//            SpriteBatch batch,
+//            de.tum.cit.fop.maze.entities.Player player,
+//            float x,
+//            float y,
+//            String label
+//    ) {
+//        font.setColor(Color.WHITE);
+//        font.getData().setScale(1.2f);
+//
+//        font.draw(batch, label, x, y);
+//        font.draw(batch, "HP: " + player.getLives(), x, y - 20);
+//        font.draw(batch, "MP: " + player.getMana(), x, y - 40);
+//    }
     private void renderManaBarForPlayer(
             SpriteBatch uiBatch,
             Player player,
