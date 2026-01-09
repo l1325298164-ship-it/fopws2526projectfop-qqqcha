@@ -121,7 +121,7 @@ public class HUD {
 
     // ===== Bottom Center HUD Offset =====
     private static final float CAT_Y_OFFSET = -150f;        // 🐱 下移 50px
-    private static final float COMPASS_Y_OFFSET = 570f;   // 🧭 下移 120px
+    private static final float COMPASS_Y_OFFSET = 650f;   // 🧭 下移 120px
     // UI 尺寸
     private static final int DASH_ICON_SIZE = 200;
     private static final int DASH_ICON_SPACING = 10;
@@ -504,21 +504,6 @@ public class HUD {
     }
 
 
-
-//    private void drawSimplePlayerInfo(
-//            SpriteBatch batch,
-//            de.tum.cit.fop.maze.entities.Player player,
-//            float x,
-//            float y,
-//            String label
-//    ) {
-//        font.setColor(Color.WHITE);
-//        font.getData().setScale(1.2f);
-//
-//        font.draw(batch, label, x, y);
-//        font.draw(batch, "HP: " + player.getLives(), x, y - 20);
-//        font.draw(batch, "MP: " + player.getMana(), x, y - 40);
-//    }
     private void renderManaBarForPlayer(
             SpriteBatch uiBatch,
             Player player,
