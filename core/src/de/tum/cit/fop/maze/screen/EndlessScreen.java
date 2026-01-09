@@ -5,7 +5,9 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -16,6 +18,7 @@ import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -59,6 +62,7 @@ public class EndlessScreen implements Screen {
     private boolean endlessGameOver = false;         // 游戏是否结束标志
     private Stage endlessGameOverStage;              // 游戏结束界面舞台
     private boolean endlessGameOverUIInitialized = false; // 游戏结束UI是否初始化
+    private ShapeRenderer shapeRenderer;
 
     // ===== 物品生成相关 =====
     private float heartSpawnTimer = 0f;              // 血包生成计时器
@@ -131,7 +135,7 @@ public class EndlessScreen implements Screen {
         }
 
         System.out.println("🚀 第一次初始化 EndlessScreen");
-
+        shapeRenderer = new ShapeRenderer();
         // 只加载一次 UI 纹理
         try {
             uiTop = new Texture("Wallpaper/HUD_up.png");
@@ -248,6 +252,15 @@ public class EndlessScreen implements Screen {
     // ===== 主渲染循环 =====
     @Override
     public void render(float delta) {
+
+        Vector3 world = cam.getCamera().unproject(
+                new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
+        );
+
+        int tileX = (int)(world.x / GameConstants.CELL_SIZE);
+        int tileY = (int)(world.y / GameConstants.CELL_SIZE);
+
+        gm.setMouseTargetTile(tileX, tileY);
         // 1. 逻辑更新 (保持放在最前面)
         handleInput(delta);
         float timeScale = console.isVisible() ? 0f : gm.getVariable("time_scale");
@@ -309,12 +322,36 @@ public class EndlessScreen implements Screen {
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
 
+// ===== Ability AOE / Targeting Debug =====
+        shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+
+        for (Player p : gm.getPlayers()) {
+            if (p.getAbilityManager() != null) {
+                p.getAbilityManager().drawAbilities(batch, shapeRenderer, p);
+            }
+        }
+
+
+
+
+
         /* ================= 渲染 UI (切换到屏幕坐标) ================= */
         renderUI();
 
         // 4. 暂停和结束界面 (它们使用 Stage，会自动管理自己的投影矩阵)
-        if (paused) renderPauseScreen(delta);
+        if (paused) {
+            if (!pauseUIInitialized) {
+                initPauseUI();
+            }
+
+            Gdx.input.setInputProcessor(pauseStage);
+            pauseStage.act(delta);
+            pauseStage.draw();
+            return; // ⛔ 必须 return
+        }
         if (endlessGameOver && endlessGameOverStage != null) renderGameOverScreen(delta);
+
+
     }
 
     // ===== 无尽模式核心更新方法 =====
@@ -1318,16 +1355,7 @@ public class EndlessScreen implements Screen {
         batch.draw(uiRight,  w - thickness+810, 0, thickness-220, h);
     }
 
-    // 🔥 修改：使暂停界面渲染与GameScreen一致
-    private void renderPauseScreen(float delta) {
-        if (!pauseUIInitialized) {
-            initPauseUI();
-        }
 
-        Gdx.input.setInputProcessor(pauseStage);
-        pauseStage.act(delta);
-        pauseStage.draw();
-    }
 
     private void renderGameOverScreen(float delta) {
         if (!endlessGameOverUIInitialized) {
@@ -1350,10 +1378,13 @@ public class EndlessScreen implements Screen {
             Gdx.input.setInputProcessor(pauseStage);
         } else {
             Gdx.input.setInputProcessor(null);
+            pauseUIInitialized = false;
+            pauseStage = null;
         }
 
-        Gdx.app.log("EndlessScreen", paused ? "pause" : "continue");
+        Gdx.app.log("EndlessScreen", paused ? "Paused" : "Resumed");
     }
+
 
     // 🔥 修改：使暂停界面与GameScreen一致
     private void initPauseUI() {
@@ -1362,59 +1393,47 @@ public class EndlessScreen implements Screen {
         root.setFillParent(true);
         pauseStage.addActor(root);
 
-        // 🔥 修改：使用与GameScreen一致的标题
-        root.add(new Label("PAUSED", game.getSkin(), "title"))
-                .padBottom(40).row();
+        // 标题
+        Label title = new Label("PAUSED", game.getSkin(), "title");
+        root.add(title).padBottom(40).row();
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 
-        // 🔥 修改：使用与GameScreen一致的按钮尺寸和文本
-        root.add(bf.create("continue", this::togglePause))
-                .width(400).height(80).padBottom(20).row();
+        float btnW = 350;
+        float btnH = 90;
+        float pad  = 15;
 
-        root.add(bf.create("setting", () -> {
-                    // TODO: 打开设置界面
-                }))
-                .width(400).height(80).padBottom(20).row();
+        // CONTINUE
+        root.add(bf.create("CONTINUE", this::togglePause))
+                .width(btnW).height(btnH).pad(pad).row();
 
-        root.add(bf.create("menu", () -> {
-                    game.goToMenu();
-                }))
-                .width(400).height(80).padBottom(40).row();
+        // RESET（无尽模式）
+        root.add(bf.create("RESET", () -> {
+            paused = false;
+            pauseUIInitialized = false;
 
-        // 如果是无尽模式，显示无尽模式得分
-        if (isEndlessMode()) {
-            root.add(new Label(
-                    "level" + endlessWave + " | score: " + calculateEndlessScore(),
-                    game.getSkin()
-            ));
-        } else {
-            root.add(new Label(
-                    "score: " + gm.getScore(),
-                    game.getSkin()
-            ));
-        }
+            game.startNewGame(Difficulty.ENDLESS);
+            game.goToGame();
+        })).width(btnW).height(btnH).pad(pad).row();
+
+        // SETTINGS（⭐ 关键）
+        root.add(bf.create("SETTINGS", () -> {
+            game.setScreen(
+                    new SettingsScreen(
+                            game,
+                            SettingsScreen.SettingsSource.PAUSE_MENU,
+                            this   // ⭐ 非常重要
+                    )
+            );
+        })).width(btnW).height(btnH).pad(pad).row();
+
+        // MENU
+        root.add(bf.create("MENU", game::goToMenu))
+                .width(btnW).height(btnH).pad(pad);
 
         pauseUIInitialized = true;
-        if (game.hasRunningGame()) {
-            root.add(bf.create("reset", () -> {
-                game.startNewGame(Difficulty.ENDLESS);
-                game.goToGame();
-            }));
-
-        }
     }
-//    private void setInputProcessorSafely() {
-//        if (endlessGameOver) {
-//            Gdx.input.setInputProcessor(endlessGameOverStage);
-//        } else if (paused) {
-//            Gdx.input.setInputProcessor(pauseStage);
-//        } else if (console != null && console.isVisible()) {
-//            Gdx.input.setInputProcessor(console.getStage());
-//        } else {
-//            Gdx.input.setInputProcessor(null);
-//        }
-//    }
+
 
     // ===== LibGDX Screen接口方法 =====
     @Override
@@ -1457,6 +1476,7 @@ public class EndlessScreen implements Screen {
         if (uiRight != null) uiRight.dispose();
         if (pauseStage != null) pauseStage.dispose();
         if (endlessGameOverStage != null) endlessGameOverStage.dispose();
+        if (shapeRenderer != null) shapeRenderer.dispose();
         heartCreationTimes.clear();
     }
 }

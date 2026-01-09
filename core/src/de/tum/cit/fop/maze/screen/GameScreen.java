@@ -248,26 +248,7 @@ public class GameScreen implements Screen {
 
                 }, Player.PlayerIndex.P2);
             }
-            // ===== Magic 鼠标技能（P2）=====
-            if (gm.isTwoPlayerMode() && gm.getPlayers().size() > 1) {
-
-                Player p2 = gm.getPlayers().get(1);
-                Ability ability = p2.getAbilityManager().getAbility(0);
-
-                if (ability instanceof MagicAbility m) {
-
-                    // 只监听「再次按下」
-                    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
-
-                        // 统一走 Ability 的 onActivate 状态机
-                        m.activate(p2, gm);
-                    }
-                }
-            }
-
-
-
-        }
+      }
 
         /* ================= 更新 ================= */
         if (!paused &&!console.isVisible()) {

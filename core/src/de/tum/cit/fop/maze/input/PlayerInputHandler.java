@@ -137,7 +137,7 @@ public class PlayerInputHandler {
 
             // P2：鼠标左键 = 魔法技能
             if (km.isJustPressed(KeyBindingManager.GameAction.P2_USE_ABILITY)) {
-                used = callback.onAbilityInput(index, 1);
+                used = callback.onAbilityInput(index, 0);
             }
 
             // P2：鼠标右键 = Dash
