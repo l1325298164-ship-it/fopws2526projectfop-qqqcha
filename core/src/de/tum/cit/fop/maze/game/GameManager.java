@@ -373,27 +373,45 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         }
     }
+    public Player getNearestAlivePlayer(int x, int y) {
+        Player nearest = null;
+        float bestDist = Float.MAX_VALUE;
+
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
+
+            float dx = p.getX() - x;
+            float dy = p.getY() - y;
+            float dist = dx * dx + dy * dy;
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                nearest = p;
+            }
+        }
+        return nearest;
+    }
+
 
     private void handlePlayerTrapInteraction() {
-        if (levelTransitionInProgress || player == null || player.isDead()) return;
+        if (levelTransitionInProgress) return;
 
-        int px = player.getX();
-        int py = player.getY();
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
 
-        for (Trap trap : traps) {
-            if (!trap.isActive()) continue;
+            int px = p.getX();
+            int py = p.getY();
 
-            // 检查玩家是否在陷阱上
-            if (trap.getX() == px && trap.getY() == py) {
-                trap.onPlayerStep(player);
+            for (Trap trap : traps) {
+                if (!trap.isActive()) continue;
 
-                // 🔥 调试：输出陷阱交互
-                if (trap instanceof TrapT01_Geyser) {
-                    Logger.debug("玩家在T01陷阱上: 位置(" + px + "," + py + ")");
+                if (trap.getX() == px && trap.getY() == py) {
+                    trap.onPlayerStep(p);
                 }
             }
         }
     }
+
     private void updateCompass() {
         if (compass == null) return;
 
@@ -988,55 +1006,52 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private void checkAutoPickup() {
         if (levelTransitionInProgress) return;
 
-        int px = player.getX();
-        int py = player.getY();
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
 
-        // ===== 钥匙 =====
-        Iterator<Key> keyIterator = keys.iterator();
-        while (keyIterator.hasNext()) {
-            Key key = keyIterator.next();
-            if (!key.isActive()) continue;
+            int px = p.getX();
+            int py = p.getY();
 
-            if (key.getX() == px && key.getY() == py) {
-                float effectX = key.getX() * GameConstants.CELL_SIZE;
-                float effectY = key.getY() * GameConstants.CELL_SIZE;
+            // ===== 钥匙 =====
+            Iterator<Key> keyIterator = keys.iterator();
+            while (keyIterator.hasNext()) {
+                Key key = keyIterator.next();
+                if (!key.isActive()) continue;
 
-                if (key.getTexture() != null) {
-                    keyEffectManager.spawnKeyEffect(effectX, effectY, key.getTexture());
+                if (key.getX() == px && key.getY() == py) {
+                    float effectX = key.getX() * GameConstants.CELL_SIZE;
+                    float effectY = key.getY() * GameConstants.CELL_SIZE;
+
+                    if (key.getTexture() != null) {
+                        keyEffectManager.spawnKeyEffect(effectX, effectY, key.getTexture());
+                    }
+
+                    key.onInteract(p);
+                    keyIterator.remove();
+                    onKeyCollected();
+                    break;
                 }
-
-                key.onInteract(player);
-                keyIterator.remove();
-                onKeyCollected();
-                break;
             }
-        }
 
-        // ===== 爱心 =====
-        Iterator<Heart> heartIterator = hearts.iterator();
-        while (heartIterator.hasNext()) {
-            Heart h = heartIterator.next();
-            if (h.isActive() && h.getX() == px && h.getY() == py) {
-                h.onInteract(player);
-                heartIterator.remove();
+            // ===== 爱心 =====
+            Iterator<Heart> heartIterator = hearts.iterator();
+            while (heartIterator.hasNext()) {
+                Heart h = heartIterator.next();
+                if (h.isActive() && h.getX() == px && h.getY() == py) {
+                    h.onInteract(p);
+                    heartIterator.remove();
+                }
             }
-        }
 
-        // ===== 宝箱 (Treasure) =====
-        Iterator<Treasure> treasureIterator = treasures.iterator();
-        while (treasureIterator.hasNext()) {
-            Treasure t = treasureIterator.next();
-
-            // 只要玩家踩上去，并且宝箱还没开
-            if (t.isInteractable() && t.getX() == px && t.getY() == py) {
-                // 触发开箱逻辑 (Player.java 会获得 Buff)
-                t.onInteract(player);
-
-                // ⚠️ 注意：宝箱打开后不移除 (remove)，因为它要变成开箱状态留在原地
-                // 所以这里不需要 treasureIterator.remove();
+            // ===== 宝箱 =====
+            for (Treasure t : treasures) {
+                if (t.isInteractable() && t.getX() == px && t.getY() == py) {
+                    t.onInteract(p);
+                }
             }
         }
     }
+
 
     /**
      * Enemy 专用移动判定
@@ -1130,37 +1145,60 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private void handlePlayerEnemyCollision() {
         if (levelTransitionInProgress) return;
 
-        Player player = this.player;
-        if (player == null || player.isDead()) return;
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
+            if (p.isDashInvincible()) continue;
 
-        for (Enemy enemy : enemies) {
-            if (!enemy.isActive() || enemy.isDead()) continue;
+            for (Enemy enemy : enemies) {
+                if (enemy == null || !enemy.isActive() || enemy.isDead()) continue;
 
-            if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
-                if (player.isDashInvincible()) {
-                    continue;
+                boolean hit = false;
+
+                // 🔥 连续移动敌人（E02）
+                if (enemy instanceof EnemyE02_SmallCoffeeBean e02) {
+
+                    // 玩家中心 vs 敌人 world 坐标
+                    float px = p.getX() + 0.5f;
+                    float py = p.getY() + 0.5f;
+
+                    float dx = px - e02.getWorldX();
+                    float dy = py - e02.getWorldY();
+
+                    float radius = 0.6f; // ⭐ 可调，0.5~0.7 都行
+                    hit = (dx * dx + dy * dy) <= radius * radius;
+
+                } else {
+                    // 🔹 原有格子敌人逻辑（E01 / E03 / E04）
+                    hit = (enemy.getX() == p.getX() &&
+                            enemy.getY() == p.getY());
                 }
-                player.takeDamage(enemy.getAttackDamage());
+
+                if (hit) {
+                    p.takeDamage(enemy.getAttackDamage());
+                }
             }
         }
     }
+
+
 
     private void handleDashHitEnemies() {
         if (levelTransitionInProgress) return;
 
-        Player player = this.player;
-        if (player == null) return;
-        if (!player.isDashing()) return;
+        for (Player p : players) {
+            if (p == null || !p.isDashing()) continue;
 
-        for (Enemy enemy : enemies) {
-            if (!enemy.isActive() || enemy.isDead()) continue;
+            for (Enemy enemy : enemies) {
+                if (!enemy.isActive() || enemy.isDead()) continue;
 
-            if (enemy.getX() == player.getX() && enemy.getY() == player.getY()) {
-                enemy.markHitByDash();   // ⭐ E04关键
-                enemy.takeDamage(2);
+                if (enemy.getX() == p.getX() && enemy.getY() == p.getY()) {
+                    enemy.markHitByDash();
+                    enemy.takeDamage(2);
+                }
             }
         }
     }
+
 
     public KeyEffectManager getKeyEffectManager() {
         return keyEffectManager;

@@ -83,11 +83,16 @@ public class BobaBullet extends EnemyBullet {
         }
 
         // 玩家碰撞检测
-        Player player = gm.getPlayer();
-        if (state != BobaState.POPPING && player.collidesWith(this)) {
-            player.takeDamage(damage);
-            triggerPop();
+        for (Player p : gm.getPlayers()) {
+            if (p == null || p.isDead()) continue;
+
+            if (state != BobaState.POPPING && p.collidesWith(this)) {
+                p.takeDamage(damage);
+                triggerPop();
+                break;
+            }
         }
+
 
         updateVisuals(delta);
     }
