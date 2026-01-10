@@ -52,6 +52,10 @@ public class MenuScreen implements Screen {
     private AudioManager audioManager;
     private boolean isMusicOn = true;
 
+    public MenuScreen(MazeRunnerGame game) {
+        this.game = game;
+    }
+
     // 响应式按钮大小
     private float getButtonWidth() {
         float screenWidth = Gdx.graphics.getWidth();

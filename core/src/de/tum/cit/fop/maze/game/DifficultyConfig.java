@@ -35,7 +35,7 @@ public class DifficultyConfig {
             int trapT01GeyserCount, int trapT02PearlMineCount, int trapT03TeaShardCount, int trapT04MudTileCount,
             int initialLives, float enemyHpMultiplier, float enemyDamageMultiplier, int keyCount,
             // 【新增】 构造参数
-            float scoreMultiplier, float penaltyMultiplier, float penaltyMultiplier1
+            float scoreMultiplier, float penaltyMultiplier
 
     ) {
         this.difficulty = difficulty;
@@ -61,7 +61,6 @@ public class DifficultyConfig {
         // 【新增】 赋值
         this.scoreMultiplier = scoreMultiplier;
         this.penaltyMultiplier = penaltyMultiplier;
-        this.penaltyMultiplier = penaltyMultiplier1;
     }
 
     /* ===== 难度工厂 ===== */
@@ -75,17 +74,6 @@ public class DifficultyConfig {
                     200, 0.7f, 0.6f, 2, // 战斗
                     1.0f, 0.5f // 【新增】 scoreMultiplier, penaltyMultiplier
 
-                    /* 敌人 */
-                    4, 2, 0,0,
-
-                    /* 陷阱 */
-                    0, 0, 0, 0,
-
-                    /* 战斗 */
-                    200,
-                    0.7f,
-                    0.6f,
-                    2
             );
 
             case NORMAL -> new DifficultyConfig(
@@ -97,14 +85,7 @@ public class DifficultyConfig {
 
                     /* 陷阱 */
                     2, 1, 1, 10,
-                    200, 1.0f, 1.0f, 1,
-                    1.2f, 1.0f // 【新增】 scoreMultiplier, penaltyMultiplier
-
-                    /* 战斗 */
-                    200,
-                    1.0f,
-                    1.0f,
-                    1
+                    200, 1.0f
             );
 
             case HARD -> new DifficultyConfig(
@@ -117,14 +98,7 @@ public class DifficultyConfig {
 
                     /* 陷阱 */
                     4, 3, 3, 20,
-                    200, 1.4f, 1.3f, 1,
-                    1.5f, 1.5f // 【新增】 scoreMultiplier, penaltyMultiplier
-
-                    /* 战斗 */
-                    200,
-                    1.4f,
-                    1.3f,
-                    1
+                    200, 1.4f
             );
 
             case TUTORIAL -> new DifficultyConfig(
@@ -137,34 +111,14 @@ public class DifficultyConfig {
 
                     /* 陷阱 */
                     0, 0, 0, 0,
-                    5, 1.4f, 1.3f, 2,
-                    0.0f, 0.0f // 【新增】 教程可能不计分
-
-                    /* 战斗 */
-                    5,
-                    1.4f,
-                    1.3f,
-                    2
+                    5, 1.4f
             );
             case ENDLESS -> new DifficultyConfig(
                     Difficulty.ENDLESS, 40, 40, 0,
                     7, 5, 4, 4,
                     10, 5, 3, 2, // 修正了这里原本的语法错误 (原代码有一堆奇怪的逗号)
                     400, 1.3f, 1.3f, 0, // 修正了原本缺少的参数
-                    2.0f, 1.2f // 【新增】 无尽模式高分倍率
-                    /* 地图 */
-                    Difficulty.ENDLESS,40, 40, 0,
-
-                    /* 敌人 */
-                    7, 5, 4,4,
-
-                    /* 陷阱 */
-                    10, 5, 3, 2,2,
-
-                    /* 战斗 */
-                    400,
-                    1.3f,
-                    0
+                    2.0f, 1.2f
             );
         };
     }
