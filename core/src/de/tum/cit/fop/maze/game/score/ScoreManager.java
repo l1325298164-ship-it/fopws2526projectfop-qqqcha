@@ -42,28 +42,10 @@ public class ScoreManager implements GameListener {
     }
 
     public int getCurrentScore() {
-        if (config == null) {
-            Logger.error("ScoreManager.getCurrentScore: config is null!");
-            return 0;
-        }
-        
         // 实时总分 = 历史分 + (本关基础分 - 本关扣分) * 倍率
         int currentLevelRaw = Math.max(0, levelBaseScore - levelPenalty);
-        float multiplier = config.scoreMultiplier;
-        int currentLevelFinal = (int) (currentLevelRaw * multiplier);
+        int currentLevelFinal = (int) (currentLevelRaw * config.scoreMultiplier);
         long totalScore = (long) accumulatedScore + currentLevelFinal;
-        
-        // ✨ 调试日志：检查分数计算（只在分数变化时输出）
-        if (Logger.isDebugEnabled()) {
-            Logger.debug("getCurrentScore: accumulated=" + accumulatedScore + 
-                        ", levelBase=" + levelBaseScore + 
-                        ", penalty=" + levelPenalty + 
-                        ", multiplier=" + multiplier + 
-                        ", currentLevelRaw=" + currentLevelRaw +
-                        ", currentLevelFinal=" + currentLevelFinal +
-                        ", total=" + totalScore);
-        }
-        
         // 防止整数溢出，限制最大分数为 Integer.MAX_VALUE
         return (int) Math.min(totalScore, Integer.MAX_VALUE);
     }
@@ -78,10 +60,8 @@ public class ScoreManager implements GameListener {
             case E04 -> points = ScoreConstants.SCORE_E04_SHELL;
             case BOSS -> points = ScoreConstants.SCORE_BOSS;
         }
-        if (points > 0) {
-            levelBaseScore += points;
-            Logger.info("ScoreManager: Enemy killed! +" + points + " pts (Tier: " + tier + "), LevelBaseScore now: " + levelBaseScore);
-        }
+        levelBaseScore += points;
+        Logger.debug("Score + " + points + " (Enemy: " + tier + ")");
     }
 
     @Override
@@ -94,10 +74,7 @@ public class ScoreManager implements GameListener {
 
     @Override
     public void onItemCollected(String itemType) {
-        if (itemType == null) {
-            Logger.warning("ScoreManager.onItemCollected: itemType is null!");
-            return;
-        }
+        if (itemType == null) return;
         int points = 0;
 
         if (itemType.equals("HEART") || itemType.equals("BOBA")) {
@@ -112,9 +89,7 @@ public class ScoreManager implements GameListener {
 
         if (points > 0) {
             levelBaseScore += points;
-            Logger.info("ScoreManager: Item collected! +" + points + " pts (Item: " + itemType + "), LevelBaseScore now: " + levelBaseScore);
-        } else {
-            Logger.warning("ScoreManager.onItemCollected: Unknown itemType: " + itemType);
+            Logger.debug("Score + " + points + " (Item: " + itemType + ")");
         }
     }
 

@@ -42,39 +42,16 @@ public class SettlementScreen implements Screen {
     private boolean scoreSubmitted = false;
 
     public SettlementScreen(MazeRunnerGame game, LevelResult result, GameSaveData saveData) {
-        if (game == null) {
-            throw new IllegalArgumentException("game cannot be null");
-        }
-        if (result == null) {
-            throw new IllegalArgumentException("result cannot be null");
-        }
-        if (saveData == null) {
-            throw new IllegalArgumentException("saveData cannot be null");
-        }
-        
         this.game = game;
         this.result = result;
         this.saveData = saveData;
-        
-        try {
-            this.leaderboardManager = new LeaderboardManager();
-        } catch (Exception e) {
-            Logger.error("Failed to initialize LeaderboardManager: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("Failed to initialize LeaderboardManager", e);
-        }
+        this.leaderboardManager = new LeaderboardManager();
 
         // 🛠️ 累加分数
         this.saveData.score += result.finalScore;
 
         // 🛠️ [修改] 移除自动提交，改为检查是否破纪录
-        try {
-            this.isHighScore = leaderboardManager.isHighScore(this.saveData.score);
-        } catch (Exception e) {
-            Logger.error("Failed to check high score: " + e.getMessage());
-            e.printStackTrace();
-            this.isHighScore = false; // 默认不是高分，避免后续问题
-        }
+        this.isHighScore = leaderboardManager.isHighScore(this.saveData.score);
 
         Logger.info("Settlement: Level Score=" + result.finalScore +
                 ", Total Score=" + saveData.score +
@@ -89,24 +66,10 @@ public class SettlementScreen implements Screen {
     }
 
     private void setupUI() {
-        try {
-            if (game == null || game.getSkin() == null) {
-                Logger.error("Game or Skin is null in setupUI!");
-                return;
-            }
-            if (stage == null) {
-                Logger.error("Stage is null in setupUI!");
-                return;
-            }
-            if (result == null || saveData == null) {
-                Logger.error("Result or SaveData is null in setupUI!");
-                return;
-            }
-            
-            Table root = new Table();
-            root.setFillParent(true);
-            // root.setDebug(true); // 调试布局时可开启
-            stage.addActor(root);
+        Table root = new Table();
+        root.setFillParent(true);
+        // root.setDebug(true); // 调试布局时可开启
+        stage.addActor(root);
 
         // ==========================================
         // 1. 标题 (LEVEL COMPLETED)
@@ -221,16 +184,13 @@ public class SettlementScreen implements Screen {
         statsTable.defaults().pad(10);
 
         // 统计信息
-        int totalKills = 0;
-        if (saveData.sessionKills != null) {
-            totalKills = saveData.sessionKills.values().stream().mapToInt(Integer::intValue).sum();
-        }
+        int totalKills = saveData.sessionKills.values().stream().mapToInt(Integer::intValue).sum();
         statsTable.add(new Label("Session Kills: " + totalKills, game.getSkin()));
-        statsTable.add(new Label("Damage Taken: " + (saveData != null ? saveData.sessionDamageTaken : 0), game.getSkin()));
+        statsTable.add(new Label("Damage Taken: " + saveData.sessionDamageTaken, game.getSkin()));
         statsTable.row();
 
         // 新解锁成就
-        if (saveData.newAchievements != null && !saveData.newAchievements.isEmpty()) {
+        if (!saveData.newAchievements.isEmpty()) {
             Label achievementTitle = new Label("NEW ACHIEVEMENTS UNLOCKED!", game.getSkin());
             achievementTitle.setColor(Color.YELLOW);
             statsTable.add(achievementTitle).colspan(2).padTop(20).row();
@@ -269,24 +229,6 @@ public class SettlementScreen implements Screen {
         })).width(300).pad(20);
 
         root.add(buttonTable).colspan(2).padTop(40);
-        } catch (Exception e) {
-            Logger.error("Failed to setup SettlementScreen UI: " + e.getMessage());
-            e.printStackTrace();
-            // 如果UI设置失败，至少创建一个简单的错误提示
-            if (stage != null && game != null && game.getSkin() != null) {
-                try {
-                    Table errorRoot = new Table();
-                    errorRoot.setFillParent(true);
-                    stage.addActor(errorRoot);
-                    Label errorLabel = new Label("Error loading settlement screen.\nReturning to menu...", game.getSkin());
-                    errorLabel.setColor(Color.RED);
-                    errorRoot.add(errorLabel);
-                } catch (Exception ex) {
-                    Logger.error("Failed to create error UI: " + ex.getMessage());
-                    ex.printStackTrace();
-                }
-            }
-        }
     }
 
     /**

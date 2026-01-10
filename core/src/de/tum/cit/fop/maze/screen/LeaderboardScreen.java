@@ -2,7 +2,6 @@ package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -16,7 +15,6 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.utils.LeaderboardManager;
 import de.tum.cit.fop.maze.utils.LeaderboardManager.HighScore;
-import de.tum.cit.fop.maze.utils.Logger;
 
 public class LeaderboardScreen implements Screen {
     private final MazeRunnerGame game;
@@ -51,42 +49,11 @@ public class LeaderboardScreen implements Screen {
         } catch (Exception e) {
             Logger.error("Failed to setup LeaderboardScreen UI: " + e.getMessage());
             e.printStackTrace();
-            // 不抛出异常，而是创建一个简单的错误界面
-            createErrorUI(e.getMessage());
+            throw new RuntimeException("Failed to setup LeaderboardScreen UI", e);
         }
-    }
-    
-    /**
-     * 创建错误界面（当 setupUI 失败时使用）
-     */
-    private void createErrorUI(String errorMessage) {
-        Table root = new Table();
-        root.setFillParent(true);
-        stage.addActor(root);
-        
-        Label errorLabel = new Label("Error loading leaderboard:\n" + errorMessage + "\n\nPress BACK to return", game.getSkin());
-        errorLabel.setColor(Color.RED);
-        root.add(errorLabel).pad(20).row();
-        
-        ButtonFactory bf = new ButtonFactory(game.getSkin());
-        root.add(bf.create("BACK", () -> game.setScreen(previousScreen)))
-                .width(300).height(60).padTop(30);
     }
 
     private void setupUI() {
-        if (game == null || game.getSkin() == null) {
-            Logger.error("Game or Skin is null in LeaderboardScreen.setupUI()!");
-            return;
-        }
-        if (stage == null) {
-            Logger.error("Stage is null in LeaderboardScreen.setupUI()!");
-            return;
-        }
-        if (leaderboardManager == null) {
-            Logger.error("LeaderboardManager is null in LeaderboardScreen.setupUI()!");
-            return;
-        }
-        
         Table root = new Table();
         root.setFillParent(true);
         // 如果有背景图，可以在这里 setBackground
@@ -112,35 +79,26 @@ public class LeaderboardScreen implements Screen {
         scoreTable.row();
 
         // 填充数据
-        try {
-            int rank = 1;
-            if (leaderboardManager.getScores() == null || leaderboardManager.getScores().isEmpty()) {
-                scoreTable.add(new Label("-", game.getSkin()));
-                scoreTable.add(new Label("No Records Yet", game.getSkin()));
-                scoreTable.add(new Label("-", game.getSkin()));
-                scoreTable.row();
-            } else {
-                for (HighScore entry : leaderboardManager.getScores()) {
-                    if (entry == null) continue;
-                    
-                    // 排名
-                    Label rankLabel = new Label("#" + rank, game.getSkin());
-                    if (rank == 1) rankLabel.setColor(1f, 0.84f, 0f, 1f); // 金色
-                    else if (rank == 2) rankLabel.setColor(0.75f, 0.75f, 0.75f, 1f); // 银色
-                    else if (rank == 3) rankLabel.setColor(0.8f, 0.5f, 0.2f, 1f); // 铜色
-
-                    scoreTable.add(rankLabel).pad(5);
-                    scoreTable.add(new Label(entry.name != null ? entry.name : "Unknown", game.getSkin())).pad(5).align(Align.left);
-                    scoreTable.add(new Label(String.valueOf(entry.score), game.getSkin())).pad(5);
-                    scoreTable.row();
-                    rank++;
-                }
-            }
-        } catch (Exception e) {
-            Logger.error("Failed to populate leaderboard table: " + e.getMessage());
-            e.printStackTrace();
-            scoreTable.add(new Label("Error loading leaderboard", game.getSkin())).colspan(3).pad(10);
+        int rank = 1;
+        if (leaderboardManager.getScores().isEmpty()) {
+            scoreTable.add(new Label("-", game.getSkin()));
+            scoreTable.add(new Label("No Records Yet", game.getSkin()));
+            scoreTable.add(new Label("-", game.getSkin()));
             scoreTable.row();
+        } else {
+            for (HighScore entry : leaderboardManager.getScores()) {
+                // 排名
+                Label rankLabel = new Label("#" + rank, game.getSkin());
+                if (rank == 1) rankLabel.setColor(1f, 0.84f, 0f, 1f); // 金色
+                else if (rank == 2) rankLabel.setColor(0.75f, 0.75f, 0.75f, 1f); // 银色
+                else if (rank == 3) rankLabel.setColor(0.8f, 0.5f, 0.2f, 1f); // 铜色
+
+                scoreTable.add(rankLabel).pad(5);
+                scoreTable.add(new Label(entry.name, game.getSkin())).pad(5).align(Align.left);
+                scoreTable.add(new Label(String.valueOf(entry.score), game.getSkin())).pad(5);
+                scoreTable.row();
+                rank++;
+            }
         }
 
         root.add(scoreTable).width(600).height(400).padBottom(30).row();

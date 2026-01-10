@@ -14,7 +14,6 @@ import de.tum.cit.fop.maze.game.achievement.AchievementType;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 import de.tum.cit.fop.maze.game.score.ScoreConstants;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
-import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.StorageManager;
 
 /**
@@ -33,58 +32,16 @@ public class AchievementScreen implements Screen {
     private CareerData careerData;
 
     public AchievementScreen(MazeRunnerGame game, Screen previousScreen) {
-        if (game == null) {
-            throw new IllegalArgumentException("game cannot be null");
-        }
-        if (game.getSkin() == null) {
-            throw new IllegalArgumentException("game.getSkin() cannot be null");
-        }
-        
         this.game = game;
         this.previousScreen = previousScreen;
 
-        try {
-            // 加载生涯数据
-            this.careerData = StorageManager.getInstance().loadCareer();
-            if (this.careerData == null) {
-                // 如果加载失败，创建默认数据
-                this.careerData = new CareerData();
-            }
-        } catch (Exception e) {
-            Logger.error("Failed to load career data: " + e.getMessage());
-            e.printStackTrace();
-            // 如果加载失败，创建默认数据
-            this.careerData = new CareerData();
-        }
+        // 加载生涯数据
+        this.careerData = StorageManager.getInstance().loadCareer();
 
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
-        try {
-            setupUI();
-        } catch (Exception e) {
-            Logger.error("Failed to setup AchievementScreen UI: " + e.getMessage());
-            e.printStackTrace();
-            // 不抛出异常，而是创建一个简单的错误界面
-            createErrorUI(e.getMessage());
-        }
-    }
-    
-    /**
-     * 创建错误界面（当 setupUI 失败时使用）
-     */
-    private void createErrorUI(String errorMessage) {
-        Table root = new Table();
-        root.setFillParent(true);
-        stage.addActor(root);
-        
-        Label errorLabel = new Label("Error loading achievements:\n" + errorMessage + "\n\nPress BACK to return", game.getSkin());
-        errorLabel.setColor(Color.RED);
-        root.add(errorLabel).pad(20).row();
-        
-        ButtonFactory bf = new ButtonFactory(game.getSkin());
-        root.add(bf.create("BACK", () -> game.setScreen(previousScreen)))
-                .width(300).height(60).padTop(30);
+        setupUI();
     }
 
     private void setupUI() {
@@ -113,7 +70,7 @@ public class AchievementScreen implements Screen {
         achievementTable.defaults().pad(8).left();
 
         for (AchievementType type : AchievementType.values()) {
-            boolean isUnlocked = (careerData.unlockedAchievements != null) && careerData.unlockedAchievements.contains(type.id);
+            boolean isUnlocked = careerData.unlockedAchievements.contains(type.id);
             Table row = createAchievementRow(type, isUnlocked);
             achievementTable.add(row).width(700).fillX().row();
         }
@@ -197,38 +154,27 @@ public class AchievementScreen implements Screen {
      * 获取成就进度文本
      */
     private String getProgressText(AchievementType type) {
-        if (careerData == null) {
-            return null;
-        }
-        
-        try {
-            switch (type) {
-                case ACH_04_PEARL_SWEEPER:
-                    return "Progress: " + careerData.totalKills_E01 + " / " + ScoreConstants.TARGET_KILLS_E01;
-                case ACH_05_COFFEE_GRINDER:
-                    return "Progress: " + careerData.totalKills_E02 + " / " + ScoreConstants.TARGET_KILLS_E02;
-                case ACH_06_CARAMEL_MELT:
-                    return "Progress: " + careerData.totalKills_E03 + " / " + ScoreConstants.TARGET_KILLS_E03;
-                case ACH_07_SHELL_BREAKER:
-                    return "Progress: " + careerData.totalDashKills_E04 + " / " + ScoreConstants.TARGET_KILLS_E04_DASH;
-                case ACH_08_BEST_SELLER:
-                    return "Progress: " + careerData.totalKills_Global + " / " + ScoreConstants.TARGET_KILLS_GLOBAL;
-                case ACH_09_FREE_TOPPING:
-                    return "Progress: " + careerData.totalHeartsCollected + " / " + ScoreConstants.TARGET_HEARTS_COLLECTED;
-                case ACH_10_TREASURE_MASTER:
-                    int buffTypesCount = (careerData.collectedBuffTypes != null) ? careerData.collectedBuffTypes.size() : 0;
-                    return "Progress: " + buffTypesCount + " / " + ScoreConstants.TARGET_TREASURE_TYPES;
-                case ACH_11_SEALED_TIGHT:
-                    // ACH_11是关卡级别的成就，无法显示累计进度
-                    // 显示提示信息
-                    return "Complete any level with ≤3 hits";
-                default:
-                    return null; // 无进度的成就
-            }
-        } catch (Exception e) {
-            Logger.error("Failed to get progress text for " + type + ": " + e.getMessage());
-            e.printStackTrace();
-            return null;
+        switch (type) {
+            case ACH_04_PEARL_SWEEPER:
+                return "Progress: " + careerData.totalKills_E01 + " / " + ScoreConstants.TARGET_KILLS_E01;
+            case ACH_05_COFFEE_GRINDER:
+                return "Progress: " + careerData.totalKills_E02 + " / " + ScoreConstants.TARGET_KILLS_E02;
+            case ACH_06_CARAMEL_MELT:
+                return "Progress: " + careerData.totalKills_E03 + " / " + ScoreConstants.TARGET_KILLS_E03;
+            case ACH_07_SHELL_BREAKER:
+                return "Progress: " + careerData.totalDashKills_E04 + " / " + ScoreConstants.TARGET_KILLS_E04_DASH;
+            case ACH_08_BEST_SELLER:
+                return "Progress: " + careerData.totalKills_Global + " / " + ScoreConstants.TARGET_KILLS_GLOBAL;
+            case ACH_09_FREE_TOPPING:
+                return "Progress: " + careerData.totalHeartsCollected + " / " + ScoreConstants.TARGET_HEARTS_COLLECTED;
+            case ACH_10_TREASURE_MASTER:
+                return "Progress: " + careerData.collectedBuffTypes.size() + " / " + ScoreConstants.TARGET_TREASURE_TYPES;
+            case ACH_11_SEALED_TIGHT:
+                // ACH_11是关卡级别的成就，无法显示累计进度
+                // 显示提示信息
+                return "Complete any level with ≤3 hits";
+            default:
+                return null; // 无进度的成就
         }
     }
 

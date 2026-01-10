@@ -4,7 +4,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
-import de.tum.cit.fop.maze.utils.Logger;
 
 public class LeaderboardManager {
     private static final String LEADERBOARD_FILE = "leaderboard.json";
@@ -43,14 +42,8 @@ public class LeaderboardManager {
     }
 
     public boolean isHighScore(int score) {
-        if (scores == null || scores.size == 0) return true;
         if (scores.size < MAX_SCORES) return true;
-        // ✨ 安全检查：确保索引有效
-        if (scores.size > 0) {
-            HighScore lastScore = scores.get(scores.size - 1);
-            return lastScore != null && score > lastScore.score;
-        }
-        return true;
+        return score > scores.get(scores.size - 1).score;
     }
 
     public Array<HighScore> getScores() {
@@ -72,33 +65,20 @@ public class LeaderboardManager {
 
     @SuppressWarnings("unchecked")
     private void load() {
-        try {
-            FileHandle file = Gdx.files.local(LEADERBOARD_FILE);
-            if (file.exists()) {
-                try {
-                    Json json = new Json();
-                    Array<HighScore> loadedScores = json.fromJson(Array.class, HighScore.class, file);
-                    if (loadedScores != null) {
-                        scores = loadedScores;
-                        sortAndTrim();
-                    } else {
-                        scores = new Array<>();
-                    }
-                } catch (Exception e) {
-                    // 如果加载失败，使用空列表
+        FileHandle file = Gdx.files.local(LEADERBOARD_FILE);
+        if (file.exists()) {
+            try {
+                Json json = new Json();
+                scores = json.fromJson(Array.class, HighScore.class, file);
+                if (scores == null) {
                     scores = new Array<>();
-                    Logger.warning("Failed to load leaderboard: " + e.getMessage());
-                    e.printStackTrace();
                 }
-            } else {
-                // 文件不存在，使用空列表
+                sortAndTrim();
+            } catch (Exception e) {
+                // 如果加载失败，使用空列表
                 scores = new Array<>();
+                Logger.warning("Failed to load leaderboard: " + e.getMessage());
             }
-        } catch (Exception e) {
-            // 如果出现任何异常，使用空列表
-            scores = new Array<>();
-            Logger.warning("Failed to initialize leaderboard: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 }
