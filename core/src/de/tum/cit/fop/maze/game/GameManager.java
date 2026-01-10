@@ -278,10 +278,22 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void restoreState(GameSaveData data) {
-        if (data == null) return;
+        if (data == null) {
+            Logger.warning("GameManager.restoreState: data is null, skipping restore");
+            return;
+        }
+
+        Logger.info("GameManager.restoreState: Starting restore, Level=" + data.currentLevel + ", Score=" + data.score);
 
         this.gameSaveData = data;
         this.currentLevel = data.currentLevel;
+
+        // ✨ [修复] 先保存分数状态，因为 resetGame() 会重置它
+        int currentScoreBeforeReset = 0;
+        if (scoreManager != null) {
+            currentScoreBeforeReset = scoreManager.getCurrentScore();
+            Logger.info("GameManager.restoreState: Current score before resetGame: " + currentScoreBeforeReset);
+        }
 
         // ✨ [修复] 恢复状态后，需要重新生成对应关卡的迷宫和内容
         // 因为迷宫是随机生成的，需要确保读档后生成的是对应关卡的新迷宫
@@ -299,8 +311,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (data.buffManaEfficiency) player.applyManaEfficiencyBuff(9999f);
         }
 
+        // ✨ [修复] 在 resetGame() 之后恢复分数状态
+        // resetGame() 会调用 scoreManager.reset()，重置 levelBaseScore = 0, levelPenalty = 0
+        // 所以需要在 resetGame() 之后恢复分数状态，使用存档数据中的分数
         if (scoreManager != null) {
             scoreManager.restoreState(data);
+            Logger.info("GameManager.restoreState: Restored score state after resetGame: accumulated=" + scoreManager.accumulatedScore + ", levelBase=" + scoreManager.levelBaseScore);
         }
 
         Logger.info("Game State Restored: Level " + currentLevel + ", Score " + data.score);

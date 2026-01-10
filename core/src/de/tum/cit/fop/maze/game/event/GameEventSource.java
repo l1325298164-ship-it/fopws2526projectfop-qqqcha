@@ -103,11 +103,17 @@ public class GameEventSource {
      * @param isDashKill 是否通过冲刺击杀
      */
     public void onEnemyKilled(EnemyTier tier, boolean isDashKill) {
+        if (listeners.isEmpty()) {
+            Logger.warning("GameEventSource.onEnemyKilled: No listeners registered! Event will be lost. Tier=" + tier);
+            return;
+        }
+        Logger.info("GameEventSource.onEnemyKilled: Tier=" + tier + ", DashKill=" + isDashKill + ", Listeners=" + listeners.size());
         for (GameListener listener : listeners) {
             try {
                 listener.onEnemyKilled(tier, isDashKill);
             } catch (Exception e) {
                 Logger.error("GameEventSource: Error in onEnemyKilled listener: " + e.getMessage());
+                e.printStackTrace();
             }
         }
     }
@@ -132,11 +138,17 @@ public class GameEventSource {
      * @param itemType 物品类型（如 "HEART", "TREASURE", "KEY"）
      */
     public void onItemCollected(String itemType) {
+        if (listeners.isEmpty()) {
+            Logger.warning("GameEventSource.onItemCollected: No listeners registered! Event will be lost. ItemType=" + itemType);
+            return;
+        }
+        Logger.info("GameEventSource.onItemCollected: ItemType=" + itemType + ", Listeners=" + listeners.size());
         for (GameListener listener : listeners) {
             try {
                 listener.onItemCollected(itemType);
             } catch (Exception e) {
                 Logger.error("GameEventSource: Error in onItemCollected listener: " + e.getMessage());
+                e.printStackTrace();
             }
         }
     }
