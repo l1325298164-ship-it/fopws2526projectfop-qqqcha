@@ -51,7 +51,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     private boolean revivePending = false;
     private float reviveTimer = 0f;
-    public DifficultyConfig getDifficultyConfig() { return difficultyConfig; }
 
     public DifficultyConfig getDifficultyConfig() {
         return difficultyConfig;
@@ -110,7 +109,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     // ✨ [新增] 关卡完成标志，用于 GameScreen 跳转到结算界面
     private boolean levelCompletedPendingSettlement = false;
-    private static final float LEVEL_TRANSITION_DELAY = 0.5f; // 动画完成后延迟0.5秒
 
     private int currentLevel = 1;
 
@@ -118,7 +116,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private PortalEffectManager playerSpawnPortal;
 //    private final MazeRunnerGame game;
 
-    public GameManager(DifficultyConfig difficultyConfig) {
     /* ================= 生命周期 ================= */
     public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode) {
         this.inputHandler = new PlayerInputHandler();
@@ -702,40 +699,42 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             for (Trap trap : traps) {
                 if (!trap.isActive()) continue;
 
-            if (trap.getX() == px && trap.getY() == py) {
-                int livesBefore = player.getLives();
-                trap.onPlayerStep(player);
-                int damage = livesBefore - player.getLives(); // 计算实际伤害
-
-                DamageSource source = DamageSource.UNKNOWN;
-                if (trap instanceof TrapT01_Geyser) source = DamageSource.TRAP_GEYSER;
-                else if (trap instanceof TrapT02_PearlMine) source = DamageSource.TRAP_MINE;
-                else if (trap instanceof TrapT03_TeaShards) source = DamageSource.TRAP_SPIKE;
-                else if (trap instanceof TrapT04_Mud) source = DamageSource.TRAP_MUD;
-
-                if (source != DamageSource.UNKNOWN && damage > 0) {
-                    // 使用事件源通知监听器
-                    GameEventSource.getInstance().onPlayerDamage(player.getLives(), source);
-
-                    // ✨ 显示伤害通知消息和扣分提示
-                    if (scoreManager != null && difficultyConfig != null) {
-                        int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
-                        player.showNotification("Trap Damage! -" + penalty + " pts (" + damage + " HP)");
-                    } else {
-                        player.showNotification("Trap Damage! -" + damage + " HP");
-                    }
-                }
-
-                float effectX = (trap.getX() + 0.5f) * GameConstants.CELL_SIZE;
-                float effectY = (trap.getY() + 0.5f) * GameConstants.CELL_SIZE;
-
-                if (trapEffectManager != null) {
-                    if (trap instanceof TrapT01_Geyser) trapEffectManager.spawnGeyser(effectX, effectY);
-                    else if (trap instanceof TrapT02_PearlMine) trapEffectManager.spawnPearlMine(effectX, effectY);
-                    else if (trap instanceof TrapT03_TeaShards) trapEffectManager.spawnTeaShards(effectX, effectY);
-                    else if (trap instanceof TrapT04_Mud) trapEffectManager.spawnMudTrap(effectX, effectY);
                 if (trap.getX() == px && trap.getY() == py) {
+                    int livesBefore = player.getLives();
+                    trap.onPlayerStep(player);
+                    int damage = livesBefore - player.getLives(); // 计算实际伤害
+
+                    DamageSource source = DamageSource.UNKNOWN;
+                    if (trap instanceof TrapT01_Geyser) source = DamageSource.TRAP_GEYSER;
+                    else if (trap instanceof TrapT02_PearlMine) source = DamageSource.TRAP_MINE;
+                    else if (trap instanceof TrapT03_TeaShards) source = DamageSource.TRAP_SPIKE;
+                    else if (trap instanceof TrapT04_Mud) source = DamageSource.TRAP_MUD;
+
+                    if (source != DamageSource.UNKNOWN && damage > 0) {
+                        // 使用事件源通知监听器
+                        GameEventSource.getInstance().onPlayerDamage(player.getLives(), source);
+
+                        // ✨ 显示伤害通知消息和扣分提示
+                        if (scoreManager != null && difficultyConfig != null) {
+                            int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
+                            player.showNotification("Trap Damage! -" + penalty + " pts (" + damage + " HP)");
+                        } else {
+                            player.showNotification("Trap Damage! -" + damage + " HP");
+                        }
+                    }
+
+                    float effectX = (trap.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                    float effectY = (trap.getY() + 0.5f) * GameConstants.CELL_SIZE;
+
+                    if (trapEffectManager != null) {
+                        if (trap instanceof TrapT01_Geyser) trapEffectManager.spawnGeyser(effectX, effectY);
+                        else if (trap instanceof TrapT02_PearlMine) trapEffectManager.spawnPearlMine(effectX, effectY);
+                        else if (trap instanceof TrapT03_TeaShards) trapEffectManager.spawnTeaShards(effectX, effectY);
+                        else if (trap instanceof TrapT04_Mud) trapEffectManager.spawnMudTrap(effectX, effectY);
+                    }
                     trap.onPlayerStep(p);
+
+
                 }
             }
         }
@@ -1300,7 +1299,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             int[] p = randomEmptyCell();
             hearts.add(new Heart(p[0], p[1]));
         }
-    }
+    }}
 
     /* ---------- Treasures ---------- */
     /* ---------- Treasures ---------- */
@@ -1586,15 +1585,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     player.appendNotification("Treasure Collected! +" + de.tum.cit.fop.maze.game.score.ScoreConstants.SCORE_TREASURE + " pts");
                 } else {
                     player.appendNotification("Treasure Collected! +800 pts");
-            // ===== 宝箱 =====
-            for (Treasure t : treasures) {
-                if (t.isInteractable() && t.getX() == px && t.getY() == py) {
-                    t.onInteract(p);
+                    // ===== 宝箱 =====
+                    for (Treasure t : treasures) {
+                        if (t.isInteractable() && t.getX() == px && t.getY() == py) {
+                            t.onInteract(p);
+                        }
+                    }
                 }
             }
         }
+        }
     }
-
 
     /**
      * Enemy 专用移动判定
@@ -1737,7 +1738,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 }
             }
         }
-    }
+    }}
 
     private void handleDashHitEnemies() {
         if (levelTransitionInProgress) return;
@@ -1833,7 +1834,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     public int getScore() {
         return scoreManager != null ? scoreManager.getCurrentScore() : 0;
-
+    }
     public String getScore() {
         return String.valueOf(player.getScore());
     }
@@ -1853,10 +1854,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public ScoreManager getScoreManager() { return scoreManager; }
     public PlayerInputHandler getInputHandler() { return  inputHandler; }
     public boolean isPlayerDead() { return player != null && player.isDead(); }
-
-    public boolean isPlayerDead() {
-        return player != null && player.isDead();
-    }
 
     public boolean isObstacleValidMove(int nx, int ny) {
 

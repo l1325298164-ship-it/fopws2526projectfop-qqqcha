@@ -824,7 +824,7 @@ public class EndlessScreen implements Screen {
         } catch (Exception e) {
             System.out.println("生成强化物品失败: " + e.getMessage());
         }
-    }
+    }}
 
     private PowerupType selectPowerupType(float healthPercent) {
         float rand = randomGenerator.nextFloat();

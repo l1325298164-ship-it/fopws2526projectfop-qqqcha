@@ -4,11 +4,12 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import de.tum.cit.fop.maze.audio.AudioConfig;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
@@ -190,21 +191,121 @@ public class MazeRunnerGame extends Game {
 
     @Override
     public void create() {
+        System.out.println("🎮 MazeRunnerGame.create()");
+
+        // ===== Game Holder =====
         MazeRunnerGameHolder.init(this);
+
+        // ===== Asset Manager =====
         assets = new AssetManager();
 
+        // ===== Difficulty / GameManager =====
         currentDifficulty = Difficulty.NORMAL;
         difficultyConfig = DifficultyConfig.of(currentDifficulty);
         gameManager = new GameManager(difficultyConfig, twoPlayerMode);
 
+        // ===== SpriteBatch =====
         spriteBatch = new SpriteBatch();
 
+        // ===== Skin (Button 基础) =====
         TextureAtlas uiAtlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
         skin = new Skin(Gdx.files.internal("ui/skinbutton.json"), uiAtlas);
 
+        // =====================================================
+        // 🔥 补全 UI 基础资源（WHITE / Font / Drawable）
+        // =====================================================
+
+        // 1️⃣ WHITE 1x1 纹理（所有 UI 的根基）
+        if (!skin.has("white", TextureRegion.class)) {
+            Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+            pixmap.setColor(Color.WHITE);
+            pixmap.fill();
+            Texture whiteTex = new Texture(pixmap);
+            pixmap.dispose();
+
+            skin.add("white", new TextureRegion(whiteTex));
+        }
+
+        // 2️⃣ 默认字体（TextField / Label / Dialog 都会用）
+        if (!skin.has("default-font", BitmapFont.class)) {
+            BitmapFont defaultFont = new BitmapFont();
+            skin.add("default-font", defaultFont);
+        }
+
+        // =====================================================
+        // 🔧 LabelStyle
+        // =====================================================
+        if (!skin.has("default", Label.LabelStyle.class)) {
+            Label.LabelStyle labelStyle = new Label.LabelStyle();
+            labelStyle.font = skin.getFont("default-font");
+            labelStyle.fontColor = Color.WHITE;
+            skin.add("default", labelStyle);
+        }
+
+        // =====================================================
+        // 🔧 TextFieldStyle
+        // =====================================================
+        if (!skin.has("default", TextField.TextFieldStyle.class)) {
+            TextField.TextFieldStyle tf = new TextField.TextFieldStyle();
+            tf.font = skin.getFont("default-font");
+            tf.fontColor = Color.WHITE;
+            tf.cursor = skin.newDrawable("white", Color.WHITE);
+            tf.selection = skin.newDrawable("white", new Color(0.3f, 0.5f, 1f, 0.6f));
+            tf.background = skin.newDrawable("white", new Color(0f, 0f, 0f, 0.6f));
+            skin.add("default", tf);
+        }
+
+        // =====================================================
+        // 🔧 WindowStyle（Dialog 依赖）
+        // =====================================================
+        if (!skin.has("default", Window.WindowStyle.class)) {
+            Window.WindowStyle ws = new Window.WindowStyle();
+            ws.titleFont = skin.getFont("default-font");
+            ws.titleFontColor = Color.WHITE;
+            ws.background = skin.newDrawable("white", new Color(0f, 0f, 0f, 0.75f));
+            skin.add("default", ws);
+        }
+
+        // =====================================================
+        // 🔧 DialogStyle
+        // =====================================================
+        if (!skin.has("default", Dialog.DialogStyle.class)) {
+            Dialog.DialogStyle ds = new Dialog.DialogStyle();
+            ds.titleFont = skin.getFont("default-font");
+            ds.titleFontColor = Color.WHITE;
+            ds.background = skin.newDrawable("white", new Color(0f, 0f, 0f, 0.8f));
+            ds.stageBackground = skin.newDrawable("white", new Color(0f, 0f, 0f, 0.4f));
+            skin.add("default", ds);
+        }
+
+        // =====================================================
+        // 🔧 ScrollPaneStyle（以后排行榜 / 设置页一定会用）
+        // =====================================================
+        if (!skin.has("default", ScrollPane.ScrollPaneStyle.class)) {
+            ScrollPane.ScrollPaneStyle sp = new ScrollPane.ScrollPaneStyle();
+            sp.background = skin.newDrawable("white", new Color(0f, 0f, 0f, 0.3f));
+            skin.add("default", sp);
+        }
+
+        // =====================================================
+        // 🔧 ListStyle（可选，但 TextField / Dialog 常会隐式用）
+        // =====================================================
+        if (!skin.has("default", List.ListStyle.class)) {
+            List.ListStyle ls = new List.ListStyle();
+            ls.font = skin.getFont("default-font");
+            ls.fontColorSelected = Color.WHITE;
+            ls.fontColorUnselected = Color.LIGHT_GRAY;
+            ls.selection = skin.newDrawable("white", new Color(0.3f, 0.5f, 1f, 0.6f));
+            skin.add("default", ls);
+        }
+
+        // ===== Audio =====
         initializeSoundManager();
+
+        // ===== Enter Menu =====
         goToMenu();
     }
+
 
     @Override
     public void setScreen(Screen screen) {
@@ -286,6 +387,9 @@ public class MazeRunnerGame extends Game {
 
         AudioConfig ui = audioManager.getAudioConfig(AudioType.UI_CLICK);
         if (ui != null) ui.setPersistent(true);
+    }
+    public Skin getSkin() {
+        return skin;
     }
 
     @Override
