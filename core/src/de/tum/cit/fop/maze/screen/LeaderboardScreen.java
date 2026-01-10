@@ -14,6 +14,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.utils.LeaderboardManager;
+import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.LeaderboardManager.HighScore;
 
 public class LeaderboardScreen implements Screen {

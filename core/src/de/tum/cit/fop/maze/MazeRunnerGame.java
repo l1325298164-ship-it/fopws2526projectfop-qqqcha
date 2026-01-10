@@ -66,6 +66,13 @@ public class MazeRunnerGame extends Game {
     public GameManager getGameManager() {
         return gameManager;
     }
+    
+    /**
+     * ✨ [新增] 设置 GameManager（用于 GameScreen 同步）
+     */
+    public void setGameManager(GameManager gm) {
+        this.gameManager = gm;
+    }
 
     public void startNewGame(Difficulty difficulty) {
         Logger.debug("Start new game with difficulty = " + difficulty);

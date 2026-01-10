@@ -42,6 +42,19 @@ public class SettlementScreen implements Screen {
     private boolean scoreSubmitted = false;
 
     public SettlementScreen(MazeRunnerGame game, LevelResult result, GameSaveData saveData) {
+        // ✨ [修复] 添加参数有效性检查，防止 NPE
+        if (game == null) {
+            throw new IllegalArgumentException("MazeRunnerGame cannot be null");
+        }
+        if (result == null) {
+            Logger.error("LevelResult is null, using default values");
+            result = new LevelResult(0, 0, 0, "D", 0, 1.0f);
+        }
+        if (saveData == null) {
+            Logger.error("GameSaveData is null, using default values");
+            saveData = new GameSaveData();
+        }
+        
         this.game = game;
         this.result = result;
         this.saveData = saveData;

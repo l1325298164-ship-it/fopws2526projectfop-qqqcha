@@ -116,7 +116,10 @@ public class GameScreen implements Screen {
         // ✨ [修复] 优先使用 MazeRunnerGame 中的 GameManager，避免重复创建
         gm = game.getGameManager();
         if (gm == null) {
+            Logger.warning("GameManager is null in GameScreen.show(), creating new one");
             gm = new GameManager(difficultyConfig);
+            // ✨ [修复] 同步新创建的 GameManager 回 MazeRunnerGame，确保分数等状态一致
+            game.setGameManager(gm);
         }
         
         maze = new MazeRenderer(gm, difficultyConfig);
@@ -364,8 +367,21 @@ public class GameScreen implements Screen {
         // 1. 计算关卡结果（自动计算理论最高分）
         LevelResult result = gm.getLevelResult();
         
+        // ✨ [修复] 添加 null 检查，防止 scoreManager 未初始化导致的 NPE
+        if (result == null) {
+            Logger.error("LevelResult is null, creating default result");
+            // 创建默认的 LevelResult 作为后备
+            result = new LevelResult(0, 0, 0, "D", 0, 1.0f);
+        }
+        
         // 2. 获取存档数据
         GameSaveData saveData = gm.getGameSaveData();
+        
+        // ✨ [修复] 添加 saveData null 检查
+        if (saveData == null) {
+            Logger.error("GameSaveData is null, creating default save data");
+            saveData = new GameSaveData();
+        }
         
         // 3. 清除关卡完成标志
         gm.clearLevelCompletedFlag();
