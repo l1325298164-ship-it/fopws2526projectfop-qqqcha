@@ -938,7 +938,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     /* ---------- Treasures ---------- */
-    /* ---------- Treasures ---------- */
     private void generateTreasures() {
         // 🔥 [Treasure] 智能生成 3 个宝箱
         int targetCount = 20;
