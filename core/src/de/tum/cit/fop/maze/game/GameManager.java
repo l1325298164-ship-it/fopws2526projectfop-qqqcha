@@ -316,7 +316,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // 所以需要在 resetGame() 之后恢复分数状态，使用存档数据中的分数
         if (scoreManager != null) {
             scoreManager.restoreState(data);
-            Logger.info("GameManager.restoreState: Restored score state after resetGame: accumulated=" + scoreManager.accumulatedScore + ", levelBase=" + scoreManager.levelBaseScore);
+            int restoredScore = scoreManager.getCurrentScore();
+            Logger.info("GameManager.restoreState: Restored score state after resetGame: currentScore=" + restoredScore + ", data.score=" + data.score);
         }
 
         Logger.info("Game State Restored: Level " + currentLevel + ", Score " + data.score);
