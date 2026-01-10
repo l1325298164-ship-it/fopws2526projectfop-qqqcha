@@ -15,12 +15,14 @@ import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.game.GameSaveData; // 引入存档数据
 import de.tum.cit.fop.maze.screen.*;
 import de.tum.cit.fop.maze.tools.MazeRunnerGameHolder;
 import de.tum.cit.fop.maze.tools.PVAnimationCache;
 import de.tum.cit.fop.maze.tools.PVNode;
 import de.tum.cit.fop.maze.tools.PVPipeline;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.StorageManager; // 引入存储管理器
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 import java.util.List;
@@ -51,19 +53,26 @@ public class MazeRunnerGame extends Game {
 
     private GameManager gameManager;
     private DifficultyConfig difficultyConfig;
+    private GameScreen activeGameScreen;
 
     private PVPipeline storyPipeline;
 
     /* =========================
        Story / Flow
        ========================= */
+    public void setActiveGameScreen(GameScreen gs) {
+        this.activeGameScreen = gs;
+    }
 
     public boolean hasRunningGame() {
+        return activeGameScreen != null;
         return getScreen() instanceof GameScreen
                 || getScreen() instanceof EndlessScreen;
     }
 
     public void resumeGame() {
+        if (activeGameScreen != null) {
+            setScreen(activeGameScreen);
         if (getScreen() instanceof GameScreen gs) {
             // 恢复输入
             Gdx.input.setInputProcessor(null);
@@ -73,6 +82,13 @@ public class MazeRunnerGame extends Game {
 
     public GameManager getGameManager() {
         return gameManager;
+    }
+
+    /**
+     * ✨ [新增] 设置 GameManager（用于 GameScreen 同步）
+     */
+    public void setGameManager(GameManager gm) {
+        this.gameManager = gm;
     }
 
     public void startNewGame(Difficulty difficulty) {
@@ -107,6 +123,53 @@ public class MazeRunnerGame extends Game {
         // 否则，从剧情开头开始
         this.stage = StoryStage.STORY_BEGIN;
         setScreen(new StoryLoadingScreen(this));
+    }
+
+    // 🔥 [新增] 从存档加载游戏
+    public void loadGame() {
+        StorageManager storage = StorageManager.getInstance();
+        GameSaveData saveData = storage.loadGame();
+
+        if (saveData == null) {
+            Logger.error("Load failed: No save data found.");
+            startNewGameFromMenu(); // 降级处理
+            return;
+        }
+
+        Logger.info("Loading game... Level: " + saveData.currentLevel);
+
+        // ✨ [修改] 从存档恢复难度配置
+        Difficulty savedDifficulty = Difficulty.NORMAL;
+        try {
+            if (saveData.difficulty != null && !saveData.difficulty.isEmpty()) {
+                savedDifficulty = Difficulty.valueOf(saveData.difficulty);
+            }
+        } catch (IllegalArgumentException e) {
+            Logger.warning("Invalid difficulty in save data: " + saveData.difficulty + ", using NORMAL");
+        }
+        difficultyConfig = DifficultyConfig.of(savedDifficulty);
+
+        // 创建新的 GameManager
+        gameManager = new GameManager(difficultyConfig);
+
+        // 恢复状态
+        gameManager.restoreState(saveData);
+
+        // 切换屏幕
+        setScreen(new GameScreen(this, difficultyConfig));
+    }
+
+    // 🔥 [新增] 强制开始新游戏 (带清理)
+    public void startNewGameFromMenu() {
+        // 1. 清理存档
+        StorageManager.getInstance().deleteSave();
+
+        // 2. 初始化配置
+        difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
+        gameManager = new GameManager(difficultyConfig);
+
+        // 3. 进入游戏
+        setScreen(new GameScreen(this, difficultyConfig));
     }
 
     // 🔥 新增：创建配置的方法
@@ -334,6 +397,8 @@ public class MazeRunnerGame extends Game {
         setScreen(new MenuScreen(this));
     }
     public void exitGame() {
+        // ✨ [新增] 确保所有异步保存完成
+        StorageManager.getInstance().flushAllSaves();
         // 先做必要清理
         dispose();
 

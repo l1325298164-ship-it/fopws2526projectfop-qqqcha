@@ -8,11 +8,11 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -22,10 +22,9 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
-import de.tum.cit.fop.maze.game.Difficulty;
-import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.tools.PerlinNoise;
+import de.tum.cit.fop.maze.utils.StorageManager;
 import de.tum.cit.fop.maze.game.Difficulty;
 
 public class MenuScreen implements Screen {
@@ -53,14 +52,25 @@ public class MenuScreen implements Screen {
     private AudioManager audioManager;
     private boolean isMusicOn = true;
 
+    // 响应式按钮大小
+    private float getButtonWidth() {
+        float screenWidth = Gdx.graphics.getWidth();
+        return Math.min(800f, screenWidth * 0.6f);  // 最大800，或屏幕60%
     private final float BUTTON_WIDTH  = 800f;
     private final float BUTTON_HEIGHT = 80f;
     public enum SettingsSource {
         MAIN_MENU,
         PAUSE_MENU
     }
+
+    private final float BUTTON_HEIGHT = 70f;  // 稍微减小高度
+
+    // 🔥 引入存储管理器
+    private final StorageManager storage;
+
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
+        this.storage = StorageManager.getInstance();
 
         batch = new SpriteBatch();
 
@@ -68,6 +78,7 @@ public class MenuScreen implements Screen {
         stage = new Stage(new ScreenViewport(), batch);
         Gdx.input.setInputProcessor(stage);
 
+        fbo = new FrameBuffer(Pixmap.Format.RGBA8888, Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), false);
         // ===== FBO =====
         fbo = new FrameBuffer(
                 Pixmap.Format.RGBA8888,
@@ -102,24 +113,55 @@ public class MenuScreen implements Screen {
         Label title2 = new Label("Reset to Origin", game.getSkin(), "title");
         title2.setAlignment(Align.center);
         title2.setFontScale(1.1f);
+        root.add(title2).padBottom(60).row();
         root.add(title2).padBottom(80).row();
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
 
+        // 🔥 1. 检测存档
+        boolean hasSave = storage.hasSaveFile();
+
+        // 响应式按钮宽度和间距
+        float buttonWidth = getButtonWidth();
+        float buttonPadding = Gdx.graphics.getWidth() > 1920 ? 18f : 15f;
         root.add(bf.create("START GAME", game::goToGame))
                 .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
                 .padBottom(18).row();
 
+        // 🔥 2. CONTINUE 按钮 (有存档才显示)
+        if (hasSave) {
+            root.add(bf.create("CONTINUE", game::loadGame))
+                    .width(buttonWidth).height(BUTTON_HEIGHT)
+                    .padBottom(buttonPadding).row();
+        }
         root.add(bf.create("RESET THE WORLD", game::startStoryWithLoading))
                 .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
                 .padBottom(20).row();
 
+        // 🔥 3. START/NEW GAME 按钮 (根据存档状态显示警告)
+        String startText = hasSave ? "NEW GAME" : "START GAME";
+        root.add(bf.create(startText, () -> {
+            if (hasSave) {
+                showOverwriteDialog();
+            } else {
+                game.startNewGameFromMenu();
+            }
+        })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
         root.add(bf.create("DIFFICULTY", () ->
                         game.setScreen(new DifficultySelectScreen(game, this))))
                 .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
                 .padBottom(20).row();
 
 
+        // 🔥 5. CONTROLS 按钮（从SETTINGS子菜单恢复）
+        root.add(bf.create("CONTROLS", () -> {
+            game.setScreen(new KeyMappingScreen(game, this));
+        })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
+
+        // ✨ [新增] INFO 按钮（打开信息子菜单）
+        root.add(bf.create("INFO", this::showInfoMenu))
+                .width(buttonWidth).height(BUTTON_HEIGHT)
+                .padBottom(buttonPadding).row();
         root.add(bf.create("SETTINGS", () ->
                         game.setScreen(
                                 new SettingsScreen(
@@ -143,12 +185,64 @@ public class MenuScreen implements Screen {
         bottomRight.bottom().right();
         bottomRight.add(musicButton).size(100).padRight(40).padBottom(20);
         stage.addActor(bottomRight);
+    }
+
+    /**
+     * ✨ [新增] 显示信息子菜单
+     */
+    private void showInfoMenu() {
+        Dialog infoDialog = new Dialog(" INFO ", game.getSkin()) {
+            @Override
+            protected void result(Object object) {
+                // 对话框关闭时不做任何操作
+            }
+        };
+
+        ButtonFactory bf = new ButtonFactory(game.getSkin());
+        Table contentTable = new Table();
+
+        float subButtonWidth = getButtonWidth() * 0.8f;
+
+        // 成就列表
+        contentTable.add(bf.create("ACHIEVEMENTS", () -> {
+            infoDialog.hide();
+            game.setScreen(new AchievementScreen(game, this));
+        })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
+
+        // 排行榜
+        contentTable.add(bf.create("LEADERBOARD", () -> {
+            infoDialog.hide();
+            game.setScreen(new LeaderboardScreen(game, this));
+        })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
+
+        // 返回按钮
+        contentTable.add(bf.create("BACK", () -> infoDialog.hide()))
+                .width(subButtonWidth).height(BUTTON_HEIGHT).row();
 
         if (isMusicOn) {
             audioManager.playMusic(AudioType.MUSIC_MENU);
         }
     }
 
+        infoDialog.getContentTable().add(contentTable);
+        infoDialog.show(stage);
+    }
+
+    // 🔥 显示覆盖存档确认框
+    private void showOverwriteDialog() {
+        Dialog dialog = new Dialog(" WARNING ", game.getSkin()) {
+            @Override
+            protected void result(Object object) {
+                if ((Boolean) object) {
+                    game.startNewGameFromMenu();
+                }
+            }
+        };
+        dialog.text("\n  Starting a new game will ERASE your current progress!  \n  Are you sure you want to continue?  \n");
+        dialog.button(" YES, ERASE IT ", true);
+        dialog.button(" CANCEL ", false);
+        dialog.show(stage);
+    }
     // ================= 渲染 =================
 
     @Override
@@ -168,7 +262,6 @@ public class MenuScreen implements Screen {
         int h = Gdx.graphics.getHeight();
 
         if (changeEnabled) {
-
             time += delta;
             corruption = Math.min(1f, corruption + delta * 0.15f);
 
