@@ -4,23 +4,30 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import de.tum.cit.fop.maze.audio.AudioConfig;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.game.GameSaveData;
 import de.tum.cit.fop.maze.screen.*;
 import de.tum.cit.fop.maze.tools.MazeRunnerGameHolder;
 import de.tum.cit.fop.maze.tools.PVAnimationCache;
 import de.tum.cit.fop.maze.tools.PVNode;
 import de.tum.cit.fop.maze.tools.PVPipeline;
-import de.tum.cit.fop.maze.game.GameSaveData;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.StorageManager;
 import de.tum.cit.fop.maze.utils.TextureManager;
@@ -113,15 +120,78 @@ public class MazeRunnerGame extends Game {
         TextureAtlas uiAtlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
         skin = new Skin(Gdx.files.internal("ui/skinbutton.json"), uiAtlas);
 
-        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
-        pixmap.setColor(com.badlogic.gdx.graphics.Color.WHITE);
+        // 1. 创建白色像素（用于后续默认背景）
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.WHITE);
         pixmap.fill();
-        com.badlogic.gdx.graphics.Texture whiteTexture = new com.badlogic.gdx.graphics.Texture(pixmap);
-        skin.add("white", new com.badlogic.gdx.graphics.g2d.TextureRegion(whiteTexture));
+        Texture whiteTexture = new Texture(pixmap);
+        skin.add("white", new TextureRegion(whiteTexture));
         pixmap.dispose();
+
+        // 🔥 [Fix] 关键修复：给 Skin 打补丁，注入缺失的 Dialog 样式
+        patchSkin(skin);
 
         initializeSoundManager();
         goToMenu();
+    }
+
+    /**
+     * 自动为 Skin 补充缺失的 default 样式，防止 Dialog 崩溃
+     */
+    private void patchSkin(Skin skin) {
+        // 1. 确保有字体
+        BitmapFont font;
+        try {
+            if (skin.has("default-font", BitmapFont.class)) {
+                font = skin.get("default-font", BitmapFont.class);
+            } else if (skin.has("font", BitmapFont.class)) {
+                font = skin.get("font", BitmapFont.class);
+            } else {
+                // 尝试加载文件或使用系统默认
+                try {
+                    font = new BitmapFont(Gdx.files.internal("ui/font.fnt"));
+                } catch (Exception e) {
+                    font = new BitmapFont(); // 系统默认字体
+                }
+                skin.add("default-font", font);
+            }
+        } catch (Exception e) {
+            font = new BitmapFont();
+            skin.add("default-font", font);
+        }
+
+        // 2. 补丁：Default LabelStyle (Dialog 文本需要)
+        if (!skin.has("default", Label.LabelStyle.class)) {
+            Label.LabelStyle ls = new Label.LabelStyle();
+            ls.font = font;
+            ls.fontColor = Color.WHITE;
+            skin.add("default", ls);
+        }
+
+        // 3. 补丁：Default WindowStyle (Dialog 窗口本体需要 -> 你的报错修复点)
+        if (!skin.has("default", Window.WindowStyle.class)) {
+            Window.WindowStyle ws = new Window.WindowStyle();
+            ws.titleFont = font;
+            ws.titleFontColor = Color.YELLOW;
+            // 使用上面创建的 "white" 纹理，染成半透明黑色作为背景
+            if (skin.has("white", TextureRegion.class)) {
+                ws.background = skin.newDrawable("white", new Color(0.1f, 0.1f, 0.1f, 0.9f));
+            }
+            skin.add("default", ws);
+        }
+
+        // 4. 补丁：Default TextButtonStyle (Dialog 按钮需要)
+        if (!skin.has("default", TextButton.TextButtonStyle.class)) {
+            TextButton.TextButtonStyle tbs = new TextButton.TextButtonStyle();
+            tbs.font = font;
+            tbs.fontColor = Color.WHITE;
+            if (skin.has("white", TextureRegion.class)) {
+                tbs.up = skin.newDrawable("white", new Color(0.4f, 0.4f, 0.4f, 1f));
+                tbs.down = skin.newDrawable("white", new Color(0.2f, 0.2f, 0.2f, 1f));
+                tbs.over = skin.newDrawable("white", new Color(0.5f, 0.5f, 0.5f, 1f));
+            }
+            skin.add("default", tbs);
+        }
     }
 
     @Override
@@ -204,7 +274,6 @@ public class MazeRunnerGame extends Game {
     }
 
     public void goToMenu() {
-        Screen old = getScreen();
         resetGameState();
         setScreen(new MenuScreen(this));
     }
@@ -299,14 +368,7 @@ public class MazeRunnerGame extends Game {
         storage.deleteSave();
 
         Difficulty difficulty = this.currentDifficulty != null ? this.currentDifficulty : Difficulty.NORMAL;
-        // 🔥 [修复] 强制跳过 StoryLoadingScreen，直接开始游戏
-        // 原代码:
-        // this.difficultyConfig = DifficultyConfig.of(difficulty);
-        // this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
-        // this.stage = StoryStage.STORY_BEGIN;
-        // setScreen(new StoryLoadingScreen(this));
-
-        // 新代码 (确保能玩)：
+        // 强制跳过 StoryLoadingScreen，直接开始游戏
         startNewGame(difficulty);
     }
 
