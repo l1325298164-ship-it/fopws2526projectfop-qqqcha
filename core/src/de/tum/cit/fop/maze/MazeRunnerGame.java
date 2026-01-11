@@ -468,10 +468,16 @@ public class MazeRunnerGame extends Game {
             Logger.warning("Invalid saved difficulty, defaulting to NORMAL");
         }
 
+        // 🔥 恢复双人模式设置（如果存档中有记录）
+        if (saveData.twoPlayerMode) {
+            this.twoPlayerMode = saveData.twoPlayerMode;
+            Logger.info("Restored two player mode from save: " + twoPlayerMode);
+        }
+
         this.currentDifficulty = savedDifficulty;
         this.difficultyConfig = DifficultyConfig.of(savedDifficulty);
 
-        // 创建新的 GameManager
+        // 创建新的 GameManager（使用恢复的双人模式设置）
         this.gameManager = new GameManager(
                 this.difficultyConfig,
                 this.twoPlayerMode

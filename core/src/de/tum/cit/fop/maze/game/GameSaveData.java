@@ -29,6 +29,9 @@ public class GameSaveData {
     
     /** ✨ [新增] 游戏难度（用于恢复存档时使用正确的难度配置） */
     public String difficulty = "NORMAL";
+    
+    /** ✨ [新增] 是否为双人模式 */
+    public boolean twoPlayerMode = false;
 
     // --- 玩家状态 ---
     public int lives = 0;

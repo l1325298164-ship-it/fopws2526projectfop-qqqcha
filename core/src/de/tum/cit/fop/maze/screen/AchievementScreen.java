@@ -14,6 +14,7 @@ import de.tum.cit.fop.maze.game.achievement.AchievementType;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 import de.tum.cit.fop.maze.game.score.ScoreConstants;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
+import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.StorageManager;
 
 /**
@@ -94,10 +95,16 @@ public class AchievementScreen implements Screen {
      */
     private Table createAchievementRow(AchievementType type, boolean isUnlocked) {
         Table row = new Table();
-        // 使用white drawable作为背景（已在MazeRunnerGame中添加到skin）
-        if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
-            row.setBackground(game.getSkin().getDrawable("white"));
-            row.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+        // 🔥 安全使用white drawable作为背景
+        try {
+            if (game != null && game.getSkin() != null && 
+                game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+                row.setBackground(game.getSkin().getDrawable("white"));
+                row.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+            }
+        } catch (Exception e) {
+            Logger.warning("Failed to set achievement row background: " + e.getMessage());
+            // 继续执行，不设置背景
         }
         row.pad(10);
 

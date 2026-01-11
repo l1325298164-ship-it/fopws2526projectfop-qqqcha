@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.abilities;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
 public class DashAbility extends Ability {
@@ -46,6 +47,24 @@ public class DashAbility extends Ability {
     protected void onActivate(Player player, GameManager gameManager) {
         charges--;
         player.startDash();
+        
+        // 🔥 生成冲刺特效
+        if (gameManager != null && gameManager.getCombatEffectManager() != null) {
+            float px = player.getWorldX() + 0.5f;
+            float py = player.getWorldY() + 0.5f;
+            float worldX = px * GameConstants.CELL_SIZE;
+            float worldY = py * GameConstants.CELL_SIZE;
+            
+            // 根据玩家朝向计算角度（0=右, 90=上, 180=左, 270=下）
+            float angle = switch (player.getDirection()) {
+                case UP -> 90f;
+                case DOWN -> 270f;
+                case LEFT -> 180f;
+                case RIGHT -> 0f;
+            };
+            
+            gameManager.getCombatEffectManager().spawnDash(worldX, worldY, angle);
+        }
     }
 
     /* ================= Active ================= */

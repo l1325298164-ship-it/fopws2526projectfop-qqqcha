@@ -338,6 +338,22 @@ public class GameScreen implements Screen {
         exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
+        
+        // 🔥 添加：渲染物品特效（宝箱、爱心等）
+        if (gm.getItemEffectManager() != null) {
+            gm.getItemEffectManager().renderSprites(batch);
+        }
+        
+        // 🔥 添加：渲染陷阱特效
+        if (gm.getTrapEffectManager() != null) {
+            gm.getTrapEffectManager().renderSprites(batch);
+        }
+        
+        // 🔥 添加：渲染战斗特效（伤害数字、治疗等）
+        if (gm.getCombatEffectManager() != null) {
+            gm.getCombatEffectManager().renderSprites(batch);
+        }
+        
         batch.end();
 /* =========================================================
    玩家脚下传送阵（Portal Effect）
@@ -353,6 +369,17 @@ public class GameScreen implements Screen {
         batch.end();
 // ===== Ability Debug / Targeting (AOE etc.) =====
         shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+
+        // 🔥 添加：渲染特效的几何部分（光效、粒子等）
+        if (gm.getItemEffectManager() != null) {
+            gm.getItemEffectManager().renderShapes(shapeRenderer);
+        }
+        if (gm.getTrapEffectManager() != null) {
+            gm.getTrapEffectManager().renderShapes(shapeRenderer);
+        }
+        if (gm.getCombatEffectManager() != null) {
+            gm.getCombatEffectManager().renderShapes(shapeRenderer);
+        }
 
         for (Player p : gm.getPlayers()) {
             if (p.getAbilityManager() != null) {

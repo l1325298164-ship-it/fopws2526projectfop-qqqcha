@@ -66,6 +66,17 @@ public class SettlementScreen implements Screen {
         // 🛠️ [修改] 移除自动提交，改为检查是否破纪录
         this.isHighScore = leaderboardManager.isHighScore(this.saveData.score);
 
+        // 🔥 立即保存进度（防止界面闪退导致存档丢失）
+        try {
+            StorageManager.getInstance().saveGameSync(saveData);
+            Logger.info("Progress auto-saved at settlement screen: Level=" + saveData.currentLevel + 
+                        ", Score=" + saveData.score);
+        } catch (Exception e) {
+            Logger.error("Failed to auto-save progress at settlement: " + e.getMessage());
+            e.printStackTrace();
+            // 继续执行，不阻止显示结算界面
+        }
+
         Logger.info("Settlement: Level Score=" + result.finalScore +
                 ", Total Score=" + saveData.score +
                 ", HighScore? " + isHighScore);
@@ -73,12 +84,35 @@ public class SettlementScreen implements Screen {
 
     @Override
     public void show() {
-        stage = new Stage(new ScreenViewport());
-        Gdx.input.setInputProcessor(stage);
-        setupUI();
+        try {
+            stage = new Stage(new ScreenViewport());
+            Gdx.input.setInputProcessor(stage);
+            setupUI();
+        } catch (Exception e) {
+            Logger.error("Error setting up SettlementScreen UI: " + e.getMessage());
+            e.printStackTrace();
+            // 如果UI设置失败，尝试返回菜单
+            try {
+                // 确保进度已保存
+                StorageManager.getInstance().saveGameSync(saveData);
+                game.goToMenu();
+            } catch (Exception e2) {
+                Logger.error("Failed to return to menu after SettlementScreen error: " + e2.getMessage());
+                e2.printStackTrace();
+            }
+        }
     }
 
     private void setupUI() {
+        if (stage == null) {
+            Logger.error("Stage is null in setupUI");
+            return;
+        }
+        if (game == null || game.getSkin() == null) {
+            Logger.error("Game or Skin is null in setupUI");
+            return;
+        }
+        
         Table root = new Table();
         root.setFillParent(true);
         // root.setDebug(true); // 调试布局时可开启
@@ -87,9 +121,25 @@ public class SettlementScreen implements Screen {
         // ==========================================
         // 1. 标题 (LEVEL COMPLETED)
         // ==========================================
-        Label titleLabel = new Label("LEVEL COMPLETED", game.getSkin(), "title");
-        titleLabel.setColor(Color.GOLD);
-        root.add(titleLabel).padBottom(30).colspan(2).row();
+        Label titleLabel;
+        try {
+            // 🔥 安全创建标题Label（如果title样式不存在，使用default）
+            if (game.getSkin().has("title", com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle.class)) {
+                titleLabel = new Label("LEVEL COMPLETED", game.getSkin(), "title");
+            } else {
+                titleLabel = new Label("LEVEL COMPLETED", game.getSkin());
+                titleLabel.setFontScale(2.0f); // 手动放大字体
+            }
+            titleLabel.setColor(Color.GOLD);
+            root.add(titleLabel).padBottom(30).colspan(2).row();
+        } catch (Exception e) {
+            Logger.warning("Failed to create title label: " + e.getMessage());
+            // 使用默认Label
+            titleLabel = new Label("LEVEL COMPLETED", game.getSkin());
+            titleLabel.setFontScale(2.0f);
+            titleLabel.setColor(Color.GOLD);
+            root.add(titleLabel).padBottom(30).colspan(2).row();
+        }
 
         // ==========================================
         // 2. 核心布局 (左侧分数，右侧评级与输入框)
@@ -99,10 +149,16 @@ public class SettlementScreen implements Screen {
 
         // --- 左侧：评分详情表 ---
         Table scoreTable = new Table();
-        // 使用white drawable作为背景（已在MazeRunnerGame中添加到skin）
-        if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
-            scoreTable.setBackground(game.getSkin().getDrawable("white"));
-            scoreTable.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+        // 🔥 安全使用white drawable作为背景（检查skin是否存在）
+        try {
+            if (game != null && game.getSkin() != null && 
+                game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+                scoreTable.setBackground(game.getSkin().getDrawable("white"));
+                scoreTable.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+            }
+        } catch (Exception e) {
+            Logger.warning("Failed to set scoreTable background: " + e.getMessage());
+            // 继续执行，不设置背景
         }
         scoreTable.pad(20);
 
@@ -127,10 +183,25 @@ public class SettlementScreen implements Screen {
         rightPanel.add(rankTitle).row();
 
         // 巨大的评级字母
-        Label rankLabel = new Label(result.rank, game.getSkin(), "title");
-        rankLabel.setFontScale(4.0f); // 放大字体
-        setRankColor(rankLabel, result.rank);
-        rightPanel.add(rankLabel).pad(10).row();
+        Label rankLabel;
+        try {
+            // 🔥 安全创建评级Label
+            if (game.getSkin().has("title", com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle.class)) {
+                rankLabel = new Label(result.rank, game.getSkin(), "title");
+            } else {
+                rankLabel = new Label(result.rank, game.getSkin());
+            }
+            rankLabel.setFontScale(4.0f); // 放大字体
+            setRankColor(rankLabel, result.rank);
+            rightPanel.add(rankLabel).pad(10).row();
+        } catch (Exception e) {
+            Logger.warning("Failed to create rank label: " + e.getMessage());
+            // 使用默认Label
+            rankLabel = new Label(result.rank, game.getSkin());
+            rankLabel.setFontScale(4.0f);
+            setRankColor(rankLabel, result.rank);
+            rightPanel.add(rankLabel).pad(10).row();
+        }
 
         if ("S".equals(result.rank)) {
             Label praise = new Label("EXCELLENT!", game.getSkin());
@@ -141,10 +212,16 @@ public class SettlementScreen implements Screen {
         // --- 右侧：✨ 排行榜输入逻辑 ---
         if (isHighScore && !scoreSubmitted) {
             Table inputTable = new Table();
-            // 使用white drawable作为背景（已在MazeRunnerGame中添加到skin）
-            if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
-                inputTable.setBackground(game.getSkin().getDrawable("white"));
-                inputTable.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+            // 🔥 安全使用white drawable作为背景
+            try {
+                if (game != null && game.getSkin() != null && 
+                    game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+                    inputTable.setBackground(game.getSkin().getDrawable("white"));
+                    inputTable.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
+                }
+            } catch (Exception e) {
+                Logger.warning("Failed to set inputTable background: " + e.getMessage());
+                // 继续执行，不设置背景
             }
             inputTable.pad(15);
 
@@ -152,30 +229,77 @@ public class SettlementScreen implements Screen {
             newRecordLabel.setColor(Color.YELLOW);
             newRecordLabel.setFontScale(0.8f);
 
-            // 名字输入框 (需 Skin 支持 TextField)
-            TextField nameField = new TextField("Traveler", game.getSkin());
-            nameField.setMessageText("Enter Name");
-            nameField.setAlignment(Align.center);
-
             ButtonFactory bf = new ButtonFactory(game.getSkin());
 
+            // 🔥 安全创建名字输入框
+            TextField nameField = null;
+            try {
+                // 检查skin是否有TextField样式
+                if (game.getSkin().has("default", com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle.class)) {
+                    nameField = new TextField("Traveler", game.getSkin(), "default");
+                    nameField.setMessageText("Enter Name");
+                    nameField.setAlignment(Align.center);
+                } else {
+                    // 尝试使用默认样式
+                    nameField = new TextField("Traveler", game.getSkin());
+                    nameField.setMessageText("Enter Name");
+                    nameField.setAlignment(Align.center);
+                }
+            } catch (Exception e) {
+                Logger.warning("Failed to create TextField: " + e.getMessage());
+                // TextField创建失败，将使用固定的"Traveler"作为名字
+                nameField = null;
+            }
+
+            // 如果是null，显示一个Label说明将使用默认名字
+            final TextField finalNameField = nameField; // 用于lambda表达式
+            final String defaultName = "Traveler";
+
             inputTable.add(newRecordLabel).padBottom(5).row();
-            inputTable.add(nameField).width(200).padBottom(10).row();
-            inputTable.add(bf.create("SUBMIT", () -> {
-                String name = nameField.getText();
-                if (name == null || name.trim().isEmpty()) name = "Unknown";
+            
+            if (finalNameField != null) {
+                inputTable.add(finalNameField).width(200).padBottom(10).row();
+                inputTable.add(bf.create("SUBMIT", () -> {
+                    try {
+                        String name = finalNameField.getText();
+                        if (name == null || name.trim().isEmpty()) name = defaultName;
 
-                // 提交分数
-                leaderboardManager.addScore(name, saveData.score);
-                scoreSubmitted = true;
+                        // 提交分数
+                        leaderboardManager.addScore(name, saveData.score);
+                        scoreSubmitted = true;
 
-                // 刷新 UI
-                inputTable.clear();
-                Label submittedLabel = new Label("Score Submitted!", game.getSkin());
-                submittedLabel.setColor(Color.GREEN);
-                inputTable.add(submittedLabel);
+                        // 刷新 UI
+                        inputTable.clear();
+                        Label submittedLabel = new Label("Score Submitted!", game.getSkin());
+                        submittedLabel.setColor(Color.GREEN);
+                        inputTable.add(submittedLabel);
+                    } catch (Exception e) {
+                        Logger.error("Failed to submit score: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                })).width(120).height(40);
+            } else {
+                // 如果没有TextField，直接显示提交按钮，使用默认名字
+                Label nameLabel = new Label("Name: " + defaultName, game.getSkin());
+                nameLabel.setColor(Color.WHITE);
+                inputTable.add(nameLabel).width(200).padBottom(10).row();
+                inputTable.add(bf.create("SUBMIT", () -> {
+                    try {
+                        // 使用默认名字提交
+                        leaderboardManager.addScore(defaultName, saveData.score);
+                        scoreSubmitted = true;
 
-            })).width(120).height(40);
+                        // 刷新 UI
+                        inputTable.clear();
+                        Label submittedLabel = new Label("Score Submitted!", game.getSkin());
+                        submittedLabel.setColor(Color.GREEN);
+                        inputTable.add(submittedLabel);
+                    } catch (Exception e) {
+                        Logger.error("Failed to submit score: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                })).width(120).height(40);
+            }
 
             rightPanel.add(inputTable).padTop(20);
 
@@ -261,38 +385,71 @@ public class SettlementScreen implements Screen {
      * @param toNextLevel true去下一关，false回菜单
      */
     private void performSaveAndExit(boolean toNextLevel) {
-        // 1. 清理临时UI数据
-        clearNewAchievements();
+        try {
+            // 1. 清理临时UI数据
+            clearNewAchievements();
 
-        // 2. 准备保存数据
-        StorageManager storage = StorageManager.getInstance();
-        
-        if (toNextLevel) {
-            // ✨ [修改] 进入下一关前，增加关卡数并重置本关临时统计
-            saveData.currentLevel++;
-            saveData.levelBaseScore = 0;
-            saveData.levelPenalty = 0;
-            // score 已经在构造函数中累加过了，保持不变
+            // 2. 准备保存数据
+            StorageManager storage = StorageManager.getInstance();
             
-            // ✨ [新增] 同步分数到 ScoreManager（确保下一关时分数正确）
-            if (game.getGameManager() != null && game.getGameManager().getScoreManager() != null) {
-                // 通过 restoreState 更新 ScoreManager 的 accumulatedScore
-                GameSaveData tempData = new GameSaveData();
-                tempData.score = saveData.score;  // 使用累加后的总分
-                tempData.levelBaseScore = 0;
-                tempData.levelPenalty = 0;
-                game.getGameManager().getScoreManager().restoreState(tempData);
+            if (toNextLevel) {
+                // ✨ [修改] 进入下一关前，增加关卡数并重置本关临时统计
+                saveData.currentLevel++;
+                saveData.levelBaseScore = 0;
+                saveData.levelPenalty = 0;
+                // score 已经在构造函数中累加过了，保持不变
+                
+                // ✨ [新增] 同步分数到 ScoreManager（确保下一关时分数正确）
+                if (game.getGameManager() != null && game.getGameManager().getScoreManager() != null) {
+                    // 通过 restoreState 更新 ScoreManager 的 accumulatedScore
+                    GameSaveData tempData = new GameSaveData();
+                    tempData.score = saveData.score;  // 使用累加后的总分
+                    tempData.levelBaseScore = 0;
+                    tempData.levelPenalty = 0;
+                    game.getGameManager().getScoreManager().restoreState(tempData);
+                }
+                
+                // 🔥 保存进度（关键节点，使用同步保存，确保不会丢失）
+                try {
+                    storage.saveGameSync(saveData);
+                    Logger.info("Progress saved before next level: Level=" + saveData.currentLevel + ", Score=" + saveData.score);
+                } catch (Exception e) {
+                    Logger.error("Failed to save game progress: " + e.getMessage());
+                    e.printStackTrace();
+                    // 继续执行，不要因为保存失败而阻止进入下一关
+                }
+                
+                // 重新加载游戏（会从存档恢复状态）
+                try {
+                    game.loadGame();//DONE
+                } catch (Exception e) {
+                    Logger.error("Failed to load game: " + e.getMessage());
+                    e.printStackTrace();
+                    // 如果加载失败，回到菜单
+                    game.goToMenu();
+                }
+            } else {
+                // 返回菜单时保存当前进度（关键节点，使用同步保存）
+                try {
+                    storage.saveGameSync(saveData);
+                    Logger.info("Progress saved before returning to menu: Level=" + saveData.currentLevel + ", Score=" + saveData.score);
+                } catch (Exception e) {
+                    Logger.error("Failed to save game progress: " + e.getMessage());
+                    e.printStackTrace();
+                    // 即使保存失败，也返回菜单
+                }
+                game.goToMenu();
             }
-            
-            // 保存进度（关键节点，使用同步保存）
-            storage.saveGameSync(saveData);
-            
-            // 重新加载游戏（会从存档恢复状态）
-            game.loadGame();//DONE
-        } else {
-            // 返回菜单时保存当前进度（关键节点，使用同步保存）
-            storage.saveGameSync(saveData);
-            game.goToMenu();
+        } catch (Exception e) {
+            Logger.error("Error in performSaveAndExit: " + e.getMessage());
+            e.printStackTrace();
+            // 发生任何错误都尝试返回菜单，避免卡在结算界面
+            try {
+                game.goToMenu();
+            } catch (Exception e2) {
+                Logger.error("Failed to return to menu: " + e2.getMessage());
+                e2.printStackTrace();
+            }
         }
     }
 
