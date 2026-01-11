@@ -43,7 +43,8 @@ public class MazeRunnerGame extends Game {
     private SpriteBatch spriteBatch;
     private Skin skin;
     private AudioManager audioManager;
-    private boolean twoPlayerMode = true;
+    // 默认单人模式（用户要求）
+    private boolean twoPlayerMode = false;
     public boolean isTwoPlayerMode() {
         return twoPlayerMode;
     }

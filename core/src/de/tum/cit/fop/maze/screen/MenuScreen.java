@@ -123,20 +123,12 @@ public class MenuScreen implements Screen {
         float buttonWidth = getButtonWidth();
         float buttonPadding = Gdx.graphics.getWidth() > 1920 ? 18f : 15f;
 
-        root.add(bf.create("START GAME", game::goToGame))
-                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
-                .padBottom(18).row();
-
         // 🔥 2. CONTINUE 按钮 (有存档才显示)
         if (hasSave) {
             root.add(bf.create("CONTINUE", game::loadGame))//DONE
                     .width(buttonWidth).height(BUTTON_HEIGHT)
                     .padBottom(buttonPadding).row();
         }
-
-        root.add(bf.create("RESET THE WORLD", game::startStoryWithLoading))
-                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
-                .padBottom(20).row();
 
         // 🔥 3. START/NEW GAME 按钮 (根据存档状态显示警告)
         String startText = hasSave ? "NEW GAME" : "START GAME";

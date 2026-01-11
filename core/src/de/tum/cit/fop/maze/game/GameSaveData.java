@@ -31,7 +31,8 @@ public class GameSaveData {
     public String difficulty = "NORMAL";
 
     /** ✨ [新增] 单/双人模式（用于 Continue 时恢复正确的玩家数量） */
-    public boolean twoPlayerMode = true;
+    // 默认单人模式（旧存档缺字段时也会落到 false）
+    public boolean twoPlayerMode = false;
 
     // --- 玩家状态 ---
     public int lives = 0;
