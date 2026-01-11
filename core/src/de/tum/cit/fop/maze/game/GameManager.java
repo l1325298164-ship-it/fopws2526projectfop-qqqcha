@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.graphics.Color;
 import de.tum.cit.fop.maze.effects.Enemy.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager;
@@ -592,6 +593,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                         } else {
                             p.showNotification("HIT!");
                         }
+                        // 漂浮文字提示
+                        if (combatEffectManager != null && penalty > 0) {
+                            float tx = (p.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                            float ty = (p.getY() + 0.5f) * GameConstants.CELL_SIZE;
+                            combatEffectManager.spawnFloatingText(
+                                    tx, ty + 40,
+                                    "-" + penalty,
+                                    Color.RED
+                            );
+                        }
                     }
                 }
             }
@@ -841,6 +852,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     onKeyCollected();
                     // HUD 提示（避免只有宝箱才有提示）
                     p.showNotification("KEY ACQUIRED!  SCORE +" + ScoreConstants.SCORE_KEY);
+                    // 漂浮文字提示
+                    if (combatEffectManager != null) {
+                        combatEffectManager.spawnFloatingText(
+                                fx, fy + 20,
+                                "+" + ScoreConstants.SCORE_KEY,
+                                Color.CYAN
+                        );
+                    }
                     break;
                 }
             }
@@ -864,6 +883,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     heartIterator.remove();
                     // HUD 提示（避免只有宝箱才有提示）
                     p.showNotification("HEAL +10  SCORE +" + ScoreConstants.SCORE_HEART);
+                    // 漂浮文字提示
+                    if (combatEffectManager != null) {
+                        combatEffectManager.spawnFloatingText(
+                                fx, fy + 20,
+                                "+" + ScoreConstants.SCORE_HEART,
+                                Color.PINK
+                        );
+                    }
                 }
             }
 
@@ -884,6 +911,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     t.onInteract(p);
                     GameEventSource.getInstance().onItemCollected("TREASURE");
                     treasureIterator.remove();
+                    // 漂浮文字提示（宝箱得分）
+                    if (combatEffectManager != null) {
+                        combatEffectManager.spawnFloatingText(
+                                fx, fy + 20,
+                                "+" + ScoreConstants.SCORE_TREASURE,
+                                Color.GOLD
+                        );
+                    }
                 }
             }
         }
