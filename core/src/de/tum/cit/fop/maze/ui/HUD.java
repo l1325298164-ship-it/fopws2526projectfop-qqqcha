@@ -1,9 +1,4 @@
-// HUD.java - 修复版本
 package de.tum.cit.fop.maze.ui;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -13,34 +8,54 @@ import com.badlogic.gdx.graphics.g2d.*;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
-import de.tum.cit.fop.maze.abilities.Ability;
-import de.tum.cit.fop.maze.abilities.DashAbility;
-import de.tum.cit.fop.maze.abilities.MagicAbility;
+
+import de.tum.cit.fop.maze.abilities.*;
 import de.tum.cit.fop.maze.entities.Compass;
 import de.tum.cit.fop.maze.entities.Player;
-import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.game.achievement.AchievementManager;
-import de.tum.cit.fop.maze.game.achievement.AchievementPopup;
-import de.tum.cit.fop.maze.game.achievement.AchievementType;
+import de.tum.cit.fop.maze.game.achievement.*;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
-import java.util.function.ToDoubleBiFunction;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static com.badlogic.gdx.graphics.GL20.*;
 
 public class HUD {
+
     // ===== HUD 布局模式 =====
     private enum HUDLayoutMode {
         SINGLE,
         TWO_PLAYER
     }
 
-    // ===== Mana UI (P1 / P2) =====
+    private BitmapFont font;
+    private final GameManager gameManager;
+    private final TextureManager textureManager;
+
+    // ===== 成就弹窗 =====
+    private AchievementPopup achievementPopup;
+
+    // ===== Shader =====
+    private ShaderProgram iceHeartShader;
+
+    // ===== 生命值 =====
+    private Texture heartFull;
+    private Texture heartHalf;
+
+    private static final int MAX_HEARTS_DISPLAY = 40;
+    private static final int HEARTS_PER_ROW = 5;
+    private static final int HEART_SPACING = 70;
+    private static final int ROW_SPACING = 30;
+
+    // 抖动
+    private static final float SHAKE_DURATION = 0.2f;
+    private static final float SHAKE_AMPLITUDE = 4f;
+
+    private final Map<Player.PlayerIndex, Integer> lastLivesMap = new HashMap<>();
+    private final Map<Player.PlayerIndex, Boolean> shakingMap = new HashMap<>();
+    private final Map<Player.PlayerIndex, Float> shakeTimerMap = new HashMap<>();
+    // ===== Mana UI =====
     private Texture manaBaseP1;
     private Texture manaFillP1;
     private Texture manaGlowP1;
@@ -49,220 +64,124 @@ public class HUD {
     private Texture manaFillP2;
     private Texture manaGlowP2;
 
-    // 公共装饰（可以共用）
-// 粒子 atlas
-    private TextureAtlas sparkleAtlas;
-
-    // 粒子 region
-    private TextureRegion sparkleStar;    // P1 ⭐
-    private TextureRegion sparkleFlower;  // P2 🌸
-
-
-    private BitmapFont font;
-    private GameManager gameManager;
-    private TextureManager textureManager;
-
-    // ✨ [新增] 成就弹窗
-    private AchievementPopup achievementPopup;
-
-    // ❤ 生命值贴图
-    private Texture heartFull;   // live_00
-    private Texture heartHalf;   // live_01
-    private static final int MAX_HEARTS_DISPLAY = 40; // 最多显示 40 颗
-    private static final int HEARTS_PER_ROW = 20;     // 每行最多 20 颗
-    private static final int MAX_HEARTS_DISPLAY = 40; // 最多显示 x 颗
-    private static final int HEARTS_PER_ROW = 5;     // 每行最多 x 颗
-    private static final int HEART_SPACING = 70;      // 爱心之间的水平间距
-    private static final int ROW_SPACING = 30;        // 行距
-    private ShaderProgram iceHeartShader;
-
-    // ===== Mana UI (image-based) =====
     private Texture manadeco_1;
     private Texture manadeco_2;
+
     private float manaGlowTime = 0f;
-    // Mana special states
-    private float manaFullPulse = 0f;
-    private float manaLowAlert = 0f;
 
-    // 尺寸
-    private static final float MANA_BAR_WIDTH  = 220f;
-    private static final float MANA_BAR_HEIGHT = 28f;
 
-    // 位置（右下角，猫上方）
-    private static final float MANA_MARGIN_RIGHT = 24f;
-    private static final float MANA_MARGIN_BOTTOM = 180f;
+    // 粒子
+    private TextureAtlas sparkleAtlas;
+    private TextureRegion sparkleStar;
+    private TextureRegion sparkleFlower;
 
-    // 🐱 HUD 小猫
+    private static final int MAX_PARTICLES = 150;
+    private final Map<Integer, List<ManaParticle>> manaParticlesMap = new HashMap<>();
+
+    // ===== Dash / Melee / Magic =====
+    private Texture dashIconP1;
+    private Texture dashIconP2;
+    private Texture dashIcon;
+
+    private Texture meleeIcon;
+
+    private Texture magicBg;
+    private Texture magicGrow;
+    private Texture magicIconTop;
+
+    private static final int DASH_ICON_SIZE = 200;
+    private static final int MELEE_ICON_SIZE = 160;
+    private static final int DASH_UI_MARGIN_X = 20;
+    private static final int DASH_UI_MARGIN_Y = 90;
+    private static final int MELEE_UI_OFFSET_X = DASH_ICON_SIZE + 20;
+
+    // ===== Buff Icons =====
+    private Texture iconAtk;
+    private Texture iconRegen;
+    private Texture iconMana;
+
+    // ===== Cat HUD =====
     private TextureAtlas catAtlas;
     private Animation<TextureRegion> catNoKeyAnim;
     private Animation<TextureRegion> catHasKeyAnim;
     private float catStateTime = 0f;
 
-    // 🐱 HUD 小猫位置与大小
     private static final float CAT_SIZE = 506f;
-    private static final float CAT_MARGIN = 10f; // 距离屏幕边缘
-    // ===== 底部 HUD 组合尺寸 =====
-    private static final float CAT_COMPASS_GAP = 40f; // 指南针与猫的间距
+    private static final float CAT_MARGIN = 10f;
+    private static final float CAT_COMPASS_GAP = 40f;
+    private static final float CAT_Y_OFFSET = -150f;
+    private static final float COMPASS_Y_OFFSET = 650f;
 
-    // ❤ 抖动动画相关
-    private int lastLives = -1;
-    private final Map<Player.PlayerIndex, Integer> lastLivesMap = new HashMap<>();
-    private final Map<Player.PlayerIndex, Boolean> shakingMap = new HashMap<>();
-    private final Map<Player.PlayerIndex, Float> shakeTimerMap = new HashMap<>();
-
-    private boolean shaking = false;
-    private float shakeTimer = 0f;
-
-    private static final float SHAKE_DURATION = 0.2f; // 抖动 0.2 秒
-    private static final float SHAKE_AMPLITUDE = 4f;  // 抖动幅度（像素）
-
-    // ===== 技能图标：冲刺 =====
-    private Texture dashIcon;
-    // ===== 技能图标：近战 Melee =====
-    private Texture meleeIcon;
-
-    // ===== Magic Icon Layers =====
-    private Texture magicBg;
-    private Texture magicGrow;
-    private Texture magicIconTop;
-
-    // ===== Mana UI =====
+    // ===== Shape =====
     private ShapeRenderer shapeRenderer;
-    //粒子特效列表
-    private final Map<Integer, List<ManaParticle>> manaParticlesMap = new HashMap<>();
 
-    // ===== Bottom Center HUD Offset =====
-    private static final float CAT_Y_OFFSET = -150f;        // 🐱 下移 50px
-    private static final float COMPASS_Y_OFFSET = 650f;   // 🧭 下移 120px
-    // UI 尺寸
-    private static final int DASH_ICON_SIZE = 200;
-    private static final int DASH_ICON_SPACING = 10;
-    private static final int MELEE_ICON_SIZE = 160; // 👈 比 Dash 小一档（推荐 150~170）
-
-    // ===== Dash UI 布局 =====
-// ===== Dash 图标（区分 P1 / P2）=====
-    private Texture dashIconP1;
-    private Texture dashIconP2;
-
-    private static final int DASH_UI_MARGIN_X = 20; // 距离左边
-    private static final int DASH_UI_MARGIN_Y = 90; // 距离下边
-    private static final int MELEE_UI_OFFSET_X = DASH_ICON_SIZE + 20;
-    // 🔥 [Treasure] 新增：Buff 图标
-    private Texture iconAtk;
-    private Texture iconRegen;
-    private Texture iconMana;
-
-    // ✨ [新增] 分数显示位置
-    private static final float SCORE_Y_OFFSET = 60f; // 距离顶部的距离
-
-    // 进度条缓存 - 用于平滑动画
-    private float currentManaPercent = 0f;
-    private float targetManaPercent = 0f;
+    // =========================================================
 
     public HUD(GameManager gameManager) {
         this.gameManager = gameManager;
+        this.textureManager = TextureManager.getInstance();
+
         this.font = new BitmapFont();
         this.font.getData().setScale(1.2f);
-        this.textureManager = TextureManager.getInstance();
-        Logger.debug("HUD initialized with compass support");
+
         this.shapeRenderer = new ShapeRenderer();
 
-        // ✨ [新增] 初始化成就弹窗
-        this.achievementPopup = new AchievementPopup(this.font);
-// ✅ 用 LibGDX 默认 Sprite 顶点 Shader
-        String vertexSrc =
-                SpriteBatch.createDefaultShader().getVertexShaderSource();
 
-// ✅ 用你自己的冰心 fragment
-        String fragmentSrc =
-                Gdx.files.internal("shaders/ice_heart.frag").readString();
+        achievementPopup = new AchievementPopup(font);
 
+        // Shader
+        String vertexSrc = SpriteBatch.createDefaultShader().getVertexShaderSource();
+        String fragmentSrc = Gdx.files.internal("shaders/ice_heart.frag").readString();
         iceHeartShader = new ShaderProgram(vertexSrc, fragmentSrc);
-
         if (!iceHeartShader.isCompiled()) {
             Logger.error("IceHeartShader compile error:\n" + iceHeartShader.getLog());
         }
 
-        if (!iceHeartShader.isCompiled()) {
-            Logger.error(iceHeartShader.getLog());
-        }
+        // 粒子
+        sparkleAtlas = new TextureAtlas(Gdx.files.internal("effects/sparkle.atlas"));
+        sparkleStar = sparkleAtlas.findRegion("star");
+        sparkleFlower = sparkleAtlas.findRegion("flower");
 
-        try {
-            sparkleAtlas = new TextureAtlas(Gdx.files.internal("effects/sparkle.atlas"));
+        // Mana
+        manaBaseP1 = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
+        manaBaseP2 = manaBaseP1;
 
-            sparkleStar   = sparkleAtlas.findRegion("star");    // P1
-            sparkleFlower = sparkleAtlas.findRegion("flower");  // P2
+        manaFillP1 = new Texture(Gdx.files.internal("HUD/manabar_1_fill.png"));
+        manaGlowP1 = new Texture(Gdx.files.internal("HUD/manabar_1_grow.png"));
+        manadeco_1 = new Texture(Gdx.files.internal("HUD/bar_star1.png"));
 
-            // Base（共用）
-            manaBaseP1 = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
-            manaBaseP2 = manaBaseP1; // ⭐ 共用一个
+        manaFillP2 = new Texture(Gdx.files.internal("HUD/manabar_2_fill.png"));
+        manaGlowP2 = new Texture(Gdx.files.internal("HUD/manabar_2_grow.png"));
+        manadeco_2 = new Texture(Gdx.files.internal("HUD/bar_star2.png"));
 
-// P1
-            manaFillP1 = new Texture(Gdx.files.internal("HUD/manabar_1_fill.png"));
-            manaGlowP1 = new Texture(Gdx.files.internal("HUD/manabar_1_grow.png"));
-            manadeco_1 = new Texture(Gdx.files.internal("HUD/manabar_1_deco.png"));
-
-// P2
-            manaFillP2 = new Texture(Gdx.files.internal("HUD/manabar_2_fill.png"));
-            manaGlowP2 = new Texture(Gdx.files.internal("HUD/manabar_2_grow.png"));
-            manadeco_2 = new Texture(Gdx.files.internal("HUD/manabar_2_deco.png"));
-
-            // 装饰
-            manadeco_1 = new Texture(Gdx.files.internal("HUD/bar_star1.png"));
-            manadeco_2 = new Texture(Gdx.files.internal("HUD/bar_star2.png"));
-        } catch (Exception e) {
-            Logger.error("Mana bar textures load failed: " + e.getMessage());
-        }
-
-        // 加载法力条纹理
-
-
+        // Hearts
         heartFull = new Texture(Gdx.files.internal("HUD/live_000.png"));
         heartHalf = new Texture(Gdx.files.internal("HUD/live_001.png"));
 
+        // Dash / Melee / Magic
         dashIconP1 = new Texture(Gdx.files.internal("HUD/icon_dash.png"));
         dashIconP2 = new Texture(Gdx.files.internal("HUD/icon_dash_2.png"));
 
-        meleeIcon = new Texture(Gdx.files.internal("HUD/icon_melee.png")); // ⭐ 近战图标
-        magicBg       = new Texture(Gdx.files.internal("HUD/magicicon_bg.png"));
-        magicGrow     = new Texture(Gdx.files.internal("HUD/magicicon_grow.png"));
-        magicIconTop  = new Texture(Gdx.files.internal("HUD/icon_magic_base.png"));
+        meleeIcon = new Texture(Gdx.files.internal("HUD/icon_melee.png"));
+        magicBg = new Texture(Gdx.files.internal("HUD/magicicon_bg.png"));
+        magicGrow = new Texture(Gdx.files.internal("HUD/magicicon_grow.png"));
+        magicIconTop = new Texture(Gdx.files.internal("HUD/icon_magic_base.png"));
 
-        dashIcon = new Texture("HUD/icon_dash.png");
+        // Buff
+        iconAtk = new Texture(Gdx.files.internal("Items/icon_atk.png"));
+        iconRegen = new Texture(Gdx.files.internal("Items/icon_regen.png"));
+        iconMana = new Texture(Gdx.files.internal("Items/icon_mana.png"));
 
-        // 🐱 加载 HUD 小猫 Atlas
+        // Cat
         catAtlas = new TextureAtlas(Gdx.files.internal("Character/cat/cat.atlas"));
+        catNoKeyAnim = new Animation<>(0.25f, catAtlas.findRegions("cat_nokey"), Animation.PlayMode.LOOP);
+        catHasKeyAnim = new Animation<>(0.25f, catAtlas.findRegions("cat_key"), Animation.PlayMode.LOOP);
 
-        // 没钥匙动画
-        catNoKeyAnim = new Animation<>(
-                0.25f,
-                catAtlas.findRegions("cat_nokey"),
-                Animation.PlayMode.LOOP
-        );
-
-        // 有钥匙动画
-        catHasKeyAnim = new Animation<>(
-                0.25f,
-                catAtlas.findRegions("cat_key"),
-                Animation.PlayMode.LOOP
-        );
-
-        Logger.debug("HUD initialized with heart-based life bar");
-        // 🔥 [Treasure] 加载图标 (请确保文件名正确！)
-        try {
-            iconAtk = new Texture(Gdx.files.internal("Items/icon_atk.png"));
-            iconRegen = new Texture(Gdx.files.internal("Items/icon_regen.png"));
-            iconMana = new Texture(Gdx.files.internal("Items/icon_mana.png"));
-        } catch (Exception e) {
-            Logger.error("Buff icons not found! Please check assets/Items/ folder.");
-        }
-
-        Logger.debug("HUD initialized");
+        Logger.debug("HUD initialized (Part 1)");
     }
 
-    /**
-     * 渲染游戏进行中的UI
-     */
+    // =========================================================
+
     public void renderInGameUI(SpriteBatch uiBatch) {
         try {
             if (gameManager.isTwoPlayerMode()) {
@@ -270,190 +189,118 @@ public class HUD {
             } else {
                 renderSinglePlayerHUD(uiBatch);
             }
-
             renderBottomCenterHUD(uiBatch);
         } catch (Exception e) {
-            Logger.debug("HUD failed: " + e.getMessage());
+            Logger.error("HUD render failed"+e);
         }
     }
 
     private void renderSinglePlayerHUD(SpriteBatch uiBatch) {
+        var player = gameManager.getPlayer();
+        if (player == null) return;
 
-            try {
-                var player = gameManager.getPlayer();
-                if (player == null) return;
+        float barWidth = Gdx.graphics.getWidth() * 0.66f;
+        float x = (Gdx.graphics.getWidth() - barWidth) / 2f - 50;
+        float y = 50;
 
-                float barWidth = Gdx.graphics.getWidth() * 0.66f;
-                float x = (Gdx.graphics.getWidth() - barWidth) / 2f - 50;
-                float y = 50;
+        renderManaBarForPlayer(uiBatch, player, 0,x, y, barWidth);
 
-                renderManaBarForPlayer(uiBatch, player, 0,x, y, barWidth);
-                // 2. 生命值（❤显示）
-                renderLivesAsHearts(uiBatch, player, 20, Gdx.graphics.getHeight() - 90,false);
+        renderLivesAsHearts(
+                uiBatch,
+                player,
+                20,
+                Gdx.graphics.getHeight() - 90,
+                false
+        );
+        //关卡信息TODO
+        font.setColor(Color.CYAN);
+        font.draw(uiBatch, "start: " + gameManager.getCurrentLevel(),
+                20, Gdx.graphics.getHeight() - 120);
 
-            // 2. ✨ [新增] 实时分数显示
-            renderScore(uiBatch);
+        //new
+        renderScore(uiBatch);
+        renderCat(uiBatch);
+        renderCompassAsUI(uiBatch);
+        renderDashIcon(uiBatch, player, false);
+        renderMeleeIcon(uiBatch, player, false);
+        renderAchievementPopup(uiBatch);
 
-                // 3. 关卡信息
+            float startX = 20;
+            float startY = Gdx.graphics.getHeight() - 250;
+            float iconSize = 48; // 图标大小
+            float gap = 60;      // 行间距加大，防止挤在一起
+
+            // 1. 攻击 Buff (红色)
+            if (player.hasBuffAttack()) {
+                // 画图标
+                if (iconAtk != null) uiBatch.draw(iconAtk, startX, startY, iconSize, iconSize);
+
+                // 画文字 (字体放大)
+                font.getData().setScale(2.0f); // 🔥 字体放大到 2.0
+                font.setColor(Color.RED);
+                font.draw(uiBatch, "ATK +50%", startX + iconSize + 10, startY + 35);
+
+                startY -= gap;
+            }
+
+            // 2. 回血 Buff (绿色)
+            if (player.hasBuffRegen()) {
+                if (iconRegen != null) uiBatch.draw(iconRegen, startX, startY, iconSize, iconSize);
+
+                font.getData().setScale(2.0f);
+                font.setColor(Color.GREEN);
+                font.draw(uiBatch, "REGEN ON", startX + iconSize + 10, startY + 35);
+
+                startY -= gap;
+            }
+
+            // 3. 耗蓝 Buff (青色)
+            if (player.hasBuffManaEfficiency()) {
+                if (iconMana != null) uiBatch.draw(iconMana, startX, startY, iconSize, iconSize);
+
+                font.getData().setScale(2.0f);
                 font.setColor(Color.CYAN);
-                font.draw(uiBatch, "start: " + gameManager.getCurrentLevel(),
-                        20, Gdx.graphics.getHeight() - 120);
+                font.draw(uiBatch, "MANA COST -50%", startX + iconSize + 10, startY + 35);
 
-                // 4. 操作说明
+                startY -= gap;
+            }
+
+            // ⚠️ 还原字体设置 (非常重要，否则界面其他地方会乱)
+            font.setColor(Color.WHITE);
+            font.getData().setScale(1.2f); // 还原回默认大小
+
+            // ============================================
+            // 🔥 [Treasure] 屏幕中央飘字 (超大字体通知)
+            // ============================================
+            String msg = player.getNotificationMessage();
+            if (msg != null && !msg.isEmpty()) {
+                float w = Gdx.graphics.getWidth();
+                float h = Gdx.graphics.getHeight();
+
+                // 设置超大字体
+                font.getData().setScale(2.5f); // 🔥 2.5倍大小
+
+                // 阴影
+                font.setColor(Color.BLACK);
+                font.draw(uiBatch, msg, w / 2f - 200 + 3, h / 2f + 100 - 3);
+
+                // 正文
+                font.setColor(Color.YELLOW);
+                font.draw(uiBatch, msg, w / 2f - 200, h / 2f + 100);
+
+                // 还原
                 font.setColor(Color.WHITE);
-                font.draw(uiBatch, "direction buttons to move，Shift to sprint",
-                        20, Gdx.graphics.getHeight() - 160);
-
-                // 5. 纹理模式提示
-                TextureManager.TextureMode currentMode = textureManager.getCurrentMode();
-                if (currentMode != TextureManager.TextureMode.COLOR) {
-                    font.setColor(Color.GREEN);
-                    font.draw(uiBatch, "mode: " + currentMode + " (F1-F4 to switch)",
-                            Gdx.graphics.getWidth() - 250,
-                            Gdx.graphics.getHeight() - 20);
-                }
-                renderCat(uiBatch);
-                // 6. 指南针
-                renderCompassAsUI(uiBatch);
-                // 7. 技能图标
-                renderDashIcon(uiBatch, player, false);
-                renderMeleeIcon(uiBatch, player, false);
-
-                // ============================================
-                // 🔥 [Treasure] 左侧 Buff 状态栏 (图标 + 大字)
-                // ============================================
-
-            de.tum.cit.fop.maze.entities.Player player = gameManager.getPlayer();
-
-            if (player != null) {
-                float startX = 20;
-                float startY = Gdx.graphics.getHeight() - 250;
-                float iconSize = 48; // 图标大小
-                float gap = 60;      // 行间距加大
-                if (player != null) {
-
-
-                    float startX = 20;
-                    float startY = Gdx.graphics.getHeight() - 250;
-                    float iconSize = 48; // 图标大小
-                    float gap = 60;      // 行间距加大，防止挤在一起
-
-                    // 1. 攻击 Buff (红色)
-                    if (player.hasBuffAttack()) {
-                        // 画图标
-                        if (iconAtk != null) uiBatch.draw(iconAtk, startX, startY, iconSize, iconSize);
-
-                        // 画文字 (字体放大)
-                        font.getData().setScale(2.0f); // 🔥 字体放大到 2.0
-                        font.setColor(Color.RED);
-                        font.draw(uiBatch, "ATK +50%", startX + iconSize + 10, startY + 35);
-
-                        startY -= gap;
-                    }
-
-                    // 2. 回血 Buff (绿色)
-                    if (player.hasBuffRegen()) {
-                        if (iconRegen != null) uiBatch.draw(iconRegen, startX, startY, iconSize, iconSize);
-
-                        font.getData().setScale(2.0f);
-                        font.setColor(Color.GREEN);
-                        font.draw(uiBatch, "REGEN ON", startX + iconSize + 10, startY + 35);
-
-                        startY -= gap;
-                    }
-
-                    // 3. 耗蓝 Buff (青色)
-                    if (player.hasBuffManaEfficiency()) {
-                        if (iconMana != null) uiBatch.draw(iconMana, startX, startY, iconSize, iconSize);
-
-                        font.getData().setScale(2.0f);
-                        font.setColor(Color.CYAN);
-                        font.draw(uiBatch, "MANA COST -50%", startX + iconSize + 10, startY + 35);
-
-                        startY -= gap;
-                    }
-
-                    // ⚠️ 还原字体设置 (非常重要，否则界面其他地方会乱)
-                    font.setColor(Color.WHITE);
-                    font.getData().setScale(1.2f); // 还原回默认大小
-
-                    // ============================================
-                    // 🔥 [Treasure] 屏幕中央飘字 (超大字体通知)
-                    // ============================================
-                    String msg = player.getNotificationMessage();
-                    if (msg != null && !msg.isEmpty()) {
-                        float w = Gdx.graphics.getWidth();
-                        float h = Gdx.graphics.getHeight();
-
-                    // 设置超大字体
-                    font.getData().setScale(2.5f);
-
-                    // ✨ 支持多行文本显示
-                    String[] lines = msg.split("\n");
-                    float lineHeight = 60f; // 行间距（基于字体大小2.5f）
-                    float notificationStartY = h / 2f + 100 + (lines.length - 1) * lineHeight / 2f;
-
-                    // 绘制每一行（带阴影）
-                    for (int i = 0; i < lines.length; i++) {
-                        String line = lines[i];
-                        if (line == null || line.isEmpty()) continue;
-
-                        GlyphLayout layout = new GlyphLayout(font, line);
-                        float x = w / 2f - layout.width / 2f;
-                        float y = notificationStartY - i * lineHeight;
-                        // 设置超大字体
-                        font.getData().setScale(2.5f); // 🔥 2.5倍大小
-
-                        // 阴影
-                        font.setColor(Color.BLACK);
-                        font.draw(uiBatch, line, x + 3, y - 3);
-                        font.draw(uiBatch, msg, w / 2f - 200 + 3, h / 2f + 100 - 3);
-
-                        // 正文
-                        font.setColor(Color.YELLOW);
-                        font.draw(uiBatch, line, x, y);
-                    }
-                        font.draw(uiBatch, msg, w / 2f - 200, h / 2f + 100);
-
-                    // 还原
-                    font.setColor(Color.WHITE);
-                    font.getData().setScale(1.2f);
-                }
+                font.getData().setScale(1.2f);
             }
-
-            // ✨ [新增] 8. 检查并渲染成就弹窗
-            renderAchievementPopup(uiBatch);
-
-        } catch (Exception e) {
-            Logger.debug("HUD failed");
-            e.printStackTrace();
-        }
-            } catch (Exception e) {
-                Logger.debug("HUD failed: " + e.getMessage());
-            }
-
-
-
-
 
     }
+
+
     private void renderTwoPlayerHUD(SpriteBatch uiBatch) {
         var players = gameManager.getPlayers();
         if (players == null || players.isEmpty()) return;
 
-    /**
-     * ✨ [新增] 渲染成就弹窗逻辑
-     */
-    private void renderAchievementPopup(SpriteBatch uiBatch) {
-        // 如果弹窗空闲，尝试从管理器获取下一个成就
-        if (!achievementPopup.isBusy()) {
-            AchievementManager am = gameManager.getAchievementManager();
-            if (am != null) {
-                AchievementType next = am.pollNotification();
-                if (next != null) {
-                    achievementPopup.show(next);
-                }
-            }
+        // ===== Mana Bar =====
         float barWidth = 500f;
         float marginX  = 40f;
         float marginY  = 30f;
@@ -462,7 +309,7 @@ public class HUD {
         renderManaBarForPlayer(
                 uiBatch,
                 players.get(0),
-                0,          // ⭐ P1
+                0,
                 marginX,
                 marginY,
                 barWidth
@@ -474,171 +321,299 @@ public class HUD {
             renderManaBarForPlayer(
                     uiBatch,
                     players.get(1),
-                    1,      // ⭐ P2
+                    1,
                     x2,
                     marginY,
                     barWidth
             );
         }
 
-        // 渲染（内部会处理是否显示）
-        achievementPopup.render(uiBatch);
+        // ===== 成就弹窗 ===== new
+        renderAchievementPopup(uiBatch);
 
         int topY = Gdx.graphics.getHeight() - 90;
 
-// ❤️ P1：左上，正常方向
+        // ❤️ P1：左上
         renderLivesAsHearts(
                 uiBatch,
                 players.get(0),
-                20,          // 左边起点
+                20,
                 topY,
-                false        // 不镜面
+                false
         );
 
-// ❤️ P2：右上，镜面方向
-        int rightStartX =
-                Gdx.graphics.getWidth()
-                        - 20
-                        - heartFull.getWidth();
-        renderLivesAsHearts(
-                uiBatch,
-                players.get(1),
-                rightStartX, // 右边起点
-                topY,
-                true         // ⭐ 镜面
-        );
-// ===== 技能图标 =====
+        // ❤️ P2：右上（镜面）
+        if (players.size() > 1) {
+            int rightStartX =
+                    Gdx.graphics.getWidth()
+                            - 20
+                            - heartFull.getWidth();
 
-// P1：Dash + Melee（左）
+            renderLivesAsHearts(
+                    uiBatch,
+                    players.get(1),
+                    rightStartX,
+                    topY,
+                    true
+            );
+        }
+
+        // ===== 技能图标 =====
+        // P1
         renderDashIcon(uiBatch, players.get(0), false);
         renderMeleeIcon(uiBatch, players.get(0), false);
 
-// P2：Dash + Magic（右，镜面）
-        renderDashIcon(uiBatch, players.get(1), true);
-        renderMagicIcon(uiBatch, players.get(1), true);
-
+        // P2
+        if (players.size() > 1) {
+            renderDashIcon(uiBatch, players.get(1), true);
+            renderMagicIcon(uiBatch, players.get(1), true);
+        }
     }
 
-    /**
-     * ✨ [新增] 渲染右上角的实时分数（与魔法值对齐）
-     */
-    private void renderScore(SpriteBatch uiBatch) {
-        if (gameManager == null) return;
-    private void renderReviveProgressBar(SpriteBatch batch) {
-        if (!gameManager.isTwoPlayerMode()) return;
-        if (!gameManager.isReviving()) return;
+    private void renderDashIcon(
+            SpriteBatch uiBatch,
+            Player player,
+            boolean mirror
+    ) {
+        if (player == null) return;
 
-        // 获取分数
-        int currentScore = gameManager.getScore();
-        String scoreText = "SCORE: " + formatScore(currentScore);
-        Player target = gameManager.getRevivingTarget();
-        if (target == null) return; // ⭐ 防止极端帧状态
+        DashAbility dash = null;
+        for (Ability a : player.getAbilityManager().getAbilities().values()) {
+            if (a instanceof DashAbility d) {
+                dash = d;
+                break;
+            }
+        }
+        if (dash == null) return;
 
-        // 设置字体大小
-        font.getData().setScale(1.5f);
-        float progress = Math.min(1f, gameManager.getReviveProgress());
+        Texture icon =
+                player.getPlayerIndex() == Player.PlayerIndex.P1
+                        ? dashIconP1
+                        : dashIconP2;
 
-        // 计算右上角位置
-        GlyphLayout layout = new GlyphLayout(font, scoreText);
-        float rightMargin = 30f;  // 右侧边距
-        float topMargin = 60f;    // 顶部边距
-        float x = Gdx.graphics.getWidth() - layout.width - rightMargin;
-        float y = Gdx.graphics.getHeight() - topMargin;  // 🔧 修复：正确计算屏幕右上角位置
-        float barWidth  = 420f;
-        float barHeight = 24f;
+        if (icon == null) return;
 
-        // 绘制阴影
-        font.setColor(0f, 0f, 0f, 0.7f);
-        font.draw(uiBatch, scoreText, x + 2, y - 2);
-        float x = (Gdx.graphics.getWidth() - barWidth) / 2f-30;
-        float y = Gdx.graphics.getHeight()  - 290;
+        int dashCharges = dash.getCurrentCharges();
+        float progress = dash.getCooldownProgress();
 
-        // 绘制金色正文
-        font.setColor(Color.GOLD);
-        font.draw(uiBatch, scoreText, x, y);
-        // 背景
-        batch.setColor(0f, 0f, 0f, 0.65f);
-        batch.draw(
-                TextureManager.getInstance().getWhitePixel(),
-                x, y,
-                barWidth, barHeight
-        );
+        float x = mirror
+                ? Gdx.graphics.getWidth() - DASH_ICON_SIZE - DASH_UI_MARGIN_X
+                : DASH_UI_MARGIN_X;
+        float y = DASH_UI_MARGIN_Y;
 
-        // 还原字体设置
-        // 填充
-        batch.setColor(0.2f, 0.9f, 0.3f, 0.9f);
-        batch.draw(
-                TextureManager.getInstance().getWhitePixel(),
-                x + 2,
-                y + 2,
-                (barWidth - 4) * progress,
-                barHeight - 4
-        );
+        if (dashCharges >= 2) {
+            uiBatch.setColor(1.0f, 0.9f, 0.8f, 1f);
+        } else if (dashCharges == 1) {
+            uiBatch.setColor(0.8f, 0.9f, 0.8f, 1f);
+        } else {
+            uiBatch.setColor(0.25f, 0.25f, 0.2f, 0.8f);
+        }
 
-        // 文本
-        font.getData().setScale(1.4f);
-        font.setColor(Color.WHITE);
+        uiBatch.draw(icon, x, y, DASH_ICON_SIZE, DASH_ICON_SIZE);
 
-        String text = "REVIVING " +
-                (target.getPlayerIndex() == Player.PlayerIndex.P1 ? "P1" : "P2");
+        if (dashCharges < 2) {
+            float maskHeight = DASH_ICON_SIZE * (1f - progress);
+            uiBatch.setColor(0f, 0f, 0f, 0.5f);
+            uiBatch.draw(
+                    TextureManager.getInstance().getWhitePixel(),
+                    x, y,
+                    DASH_ICON_SIZE,
+                    maskHeight
+            );
+        }
 
-        font.draw(batch, text,
-                x + barWidth / 2f - 70,
-                y + barHeight + 26
-        );
+        uiBatch.setColor(1f, 1f, 1f, 1f);
+    }
+    private void renderMeleeIcon(
+            SpriteBatch uiBatch,
+            Player player,
+            boolean mirror
+    ) {
+        if (meleeIcon == null || player == null) return;
 
-        // 还原
-        font.getData().setScale(1.2f);
+        de.tum.cit.fop.maze.abilities.MeleeAttackAbility melee = null;
+        for (Ability a : player.getAbilityManager().getAbilities().values()) {
+            if (a instanceof de.tum.cit.fop.maze.abilities.MeleeAttackAbility m) {
+                melee = m;
+                break;
+            }
+        }
+        if (melee == null) return;
+
+        float progress = melee.getCooldownProgress();
+        boolean onCooldown = progress > 0f && progress < 1f;
+
+        float size = MELEE_ICON_SIZE;
+        float dashX = getIconX(DASH_ICON_SIZE, mirror);
+
+        float x = mirror
+                ? dashX - MELEE_UI_OFFSET_X
+                : dashX + MELEE_UI_OFFSET_X;
+
+        float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - size) / 2f;
+
+        if (onCooldown && iceHeartShader != null) {
+            uiBatch.setShader(iceHeartShader);
+            iceHeartShader.setUniformf("u_intensity", 0.0f);
+            iceHeartShader.setUniformf("u_cooldown", progress);
+            iceHeartShader.setUniformf("u_cdDarkness", 0.7f);
+        }
+
+        uiBatch.draw(meleeIcon, x, y, size, size);
+
+        if (onCooldown) {
+            uiBatch.setShader(null);
+        }
+    }
+    private void renderMagicIcon(
+            SpriteBatch batch,
+            Player player,
+            boolean mirror
+    ) {
+        if (player == null) return;
+
+        MagicAbility magic = null;
+        for (Ability a : player.getAbilityManager().getAbilities().values()) {
+            if (a instanceof MagicAbility m) {
+                magic = m;
+                break;
+            }
+        }
+        if (magic == null) return;
+
+        MagicAbility.Phase phase = magic.getPhase();
+        float time = magic.getPhaseTime();
+
+        float baseSize = MELEE_ICON_SIZE;
+        float size = mirror ? baseSize * 1.15f : baseSize;
+
+        float baseX = getIconX(DASH_ICON_SIZE, mirror);
+        float x = mirror
+                ? baseX - MELEE_UI_OFFSET_X
+                : baseX + MELEE_UI_OFFSET_X;
+        float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - size) / 2f;
+
+        if (phase != MagicAbility.Phase.IDLE) {
+
+
+            float originX = size * 0.5f;
+            float originY = size * 0.62f;
+
+            float rotation =
+                    phase == MagicAbility.Phase.AIMING
+                            ? time * 720f
+                            : 0f;
+
+            if (phase == MagicAbility.Phase.COOLDOWN) {
+                batch.setColor(0.35f, 0.35f, 0.35f, 1f);
+            } else {
+                batch.setColor(1f, 1f, 1f, 1f);
+            }
+
+            batch.draw(
+                    magicBg,
+                    x, y,
+                    originX, originY,
+                    size, size,
+                    1f, 1f,
+                    rotation,
+                    0, 0,
+                    magicBg.getWidth(),
+                    magicBg.getHeight(),
+                    false, false
+            );
+        }
+
+        // ================= Grow（呼吸光） =================
+        if (phase != MagicAbility.Phase.IDLE
+                && phase != MagicAbility.Phase.COOLDOWN) {
+
+            float pulse = 0.6f + 0.4f * (float)Math.sin(time * 6.5f);
+
+            Color glow;
+            switch (phase) {
+                case AIMING, EXECUTED -> glow = new Color(0.9f, 0.2f, 0.9f, pulse); // 紫红
+                default -> glow = Color.WHITE;
+            }
+
+            batch.setBlendFunction(GL_SRC_ALPHA, GL_ONE);
+            batch.setColor(glow);
+            batch.draw(magicGrow, x, y, size, size);
+            batch.setBlendFunction(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        }
+
+        // ================= 顶层 icon =================
+        if (phase == MagicAbility.Phase.COOLDOWN) {
+            batch.setColor(0.35f, 0.35f, 0.35f, 1f);
+        } else {
+            batch.setColor(1f, 1f, 1f, 1f);
+        }
+
+        batch.draw(magicIconTop, x, y, size, size);
         batch.setColor(1f, 1f, 1f, 1f);
     }
 
 
+    // =========================================================
+    // 粒子结构
+    private static class ManaParticle {
+        float x, y, vx, vy, life;
+        Color color;
+    }
+
+    // =========================================================
+    // Achievement Popup
+    private void renderAchievementPopup(SpriteBatch uiBatch) {
+        if (!achievementPopup.isBusy()) {
+            AchievementManager am = gameManager.getAchievementManager();
+            if (am != null) {
+                AchievementType next = am.pollNotification();
+                if (next != null) {
+                    achievementPopup.show(next);
+                }
+            }
+        }
+        achievementPopup.render(uiBatch);
+    }
+
+    // =========================================================
+    // Score
+    private void renderScore(SpriteBatch uiBatch) {
+        int score = gameManager.getScore();
+
+        String text = "SCORE: " + formatScore(score);
+
+        font.getData().setScale(1.5f);
+        GlyphLayout layout = new GlyphLayout(font, text);
+
+        float x = Gdx.graphics.getWidth() - layout.width - 30;
+        float y = Gdx.graphics.getHeight() - 60;
+
+        font.setColor(0f, 0f, 0f, 0.7f);
+        font.draw(uiBatch, text, x + 2, y - 2);
+
+        font.setColor(Color.GOLD);
+        font.draw(uiBatch, text, x, y);
+
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.2f);
+    }
+
+    // =========================================================
+    // Mana Bar
     private void renderManaBarForPlayer(
             SpriteBatch uiBatch,
             Player player,
-            int playerId,     // ⭐ 新增
+            int playerId,
             float x,
             float y,
             float barWidth
-    )
-    {
+    ) {
+        Texture manaBase = (playerId == 0) ? manaBaseP1 : manaBaseP2;
+        Texture manaFill = (playerId == 0) ? manaFillP1 : manaFillP2;
+        Texture manaGlow = (playerId == 0) ? manaGlowP1 : manaGlowP2;
+        Texture manaDeco = (playerId == 0) ? manadeco_1 : manadeco_2;
 
-        Logger.debug(
-                "[ManaBar] enter | playerId=" + playerId +
-                        " mana=" + player.getMana() +
-                        " maxMana=" + player.getMaxMana()
-        );
-
-        Texture manaBase;
-        Texture manaFill;
-        Texture manaGlow;
-        Texture manaDeco;
-        // ⭐ 根据 playerId 选择贴图
-        if (playerId == 0) {
-            manaBase = manaBaseP1;
-            manaFill = manaFillP1;
-            manaGlow = manaGlowP1;
-            manaDeco = manadeco_1;
-
-        } else {
-            manaBase = manaBaseP2;
-            manaFill = manaFillP2;
-            manaGlow = manaGlowP2;
-            manaDeco = manadeco_2;
-        }
-        Logger.debug(
-                "[ManaBar] select textures | playerId=" + playerId +
-                        " base=" + (manaBase != null) +
-                        " fill=" + (manaFill != null) +
-                        " glow=" + (manaGlow != null) +
-                        " deco=" + (manaDeco != null)
-        );
-
-    // 1. 修改类成员变量，增加上限
-    private static final int MAX_PARTICLES = 150;
-
-    public void renderManaBar(SpriteBatch uiBatch) {
-        if (gameManager == null || gameManager.getPlayer() == null) return;
         if (player == null || manaFill == null || manaBase == null) return;
         List<ManaParticle> particles =
                 manaParticlesMap.computeIfAbsent(playerId, k -> new ArrayList<>());
@@ -658,16 +633,9 @@ public class HUD {
                         " (mana=" + player.getMana() + "/" + maxMana + ")"
         );
 
-        var player = gameManager.getPlayer();
-        float percent = Math.max(0f, Math.min(1f, player.getMana() / (float)player.getMaxMana()));
 
-        // === 尺寸与位置 ===
-        float barWidth  = Gdx.graphics.getWidth() * 0.66f;
         float barHeight = barWidth * (32f / 256f);
-        float x = (Gdx.graphics.getWidth() - barWidth) / 2f - 50;
-        float y = barHeight - 130;
 
-        // --- 1. 底座渲染 ---
         float fillInsetLeft  = barWidth * 0.02f;
         float fillInsetRight = barWidth * 0.02f;
 
@@ -689,29 +657,6 @@ public class HUD {
         uiBatch.setColor(1f, 1f, 1f, 1f);
         uiBatch.draw(manaBase, x, y, barWidth, barHeight);
 
-        if (percent > 0f) {
-            // --- 2. 进度条主体 (基础填充) ---
-            int srcW = (int)(manaFill.getWidth() * percent);
-            TextureRegion fillRegion = new TextureRegion(manaFill, 0, 0, srcW, manaFill.getHeight());
-
-            uiBatch.setColor(1f, 0.7f, 0.9f, 1f); // 粉粉嫩嫩色
-            uiBatch.draw(fillRegion, x, y, barWidth * percent, barHeight);
-
-            // --- 3. 启用：renderManaGlowEffect (呼吸立体光) ---
-            renderManaGlowEffect(uiBatch, x, y, barWidth, barHeight, percent);
-
-            // --- 4. 超长粒子拖尾逻辑 ---
-            updateAndRenderLongTrail(uiBatch, x, y, barWidth, barHeight, percent);
-
-            // --- 5. 圆柱体高光带 (覆盖在呼吸光之上) ---
-            uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE);
-            uiBatch.setColor(1f, 1f, 1f, 0.35f);
-            uiBatch.draw(TextureManager.getInstance().getWhitePixel(),
-                    x, y + barHeight * 0.52f,
-                    barWidth * percent * 0.99f,
-                    barHeight * 0.07f);
-            uiBatch.setBlendFunction(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
-        }
         if (percent <= 0f) {
             uiBatch.setColor(1f, 1f, 1f, 1f);
             return;
@@ -778,9 +723,6 @@ public class HUD {
 
 
 
-        // =========================
-// 🔥 装饰层：永远绘制
-// =========================
         if (manaDeco != null) {
             float decoWidth = barWidth * 0.12f;
 
@@ -799,15 +741,9 @@ public class HUD {
         }
 
 
-        // --- 6. 装饰层 (最上层遮盖) ---
         uiBatch.setColor(1f, 1f, 1f, 1f);
-        uiBatch.draw(manadeco_1, x, y, barWidth, barHeight);
-        uiBatch.draw(manadeco_2, x, y, barWidth, barHeight);
     }
 
-    /**
-     * 负责管内液体的立体感呼吸光
-     */
 
     private void renderManaGlowEffect(
             SpriteBatch uiBatch,
@@ -851,9 +787,6 @@ public class HUD {
         uiBatch.setColor(1f, 1f, 1f, 1f);
     }
 
-    /**
-     * 负责末端的喷射和超长拖尾
-     */
     private void updateAndRenderLongTrail(
             SpriteBatch uiBatch,
             Texture manaGlow,        // ⭐ 加这一行
@@ -879,6 +812,7 @@ public class HUD {
         float centerOffset = h / 3f;
         float activeHeight = h * (2f / 3f);
 
+        // === 粒子生成 ===
         for (int i = 0; i < 6; i++) {
             if (particles.size() < 150) {
                 ManaParticle p = new ManaParticle();
@@ -938,267 +872,23 @@ public class HUD {
         );
     }
 
-    // ===============================
-// HUD 图标镜面 X 计算工具
-// ===============================
-    private float getIconX(float iconWidth, boolean mirror) {
-        if (!mirror) {
-            // P1：左侧
-            return DASH_UI_MARGIN_X;
-        } else {
-            // P2：右侧镜面
-            return Gdx.graphics.getWidth()
-                    - DASH_UI_MARGIN_X
-                    - iconWidth;
-        }
-    }
-
-    private void renderDashIcon(
+    // =========================================================
+    // Hearts
+    private void renderLivesAsHearts(
             SpriteBatch uiBatch,
             Player player,
+            int startX,
+            int startY,
             boolean mirror
     ) {
         if (player == null) return;
-
-        DashAbility dash = null;
-        for (Ability a : player.getAbilityManager().getAbilities().values()) {
-            if (a instanceof DashAbility d) {
-                dash = d;
-                break;
-            }
-        }
-        if (dash == null) return;
-
-        // ⭐ 根据 player 选择贴图
-        Texture icon =
-                player.getPlayerIndex() == Player.PlayerIndex.P1
-                        ? dashIconP1
-                        : dashIconP2;
-
-        if (icon == null) return;
-
-        int dashCharges = dash.getCurrentCharges();
-        float progress = dash.getCooldownProgress();
-
-        float y = DASH_UI_MARGIN_Y;
-
-        float x = mirror
-                ? Gdx.graphics.getWidth() - DASH_ICON_SIZE - DASH_UI_MARGIN_X
-                : DASH_UI_MARGIN_X;
-
-        // ===== 颜色逻辑（完全不变）=====
-        if (dashCharges >= 2) {
-            uiBatch.setColor(1.0f, 0.9f, 0.8f, 1f);
-        } else if (dashCharges == 1) {
-            uiBatch.setColor(0.8f, 0.9f, 0.8f, 1f);
-        } else {
-            uiBatch.setColor(0.25f, 0.25f, 0.2f, 0.8f);
-        }
-
-        uiBatch.draw(icon, x, y, DASH_ICON_SIZE, DASH_ICON_SIZE);
-
-        // ===== 冷却遮罩 =====
-        if (dashCharges < 2) {
-            float maskHeight = DASH_ICON_SIZE * (1f - progress);
-            uiBatch.setColor(0f, 0f, 0f, 0.5f);
-            uiBatch.draw(
-                    TextureManager.getInstance().getWhitePixel(),
-                    x, y,
-                    DASH_ICON_SIZE,
-                    maskHeight
-            );
-        }
-
-        uiBatch.setColor(1f, 1f, 1f, 1f);
-    }
-        font.getData().setScale(1.2f);
-    }
-
-
-
-    private void renderMeleeIcon(SpriteBatch uiBatch, Player player, boolean mirror) {
-        if (meleeIcon == null || player == null) return;
-
-        de.tum.cit.fop.maze.abilities.MeleeAttackAbility melee = null;
-        for (Ability a : player.getAbilityManager().getAbilities().values()) {
-            if (a instanceof de.tum.cit.fop.maze.abilities.MeleeAttackAbility m) {
-                melee = m;
-                break;
-            }
-        }
-        if (melee == null) return;
-
-        // ===== CD 进度 =====
-        float progress = melee.getCooldownProgress(); // 0~1
-        boolean onCooldown = progress > 0f && progress < 1f;
-
-        // ===== 尺寸与位置（和之前逻辑保持一致）=====
-        float size = MELEE_ICON_SIZE;
-
-        float dashX = getIconX(DASH_ICON_SIZE, mirror);
-        float x = mirror
-                ? dashX - MELEE_UI_OFFSET_X
-                : dashX + MELEE_UI_OFFSET_X;
-
-        float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - size) / 2f;
-
-        // ===== 使用 shader（只在 CD 时）=====
-        if (onCooldown) {
-            uiBatch.setShader(iceHeartShader);
-
-            // 关闭冰晶效果
-            iceHeartShader.setUniformf("u_intensity", 0.0f);
-
-            // 启用 CD 遮罩
-            iceHeartShader.setUniformf("u_cooldown", progress);
-            iceHeartShader.setUniformf("u_cdDarkness", 0.7f);
-        }
-
-        // ===== 画 icon（不规则 alpha 会自动生效）=====
-        uiBatch.draw(meleeIcon, x, y, size, size);
-
-        // ===== 还原 shader =====
-        if (onCooldown) {
-            uiBatch.setShader(null);
-        }
-    }
-
-    private void renderMagicIcon(
-            SpriteBatch batch,
-            Player player,
-            boolean mirror
-    ) {
-        if (player == null) return;
-
-        MagicAbility magic = null;
-        for (Ability a : player.getAbilityManager().getAbilities().values()) {
-            if (a instanceof MagicAbility m) {
-                magic = m;
-                break;
-            }
-        }
-        if (magic == null) return;
-
-        MagicAbility.Phase phase = magic.getPhase();
-        float time = magic.getPhaseTime();
-
-        float baseSize = MELEE_ICON_SIZE;
-        float size = mirror
-                ? baseSize * 1.15f   // ⭐ 右侧 Magic 放大 15%
-                : baseSize;
-        float baseX = getIconX(DASH_ICON_SIZE, mirror);
-        float x = mirror
-                ? baseX - MELEE_UI_OFFSET_X
-                : baseX + MELEE_UI_OFFSET_X;
-        float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - size) / 2f;
-
-        // ================= 背景（bg，仅 bg 旋转） =================
-        if (phase != MagicAbility.Phase.IDLE) {
-
-            // 🔧 仅 bg 上移（grow / icon 不动）
-
-            float bgX = x;
-            float bgY = y;
-
-            // 🔧 非正方形贴图的真实旋转中心（需要微调的关键）
-            float originX = size * 0.5f;
-            float originY = size * 0.62f; // ⭐ 偏上，试 0.65 ~ 0.72
-
-            float rotation =
-                    (phase == MagicAbility.Phase.AIMING)
-                            ? time * 720f
-                            : 0f;
-
-            if (phase == MagicAbility.Phase.COOLDOWN) {
-                batch.setColor(0.35f, 0.35f, 0.35f, 1f);
-            } else {
-                batch.setColor(1f, 1f, 1f, 1f);
-            }
-
-            batch.draw(
-                    magicBg,
-                    bgX, bgY,
-                    originX, originY,   // ⭐ 正确旋转中心
-                    size, size,
-                    1f, 1f,
-                    rotation,
-                    0, 0,
-                    magicBg.getWidth(),
-                    magicBg.getHeight(),
-                    false, false
-            );
-        }
-
-
-        // ================= Grow（呼吸光） =================
-        if (phase != MagicAbility.Phase.IDLE
-                && phase != MagicAbility.Phase.COOLDOWN) {
-
-            float pulse = 0.6f + 0.4f * (float)Math.sin(time * 6.5f);
-
-            Color glow;
-            switch (phase) {
-                case AIMING, EXECUTED -> glow = new Color(0.9f, 0.2f, 0.9f, pulse); // 紫红
-                default -> glow = Color.WHITE;
-            }
-
-            batch.setBlendFunction(GL_SRC_ALPHA, GL_ONE);
-            batch.setColor(glow);
-            batch.draw(magicGrow, x, y, size, size);
-            batch.setBlendFunction(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        }
-
-        // ================= 顶层 icon =================
-        if (phase == MagicAbility.Phase.COOLDOWN) {
-            batch.setColor(0.35f, 0.35f, 0.35f, 1f);
-        } else {
-            batch.setColor(1f, 1f, 1f, 1f);
-        }
-
-        batch.draw(magicIconTop, x, y, size, size);
-        batch.setColor(1f, 1f, 1f, 1f);
-    }
-
-
-
-
-
-
-
-    private void renderCat(SpriteBatch uiBatch) {
-        if (gameManager == null || gameManager.getPlayer() == null) return;
-
-        catStateTime += Gdx.graphics.getDeltaTime();
-
-        boolean hasKey = gameManager.getPlayer().hasKey();
-        Animation<TextureRegion> anim =
-                hasKey ? catHasKeyAnim : catNoKeyAnim;
-
-        TextureRegion frame = anim.getKeyFrame(catStateTime, true);
-
-        float x = Gdx.graphics.getWidth() - CAT_SIZE - CAT_MARGIN+170;
-        float y = CAT_MARGIN-80;
-
-        uiBatch.setColor(1f, 1f, 1f, 1f);
-        uiBatch.draw(frame, x, y, CAT_SIZE, CAT_SIZE);
-    }
-
-    private void renderLivesAsHearts(SpriteBatch uiBatch) {
-        // 🔴 关键：UI 颜色必须重置
-    private void renderLivesAsHearts(SpriteBatch uiBatch, Player player, int startX, int startY,boolean mirror )
-    {  if (player == null) return;          // ⭐ 新增：防空
-        boolean useIceShader = mirror && iceHeartShader != null;
-
 
         Player.PlayerIndex idx = player.getPlayerIndex();
-
+        boolean useIceShader = mirror && iceHeartShader != null;
         int lastLives = lastLivesMap.getOrDefault(idx, -1);
         boolean shaking = shakingMap.getOrDefault(idx, false);
         float shakeTimer = shakeTimerMap.getOrDefault(idx, 0f);
 
-
-
-// ===== P2 自动染色（只根据方向）=====
         if (mirror) {
             uiBatch.setShader(iceHeartShader);
 
@@ -1214,7 +904,6 @@ public class HUD {
         }
         uiBatch.setColor(1f, 1f, 1f, 1f);
 
-        int lives = gameManager.getPlayer().getLives();
 
         int lives = player.getLives();
 
@@ -1245,7 +934,6 @@ public class HUD {
         }
 
         /* ================= 心数计算（你的规则） ================= */
-        /* ================= 心数计算 ================= */
         int fullHearts = lives / 10;
         int remainder = lives % 10;
 
@@ -1259,8 +947,7 @@ public class HUD {
         totalHearts = Math.min(totalHearts, MAX_HEARTS_DISPLAY);
 
         /* ================= 布局 ================= */
-        int startX = 20;
-        int startY = Gdx.graphics.getHeight() - 90;
+
 
         float shakeOffsetX =
                 shaking ? (float) Math.sin(shakeTimer * 40f) * SHAKE_AMPLITUDE : 0f;
@@ -1278,11 +965,9 @@ public class HUD {
                     mirror
                             ? startX - col * HEART_SPACING   // 右 → 左
                             : startX + col * HEART_SPACING;  // 左 → 右
-
             uiBatch.draw(
                     heartFull,
                     x,
-                    startX + col * HEART_SPACING + (shakeThis ? shakeOffsetX : 0f),
                     startY - row * ROW_SPACING
             );
             drawn++;
@@ -1330,14 +1015,27 @@ public class HUD {
         shakeTimerMap.put(idx, shakeTimer);
     }
 
-    /**
-     * 渲染指南针（UI模式）
-     */
-    public void renderCompassAsUI(SpriteBatch uiBatch) {
-        if (gameManager == null || gameManager.getCompass() == null) return;
+    // =========================================================
+    // Cat / Compass
+    private void renderCat(SpriteBatch uiBatch) {
+        if (gameManager.getPlayer() == null) return;
 
+        catStateTime += Gdx.graphics.getDeltaTime();
+        boolean hasKey = gameManager.getPlayer().hasKey();
+        Animation<TextureRegion> anim =
+                hasKey ? catHasKeyAnim : catNoKeyAnim;
+
+        TextureRegion frame = anim.getKeyFrame(catStateTime, true);
+
+        float x = Gdx.graphics.getWidth() - CAT_SIZE - CAT_MARGIN + 170;
+        float y = CAT_MARGIN - 80;
+        uiBatch.setColor(1f, 1f, 1f, 1f);
+        uiBatch.draw(frame, x, y, CAT_SIZE, CAT_SIZE);
+    }
+
+    public void renderCompassAsUI(SpriteBatch uiBatch) {
         Compass compass = gameManager.getCompass();
-        if (!compass.isActive()) return;
+        if (compass == null || !compass.isActive()) return;
 
         uiBatch.setProjectionMatrix(
                 new Matrix4().setToOrtho2D(
@@ -1350,107 +1048,8 @@ public class HUD {
         compass.drawAsUI(uiBatch);
     }
 
-    /**
-     * 渲染游戏结束画面
-     */
-    public void renderGameComplete(SpriteBatch batch) {
-        String message = "恭喜！你成功逃出了迷宫！";
-        font.getData().setScale(2);
-        font.setColor(Color.GREEN);
-
-        com.badlogic.gdx.graphics.g2d.GlyphLayout layout = new com.badlogic.gdx.graphics.g2d.GlyphLayout();
-        layout.setText(font, message);
-
-        float x = (Gdx.graphics.getWidth() - layout.width) / 2;
-        float y = Gdx.graphics.getHeight() / 2;
-
-        font.draw(batch, message, x, y);
-
-        // 显示重新开始提示
-        font.getData().setScale(1);
-        font.setColor(Color.WHITE);
-        String restartMsg = "按R键重新开始游戏";
-        layout.setText(font, restartMsg);
-
-        float restartX = (Gdx.graphics.getWidth() - layout.width) / 2;
-        font.draw(batch, restartMsg, restartX, y - 50);
-    }
-
-    /**
-     * 渲染游戏结束画面
-     */
-    public void renderGameOver(SpriteBatch batch) {
-        String message = "游戏结束！";
-        font.getData().setScale(2);
-        font.setColor(Color.RED);
-
-        com.badlogic.gdx.graphics.g2d.GlyphLayout layout = new com.badlogic.gdx.graphics.g2d.GlyphLayout();
-        layout.setText(font, message);
-
-        float x = (Gdx.graphics.getWidth() - layout.width) / 2;
-        float y = Gdx.graphics.getHeight() / 2;
-
-        font.draw(batch, message, x, y);
-
-        // 显示重新开始提示
-        font.getData().setScale(1);
-        font.setColor(Color.WHITE);
-        String restartMsg = "按R键重新开始游戏";
-        layout.setText(font, restartMsg);
-
-        float restartX = (Gdx.graphics.getWidth() - layout.width) / 2;
-        font.draw(batch, restartMsg, restartX, y - 50);
-    }
-
-    public BitmapFont getFont() {
-        return font;
-    }
-
-    public void dispose() {
-        if (font != null) font.dispose();
-        if (heartFull != null) heartFull.dispose();
-        if (heartHalf != null) heartHalf.dispose();
-        if (shapeRenderer != null) shapeRenderer.dispose();
-        if (catAtlas != null) catAtlas.dispose();
-        // 🔥 清理 Buff 图标
-        if (iconAtk != null) iconAtk.dispose();
-        if (iconRegen != null) iconRegen.dispose();
-        if (iconMana != null) iconMana.dispose();
-        if (manadeco_1 != null) manadeco_1.dispose();
-        if (manadeco_2 != null) manadeco_2.dispose();
-        if (dashIcon != null) dashIcon.dispose();
-        if (meleeIcon != null) meleeIcon.dispose();
-        if (manaBaseP1 != null) manaBaseP1.dispose();
-        if (manaFillP1 != null) manaFillP1.dispose();
-        if (manaGlowP1 != null) manaGlowP1.dispose();
-        if (sparkleAtlas != null) sparkleAtlas.dispose();
-
-        if (manaBaseP2 != manaBaseP1 && manaBaseP2 != null) {
-            manaBaseP2.dispose();
-        }
-
-        if (manaFillP2 != null) manaFillP2.dispose();
-        if (manaGlowP2 != null) manaGlowP2.dispose();
-
-        Logger.debug("HUD disposed");
-    }
-
-    /**
-     * 格式化分数，添加千位分隔符
-     */
-    private String formatScore(int score) {
-        return String.format("%,d", score);
-    }
-
-    // 在 HUD 类成员变量区添加
-    private java.util.List<ManaParticle> particles = new java.util.ArrayList<>();
-
-    // 粒子辅助类
-    private static class ManaParticle {
-        float x, y, vx, vy, life;
-        Color color;
-    }
-
+    // =========================================================
+    // Bottom Center HUD
     private void renderBottomCenterHUD(SpriteBatch uiBatch) {
         if (gameManager == null || gameManager.getCompass() == null) return;
 
@@ -1506,23 +1105,20 @@ public class HUD {
         return HUDLayoutMode.SINGLE;
     }
 
-
     private void renderCatAt(SpriteBatch uiBatch, float x, float y) {
         catStateTime += Gdx.graphics.getDeltaTime();
-
         boolean hasKey = gameManager.getPlayer().hasKey();
         Animation<TextureRegion> anim =
                 hasKey ? catHasKeyAnim : catNoKeyAnim;
 
         TextureRegion frame = anim.getKeyFrame(catStateTime, true);
-
         uiBatch.setColor(1f, 1f, 1f, 1f);
         uiBatch.draw(frame, x, y, CAT_SIZE, CAT_SIZE);
     }
+
     private void renderCompassAt(SpriteBatch uiBatch, float x, float y) {
         Compass compass = gameManager.getCompass();
         if (!compass.isActive()) return;
-
         uiBatch.setProjectionMatrix(
                 new Matrix4().setToOrtho2D(
                         0, 0,
@@ -1532,6 +1128,88 @@ public class HUD {
         );
 
         compass.drawAsUIAt(uiBatch, x, y);
+    }
+
+    private float getIconX(float iconWidth, boolean mirror) {
+        if (!mirror) {
+            // P1：左侧
+            return DASH_UI_MARGIN_X;
+        } else {
+            // P2：右侧镜面
+            return Gdx.graphics.getWidth()
+                    - DASH_UI_MARGIN_X
+                    - iconWidth;
+        }
+    }
+    // =========================================================
+    // Utils / Dispose
+    private String formatScore(int score) {
+        return String.format("%,d", score);
+    }
+    private void renderReviveProgressBar(SpriteBatch batch) {
+        if (!gameManager.isTwoPlayerMode()) return;
+        if (!gameManager.isReviving()) return;
+
+        Player target = gameManager.getRevivingTarget();
+        if (target == null) return; // ⭐ 防止极端帧状态
+
+        float progress = Math.min(1f, gameManager.getReviveProgress());
+
+        float barWidth  = 420f;
+        float barHeight = 24f;
+
+        float x = (Gdx.graphics.getWidth() - barWidth) / 2f-30;
+        float y = Gdx.graphics.getHeight()  - 290;
+
+        // 背景
+        batch.setColor(0f, 0f, 0f, 0.65f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x, y,
+                barWidth, barHeight
+        );
+
+        // 填充
+        batch.setColor(0.2f, 0.9f, 0.3f, 0.9f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x + 2,
+                y + 2,
+                (barWidth - 4) * progress,
+                barHeight - 4
+        );
+
+        // 文本
+        font.getData().setScale(1.4f);
+        font.setColor(Color.WHITE);
+
+        String text = "REVIVING " +
+                (target.getPlayerIndex() == Player.PlayerIndex.P1 ? "P1" : "P2");
+
+        font.draw(batch, text,
+                x + barWidth / 2f - 70,
+                y + barHeight + 26
+        );
+
+        // 还原
+        font.getData().setScale(1.2f);
+        batch.setColor(1f, 1f, 1f, 1f);
+    }
+    public void dispose() {
+        font.dispose();
+        heartFull.dispose();
+        heartHalf.dispose();
+        shapeRenderer.dispose();
+        catAtlas.dispose();
+        iconAtk.dispose();
+        iconRegen.dispose();
+        iconMana.dispose();
+        sparkleAtlas.dispose();
+        if (manaBaseP2 != manaBaseP1) manaBaseP2.dispose();
+        manaFillP1.dispose();
+        manaFillP2.dispose();
+        manaGlowP1.dispose();
+        manaGlowP2.dispose();
     }
 
 }

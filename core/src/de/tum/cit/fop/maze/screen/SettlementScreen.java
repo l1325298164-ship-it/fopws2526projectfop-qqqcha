@@ -288,7 +288,7 @@ public class SettlementScreen implements Screen {
             storage.saveGameSync(saveData);
             
             // 重新加载游戏（会从存档恢复状态）
-            game.loadGame();
+            game.loadGame();//TODO
         } else {
             // 返回菜单时保存当前进度（关键节点，使用同步保存）
             storage.saveGameSync(saveData);
