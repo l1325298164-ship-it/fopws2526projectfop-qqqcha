@@ -67,16 +67,10 @@ public class LeaderboardScreen implements Screen {
 
         // 2. 数据表格
         Table scoreTable = new Table();
-        // 🔥 安全使用white drawable作为背景
-        try {
-            if (game != null && game.getSkin() != null && 
-                game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
-                scoreTable.setBackground(game.getSkin().getDrawable("white"));
-                scoreTable.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
-            }
-        } catch (Exception e) {
-            Logger.warning("Failed to set leaderboard scoreTable background: " + e.getMessage());
-            // 继续执行，不设置背景
+        // 使用white drawable作为背景（已在MazeRunnerGame中添加到skin）
+        if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+            scoreTable.setBackground(game.getSkin().getDrawable("white"));
+            scoreTable.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
         }
 
         // 表头

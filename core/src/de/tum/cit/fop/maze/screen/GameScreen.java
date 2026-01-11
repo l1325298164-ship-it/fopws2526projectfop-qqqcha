@@ -4,7 +4,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -20,8 +19,6 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.abilities.Ability;
-import de.tum.cit.fop.maze.abilities.MagicAbility;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
@@ -38,6 +35,7 @@ import de.tum.cit.fop.maze.tools.DeveloperConsole;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.StorageManager;
 
 import java.util.*;
 
@@ -338,23 +336,25 @@ public class GameScreen implements Screen {
         exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
-        
-        // 🔥 添加：渲染物品特效（宝箱、爱心等）
-        if (gm.getItemEffectManager() != null) {
-            gm.getItemEffectManager().renderSprites(batch);
-        }
-        
-        // 🔥 添加：渲染陷阱特效
-        if (gm.getTrapEffectManager() != null) {
-            gm.getTrapEffectManager().renderSprites(batch);
-        }
-        
-        // 🔥 添加：渲染战斗特效（伤害数字、治疗等）
-        if (gm.getCombatEffectManager() != null) {
-            gm.getCombatEffectManager().renderSprites(batch);
-        }
-        
+        // ===== 特效（普通模式补齐，和 EndlessScreen 对齐）=====
+        if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderSprites(batch);
+        if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderSprites(batch);
+        if (gm.getCombatEffectManager() != null) gm.getCombatEffectManager().renderSprites(batch);
         batch.end();
+        // ===== Shape/粒子层（必须在 batch.end() 后单独渲染）=====
+        shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+        if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderShapes(shapeRenderer);
+        if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderShapes(shapeRenderer);
+        if (gm.getCombatEffectManager() != null) {
+            com.badlogic.gdx.Gdx.gl.glEnable(com.badlogic.gdx.graphics.GL20.GL_BLEND);
+            com.badlogic.gdx.Gdx.gl.glBlendFunc(
+                    com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA,
+                    com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA
+            );
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            gm.getCombatEffectManager().renderShapes(shapeRenderer);
+            shapeRenderer.end();
+        }
 /* =========================================================
    玩家脚下传送阵（Portal Effect）
    ========================================================= */
@@ -369,17 +369,6 @@ public class GameScreen implements Screen {
         batch.end();
 // ===== Ability Debug / Targeting (AOE etc.) =====
         shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
-
-        // 🔥 添加：渲染特效的几何部分（光效、粒子等）
-        if (gm.getItemEffectManager() != null) {
-            gm.getItemEffectManager().renderShapes(shapeRenderer);
-        }
-        if (gm.getTrapEffectManager() != null) {
-            gm.getTrapEffectManager().renderShapes(shapeRenderer);
-        }
-        if (gm.getCombatEffectManager() != null) {
-            gm.getCombatEffectManager().renderShapes(shapeRenderer);
-        }
 
         for (Player p : gm.getPlayers()) {
             if (p.getAbilityManager() != null) {
@@ -588,6 +577,13 @@ public class GameScreen implements Screen {
     }//TODO 之后可能放进HUD里
 
     private void goToSettlementScreen() {
+        // 关键：进入结算前先强制同步落盘，避免结算界面异常导致存档丢失
+        if (gm != null) {
+            gm.saveGameProgress();
+            if (gm.getGameSaveData() != null) {
+                StorageManager.getInstance().saveGameSync(gm.getGameSaveData());
+            }
+        }
         LevelResult result = gm.getLevelResult();//DONE
         if (result == null) result = new LevelResult(0,0,0,"D",0,1f);
         GameSaveData save = gm.getGameSaveData();

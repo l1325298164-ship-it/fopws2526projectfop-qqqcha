@@ -17,7 +17,6 @@ import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.game.achievement.AchievementManager;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 import de.tum.cit.fop.maze.game.event.GameEventSource;
-import com.badlogic.gdx.graphics.Color;
 import de.tum.cit.fop.maze.game.score.DamageSource;
 import de.tum.cit.fop.maze.game.score.LevelResult;
 import de.tum.cit.fop.maze.game.score.ScoreConstants;
@@ -412,8 +411,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (keyEffectManager != null) {
             keyEffectManager.update(delta);
         }
-        
-        // 🔥 添加：更新特效管理器
         if (itemEffectManager != null) {
             itemEffectManager.update(delta);
         }
@@ -423,7 +420,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (combatEffectManager != null) {
             combatEffectManager.update(delta);
         }
-        
         handlePlayerTrapInteraction();
         handleKeyLogic();
 
@@ -589,25 +585,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                         GameEventSource.getInstance().onPlayerDamage(p.getLives(), source);
 
-                        // 🔥 显示受击浮动文字：扣分和伤害
-                        if (combatEffectManager != null) {
-                            float px = p.getWorldX() + 0.5f;
-                            float py = p.getWorldY() + 0.5f;
-                            
-                            // 计算扣分
-                            int penalty = (int)(source.penaltyScore * difficultyConfig.penaltyMultiplier);
-                            combatEffectManager.spawnFloatingText(
-                                px * GameConstants.CELL_SIZE, 
-                                py * GameConstants.CELL_SIZE + 20, 
-                                "-" + penalty, 
-                                Color.RED
-                            );
-                            combatEffectManager.spawnFloatingText(
-                                px * GameConstants.CELL_SIZE, 
-                                py * GameConstants.CELL_SIZE + 10, 
-                                "-" + damage + " HP", 
-                                Color.SCARLET
-                            );
+                        // HUD 提示：受击扣分（保持简单，不做复杂漂字系统）
+                        int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
+                        if (penalty > 0) {
+                            p.showNotification("HIT!  SCORE -" + penalty);
+                        } else {
+                            p.showNotification("HIT!");
                         }
                     }
                 }
@@ -856,6 +839,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     key.onInteract(p);
                     keyIterator.remove();
                     onKeyCollected();
+                    // HUD 提示（避免只有宝箱才有提示）
+                    p.showNotification("KEY ACQUIRED!  SCORE +" + ScoreConstants.SCORE_KEY);
                     break;
                 }
             }
@@ -874,31 +859,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                         itemEffectManager.spawnHeart(fx, fy);
                     }
 
-                    // 🔥 显示治疗特效
-                    if (combatEffectManager != null) {
-                        combatEffectManager.spawnHeal(fx, fy);
-                    }
-
-                    int healAmount = 1; // 默认回1血
                     h.onInteract(p);
-                    
-                    // 🔥 显示浮动文字：分数和治疗量
-                    if (combatEffectManager != null) {
-                        int score = (int)(ScoreConstants.SCORE_HEART * difficultyConfig.scoreMultiplier);
-                        combatEffectManager.spawnFloatingText(
-                            fx, fy + 20, 
-                            "+" + score, 
-                            Color.YELLOW
-                        );
-                        combatEffectManager.spawnFloatingText(
-                            fx, fy + 10, 
-                            "+HP " + healAmount, 
-                            Color.GREEN
-                        );
-                    }
-
                     GameEventSource.getInstance().onItemCollected("HEART");
                     heartIterator.remove();
+                    // HUD 提示（避免只有宝箱才有提示）
+                    p.showNotification("HEAL +10  SCORE +" + ScoreConstants.SCORE_HEART);
                 }
             }
 
@@ -916,46 +881,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                         itemEffectManager.spawnTreasure(fx, fy);
                     }
 
-                    // 🔥 记录玩家当前Buff状态，用于判断获得了什么Buff
-                    boolean hadAttack = p.hasBuffAttack();
-                    boolean hadRegen = p.hasBuffRegen();
-                    boolean hadMana = p.hasBuffManaEfficiency();
-
                     t.onInteract(p);
-
-                    // 🔥 显示分数
-                    if (combatEffectManager != null) {
-                        int score = (int)(ScoreConstants.SCORE_TREASURE * difficultyConfig.scoreMultiplier);
-                        combatEffectManager.spawnFloatingText(
-                            fx, fy + 30, 
-                            "+" + score, 
-                            Color.YELLOW
-                        );
-
-                        // 🔥 显示获得的Buff文字
-                        if (!hadAttack && p.hasBuffAttack()) {
-                            combatEffectManager.spawnFloatingText(
-                                fx, fy + 20, 
-                                "ATK +50%!", 
-                                Color.RED
-                            );
-                        }
-                        if (!hadRegen && p.hasBuffRegen()) {
-                            combatEffectManager.spawnFloatingText(
-                                fx, fy + 20, 
-                                "REGEN ON!", 
-                                Color.GREEN
-                            );
-                        }
-                        if (!hadMana && p.hasBuffManaEfficiency()) {
-                            combatEffectManager.spawnFloatingText(
-                                fx, fy + 20, 
-                                "MANA SAVER!", 
-                                Color.CYAN
-                            );
-                        }
-                    }
-
                     GameEventSource.getInstance().onItemCollected("TREASURE");
                     treasureIterator.remove();
                 }
@@ -1592,8 +1518,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // 同步当前关卡
         gameSaveData.currentLevel = currentLevel;
 
-        // 同步难度和模式
+        // 同步难度
         gameSaveData.difficulty = difficultyConfig.difficulty.name();
+        // 同步单/双人模式
         gameSaveData.twoPlayerMode = twoPlayerMode;
 
         // 同步玩家状态
@@ -1610,7 +1537,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // 同步分数管理器状态
         if (scoreManager != null) {
             scoreManager.saveState(gameSaveData);
-            gameSaveData.score = scoreManager.getCurrentScore();
+            // GameSaveData.score 应保存“已结算累计分”(accumulatedScore)，避免在 SettlementScreen 再次加分时重复累加。
+            // 这里通过：当前总分 - 当前关卡(按倍率后的实时分) 来反推 accumulatedScore。
+            int currentRaw = Math.max(0, gameSaveData.levelBaseScore - gameSaveData.levelPenalty);
+            int currentFinal = (int) (currentRaw * difficultyConfig.scoreMultiplier);
+            int currentTotal = scoreManager.getCurrentScore();
+            gameSaveData.score = Math.max(0, currentTotal - currentFinal);
         }
 
         // 保存到文件

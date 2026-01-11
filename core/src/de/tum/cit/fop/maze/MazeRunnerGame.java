@@ -4,7 +4,6 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.assets.AssetManager;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -468,16 +467,13 @@ public class MazeRunnerGame extends Game {
             Logger.warning("Invalid saved difficulty, defaulting to NORMAL");
         }
 
-        // 🔥 恢复双人模式设置（如果存档中有记录）
-        if (saveData.twoPlayerMode) {
-            this.twoPlayerMode = saveData.twoPlayerMode;
-            Logger.info("Restored two player mode from save: " + twoPlayerMode);
-        }
-
         this.currentDifficulty = savedDifficulty;
         this.difficultyConfig = DifficultyConfig.of(savedDifficulty);
 
-        // 创建新的 GameManager（使用恢复的双人模式设置）
+        // 恢复单/双人模式（避免 Continue 读到上次的模式）
+        this.setTwoPlayerMode(saveData.twoPlayerMode);
+
+        // 创建新的 GameManager
         this.gameManager = new GameManager(
                 this.difficultyConfig,
                 this.twoPlayerMode

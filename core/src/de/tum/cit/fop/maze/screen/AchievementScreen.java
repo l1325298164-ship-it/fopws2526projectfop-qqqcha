@@ -14,7 +14,6 @@ import de.tum.cit.fop.maze.game.achievement.AchievementType;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 import de.tum.cit.fop.maze.game.score.ScoreConstants;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
-import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.StorageManager;
 
 /**
@@ -76,7 +75,13 @@ public class AchievementScreen implements Screen {
             achievementTable.add(row).width(700).fillX().row();
         }
 
-        ScrollPane scrollPane = new ScrollPane(achievementTable, game.getSkin());
+        // 兼容：部分 Skin 可能缺少 ScrollPaneStyle，直接用 skin 构造会崩
+        ScrollPane scrollPane;
+        try {
+            scrollPane = new ScrollPane(achievementTable, game.getSkin());
+        } catch (Exception ignored) {
+            scrollPane = new ScrollPane(achievementTable, new ScrollPane.ScrollPaneStyle());
+        }
         scrollPane.setFadeScrollBars(false);
         scrollPane.setScrollingDisabled(true, false);
 
@@ -95,16 +100,10 @@ public class AchievementScreen implements Screen {
      */
     private Table createAchievementRow(AchievementType type, boolean isUnlocked) {
         Table row = new Table();
-        // 🔥 安全使用white drawable作为背景
-        try {
-            if (game != null && game.getSkin() != null && 
-                game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
-                row.setBackground(game.getSkin().getDrawable("white"));
-                row.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
-            }
-        } catch (Exception e) {
-            Logger.warning("Failed to set achievement row background: " + e.getMessage());
-            // 继续执行，不设置背景
+        // 使用white drawable作为背景（已在MazeRunnerGame中添加到skin）
+        if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
+            row.setBackground(game.getSkin().getDrawable("white"));
+            row.setColor(0.2f, 0.2f, 0.2f, 0.8f); // 深色半透明背景
         }
         row.pad(10);
 
