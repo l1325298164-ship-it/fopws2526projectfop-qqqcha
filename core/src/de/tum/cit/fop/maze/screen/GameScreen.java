@@ -59,10 +59,12 @@ public class GameScreen implements Screen {
     private Texture uiTop, uiBottom, uiLeft, uiRight;
     private ShapeRenderer shapeRenderer = new ShapeRenderer();
 
+    // ===== Pause =====
     private boolean paused = false;
     private Stage pauseStage;
     private boolean pauseUIInitialized = false;
 
+    // ===== Game Over =====
     private boolean gameOverShown = false;
     private Stage gameOverStage;
 
@@ -92,6 +94,8 @@ public class GameScreen implements Screen {
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
+
+        // HARD 才有雾
         if (difficultyConfig.difficulty == Difficulty.HARD) {
             fogSystem = new FogSystem();
         } else {
@@ -101,6 +105,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+
         uiTop    = new Texture("Wallpaper/HUD_up.png");
         uiBottom = new Texture("Wallpaper/HUD_down.png");
         uiLeft   = new Texture("Wallpaper/HUD_left.png");
@@ -134,11 +139,17 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // ... Input Update Logic ...
-        Vector3 world = cam.getCamera().unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
-        gm.setMouseTargetTile((int)(world.x / GameConstants.CELL_SIZE), (int)(world.y / GameConstants.CELL_SIZE));
-        
+
+        // ===== Mouse → Tile (Ability Targeting) =====
+        Vector3 world = cam.getCamera().unproject(
+                new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
+        );
+        gm.setMouseTargetTile(
+                (int)(world.x / GameConstants.CELL_SIZE),
+                (int)(world.y / GameConstants.CELL_SIZE)
+        );
         OrthographicCamera camera = cam.getCamera();
+
         float camLeft   = camera.position.x - camera.viewportWidth  / 2f;
         float camBottom = camera.position.y - camera.viewportHeight / 2f;
         float camWidth  = camera.viewportWidth;
@@ -146,15 +157,23 @@ public class GameScreen implements Screen {
         worldViewport.apply();
         batch.setProjectionMatrix(cam.getCamera().combined);
 
+        // ===== Debug Toggles =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) Logger.toggleDebug();
         if (Gdx.input.isKeyJustPressed(Input.Keys.F6)) {
-            if (!cam.isDebugZoom()) cam.setDebugZoom(5f); else cam.clearDebugZoom();
+            if (!cam.isDebugZoom()) cam.setDebugZoom(5f);
+            else cam.clearDebugZoom();
         }
-        if (KeyBindingManager.getInstance().isJustPressed(KeyBindingManager.GameAction.CONSOLE)) {
+
+        // ===== Console Toggle =====
+        if (KeyBindingManager.getInstance()
+                .isJustPressed(KeyBindingManager.GameAction.CONSOLE)) {
             console.toggle();
         }
 
-        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress()) {
+        // ===== Input (如果 Game Over 显示了，禁止玩家操作) =====
+        // 🔥 [修复] 添加 && !gameOverShown
+        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !gameOverShown) {
+
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
                 @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
                 @Override public float getMoveDelayMultiplier() { return 1f; }
@@ -175,56 +194,82 @@ public class GameScreen implements Screen {
         }
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
 
-        if (!paused && !console.isVisible()) {
+        // ===== Update (如果 Game Over 显示了，暂停游戏逻辑) =====
+        // 🔥 [修复] 添加 && !gameOverShown
+        if (!paused && !console.isVisible() && !gameOverShown) {
             gm.update(delta);
             if (fogSystem != null) fogSystem.update(delta);
+
             if (gm.isLevelCompletedPendingSettlement()) {
                 goToSettlementScreen();
                 return;
             }
+
             if (gm.isPlayerDead() && !gameOverShown) {
                 showGameOverScreen();
             }
+
             if (!console.isVisible()) {
                 float timeScale = gm.getVariable("time_scale");
-                cam.update(delta * timeScale, gm);
+                float gameDelta = delta * timeScale;
+                cam.update(gameDelta, gm);
             }
         }
 
+        // ===== World Render =====
         worldViewport.apply();
         batch.setProjectionMatrix(cam.getCamera().combined);
 
-        // ===== 1. Render World (Floor & Entities) =====
+        /* =========================================================
+           ① 地板 + 门背后呼吸光
+           ========================================================= */
         batch.begin();
         maze.renderFloor(batch);
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
         batch.end();
 
-        // Prepare Entities
+        /* =========================================================
+           ② 世界实体排序渲染
+           ========================================================= */
         List<Item> items = new ArrayList<>();
+
         for (var wg : maze.getWallGroups()) {
             boolean front = maze.isWallInFrontOfAnyEntity(wg.startX, wg.startY);
             items.add(new Item(wg, front ? Type.WALL_FRONT : Type.WALL_BEHIND));
         }
-        for (Player p : gm.getPlayers()) items.add(new Item(p, 100));
-        if (gm.getCat() != null) items.add(new Item(gm.getCat(), 95));
-        
+
+        for (Player p : gm.getPlayers()) {
+            items.add(new Item(p, 100));
+        }
+        if (gm.getCat() != null) {
+            items.add(new Item(gm.getCat(), 95));
+        }
+
         List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
         enemiesCopy.forEach(e -> items.add(new Item(e, 50)));
+
         List<Trap> trapsCopy = new ArrayList<>(gm.getTraps());
-        trapsCopy.forEach(t -> { if (t.isActive() && t instanceof GameObject) items.add(new Item((GameObject)t, 45)); });
+        trapsCopy.forEach(t -> {
+            if (t.isActive() && t instanceof GameObject) {
+                items.add(new Item((GameObject)t, 45));
+            }
+        });
+
         exitDoorsCopy.forEach(d -> items.add(new Item(d, 45)));
-        
+
         List<Heart> heartsCopy = new ArrayList<>(gm.getHearts());
         heartsCopy.forEach(h -> { if (h.isActive()) items.add(new Item(h, 30)); });
+
         List<Treasure> treasuresCopy = new ArrayList<>(gm.getTreasures());
         treasuresCopy.forEach(t -> items.add(new Item(t, 20)));
+
         List<HeartContainer> containersCopy = new ArrayList<>(gm.getHeartContainers());
         containersCopy.forEach(hc -> { if (hc.isActive()) items.add(new Item(hc, 30)); });
-        
+
         List<DynamicObstacle> obstaclesCopy = new ArrayList<>(gm.getObstacles());
         obstaclesCopy.forEach(o -> items.add(new Item(o, 40)));
+
         List<Key> keysCopy = new ArrayList<>(gm.getKeys());
         keysCopy.forEach(k -> { if (k.isActive()) items.add(new Item(k, 35)); });
 
@@ -234,16 +279,40 @@ public class GameScreen implements Screen {
 
         batch.begin();
         for (Item it : items) {
-            if (it.wall != null) maze.renderWallGroup(batch, it.wall);
-            else it.entity.drawSprite(batch);
+            if (it.wall != null) {
+                maze.renderWallGroup(batch, it.wall);
+            } else {
+                it.entity.drawSprite(batch);
+            }
         }
+        batch.end();
+
+        /* =========================================================
+           ③ 门前龙卷风粒子 + 特效
+           ========================================================= */
+        batch.begin();
         exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
-        
-        // Draw Particles (Low Priority)
         gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderSprites(batch);
         if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderSprites(batch);
+        if (gm.getCombatEffectManager() != null) gm.getCombatEffectManager().renderSprites(batch);
+        batch.end();
+
+        // ===== Shape/粒子层 =====
+        shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
+        if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderShapes(shapeRenderer);
+        if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderShapes(shapeRenderer);
+        if (gm.getCombatEffectManager() != null) {
+            Gdx.gl.glEnable(Gdx.gl.GL_BLEND);
+            Gdx.gl.glBlendFunc(Gdx.gl.GL_SRC_ALPHA, Gdx.gl.GL_ONE_MINUS_SRC_ALPHA);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            gm.getCombatEffectManager().renderShapes(shapeRenderer);
+            shapeRenderer.end();
+        }
+
+        // 玩家脚下传送阵
+        batch.begin();
         if (gm.getPlayerSpawnPortal() != null) {
             float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
             float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
@@ -252,82 +321,87 @@ public class GameScreen implements Screen {
         }
         batch.end();
 
-        // ===== 2. Render Fog (Overlay) =====
-        // 🔥 [修复] 把迷雾渲染放在实体之后，但必须在漂浮文字(FloatingText)之前！
-        if (fogSystem != null) {
-            batch.begin();
-            fogSystem.render(
-                    batch,
-                    camLeft, camBottom, camWidth, camHeight,
-                    gm.getCat() != null ? gm.getCat().getWorldX() : gm.getPlayer().getWorldX(),
-                    gm.getCat() != null ? gm.getCat().getWorldY() : gm.getPlayer().getWorldY()
-            );
-            batch.end();
-        }
-
-        // ===== 3. Render High Priority Effects (Floating Text / Combat) =====
-        // 🔥 [修复] 确保 CombatEffect 渲染在迷雾之上，否则数字看不见
-        batch.begin();
-        if (gm.getCombatEffectManager() != null) gm.getCombatEffectManager().renderSprites(batch);
-        batch.end();
-
-        // ===== 4. Shapes =====
+        // Ability Debug / Targeting
         shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
-        if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderShapes(shapeRenderer);
-        if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderShapes(shapeRenderer);
-        if (gm.getCombatEffectManager() != null) {
-            Gdx.gl.glEnable(com.badlogic.gdx.graphics.GL20.GL_BLEND);
-            Gdx.gl.glBlendFunc(com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA, com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA);
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            gm.getCombatEffectManager().renderShapes(shapeRenderer);
-            shapeRenderer.end();
-        }
-
         for (Player p : gm.getPlayers()) {
             if (p.getAbilityManager() != null) {
                 p.getAbilityManager().drawAbilities(batch, shapeRenderer, p);
             }
         }
 
-        // Debug
+        // 雾
+        batch.begin();
+        if (fogSystem != null) {
+            fogSystem.render(
+                    batch,
+                    camLeft, camBottom, camWidth, camHeight,
+                    gm.getCat() != null ? gm.getCat().getWorldX() : gm.getPlayer().getWorldX(),
+                    gm.getCat() != null ? gm.getCat().getWorldY() : gm.getPlayer().getWorldY()
+            );
+        }
+        batch.end();
+
+        // Debug Lines
         if (Logger.isDebugEnabled()) {
             shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
             float cs = GameConstants.CELL_SIZE;
+            int mazeWidth  = difficultyConfig.mazeWidth;
+            int mazeHeight = difficultyConfig.mazeHeight;
             shapeRenderer.setColor(1, 0, 0, 1);
-            shapeRenderer.rect(0, 0, difficultyConfig.mazeWidth * cs, difficultyConfig.mazeHeight * cs);
+            shapeRenderer.rect(0, 0, mazeWidth * cs, mazeHeight * cs);
             shapeRenderer.setColor(1, 1, 0, 1);
             shapeRenderer.rect(camLeft, camBottom, camWidth, camHeight);
+            shapeRenderer.setColor(0, 0, 1, 1);
+            for (DynamicObstacle o : gm.getObstacles()) {
+                if (o instanceof MovingWall mw) {
+                    float wx = mw.getWorldX() * cs + cs / 2f;
+                    float wy = mw.getWorldY() * cs + cs / 2f;
+                    shapeRenderer.line(wx - 10, wy, wx + 10, wy);
+                    shapeRenderer.line(wx, wy - 10, wx, wy + 10);
+                }
+            }
             shapeRenderer.end();
         }
 
-        // ===== 5. UI =====
+        /* =========================================================
+           ④ UI（正交相机）
+           ========================================================= */
         renderUI();
 
+        // ===== Pause Logic =====
         if (paused) {
             if (!pauseUIInitialized) initPauseUI();
             Gdx.input.setInputProcessor(pauseStage);
             pauseStage.act(delta);
             pauseStage.draw();
+            return;
+        }
+
+        // 🔥 [修复] Game Over Logic (补上绘制)
+        if (gameOverShown) {
+            gameOverStage.act(delta);
+            gameOverStage.draw();
         }
     }
 
     private void renderUI() {
         Matrix4 oldProjection = batch.getProjectionMatrix().cpy();
         Color oldColor = batch.getColor().cpy();
-        
+
         uiStage.getViewport().apply();
         batch.setProjectionMatrix(uiStage.getCamera().combined);
+
         batch.begin();
         renderMazeBorderDecorations(batch);
         hud.renderInGameUI(batch);
         batch.end();
-        
+
         uiStage.act(Gdx.graphics.getDeltaTime());
         uiStage.draw();
-        
+
         if (console != null) console.render();
-        
+
         batch.setProjectionMatrix(cam.getCamera().combined);
         batch.setColor(oldColor);
         batch.setProjectionMatrix(oldProjection);
@@ -378,7 +452,9 @@ public class GameScreen implements Screen {
     private void goToSettlementScreen() {
         if (gm != null) {
             gm.saveGameProgress();
-            if (gm.getGameSaveData() != null) StorageManager.getInstance().saveGameSync(gm.getGameSaveData());
+            if (gm.getGameSaveData() != null) {
+                StorageManager.getInstance().saveGameSync(gm.getGameSaveData());
+            }
         }
         LevelResult result = gm.getLevelResult();
         if (result == null) result = new LevelResult(0,0,0,"D",0,1f);
@@ -394,11 +470,14 @@ public class GameScreen implements Screen {
         Table root = new Table();
         root.setFillParent(true);
         gameOverStage.addActor(root);
+
         root.add(new Label("GAME OVER", game.getSkin(), "title")).padBottom(30).row();
         root.add(new Label("Final Score: " + gm.getScore(), game.getSkin())).padBottom(40).row();
+
         ButtonFactory bf = new ButtonFactory(game.getSkin());
         root.add(bf.create("RETRY", () -> game.resetMaze(difficultyConfig.difficulty))).pad(10).row();
         root.add(bf.create("MENU", game::goToMenu)).pad(10);
+
         Gdx.input.setInputProcessor(gameOverStage);
     }
 
@@ -409,10 +488,13 @@ public class GameScreen implements Screen {
         if (gameOverStage != null) gameOverStage.getViewport().update(w, h, true);
         if (console != null) console.resize(w, h);
     }
+
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-    @Override public void dispose() {
+
+    @Override
+    public void dispose() {
         maze.dispose();
         if (console != null) console.dispose();
         if (gameOverStage != null) gameOverStage.dispose();
