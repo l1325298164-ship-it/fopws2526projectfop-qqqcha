@@ -336,7 +336,7 @@ public class GameScreen implements Screen {
         batch.begin();
         // 🔥 使用防御性副本
         exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
-        gm.getKeyEffectManager().render(batch); //TODO
+        gm.getKeyEffectManager().render(batch);
         gm.getBobaBulletEffectManager().render(batch);
         batch.end();
 /* =========================================================
@@ -561,7 +561,7 @@ public class GameScreen implements Screen {
     }//TODO 之后可能放进HUD里
 
     private void goToSettlementScreen() {
-        LevelResult result = gm.getLevelResult();
+        LevelResult result = gm.getLevelResult();//TODO
         if (result == null) result = new LevelResult(0,0,0,"D",0,1f);
         GameSaveData save = gm.getGameSaveData();
         if (save == null) save = new GameSaveData();
@@ -575,7 +575,7 @@ public class GameScreen implements Screen {
         Table root = new Table();
         root.setFillParent(true);
         gameOverStage.addActor(root);
-//TODO
+
         root.add(new Label("GAME OVER", game.getSkin(), "title")).padBottom(30).row();
         root.add(new Label("Final Score: " + gm.getScore(), game.getSkin())).padBottom(40).row();
 

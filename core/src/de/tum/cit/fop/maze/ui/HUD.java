@@ -580,7 +580,7 @@ public class HUD {
     // Score
     private void renderScore(SpriteBatch uiBatch) {
         int score = gameManager.getScore();
-        //TODO
+
         String text = "SCORE: " + formatScore(score);
 
         font.getData().setScale(1.5f);
