@@ -6,11 +6,9 @@ import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager;
 import de.tum.cit.fop.maze.effects.environment.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.effects.Player.combat.CombatEffectManager;
 import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
-import de.tum.cit.fop.maze.effects.portal.PortalEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
@@ -153,32 +151,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
      * ✨ [新增] 清理资源，移除监听器
      * 在 GameManager 不再使用时调用
      */
-    public void dispose() {
-        // 1. 清理事件监听器
-        GameEventSource eventSource = GameEventSource.getInstance();
-        if (scoreManager != null) {
-            eventSource.removeListener(scoreManager);
-        }
-        if (achievementManager != null) {
-            eventSource.removeListener(achievementManager);
-            // 保存未保存的成就数据
-            achievementManager.saveIfNeeded();
-        }
 
-        // 2. 清理特效管理器
-        if (itemEffectManager != null) itemEffectManager.dispose();
-        if (trapEffectManager != null) trapEffectManager.dispose();
-        if (combatEffectManager != null) combatEffectManager.dispose();
-        if (players != null) for (Player p : players) p.dispose();
-        for (ExitDoor door : exitDoors) door.dispose();
-        for (Treasure t : treasures) t.dispose();
-        if (bobaBulletEffectManager != null) bobaBulletEffectManager.dispose();
-        if (playerSpawnPortal != null) playerSpawnPortal.dispose();
-
-        // 3. 确保所有异步保存完成
-        StorageManager.getInstance().flushAllSaves();
-        Logger.info("GameManager disposed, listeners cleaned up");
-    }
 
     /**
      * ✨ [新增] 保存游戏进度（整合所有保存逻辑）
@@ -243,21 +216,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         int[] spawn1 = randomEmptyCell();
         Player p1 = new Player(spawn1[0],spawn1[1],this,Player.PlayerIndex.P1);
         players.add(p1);
-        Player p1 = new Player(
-                spawn1[0],spawn1[1],this,Player.PlayerIndex.P1
-        );players.add(p1);
+
 
 
         if (twoPlayerMode) {
             int[] spawn2 = findNearbySpawn(p1);
             Player p2 = new Player(spawn2[0], spawn2[1], this, Player.PlayerIndex.P2);
-
-            Player p2 = new Player(
-                    spawn2[0],
-                    spawn2[1],
-                    this,
-                    Player.PlayerIndex.P2
-            );
             players.add(p2);
 
             Logger.gameEvent(
@@ -686,7 +650,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     private void handlePlayerTrapInteraction() {
         if (levelTransitionInProgress || player == null || player.isDead()) return;
-        int px = player.getX();
         int py = player.getY();
         if (levelTransitionInProgress) return;
 
@@ -694,7 +657,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (p == null || p.isDead()) continue;
 
             int px = p.getX();
-            int py = p.getY();
 
             for (Trap trap : traps) {
                 if (!trap.isActive()) continue;
@@ -1291,15 +1253,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     /* ---------- Hearts ---------- */
     private void generateHearts() {
         // ✨ [修复] 性能优化：避免重复调用randomEmptyCell()
-        for (int i = 0; i < 10; i++) {
-            int[] pos = randomEmptyCell();
-            hearts.add(new Heart(pos[0], pos[1]));
         int count = 10;
         for (int i = 0; i < count; i++) {
             int[] p = randomEmptyCell();
             hearts.add(new Heart(p[0], p[1]));
         }
-    }}
+    }
 
     /* ---------- Treasures ---------- */
     /* ---------- Treasures ---------- */
@@ -1680,8 +1639,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         bullets.add(bullet);
     }
 
-    // GameManager.java
-    private BobaBulletManager bobaBulletEffectManager = new BobaBulletManager();
     public BobaBulletManager getBobaBulletEffectManager() {
         return bobaBulletEffectManager;
     }
@@ -1798,19 +1755,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public CombatEffectManager getCombatEffectManager() { return combatEffectManager; }
 
 
-    public void dispose() {
-        if (keyEffectManager != null) {
-            keyEffectManager.dispose();
-        }
-        // 🔥 清理出口门资源
-        for (ExitDoor door : exitDoors) {
-            door.dispose();
-        }
-        // 🔥 [Treasure] 清理宝箱资源
-        for (Treasure t : treasures) {
-            t.dispose();
-        }
-    }
+
     /* ================= [Console] 变量操作 API ================= */
 
     /**
@@ -1833,10 +1778,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public int getScore() {
+
         return scoreManager != null ? scoreManager.getCurrentScore() : 0;
-    }
-    public String getScore() {
-        return String.valueOf(player.getScore());
     }
 
     public PlayerInputHandler getInputHandler() {
@@ -1852,7 +1795,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return tutorialMode;
     }
     public ScoreManager getScoreManager() { return scoreManager; }
-    public PlayerInputHandler getInputHandler() { return  inputHandler; }
+
     public boolean isPlayerDead() { return player != null && player.isDead(); }
 
     public boolean isObstacleValidMove(int nx, int ny) {
@@ -1976,7 +1919,39 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return null;
     }
 
+    public void dispose() {
+        // 1. 清理事件监听器
+        GameEventSource eventSource = GameEventSource.getInstance();
+        if (scoreManager != null) {
+            eventSource.removeListener(scoreManager);
+        }
+        if (achievementManager != null) {
+            eventSource.removeListener(achievementManager);
+            // 保存未保存的成就数据
+            achievementManager.saveIfNeeded();
+        }
 
-
-
+        // 2. 清理特效管理器
+        if (itemEffectManager != null) itemEffectManager.dispose();
+        if (trapEffectManager != null) trapEffectManager.dispose();
+        if (combatEffectManager != null) combatEffectManager.dispose();
+        for (ExitDoor door : exitDoors) door.dispose();
+        for (Treasure t : treasures) t.dispose();
+        if (bobaBulletEffectManager != null) bobaBulletEffectManager.dispose();
+        if (playerSpawnPortal != null) playerSpawnPortal.dispose();
+        if (keyEffectManager != null) {
+            keyEffectManager.dispose();
+        }
+        // 🔥 清理出口门资源
+        for (ExitDoor door : exitDoors) {
+            door.dispose();
+        }
+        // 🔥 [Treasure] 清理宝箱资源
+        for (Treasure t : treasures) {
+            t.dispose();
+        }
+        // 3. 确保所有异步保存完成
+        StorageManager.getInstance().flushAllSaves();
+        Logger.info("GameManager disposed, listeners cleaned up");
+    }
 }
