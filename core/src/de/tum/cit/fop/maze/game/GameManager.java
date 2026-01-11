@@ -18,6 +18,7 @@ import de.tum.cit.fop.maze.game.achievement.AchievementManager;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 import de.tum.cit.fop.maze.game.event.GameEventSource;
 import de.tum.cit.fop.maze.game.score.DamageSource;
+import de.tum.cit.fop.maze.game.score.LevelResult;
 import de.tum.cit.fop.maze.game.score.ScoreManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
@@ -452,7 +453,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (autoSaveTimer >= AUTO_SAVE_INTERVAL) {
             autoSaveTimer = 0f;
             if (!levelTransitionInProgress && player != null && !player.isDead()) {
-                saveGameProgress();//TODO
+                saveGameProgress();//DONE
             }
         }
     }
@@ -1480,6 +1481,151 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public List<DynamicObstacle> getObstacles() { return obstacles; }
     public CatFollower getCat() {
         return cat;
+    }
+
+    /* ================= Save/Load Support ================= */
+
+    /**
+     * 保存当前游戏进度到存档
+     */
+    public void saveGameProgress() {
+        if (gameSaveData == null) {
+            gameSaveData = new GameSaveData();
+        }
+
+        // 同步当前关卡
+        gameSaveData.currentLevel = currentLevel;
+
+        // 同步难度
+        gameSaveData.difficulty = difficultyConfig.difficulty.name();
+
+        // 同步玩家状态
+        if (player != null) {
+            gameSaveData.lives = player.getLives();
+            gameSaveData.maxLives = player.getMaxLives();
+            gameSaveData.mana = (int) player.getMana();
+            gameSaveData.hasKey = player.hasKey();
+            gameSaveData.buffAttack = player.hasBuffAttack();
+            gameSaveData.buffRegen = player.hasBuffRegen();
+            gameSaveData.buffManaEfficiency = player.hasBuffManaEfficiency();
+        }
+
+        // 同步分数管理器状态
+        if (scoreManager != null) {
+            scoreManager.saveState(gameSaveData);
+            gameSaveData.score = scoreManager.getCurrentScore();
+        }
+
+        // 保存到文件
+        StorageManager.getInstance().saveGame(gameSaveData);
+        Logger.info("Game progress saved: Level=" + currentLevel + ", Score=" + gameSaveData.score);
+    }
+
+    /**
+     * 获取关卡结算结果
+     */
+    public LevelResult getLevelResult() {
+        if (scoreManager == null) {
+            return new LevelResult(0, 0, 0, "D", 0, 1.0f);
+        }
+
+        // 计算理论最大分数（基于敌人数量和道具数量）
+        int theoreticalMaxScore = calculateTheoreticalMaxScore();
+
+        return scoreManager.calculateResult(theoreticalMaxScore);
+    }
+
+    /**
+     * 计算理论最大分数
+     */
+    private int calculateTheoreticalMaxScore() {
+        int maxScore = 0;
+
+        // 敌人分数
+        maxScore += difficultyConfig.enemyE01PearlCount * 100;
+        maxScore += difficultyConfig.enemyE02CoffeeBeanCount * 200;
+        maxScore += difficultyConfig.enemyE03CaramelCount * 300;
+        maxScore += difficultyConfig.enemyE04ShellCount * 500;
+
+        // 道具分数
+        maxScore += 10 * 50;  // hearts
+        maxScore += 3 * 100;  // treasures
+        maxScore += difficultyConfig.keyCount * 200;  // keys
+
+        return maxScore;
+    }
+
+    /**
+     * 获取游戏存档数据
+     */
+    public GameSaveData getGameSaveData() {
+        return gameSaveData;
+    }
+
+    /**
+     * 获取分数管理器
+     */
+    public ScoreManager getScoreManager() {
+        return scoreManager;
+    }
+
+    /**
+     * 获取成就管理器
+     */
+    public AchievementManager getAchievementManager() {
+        return achievementManager;
+    }
+
+    /**
+     * 从存档恢复游戏状态
+     */
+    public void restoreFromSaveData(GameSaveData saveData) {
+        if (saveData == null) return;
+
+        this.gameSaveData = saveData;
+        this.currentLevel = saveData.currentLevel;
+
+        // 恢复分数管理器状态
+        if (scoreManager != null) {
+            scoreManager.restoreState(saveData);
+        }
+
+        // 恢复玩家状态（需要在玩家创建后调用）
+        if (player != null) {
+            // 恢复生命值：先计算需要回复的量
+            int targetLives = saveData.lives > 0 ? saveData.lives : difficultyConfig.initialLives;
+            int currentLives = player.getLives();
+            if (targetLives > currentLives) {
+                player.heal(targetLives - currentLives);
+            }
+            player.setHasKey(saveData.hasKey);
+            if (saveData.buffAttack) player.activateAttackBuff();
+            if (saveData.buffRegen) player.activateRegenBuff();
+            if (saveData.buffManaEfficiency) player.activateManaBuff();
+        }
+
+        Logger.info("Game state restored: Level=" + currentLevel + ", Score=" + saveData.score);
+    }
+
+    /**
+     * 获取道具特效管理器
+     */
+    public ItemEffectManager getItemEffectManager() {
+        return itemEffectManager;
+    }
+
+    /**
+     * 获取陷阱特效管理器
+     */
+    public TrapEffectManager getTrapEffectManager() {
+        return trapEffectManager;
+    }
+
+    /**
+     * 获取战斗特效管理器
+     */
+    public CombatEffectManager getCombatEffectManager() {
+        return combatEffectManager;
     }
 
 

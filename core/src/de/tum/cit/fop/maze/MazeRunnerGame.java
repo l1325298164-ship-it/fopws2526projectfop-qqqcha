@@ -21,7 +21,9 @@ import de.tum.cit.fop.maze.tools.MazeRunnerGameHolder;
 import de.tum.cit.fop.maze.tools.PVAnimationCache;
 import de.tum.cit.fop.maze.tools.PVNode;
 import de.tum.cit.fop.maze.tools.PVPipeline;
+import de.tum.cit.fop.maze.game.GameSaveData;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.StorageManager;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 import java.util.List;
@@ -440,6 +442,85 @@ public class MazeRunnerGame extends Game {
         }
 
         setScreen(new GameScreen(this, difficultyConfig));
+    }
+
+    /**
+     * 从存档加载游戏并继续
+     */
+    public void loadGame() {
+        Logger.info("Loading game from save...");
+
+        StorageManager storage = StorageManager.getInstance();
+        GameSaveData saveData = storage.loadGame();
+
+        if (saveData == null) {
+            Logger.warning("No save file found, starting new game");
+            startNewGameFromMenu();
+            return;
+        }
+
+        // 解析保存的难度
+        Difficulty savedDifficulty;
+        try {
+            savedDifficulty = Difficulty.valueOf(saveData.difficulty);
+        } catch (Exception e) {
+            savedDifficulty = Difficulty.NORMAL;
+            Logger.warning("Invalid saved difficulty, defaulting to NORMAL");
+        }
+
+        this.currentDifficulty = savedDifficulty;
+        this.difficultyConfig = DifficultyConfig.of(savedDifficulty);
+
+        // 创建新的 GameManager
+        this.gameManager = new GameManager(
+                this.difficultyConfig,
+                this.twoPlayerMode
+        );
+
+        // 恢复游戏状态
+        this.gameManager.restoreFromSaveData(saveData);
+
+        Logger.info("Game loaded: Level=" + saveData.currentLevel + 
+                    ", Score=" + saveData.score + 
+                    ", Difficulty=" + savedDifficulty);
+
+        // 跳转到游戏界面
+        if (savedDifficulty == Difficulty.ENDLESS) {
+            setScreen(new EndlessScreen(this, difficultyConfig));
+        } else {
+            setScreen(new GameScreen(this, difficultyConfig));
+        }
+    }
+
+    /**
+     * 从主菜单开始新游戏（会清除存档）
+     */
+    public void startNewGameFromMenu() {
+        Logger.info("Starting new game from menu...");
+
+        // 删除旧存档
+        StorageManager storage = StorageManager.getInstance();
+        storage.deleteSave();
+
+        // 使用当前选择的难度（如果没有则默认 NORMAL）
+        Difficulty difficulty = this.currentDifficulty != null ? this.currentDifficulty : Difficulty.NORMAL;
+
+        this.difficultyConfig = DifficultyConfig.of(difficulty);
+        this.gameManager = new GameManager(
+                this.difficultyConfig,
+                this.twoPlayerMode
+        );
+
+        // 从剧情开头开始
+        this.stage = StoryStage.STORY_BEGIN;
+        setScreen(new StoryLoadingScreen(this));
+    }
+
+    /**
+     * 设置 GameManager（用于 GameScreen 初始化）
+     */
+    public void setGameManager(GameManager gm) {
+        this.gameManager = gm;
     }
 
 

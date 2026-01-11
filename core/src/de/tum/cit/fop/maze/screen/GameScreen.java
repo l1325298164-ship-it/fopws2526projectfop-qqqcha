@@ -121,7 +121,7 @@ public class GameScreen implements Screen {
         if (gm == null) {
             Logger.warning("GameManager is null, creating new one");
             gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
-            game.setGameManager(gm); //TODO
+            game.setGameManager(gm); //DONE
         }
 
         maze = new MazeRenderer(gm, difficultyConfig);
@@ -561,7 +561,7 @@ public class GameScreen implements Screen {
     }//TODO 之后可能放进HUD里
 
     private void goToSettlementScreen() {
-        LevelResult result = gm.getLevelResult();//TODO
+        LevelResult result = gm.getLevelResult();//DONE
         if (result == null) result = new LevelResult(0,0,0,"D",0,1f);
         GameSaveData save = gm.getGameSaveData();
         if (save == null) save = new GameSaveData();

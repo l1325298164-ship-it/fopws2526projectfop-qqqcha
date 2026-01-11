@@ -129,7 +129,7 @@ public class MenuScreen implements Screen {
 
         // 🔥 2. CONTINUE 按钮 (有存档才显示)
         if (hasSave) {
-            root.add(bf.create("CONTINUE", game::loadGame))//TODO
+            root.add(bf.create("CONTINUE", game::loadGame))//DONE
                     .width(buttonWidth).height(BUTTON_HEIGHT)
                     .padBottom(buttonPadding).row();
         }
@@ -144,7 +144,7 @@ public class MenuScreen implements Screen {
             if (hasSave) {
                 showOverwriteDialog();
             } else {
-                game.startNewGameFromMenu();//TODO
+                game.startNewGameFromMenu();//DONE
             }
         })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
 
@@ -246,7 +246,7 @@ public class MenuScreen implements Screen {
         dialog.button(" YES, ERASE IT ", true);
         dialog.button(" CANCEL ", false);
         dialog.show(stage);
-    }
+    }//DONE - startNewGameFromMenu implemented
 
     // ================= 渲染 =================
 
