@@ -131,6 +131,11 @@ public class MazeRunnerGame extends Game {
         return baseConfig;
     }
 
+    public void debugEnterBoss() {
+        setScreen(new BossLoadingScreen(this));
+    }
+
+
     public enum PV4Result {
         START,
         EXIT
