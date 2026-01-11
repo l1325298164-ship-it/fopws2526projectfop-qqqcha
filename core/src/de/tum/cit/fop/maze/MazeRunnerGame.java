@@ -13,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import de.tum.cit.fop.maze.audio.AudioConfig;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.entities.boss.BossLoadingScreen;
 import de.tum.cit.fop.maze.game.ChapterContext;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;

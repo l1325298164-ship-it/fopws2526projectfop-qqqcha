@@ -1,6 +1,5 @@
 package de.tum.cit.fop.maze.entities.boss;
 
-package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -9,8 +8,13 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.input.PlayerInputHandler;
+import de.tum.cit.fop.maze.screen.MenuScreen;
 
-public class BossFightScreen implements Screen {
+public class BossFightScreen implements Screen,PlayerInputHandler.InputHandlerCallback  {
+    private Player player;
+    private PlayerInputHandler inputHandler;
 
     private final MazeRunnerGame game;
 
@@ -37,9 +41,19 @@ public class BossFightScreen implements Screen {
         batch = new SpriteBatch();
 
         // 占位贴图，之后随时换
-        bg = new Texture(Gdx.files.internal("debug/boss_bg.png"));
-        playerTex = new Texture(Gdx.files.internal("debug/player.png"));
-        bossTex = new Texture(Gdx.files.internal("debug/boss.png"));
+        bg = new Texture(Gdx.files.internal("debug/boss_bg.jpg"));
+        playerTex = new Texture(Gdx.files.internal("debug/player.jpg"));
+        bossTex = new Texture(Gdx.files.internal("debug/boss.jpg"));
+        inputHandler = new PlayerInputHandler();
+
+        player = new Player(
+                0, 0,
+                /* context 先不管 */,
+                Player.PlayerIndex.P1
+        );
+
+        player.setWorldPosition(6f, 3f);
+
     }
 
     @Override
@@ -47,6 +61,13 @@ public class BossFightScreen implements Screen {
 
         handleInput(delta);
         update(delta);
+        inputHandler.update(
+                delta,
+                this, // Callback 就是 BossFightScreen 自己
+                Player.PlayerIndex.P1
+        );
+
+        player.update(delta);
 
         Gdx.gl.glClearColor(0.05f, 0.05f, 0.05f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -101,5 +122,54 @@ public class BossFightScreen implements Screen {
         bg.dispose();
         playerTex.dispose();
         bossTex.dispose();
+    }
+
+    @Override
+    public void onMoveInput(Player.PlayerIndex index, int dx, int dy) {
+
+        // Boss 房：连续移动，不走格子
+        float speed = 6f; // 每秒速度，随便调
+
+        float newX = player.getWorldX() + dx * speed;
+        float newY = player.getWorldY() + dy * speed;
+
+        player.setWorldPosition(newX, newY);
+        player.setMovingAnim(true);
+        player.updateDirection(dx, dy);
+    }
+
+    @Override
+    public float getMoveDelayMultiplier() {
+        return player.getMoveDelayMultiplier();
+    }
+
+
+    @Override
+    public boolean onAbilityInput(Player.PlayerIndex index, int slot) {
+
+        // slot 0 = 攻击 / 主技能
+        // slot 1 = Dash
+        if (slot == 0) {
+            player.startAttack();
+            return true;
+        }
+
+        if (slot == 1) {
+            player.useAbility(1); // Dash
+            return true;
+        }
+
+        return false;
+    }
+
+
+    @Override
+    public void onInteractInput(Player.PlayerIndex index) {
+
+    }
+
+    @Override
+    public void onMenuInput() {
+        game.setScreen(new MenuScreen(game));
     }
 }
