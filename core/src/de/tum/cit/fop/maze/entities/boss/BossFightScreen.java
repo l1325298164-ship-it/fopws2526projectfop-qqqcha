@@ -7,12 +7,34 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
+import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
+import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.screen.MenuScreen;
+import de.tum.cit.fop.maze.utils.BossCamera;
+import de.tum.cit.fop.maze.utils.CameraManager;
 
 public class BossFightScreen implements Screen,PlayerInputHandler.InputHandlerCallback  {
+
+    // ===== Cameras =====
+    private BossCamera bossCamera;
+    private CameraManager mazeCameraManager;
+
+    // ===== Viewports =====
+    private FitViewport bossViewport;
+    private FitViewport mazeViewport;
+
+    // ===== 下半屏迷宫 =====
+    private GameManager gameManager;
+    private DifficultyConfig difficultyConfig;
+    private MazeRenderer mazeRenderer;
+
+
     private Player player;
     private PlayerInputHandler inputHandler;
 
@@ -46,14 +68,49 @@ public class BossFightScreen implements Screen,PlayerInputHandler.InputHandlerCa
         bossTex = new Texture(Gdx.files.internal("debug/boss.jpg"));
         inputHandler = new PlayerInputHandler();
 
-        player = new Player(
-                0, 0,
-                /* context 先不管 */,
-                Player.PlayerIndex.P1
+        // =========================
+        // 1️⃣ DifficultyConfig（Boss 专用）
+        // =========================
+        difficultyConfig = new DifficultyConfig();
+        difficultyConfig.mazeWidth = 15;
+        difficultyConfig.mazeHeight = 9;
+        difficultyConfig.seed = System.currentTimeMillis();
+
+        // =========================
+        // 2️⃣ GameManager & Maze
+        // =========================
+        gameManager = new GameManager(difficultyConfig);
+        gameManager.initializeWorld();
+
+        player = gameManager.getPlayer(); // 或 getPlayers().get(0)
+
+        // =========================
+        // 3️⃣ CameraManager（下半屏）
+        // =========================
+        mazeCameraManager = new CameraManager(difficultyConfig);
+
+        mazeViewport = new FitViewport(
+                1280,
+                360,
+                mazeCameraManager.getCamera()
         );
 
-        player.setWorldPosition(6f, 3f);
+        mazeCameraManager.centerOnPlayerImmediately(player);
 
+        // =========================
+        // 4️⃣ MazeRenderer（⚠️ 就是你这份类）
+        // =========================
+        mazeRenderer = new MazeRenderer(gameManager, difficultyConfig);
+
+        // =========================
+        // 5️⃣ Boss Camera（上半屏）
+        // =========================
+        bossCamera = new BossCamera(1280, 360);
+        bossViewport = new FitViewport(
+                1280,
+                360,
+                bossCamera.getCamera()
+        );
     }
 
     @Override
@@ -69,16 +126,58 @@ public class BossFightScreen implements Screen,PlayerInputHandler.InputHandlerCa
 
         player.update(delta);
 
-        Gdx.gl.glClearColor(0.05f, 0.05f, 0.05f, 1);
+
+        // ===== 清屏 =====
+        Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        batch.begin();
-        batch.draw(bg, 0, 0,
+        // =====================================
+        // 上半屏：Boss 演出层
+        // =====================================
+        bossViewport.setScreenBounds(
+                0,
+                Gdx.graphics.getHeight() / 2,
                 Gdx.graphics.getWidth(),
-                Gdx.graphics.getHeight());
+                Gdx.graphics.getHeight() / 2
+        );
+        bossViewport.apply();
 
-        batch.draw(playerTex, playerX, playerY);
+        batch.setProjectionMatrix(bossCamera.getCamera().combined);
+        batch.begin();
+        batch.draw(bg, 0, 0, 1280, 360);
         batch.draw(bossTex, bossX, bossY);
+        batch.end();
+
+        // =====================================
+        // 下半屏：Maze 层（暂时占位）
+        // =====================================
+        mazeViewport.setScreenBounds(
+                0,
+                0,
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight() / 2
+        );
+        mazeViewport.apply();
+
+        // 👉 这里以后会用 GameManager
+        // mazeCameraManager.update(delta, gameManager);
+        gameManager.update(delta);
+        mazeCameraManager.update(delta, gameManager);
+        batch.setProjectionMatrix(
+                mazeCameraManager.getCamera().combined
+        );
+        // —— 地板
+        mazeRenderer.renderFloor(batch);
+
+// —— 墙
+        for (MazeRenderer.WallGroup g : mazeRenderer.getWallGroups()) {
+            mazeRenderer.renderWallGroup(batch, g);
+        }
+
+// —— 实体（如果你现在有）
+// gameManager.getPlayer().render(batch);
+// enemy.render(batch);
+// exitDoor.render(batch);
 
         batch.end();
     }
@@ -111,7 +210,11 @@ public class BossFightScreen implements Screen,PlayerInputHandler.InputHandlerCa
         // - 受伤闪烁 / 无敌帧
     }
 
-    @Override public void resize(int w, int h) {}
+    @Override
+    public void resize(int width, int height) {
+        bossViewport.update(width, height / 2);
+        mazeViewport.update(width, height / 2);
+    }
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
