@@ -14,8 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 宝箱实体 (修正版)
- * 对应 Buff：攻击力+50%、每5秒回血、蓝耗减半
+ * 宝箱实体
  */
 public class Treasure extends GameObject {
 
@@ -45,7 +44,7 @@ public class Treasure extends GameObject {
     private void open(Player player) {
         isOpened = true;
 
-        // === 🎲 智能掉落逻辑 (修正版) ===
+        // === 🎲 智能掉落逻辑 ===
         // 只掉落玩家还没有的 Buff
 
         List<Integer> dropPool = new ArrayList<>();
@@ -86,12 +85,19 @@ public class Treasure extends GameObject {
             }
         } else {
             // 保底奖励 (如果全齐了)
+            // 1. 回血 (自动飘绿色 +HP)
             player.heal(20);
-            player.showNotification("宝箱里只有一瓶药水 (HP +20)");
-        }
 
-        // 播放开箱音效 (如有)
-        // AudioManager.getInstance().play(AudioType.CHEST_OPEN);
+            // 2. 🔥 修复：显示蓝色小字 POTION，代替原来的黄色乱码通知
+            if (player.getGameManager() != null && player.getGameManager().getCombatEffectManager() != null) {
+                player.getGameManager().getCombatEffectManager().spawnStatusText(
+                        player.getWorldX() * GameConstants.CELL_SIZE,
+                        player.getWorldY() * GameConstants.CELL_SIZE + 60, // 稍微高一点
+                        "POTION",
+                        Color.BLUE
+                );
+            }
+        }
 
         Logger.gameEvent("宝箱打开了！获得了增幅！");
     }

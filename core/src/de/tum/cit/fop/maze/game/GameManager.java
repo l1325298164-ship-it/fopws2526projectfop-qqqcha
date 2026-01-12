@@ -545,20 +545,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                         GameEventSource.getInstance().onPlayerDamage(p.getLives(), source);
 
-                        // HUD 提示
-                        int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
-                        if (penalty > 0) {
-                            p.showNotification("HIT!  SCORE -" + penalty);
-                        } else {
-                            p.showNotification("HIT!");
-                        }
+                        // 🔴 移除：HUD 黄色提示 (p.showNotification)
+                        // p.showNotification("HIT!  SCORE -" + penalty);
 
-                        // 🔥 修复：使用 spawnScoreText (自动红色大字)
+                        // 保留：红色大字扣分
+                        int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
                         if (combatEffectManager != null && penalty > 0) {
                             float tx = (p.getX() + 0.5f) * GameConstants.CELL_SIZE;
                             float ty = (p.getY() + 0.5f) * GameConstants.CELL_SIZE;
-
-                            // 扣分 -> 红色大字
                             combatEffectManager.spawnScoreText(tx, ty + 40, -penalty);
                         }
                     }
@@ -811,12 +805,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     keyIterator.remove();
                     onKeyCollected();
 
-                    p.showNotification("KEY ACQUIRED!  SCORE +" + ScoreConstants.SCORE_KEY);
+                    // 🔴 移除：HUD 黄色通知
+                    // p.showNotification("KEY ACQUIRED!  SCORE +" + ScoreConstants.SCORE_KEY);
 
-                    // 🔥 修复：蓝色大字 -> 蓝色小字 + 黄色分数
                     if (combatEffectManager != null) {
-                        // 1. 蓝色小字 "KEY"
-                        combatEffectManager.spawnStatusText(fx, fy + 50, "KEY", Color.CYAN);
+                        // 1. 蓝色小字 "KEY ACQUIRED" (修改了内容)
+                        combatEffectManager.spawnStatusText(fx, fy + 50, "KEY ACQUIRED", Color.CYAN);
                         // 2. 黄色大字分数
                         combatEffectManager.spawnScoreText(fx, fy + 20, ScoreConstants.SCORE_KEY);
                     }
@@ -842,9 +836,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     GameEventSource.getInstance().onItemCollected("HEART");
                     heartIterator.remove();
 
-                    p.showNotification("HEAL +10  SCORE +" + ScoreConstants.SCORE_HEART);
+                    // 🔴 移除：HUD 黄色通知
+                    // p.showNotification("HEAL +10  SCORE +" + ScoreConstants.SCORE_HEART);
 
-                    // 🔥 修复：粉色大字 -> 绿色小字 + 黄色分数
                     if (combatEffectManager != null) {
                         // 1. 绿色小字 "HP +10"
                         combatEffectManager.spawnStatusText(fx, fy + 50, "HP +10", Color.GREEN);
@@ -872,7 +866,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     GameEventSource.getInstance().onItemCollected("TREASURE");
                     treasureIterator.remove();
 
-                    // 🔥 修复：直接使用 spawnScoreText (自动黄色大字)
                     if (combatEffectManager != null) {
                         combatEffectManager.spawnScoreText(fx, fy + 20, ScoreConstants.SCORE_TREASURE);
                     }

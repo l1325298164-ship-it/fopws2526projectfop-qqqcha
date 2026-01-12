@@ -482,7 +482,7 @@ public class Player extends GameObject {
     }
 
     // ==========================================
-    // 🔥 受伤 -> 小字 RED "HP -x"
+    // 受伤 -> 小字 RED "HP -x"
     // ==========================================
     public void takeDamage(int damage) {
         if (isDead || damageInvincible || dashInvincible) return;
@@ -513,7 +513,7 @@ public class Player extends GameObject {
     }
 
     // ==========================================
-    // 🔥 回血 -> 小字 GREEN "HP +x"
+    // 回血 -> 小字 GREEN "HP +x"
     // ==========================================
     public void heal(int amount) {
         if (isDead) return;
@@ -526,7 +526,6 @@ public class Player extends GameObject {
 
         int actualHeal = this.lives - oldLives;
 
-        // 仅当实际回血量 > 0 时飘字
         if (actualHeal > 0 && gameManager != null && gameManager.getCombatEffectManager() != null) {
             gameManager.getCombatEffectManager().spawnStatusText(
                     this.worldX * GameConstants.CELL_SIZE,
@@ -669,7 +668,7 @@ public class Player extends GameObject {
     }
 
     // ==========================================
-    // 🔥 BUFF -> 小字 BLUE
+    // BUFF -> 小字 BLUE (已移除 showNotification)
     // ==========================================
 
     public void activateAttackBuff() {
@@ -683,7 +682,6 @@ public class Player extends GameObject {
                         Color.BLUE
                 );
             }
-            showNotification("Buff Acquired: ATK +50%!");
             Logger.gameEvent("acquire ATK Buff");
         }
     }
@@ -699,7 +697,6 @@ public class Player extends GameObject {
                         Color.BLUE
                 );
             }
-            showNotification("Buff Acquired: Auto-Regen!");
             Logger.gameEvent("acquire HP Buff");
         }
     }
@@ -715,7 +712,6 @@ public class Player extends GameObject {
                         Color.BLUE
                 );
             }
-            showNotification("Buff Acquired: Mana Saver (-50% Cost)!");
             Logger.gameEvent("acquire Mana Buff");
         }
     }
@@ -748,5 +744,10 @@ public class Player extends GameObject {
         if (isDead) return;
         isCasting = true;
         castAnimTimer = 0f;
+    }
+
+    // 🔥 新增接口：允许外部访问 GameManager (用于 Treasure 等实体调用特效)
+    public GameManager getGameManager() {
+        return gameManager;
     }
 }
