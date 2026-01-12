@@ -145,7 +145,7 @@ public class BossFightScreen implements Screen {
         }
         update(delta);
 
-        if (transitionState == PhaseTransitionState.NONE) {
+        if (!isMazeFrozen()) {
             gameManager.update(delta);
         }
         // ===== 清屏 =====
@@ -501,6 +501,9 @@ public class BossFightScreen implements Screen {
             }
         }
     }
-
+    private boolean isMazeFrozen() {
+        return transitionState != PhaseTransitionState.NONE
+                || bossDeathState != BossDeathState.NONE;
+    }
 
 }
