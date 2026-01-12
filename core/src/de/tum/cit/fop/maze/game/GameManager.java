@@ -839,9 +839,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     // 🔴 移除：HUD 黄色通知
                     // p.showNotification("HEAL +10  SCORE +" + ScoreConstants.SCORE_HEART);
 
+                    // 🔥 修复：删除手动 HP 飘字，完全交给 Player.heal() 处理
                     if (combatEffectManager != null) {
-                        // 1. 绿色小字 "HP +10"
-                        combatEffectManager.spawnStatusText(fx, fy + 50, "HP +10", Color.GREEN);
                         // 2. 黄色大字分数
                         combatEffectManager.spawnScoreText(fx, fy + 20, ScoreConstants.SCORE_HEART);
                     }
