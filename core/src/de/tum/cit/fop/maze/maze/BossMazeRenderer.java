@@ -2,6 +2,7 @@ package de.tum.cit.fop.maze.maze;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -12,6 +13,7 @@ import de.tum.cit.fop.maze.game.GameManager;
 import java.util.Random;
 
 public class BossMazeRenderer extends MazeRenderer {
+    private Texture bossFloorTexture;
 
     // ⭐ Boss 专用墙高度倍率（你要改的就在这）
     private static final float BOSS_WALL_HEIGHT_MULT = 1f;
@@ -27,7 +29,24 @@ public class BossMazeRenderer extends MazeRenderer {
     public BossMazeRenderer(GameManager gm, DifficultyConfig difficultyConfig) {
         super(gm, difficultyConfig);
         loadBossWallTextures();
+        loadBossFloorTexture();
     }
+
+    private void loadBossFloorTexture() {
+        bossFloorTexture = new Texture(
+                Gdx.files.internal("Wallpaper/boss/floor.png")
+        );
+    }
+    @Override
+    public void renderFloor(SpriteBatch batch) {
+        if (bossFloorTexture == null) return;
+
+        float w = difficultyConfig.mazeWidth * GameConstants.CELL_SIZE;
+        float h = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;
+
+        batch.draw(bossFloorTexture, 0, 0, w, h);
+    }
+
 
     private void loadBossWallTextures() {
         FileHandle fh = Gdx.files.internal("Wallpaper/boss/wallpaper.atlas");
