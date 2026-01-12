@@ -13,11 +13,15 @@ import java.util.List;
 
 public class CombatEffectManager {
     private static final int MAX_EFFECTS = 200;
-    
+
     private final List<CombatEffect> effects;
     private final CombatParticleSystem particleSystem;
-    private final BitmapFont font;
-    
+
+    // 分数专用字体 (Big Font, 0-9, + -)
+    private final BitmapFont scoreFont;
+    // 通用文本字体 (Small Font, A-Z, a-z, 0-9)
+    private final BitmapFont textFont;
+
     private int maxEffectsInFrame = 0;
     private int effectsRemovedByLimit = 0;
 
@@ -25,22 +29,27 @@ public class CombatEffectManager {
         this.effects = new ArrayList<>();
         this.particleSystem = new CombatParticleSystem();
 
-        // 🔥 [修复] 安全加载字体，防止崩溃
-        BitmapFont tmpFont;
+        // 1. 加载分数大字体 (Big)
+        BitmapFont tmpScoreFont;
         try {
             if (Gdx.files.internal("ui/font.fnt").exists()) {
-                tmpFont = new BitmapFont(Gdx.files.internal("ui/font.fnt"));
+                tmpScoreFont = new BitmapFont(Gdx.files.internal("ui/font.fnt"));
             } else {
-                Gdx.app.error("CombatEffectManager", "ui/font.fnt not found, using default font.");
-                tmpFont = new BitmapFont(); // 使用 LibGDX 默认字体
+                Gdx.app.error("CombatEffectManager", "ui/font.fnt not found, using default.");
+                tmpScoreFont = new BitmapFont();
             }
         } catch (Exception e) {
-            Gdx.app.error("CombatEffectManager", "Error loading font: " + e.getMessage());
-            tmpFont = new BitmapFont();
+            Gdx.app.error("CombatEffectManager", "Error loading score font: " + e.getMessage());
+            tmpScoreFont = new BitmapFont();
         }
-        this.font = tmpFont;
-        this.font.setUseIntegerPositions(false);
-        this.font.getData().setScale(0.8f);
+        this.scoreFont = tmpScoreFont;
+        this.scoreFont.setUseIntegerPositions(false);
+        this.scoreFont.getData().setScale(0.8f);
+
+        // 2. 加载通用小字体 (Small)
+        this.textFont = new BitmapFont();
+        this.textFont.setUseIntegerPositions(false);
+        this.textFont.getData().setScale(1.0f);
     }
 
     public void update(float delta) {
@@ -73,7 +82,7 @@ public class CombatEffectManager {
         if (effects.size() >= MAX_EFFECTS) {
             CombatEffect oldestEffect = null;
             float minRemainingTime = Float.MAX_VALUE;
-            
+
             for (CombatEffect e : effects) {
                 float remainingTime = e.maxDuration - e.timer;
                 if (remainingTime < minRemainingTime && remainingTime > 0) {
@@ -91,12 +100,58 @@ public class CombatEffectManager {
         effects.add(effect);
     }
 
-    public void spawnSlash(float x, float y, float angle, int type) {
-        safeAddEffect(new SlashEffect(x, y, angle, type));
+    // ==========================================
+    // 🔥 核心修改：强制样式分离
+    // ==========================================
+
+    /**
+     * 【大字专用】仅用于显示分数
+     * 自动处理颜色：正分金色，负分红色
+     * 自动处理前缀：+ / -
+     */
+    public void spawnScoreText(float x, float y, int score) {
+        if (score == 0) return;
+
+        String text = (score > 0 ? "+" : "") + score;
+        // 强制颜色：正分 GOLD，负分 RED
+        Color color = (score > 0) ? Color.GOLD : Color.RED;
+
+        safeAddEffect(new FloatingTextEffect(x, y, text, color, scoreFont));
     }
 
+    /**
+     * 【小字专用】用于 HP, KEY, BUFF 等
+     * 使用默认字体，支持字母
+     */
+    public void spawnStatusText(float x, float y, String text, Color color) {
+        if (text == null || text.isEmpty()) return;
+        safeAddEffect(new FloatingTextEffect(x, y, text, color, textFont));
+    }
+
+    /**
+     * [保留兼容] 如果外部还在调用这个，我们进行严格清洗
+     */
     public void spawnFloatingText(float x, float y, String text, Color color) {
-        safeAddEffect(new FloatingTextEffect(x, y, text, color, font));
+        if (text == null) return;
+
+        // 强制清洗，防止 "SCORE" 或 "Key" 混入大字字体导致方框
+        String cleanText = text.replace("SCORE", "")
+                .replace("Score", "")
+                .replace("KEY", "")
+                .replace("Key", "")
+                .replace("key", "")
+                .replace(":", "")
+                .trim();
+
+        if (cleanText.isEmpty()) return;
+
+        safeAddEffect(new FloatingTextEffect(x, y, cleanText, color, scoreFont));
+    }
+
+    // ==========================================
+
+    public void spawnSlash(float x, float y, float angle, int type) {
+        safeAddEffect(new SlashEffect(x, y, angle, type));
     }
 
     public void spawnDash(float x, float y, float directionAngle) {
@@ -127,19 +182,20 @@ public class CombatEffectManager {
                 effectsRemovedByLimit
         );
     }
-    
+
     public void resetPerformanceStats() {
         maxEffectsInFrame = 0;
         effectsRemovedByLimit = 0;
     }
-    
+
     public int getActiveEffectCount() {
         return effects.size();
     }
-    
+
     public void dispose() {
         effects.clear();
-        if (font != null) font.dispose();
+        if (scoreFont != null) scoreFont.dispose();
+        if (textFont != null) textFont.dispose();
         particleSystem.clear();
     }
 }
