@@ -940,7 +940,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     /* ---------- Treasures ---------- */
     private void generateTreasures() {
         // 🔥 [Treasure] 智能生成 3 个宝箱
-        int targetCount = 20;
+        int targetCount = 3;
         int spawned = 0;
         int attempts = 0;
 
@@ -986,8 +986,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                         }
                     }
                 }
-                // 终极回退：返回玩家位置（应该不会到这里）
-                return new int[]{player.getX(), player.getY()};
+                if (player != null) {
+                    return new int[]{player.getX(), player.getY()};
+                } else {
+                    int cx = maze[0].length / 2;
+                    int cy = maze.length / 2;
+                    return new int[]{cx, cy};
+                }
             }
         } while (maze[y][x] == 0 || isOccupied(x, y)); // 🔥 新增 isOccupied 检查
 

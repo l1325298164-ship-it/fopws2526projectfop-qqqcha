@@ -154,6 +154,19 @@ public class DifficultyConfig {
                     1.3f,
                     0
             );
+            case BOSS -> new DifficultyConfig(
+                    Difficulty.BOSS, 15, 9, 0,
+
+                    5, 3, 0, 0,   // enemies
+                    0, 0, 0, 0,   // traps
+
+                    200,
+                    1.0f,
+                    1.0f,
+                    0
+            );
+
+
         };
     }
 }

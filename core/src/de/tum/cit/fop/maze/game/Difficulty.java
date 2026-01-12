@@ -5,5 +5,6 @@ public enum Difficulty {
     NORMAL,
     HARD,
     TUTORIAL,
-    ENDLESS
+    ENDLESS,
+    BOSS
 }
