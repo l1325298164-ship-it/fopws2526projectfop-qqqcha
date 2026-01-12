@@ -155,7 +155,9 @@ public abstract class Ability {
             onUpgrade();
         }
     }
-
+    public void setLevel(int level) {
+        this.level = level;
+    }
     public void forceReset() {
         active = false;
         ready = true;

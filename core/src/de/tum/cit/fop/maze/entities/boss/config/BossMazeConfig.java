@@ -1,13 +1,12 @@
 package de.tum.cit.fop.maze.entities.boss.config;
 
-import com.badlogic.gdx.scenes.scene2d.ui.List;
-
-import java.util.Map;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ObjectMap;
 
 public class BossMazeConfig {
 
     public Base base;
-    public List<Phase> phases;
+    public Array<Phase> phases;
 
     public static class Base {
         public int bossMaxHp;
@@ -19,12 +18,10 @@ public class BossMazeConfig {
     }
 
     public static class Phase {
-        public float time;
+        public float duration;
         public int mazeWidth;
         public int mazeHeight;
-
-        // ✅ 就写在这里
-        public Map<String, Integer> enemies;
-        public Map<String, Integer> traps;
+        public ObjectMap<String, Integer> enemies;
+        public ObjectMap<String, Integer> traps;
     }
 }

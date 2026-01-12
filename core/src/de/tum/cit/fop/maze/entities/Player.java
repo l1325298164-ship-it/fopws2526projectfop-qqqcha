@@ -61,6 +61,14 @@ public class Player extends GameObject {
         gm.onTreasureOpened(this, treasure);
     }
 
+    public void setLives(int lives) {
+        this.lives = lives;
+    }
+
+    public void setMana(float mana) {
+        this.mana = mana;
+    }
+
 
     //双人模式
     public enum PlayerIndex {
