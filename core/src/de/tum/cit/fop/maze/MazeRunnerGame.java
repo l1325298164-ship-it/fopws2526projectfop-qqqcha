@@ -243,6 +243,17 @@ public class MazeRunnerGame extends Game {
 
 
         super.setScreen(screen);
+
+        // ✅ 1️⃣ 还原 OpenGL viewport 为整屏
+        Gdx.gl.glViewport(
+                0,
+                0,
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight()
+        );
+
+        // ✅ 2️⃣ 关闭 scissor（Stage / UI / 分屏最容易留下这个）
+        Gdx.gl.glDisable(com.badlogic.gdx.graphics.GL20.GL_SCISSOR_TEST);
     }
 
     /* =========================
