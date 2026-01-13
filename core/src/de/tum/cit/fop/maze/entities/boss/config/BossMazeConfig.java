@@ -15,6 +15,8 @@ public class BossMazeConfig {
         public int initialLives;
         public int exitCount;
         public int keyCount;
+        public float scoreMultiplies;
+        public float damageMultiplies;
     }
 
     public static class Phase {

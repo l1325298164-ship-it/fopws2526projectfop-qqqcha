@@ -32,7 +32,9 @@ public class BossDifficultyFactory {
                 base.initialLives,
                 base.enemyHpMultiplier,
                 base.enemyDamageMultiplier,
-                base.keyCount
+                base.keyCount,
+                base.scoreMultiplies,
+                base.damageMultiplies
         );
 
     }

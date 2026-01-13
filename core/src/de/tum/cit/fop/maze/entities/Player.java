@@ -20,6 +20,18 @@ public class Player extends GameObject {
 
     protected boolean isTutorial = false;
 
+    public void setLives(int lives) {
+        this.lives=lives;
+    }
+
+    public void setMana(float mana) {
+        this.mana=mana;
+    }
+
+    public void enableTutorialMode() {
+
+    }
+
     public enum PlayerIndex {
         P1, P2
     }

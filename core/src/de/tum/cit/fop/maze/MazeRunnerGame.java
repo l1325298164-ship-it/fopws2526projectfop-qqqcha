@@ -100,6 +100,10 @@ public class MazeRunnerGame extends Game {
         return baseConfig;
     }
 
+    public void debugEnterBoss() {
+
+    }
+
     public enum PV4Result { START, EXIT }
     public enum StoryStage {
         STORY_BEGIN, MAZE_GAME_TUTORIAL, PV4, MODE_MENU, MAZE_GAME, MAIN_MENU
