@@ -205,6 +205,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionTimer = 0f;
 
         Logger.gameEvent("Game reset complete");
+
+        // 🔥 修复关键 1：初始化完成后立即保存
+        // 这样即使玩家刚进游戏就退出，磁盘上也有存档文件，Continue 按钮不会消失。
+        saveGameProgress();
     }
 
     public void debugEnemiesAndBullets() {
@@ -1320,6 +1324,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void dispose() {
+        // 🔥🔥🔥【修复 2】: 退出/销毁时，强制保存当前进度！
+        // 防止玩家在自动保存间隔期(30s)内退出导致进度丢失。
+        if (player != null && !player.isDead()) {
+            saveGameProgress();
+        }
+
         GameEventSource eventSource = GameEventSource.getInstance();
         if (scoreManager != null) eventSource.removeListener(scoreManager);
         if (achievementManager != null) {
@@ -1336,10 +1346,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         for (ExitDoor door : exitDoors) door.dispose();
         for (Treasure t : treasures) t.dispose();
-        if (keyEffectManager != null) {
-            keyEffectManager.dispose();
-        }
+
+        // 等待所有异步保存写入磁盘
         StorageManager.getInstance().flushAllSaves();
+
         Logger.info("GameManager disposed");
     }
     public KeyEffectManager getKeyEffectManager() {
