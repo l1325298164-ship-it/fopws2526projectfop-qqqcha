@@ -155,7 +155,7 @@ public class DifficultyConfig {
                     0
             );
             case BOSS -> new DifficultyConfig(
-                    Difficulty.BOSS, 15, 9, 0,
+                    Difficulty.BOSS, 40, 40, 0,
 
                     5, 3, 0, 0,   // enemies
                     0, 0, 0, 0,   // traps

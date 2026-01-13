@@ -1,6 +1,5 @@
 package de.tum.cit.fop.maze.entities.boss;
 
-
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
@@ -10,7 +9,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.abilities.Ability;
@@ -28,12 +27,14 @@ import de.tum.cit.fop.maze.maze.BossMazeRenderer;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.screen.MenuScreen;
 import de.tum.cit.fop.maze.utils.BossCamera;
+import de.tum.cit.fop.maze.utils.BossMazeCamera;
 import de.tum.cit.fop.maze.utils.CameraManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 public class BossFightScreen implements Screen {
 
     private static final float BOSS_WIDTH  = 420f;
@@ -56,7 +57,7 @@ public class BossFightScreen implements Screen {
     private BossDeathState bossDeathState = BossDeathState.NONE;
     private float bossDeathTimer = 0f;
 
-    private ShapeRenderer shapeRenderer = new ShapeRenderer();
+    private ShapeRenderer shapeRenderer;
 
     private enum PhaseTransitionState {
         NONE,        // 正常游戏
@@ -80,6 +81,7 @@ public class BossFightScreen implements Screen {
     // ===== Cameras =====
     private BossCamera bossCamera;
     private CameraManager mazeCameraManager;
+    private BossMazeCamera bossMazeCamera;
 
     // ===== Viewports =====
     private Viewport bossViewport;
@@ -98,12 +100,13 @@ public class BossFightScreen implements Screen {
     private Texture bg;
     private Texture bossTex;
 
-    private float bossX;
-    private float bossY;
-
     // 屏幕尺寸
     private int screenWidth;
     private int screenHeight;
+
+    // ✅ 迷宫相机的固定视野范围（格子数）
+    private static final float MAZE_VIEW_CELLS_WIDTH = 8f;  // 横向看8格
+    private static final float MAZE_VIEW_CELLS_HEIGHT = 6f; // 纵向看6格
 
     public BossFightScreen(MazeRunnerGame game) {
         this.game = game;
@@ -121,10 +124,6 @@ public class BossFightScreen implements Screen {
         phaseSelector = new BossMazePhaseSelector(currentBossConfig.phases);
 
         // ===== boss camera =====
-        bossX = 640f - BOSS_WIDTH / 2f;
-        bossY = 40f;
-
-        // ✅ 修改：Boss相机使用整个屏幕高度
         bossCamera = new BossCamera(1280, 720);
         bossCamera.getCamera().position.set(640f, 360f, 0f);
         bossCamera.getCamera().update();
@@ -148,16 +147,6 @@ public class BossFightScreen implements Screen {
         fadeAlpha = 0f;
 
         applyPhase(phaseSelector.getCurrent());
-
-        // ✅ 3) 创建 mazeViewport - 占整个屏幕（但显示在下半部分）
-        mazeViewport = new FitViewport(
-                difficultyConfig.mazeWidth * GameConstants.CELL_SIZE,
-                difficultyConfig.mazeHeight * GameConstants.CELL_SIZE,
-                mazeCameraManager.getCamera()
-        );
-
-        // ✅ 4) 重置视口
-        resetViewportsToDefault();
     }
 
     @Override
@@ -202,11 +191,10 @@ public class BossFightScreen implements Screen {
         batch.setProjectionMatrix(bossCamera.getCamera().combined);
         batch.begin();
 
-        // ✅ 修改：使用整个屏幕绘制Boss
-        // 假设bg是1920x1080，我们需要拉伸到屏幕大小
+        // 使用整个屏幕绘制Boss
         batch.draw(bg, 0, 0, bossViewport.getWorldWidth(), bossViewport.getWorldHeight());
 
-        // ✅ 修改：调整Boss位置到屏幕中央
+        // 调整Boss位置
         float worldWidth = bossViewport.getWorldWidth();
         float worldHeight = bossViewport.getWorldHeight();
         float bossWorldX = worldWidth / 2 - BOSS_WIDTH / 2;
@@ -221,13 +209,6 @@ public class BossFightScreen implements Screen {
         );
         batch.end();
 
-        // ✅ 调试：绘制中心点
-        shapeRenderer.setProjectionMatrix(bossCamera.getCamera().combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(1, 0, 0, 1);
-        shapeRenderer.circle(worldWidth / 2, worldHeight / 2, 5);
-        shapeRenderer.end();
-
         // =====================================
         // ✅ 第二层：迷宫层（覆盖在下半部分）
         // =====================================
@@ -235,30 +216,31 @@ public class BossFightScreen implements Screen {
                 || bossDeathState == BossDeathState.TRIGGERED
                 || bossDeathState == BossDeathState.MERGING_SCREEN) {
 
-            // ✅ 关键：设置迷宫视口的位置和大小
             int mazeScreenHeight = screenHeight / 2;
             int mazeScreenY = 0;
 
             if (bossDeathState == BossDeathState.MERGING_SCREEN) {
-                // 合屏动画中：逐渐向上移动
-                int slideOffset = (int)(mergeProgress * (screenHeight / 2));
-                mazeScreenY = -slideOffset;
+                mazeScreenY = -(int)(mergeProgress * mazeScreenHeight);
             }
 
-            // 设置视口为屏幕下半部分
-            Gdx.gl.glViewport(0, mazeScreenY, screenWidth, mazeScreenHeight);
-            Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
-            Gdx.gl.glScissor(0, mazeScreenY, screenWidth, mazeScreenHeight);
+            // ✅ 设置屏幕区域（整个宽度，下半部分高度）
+            mazeViewport.setScreenBounds(
+                    0,
+                    mazeScreenY,
+                    screenWidth,
+                    mazeScreenHeight
+            );
 
-            // 清除迷宫区域的深度缓存
-            Gdx.gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);
+            // ✅ 应用视口
+            mazeViewport.apply();
 
-            // 渲染迷宫
-            mazeCameraManager.update(delta, gameManager);
+            // 更新相机位置
+            if (bossDeathState == BossDeathState.NONE) {
+                bossMazeCamera.update(delta, gameManager.getPlayer());
+            }
 
             batch.setProjectionMatrix(mazeCameraManager.getCamera().combined);
             batch.begin();
-
             mazeRenderer.renderFloor(batch);
             for (MazeRenderer.WallGroup g : mazeRenderer.getWallGroups()) {
                 mazeRenderer.renderWallGroup(batch, g);
@@ -268,14 +250,34 @@ public class BossFightScreen implements Screen {
             for (Enemy e : gameManager.getEnemies()) {
                 if (e.isActive()) e.drawSprite(batch);
             }
-
             batch.end();
 
-            // 关闭裁剪
-            Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
+            // 调试：绘制相机视图边界
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            shapeRenderer.setProjectionMatrix(mazeCameraManager.getCamera().combined);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
 
-            // 恢复全屏视口
-            Gdx.gl.glViewport(0, 0, screenWidth, screenHeight);
+            // 绘制相机边界（红色）
+            shapeRenderer.setColor(1, 0, 0, 1);
+            OrthographicCamera cam = mazeCameraManager.getCamera();
+            float camWidth = cam.viewportWidth * cam.zoom;
+            float camHeight = cam.viewportHeight * cam.zoom;
+            shapeRenderer.rect(
+                    cam.position.x - camWidth/2,
+                    cam.position.y - camHeight/2,
+                    camWidth,
+                    camHeight
+            );
+
+            // 绘制迷宫边界（绿色）
+            shapeRenderer.setColor(0, 1, 0, 1);
+            float mazeWorldWidth = difficultyConfig.mazeWidth * GameConstants.CELL_SIZE;
+            float mazeWorldHeight = difficultyConfig.mazeHeight * GameConstants.CELL_SIZE;
+            shapeRenderer.rect(0, 0, mazeWorldWidth, mazeWorldHeight);
+
+            shapeRenderer.end();
+            Gdx.gl.glDisable(GL20.GL_BLEND);
         }
 
         // =====================================
@@ -448,37 +450,92 @@ public class BossFightScreen implements Screen {
         }
 
         // ===============================
-        // 4️⃣ 相机 & Renderer
+        // 4️⃣ 相机 & Renderer - 关键修正：使用固定视野范围
         // ===============================
         mazeCameraManager = new CameraManager(dc);
+        OrthographicCamera cam = mazeCameraManager.getCamera();
+
+        // ✅ 关键修正：设置固定的视野范围（不是缩放整个迷宫）
+        // 计算固定视野的世界尺寸
+        float viewWorldWidth = MAZE_VIEW_CELLS_WIDTH * GameConstants.CELL_SIZE;
+        float viewWorldHeight = MAZE_VIEW_CELLS_HEIGHT * GameConstants.CELL_SIZE;
+
+        // 设置相机的固定视野
+        cam.viewportWidth = viewWorldWidth;
+        cam.viewportHeight = viewWorldHeight;
+        cam.zoom = 1.0f; // 不使用缩放，用固定视野
+
+        // 先更新相机
+        cam.update();
+
+        // 居中到玩家
         mazeCameraManager.centerOnPlayerImmediately(newPlayer);
 
-        mazeRenderer = new BossMazeRenderer(gameManager, dc);
+        // 创建Boss战相机控制器
+        bossMazeCamera = new BossMazeCamera(cam, dc) {
+            @Override
+            public void update(float delta, Player player) {
+                super.update(delta, player);
 
+                // ✅ 保持相机在迷宫边界内
+                float halfViewW = cam.viewportWidth * cam.zoom / 2;
+                float halfViewH = cam.viewportHeight * cam.zoom / 2;
+                float mazeWidth = dc.mazeWidth * GameConstants.CELL_SIZE;
+                float mazeHeight = dc.mazeHeight * GameConstants.CELL_SIZE;
+
+                cam.position.x = Math.max(halfViewW, Math.min(cam.position.x, mazeWidth - halfViewW));
+                cam.position.y = Math.max(halfViewH, Math.min(cam.position.y, mazeHeight - halfViewH));
+                cam.update();
+            }
+        };
+
+        mazeRenderer = new BossMazeRenderer(gameManager, dc);
         player = newPlayer;
+
+        // ✅ 关键：使用 ExtendViewport 而不是 FitViewport
+        // ExtendViewport会扩展世界而不是缩放
+
+        // 使用 ExtendViewport，设置最小世界尺寸
+        mazeViewport = new ExtendViewport(
+                viewWorldWidth,  // 最小宽度
+                viewWorldHeight, // 最小高度
+                cam
+        );
     }
 
     @Override
     public void resize(int width, int height) {
         screenWidth = width;
         screenHeight = height;
-        resetViewportsToDefault();
+
+        // Boss视口：全屏
+        bossViewport.update(width, height, true);
+
+        // ✅ 迷宫视口：使用新的屏幕尺寸
+        if (mazeViewport != null) {
+            mazeViewport.update(width, height);
+        }
     }
 
-    @Override public void pause() {}
-    @Override public void resume() {}
-    @Override public void hide() {
-        Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-    }
+    @Override
+    public void pause() {}
+
+    @Override
+    public void resume() {}
+
+    @Override
+    public void hide() {}
 
     @Override
     public void dispose() {
         batch.dispose();
+        shapeRenderer.dispose();
         bg.dispose();
         bossTex.dispose();
         if (gameManager != null) {
             gameManager.dispose();
         }
+
     }
 
     private static class PlayerSnapshot {
@@ -563,12 +620,9 @@ public class BossFightScreen implements Screen {
         }
 
         // ✅ 迷宫视口：重新创建以适应新尺寸
-        if (mazeViewport != null && difficultyConfig != null) {
-            mazeViewport.update(
-                    screenWidth,
-                    screenHeight / 2,
-                    true
-            );
+        if (mazeViewport != null && mazeCameraManager != null) {
+            mazeViewport.update(screenWidth, screenHeight);
+            // 设置固定的视野范围
             mazeCameraManager.centerOnPlayerImmediately(player);
         }
     }
