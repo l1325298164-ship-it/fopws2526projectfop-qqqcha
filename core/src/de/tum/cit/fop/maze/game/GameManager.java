@@ -33,6 +33,8 @@ import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
+    // ===== 延迟恢复用 =====
+    private GameSaveData pendingRestoreData = null;
 
     private final DifficultyConfig difficultyConfig;
     private float debugTimer = 0f;
@@ -105,6 +107,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private Chapter1Relic chapter1Relic;
     private final List<Chapter1Relic> chapterRelics = new ArrayList<>();
     private boolean viewingChapterRelic = false;
+    private boolean restoreLock = false;
+
+    //
+    private StorageManager.SaveTarget currentSaveTarget = StorageManager.SaveTarget.AUTO;
+
+
+
+
     public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode,ChapterContext chapterContext)  {
         this.chapterContext = chapterContext;
         this.inputHandler = new PlayerInputHandler();
@@ -134,14 +144,25 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         this.twoPlayerMode = twoPlayerMode;
         this.chapterMode = (chapterContext != null);
-        resetGame();
     }
     public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode) {
         this(difficultyConfig,twoPlayerMode,null);
     }
 
-    private void resetGame() {
-
+    public void resetGame() {
+        if (restoreLock) {
+            Logger.error("⛔ resetGame blocked during restore");
+            return;
+        }
+        Logger.error("🔥 RESET GAME CALLED");
+        Logger.error("  pendingRestoreData=" + pendingRestoreData);
+        Logger.error("  restoringFromSave=" + restoringFromSave);
+        Logger.error("  stackTrace:");
+        new Exception().printStackTrace();
+        Logger.error(
+                "RESET GAME | pendingRestoreData=" + (pendingRestoreData != null)
+                        + " restoringFromSave=" + restoringFromSave
+        );
         gameVariables = new HashMap<>();
         gameVariables.put("speed_mult", 1.0f);
         gameVariables.put("dmg_taken", 1.0f);
@@ -202,7 +223,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         playerSpawnPortal.startPlayerSpawnEffect(px, py);
         obstacles = new ArrayList<>();
 
-        generateLevel();
+
+
+            generateLevel();
+
+
 
         compass = new Compass(player);
 
@@ -221,18 +246,26 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         Logger.gameEvent("Game reset complete");
 
-        // 🔥 修复关键 1：初始化完成后立即保存
-        // 这样即使玩家刚进游戏就退出，磁盘上也有存档文件，Continue 按钮不会消失。
-        saveGameProgress();
     }
-    public void restoreFromSaveData(GameSaveData saveData) {
-        this.restoringFromSave = true;
+    private StorageManager.SaveTarget pendingRestoreSource;
+    public void restoreFromSaveData(GameSaveData saveData, StorageManager.SaveTarget source) {
+        Logger.error("🔥 RESTORE START source=" + source);
+
+        restoreLock = true;
+        restoringFromSave = true;
+        currentSaveTarget = source;
+
         this.gameSaveData = saveData;
-        resetGame();
-        restorePlayers(saveData);
-        this.restoringFromSave = false;
+        this.pendingRestoreData = saveData;
+
+        this.currentLevel = saveData.currentLevel;
+        this.twoPlayerMode = saveData.twoPlayerMode;
     }
     public void debugEnemiesAndBullets() {
+        if (player == null) {
+            Logger.debug("Player not initialized yet, skip debugEnemiesAndBullets");
+            return;
+        }
         Logger.debug("=== GameManager Debug ===");
         Logger.debug("Player at: (" + player.getX() + ", " + player.getY() + ")");
         Logger.debug("Total enemies: " + enemies.size());
@@ -352,13 +385,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
             return;
         }
-
         for (Player p : players) {
-            if (!p.isDead()) {
-                p.update(delta);
-            }
+            p.update(delta);
         }
-
         updateEndlessRevive(delta);
 
         boolean fogOn = fogSystem != null && fogSystem.isActive();
@@ -436,6 +465,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // ===== 🔥 统一重置执行点 =====
         if (pendingReset) {
             pendingReset = false;
+
+            if (restoreLock || restoringFromSave) return;
             resetGame();
             justReset = true;
         }
@@ -449,8 +480,15 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         autoSaveTimer += delta;
         if (autoSaveTimer >= AUTO_SAVE_INTERVAL) {
             autoSaveTimer = 0f;
+            if (restoringFromSave) return;
             if (!levelTransitionInProgress && player != null && !player.isDead()) {
-                saveGameProgress();//DONE
+
+                StorageManager.SaveTarget old = currentSaveTarget;
+                currentSaveTarget = StorageManager.SaveTarget.AUTO;
+
+                saveGameProgress();
+
+                currentSaveTarget = old; // 恢复
             }
         }
     }
@@ -1457,6 +1495,18 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void saveGameProgress() {
+        if (restoringFromSave) {
+            Logger.error("🚫 SAVE BLOCKED (restoring)");
+            return;
+        }
+
+
+        Logger.error("=== SAVE DEBUG ===");
+
+        Logger.error("local path = " + com.badlogic.gdx.Gdx.files.local("").file().getAbsolutePath());
+        Logger.error("auto file = " + com.badlogic.gdx.Gdx.files.local("save_auto.json.gz").file().getAbsolutePath());
+        Logger.error("exists? " + com.badlogic.gdx.Gdx.files.local("save_auto.json.gz").exists());
+        Logger.error("🔥 SAVE CALLED target=" + currentSaveTarget);
         if (gameSaveData == null) {
             gameSaveData = new GameSaveData();
         }
@@ -1483,7 +1533,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             ps.buffAttack = p.hasBuffAttack();
             ps.buffRegen = p.hasBuffRegen();
             ps.buffManaEfficiency = p.hasBuffManaEfficiency();
-
+            Logger.error(
+                    "SAVE CHECK buffAttack=" + p.hasBuffAttack()
+            );
             // 技能等级
             if (p.getAbilityManager() != null) {
                 for (Ability a : p.getAbilityManager().getAbilities().values()) {
@@ -1506,7 +1558,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             gameSaveData.score = Math.max(0, currentTotal - currentFinal);
         }
 
-        StorageManager.getInstance().saveGame(gameSaveData);
+        StorageManager storage = StorageManager.getInstance();
+        switch (currentSaveTarget) {
+            case SLOT_1 -> storage.saveGameToSlot(1, gameSaveData);
+            case SLOT_2 -> storage.saveGameToSlot(2, gameSaveData);
+            case SLOT_3 -> storage.saveGameToSlot(3, gameSaveData);
+        }
+
+
         Logger.info("Game progress saved: Level=" + currentLevel + ", Score=" + gameSaveData.score);
     }
 
@@ -1579,10 +1638,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             p.setMana(ps.mana);
             p.setHasKey(ps.hasKey);
 
-            if (ps.buffAttack) p.activateAttackBuff();
-            if (ps.buffRegen) p.activateRegenBuff();
-            if (ps.buffManaEfficiency) p.activateManaBuff();
-
+            p.restoreBuffState(
+                    ps.buffAttack,
+                    ps.buffRegen,
+                    ps.buffManaEfficiency
+            );
             if (p.getAbilityManager() != null) {
                 for (Ability a : p.getAbilityManager().getAbilities().values()) {
                     Map<String, Object> state = ps.abilityStates.get(a.getId());
@@ -1592,7 +1652,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 }
             }
 
+
+            p.setMovingAnim(false);
+
+            Logger.error(
+                    "RESTORE CHECK P=" + p.getPlayerIndex()
+                            + " atk=" + p.hasBuffAttack()
+                            + " regen=" + p.hasBuffRegen()
+                            + " mana=" + p.hasBuffManaEfficiency()
+            );
         }
+
     }
 
 
@@ -1772,4 +1842,112 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public boolean isViewingChapterRelic() {
         return viewingChapterRelic;
     }
+
+
+    public void setCurrentSaveTarget(StorageManager.SaveTarget target) {
+        if (target != null) {
+            this.currentSaveTarget = target;
+        }
+    }
+
+    public StorageManager.SaveTarget getCurrentSaveTarget() {
+        return currentSaveTarget;
+    }
+
+    public void applyRestoreIfNeeded() {
+        if (pendingRestoreData == null) return;
+
+        GameSaveData data = pendingRestoreData;
+
+        buildWorldFromRestore(data);
+        restorePlayers(data);
+
+        pendingRestoreData = null;
+        restoringFromSave = false;
+        restoreLock = false;
+        pendingReset = false;
+
+        Logger.error("🔥 APPLY RESTORE DATA (FINAL)");
+    }
+
+
+    private void buildWorldFromRestore(GameSaveData data) {
+
+        Logger.error("🧩 buildWorldFromRestore START");
+
+        // ===== 0. 基础 =====
+        restoringFromSave = true;
+
+        // ===== 1. Maze =====
+        this.maze = deepCopyMaze(data.maze);
+
+        // ===== 2. 清空世界 =====
+        enemies.clear();
+        traps.clear();
+        hearts.clear();
+        heartContainers.clear();
+        treasures.clear();
+        keys.clear();
+        exitDoors.clear();
+        obstacles.clear();
+        players.clear();
+        bullets.clear();
+
+        // ===== 3. Players =====
+        for (Map.Entry<String, PlayerSaveData> entry : data.players.entrySet()) {
+
+            Player.PlayerIndex index =
+                    Player.PlayerIndex.valueOf(entry.getKey());
+
+            PlayerSaveData ps = entry.getValue();
+
+            Player p = new Player(ps.x, ps.y, this, index);
+            players.add(p);
+        }
+
+        syncSinglePlayerRef();
+
+        // ===== 4. Exit Doors =====
+        generateExitDoors();
+
+        // ===== 5. Level Content（重新生成即可）=====
+        generateEnemies();
+        generateTraps();
+        generateHearts();
+        generateTreasures();
+        generateKeys();
+        generateMovingWalls();
+
+        // ===== 6. Fog / Cat =====
+        if (difficultyConfig.difficulty == Difficulty.HARD) {
+            fogSystem = new FogSystem();
+            cat = new CatFollower(player, this);
+        } else {
+            fogSystem = null;
+            cat = null;
+        }
+
+        // ===== 7. Effect Managers（必须全部 new）=====
+        keyEffectManager     = new KeyEffectManager();
+        itemEffectManager    = new ItemEffectManager();
+        trapEffectManager    = new TrapEffectManager();
+        combatEffectManager  = new CombatEffectManager();
+
+        bobaBulletEffectManager.clearAllBullets(false);
+
+        // ===== 8. Compass =====
+        if (player != null) {
+            compass = new Compass(player);
+        }
+
+        // ===== 9. 状态 =====
+        levelTransitionInProgress = false;
+        currentExitDoor = null;
+        levelTransitionTimer = 0f;
+
+        Logger.error("🧩 buildWorldFromRestore DONE");
+    }
+
+
+
 }

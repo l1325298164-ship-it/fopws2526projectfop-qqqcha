@@ -373,7 +373,10 @@ public class MazeRunnerGame extends Game {
         this.difficultyConfig = DifficultyConfig.of(savedDifficulty);
         this.setTwoPlayerMode(saveData.twoPlayerMode);
         this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
-        this.gameManager.restoreFromSaveData(saveData);
+        this.gameManager.restoreFromSaveData(
+                saveData,
+                StorageManager.SaveTarget.AUTO
+        );
 
         if (savedDifficulty == Difficulty.ENDLESS) {
             setScreen(new EndlessScreen(this, difficultyConfig));
@@ -385,7 +388,6 @@ public class MazeRunnerGame extends Game {
     public void startNewGameFromMenu() {
         Logger.info("Starting new game from menu...");
         StorageManager storage = StorageManager.getInstance();
-        storage.deleteSave();
 
         Difficulty difficulty = this.currentDifficulty != null ? this.currentDifficulty : Difficulty.NORMAL;
         // 强制跳过 StoryLoadingScreen，直接开始游戏
@@ -451,7 +453,10 @@ public class MazeRunnerGame extends Game {
 
         // 🔥 关键：重建 GameManager
         this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
-        this.gameManager.restoreFromSaveData(saveData);
+        this.gameManager.restoreFromSaveData(
+                saveData,
+                StorageManager.SaveTarget.fromSlot(slot)
+        );
 
         // 🔥 切屏
         if (savedDifficulty == Difficulty.ENDLESS) {

@@ -38,7 +38,7 @@ public class GameSaveData {
     public boolean twoPlayerMode = false;
 
     // --- 玩家状态 ---
-    public Map<Player.PlayerIndex, PlayerSaveData> players = new HashMap<>();
+    public Map<String, PlayerSaveData> players = new HashMap<>();
 
     // ==========================================
     // 2. ScoreManager 状态同步 (用于读档恢复)

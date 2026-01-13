@@ -24,8 +24,34 @@ import java.util.zip.GZIPOutputStream;
  * 4. 线程安全，支持等待所有异步任务完成
  */
 public class StorageManager {
+    public void saveGameSync(GameSaveData data) {
+        if (data == null) return;
+
+        // 同步存：用于结算、退出、关键节点
+        writeJsonSafelySync(AUTO_SAVE_FILE, data, compressionEnabled);
+    }
+
+
+    public enum SaveTarget {
+        AUTO,
+        SLOT_1,
+        SLOT_2,
+        SLOT_3;
+
+        public static SaveTarget fromSlot(int slot) {
+            return switch (slot) {
+                case 1 -> SLOT_1;
+                case 2 -> SLOT_2;
+                case 3 -> SLOT_3;
+                default -> AUTO;
+            };
+        }
+    }
+
+
     // ===== 主存档 Slot =====
     public static final int MAX_SAVE_SLOTS = 3;
+    private static final String AUTO_SAVE_FILE = "save_auto.json.gz";
 
     private static final String SAVE_SLOT_PATTERN = "save_slot_%d.json.gz";
     // ==========================================
@@ -323,49 +349,38 @@ public class StorageManager {
     // 1. 单局存档 (GameSaveData)
     // ==========================================
     
-    /**
-     * 保存游戏进度（异步，压缩）
-     */
-    public void saveGame(GameSaveData data) {
-        if (asyncEnabled) {
-            saveGameToSlot(1, data);
-            Logger.debug("Game progress queued for async save.");
-        } else {
-            saveGameToSlot(1, data);
-            Logger.info("Game progress saved.");
-        }
-    }
-
-    /**
-     * ✨ [新增] 同步保存游戏进度（用于关键节点，如关卡结束）
-     */
-    public void saveGameSync(GameSaveData data) {
-        writeJsonSafelySync(getSlotFileName(1), data, compressionEnabled);
-        Logger.info("Game progress saved to slot 1 (sync).");
-    }
 
 
     /**
      * 加载游戏进度（支持压缩和旧格式）
      */
     public GameSaveData loadGame() {
-        // 1️⃣ 优先 Slot 1
+
+        // 1️⃣ AUTO（真正的 continue）
+        GameSaveData auto = loadAutoSave();
+        if (auto != null) {
+            Logger.info("Loaded auto save");
+            return auto;
+        }
+
+        // 2️⃣ Slot 1（手动存档）
         GameSaveData slot1 = loadGameFromSlot(1);
         if (slot1 != null) {
             Logger.info("Loaded save from slot 1");
             return slot1;
         }
 
-        // 2️⃣ 兼容旧存档
+        // 3️⃣ legacy
         FileHandle legacy = getFile(SAVE_FILE_NAME);
         if (legacy.exists()) {
-            Logger.warning("Legacy save detected, loading as slot 1");
+            Logger.warning("Legacy save detected");
             return loadGameInternal(SAVE_FILE_NAME);
         }
 
         Logger.info("No save file found");
         return null;
     }
+
 
 
     public void deleteSave() {
@@ -385,11 +400,12 @@ public class StorageManager {
         Logger.info("All save files deleted.");
     }
 
-    public boolean hasSaveFile() {
+    public boolean hasAnySave() {
+        if (hasAutoSave()) return true;
         for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
             if (hasSaveInSlot(i)) return true;
         }
-        return getFile(SAVE_FILE_NAME).exists(); // legacy
+        return getFile(SAVE_FILE_NAME).exists();
     }
 
 
@@ -513,6 +529,27 @@ public class StorageManager {
 
         Logger.info("Save slot " + slot + " does not exist.");
         return false;
+    }
+    public void saveGameAuto(SaveTarget target,GameSaveData data) {
+
+        if (target == SaveTarget.AUTO) {
+            Logger.warning("AUTO SAVE DISABLED - skipping");
+            return; // 🔥 直接取消
+        }
+        writeJsonSafelyAsync(AUTO_SAVE_FILE, data, compressionEnabled);
+    }
+
+    public GameSaveData loadAutoSave() {
+        return loadGameInternal(AUTO_SAVE_FILE);
+    }
+
+    public boolean hasAutoSave() {
+        return getFile(AUTO_SAVE_FILE).exists();
+    }
+
+    public void deleteAutoSave() {
+        FileHandle f = getFile(AUTO_SAVE_FILE);
+        if (f.exists()) f.delete();
     }
 
 }

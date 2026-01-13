@@ -151,7 +151,7 @@ public class MenuScreen implements Screen {
         buttonTable.clear();
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
-        boolean hasSave = storage.hasSaveFile();
+        boolean hasSave = storage.hasAnySave();
 
         float buttonWidth = getButtonWidth();
         float buttonPadding = Gdx.graphics.getWidth() > 1920 ? 18f : 15f;
