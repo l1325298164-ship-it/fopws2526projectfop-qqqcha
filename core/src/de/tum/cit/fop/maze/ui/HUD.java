@@ -189,6 +189,9 @@ public class HUD {
             } else {
                 renderSinglePlayerHUD(uiBatch);
             }
+            // 🔥 修复：将分数渲染移到这里，确保单人/双人都能显示，且根据模式自动调整位置
+            renderScore(uiBatch);
+
             renderBottomCenterHUD(uiBatch);
         } catch (Exception e) {
             Logger.error("HUD render failed"+e);
@@ -217,81 +220,71 @@ public class HUD {
         font.draw(uiBatch, "start: " + gameManager.getCurrentLevel(),
                 20, Gdx.graphics.getHeight() - 120);
 
-        //new
-        renderScore(uiBatch);
         renderCat(uiBatch);
         renderCompassAsUI(uiBatch);
         renderDashIcon(uiBatch, player, false);
         renderMeleeIcon(uiBatch, player, false);
         renderAchievementPopup(uiBatch);
 
-            float startX = 20;
-            float startY = Gdx.graphics.getHeight() - 250;
-            float iconSize = 48; // 图标大小
-            float gap = 60;      // 行间距加大，防止挤在一起
+        float startX = 20;
+        float startY = Gdx.graphics.getHeight() - 250;
+        float iconSize = 48; // 图标大小
+        float gap = 60;      // 行间距加大，防止挤在一起
 
-            // 1. 攻击 Buff (红色)
-            if (player.hasBuffAttack()) {
-                // 画图标
-                if (iconAtk != null) uiBatch.draw(iconAtk, startX, startY, iconSize, iconSize);
+        // 1. 攻击 Buff (红色)
+        if (player.hasBuffAttack()) {
+            if (iconAtk != null) uiBatch.draw(iconAtk, startX, startY, iconSize, iconSize);
+            font.getData().setScale(2.0f);
+            font.setColor(Color.RED);
+            font.draw(uiBatch, "ATK +50%", startX + iconSize + 10, startY + 35);
+            startY -= gap;
+        }
 
-                // 画文字 (字体放大)
-                font.getData().setScale(2.0f); // 🔥 字体放大到 2.0
-                font.setColor(Color.RED);
-                font.draw(uiBatch, "ATK +50%", startX + iconSize + 10, startY + 35);
+        // 2. 回血 Buff (绿色)
+        if (player.hasBuffRegen()) {
+            if (iconRegen != null) uiBatch.draw(iconRegen, startX, startY, iconSize, iconSize);
+            font.getData().setScale(2.0f);
+            font.setColor(Color.GREEN);
+            font.draw(uiBatch, "REGEN ON", startX + iconSize + 10, startY + 35);
+            startY -= gap;
+        }
 
-                startY -= gap;
-            }
+        // 3. 耗蓝 Buff (青色)
+        if (player.hasBuffManaEfficiency()) {
+            if (iconMana != null) uiBatch.draw(iconMana, startX, startY, iconSize, iconSize);
+            font.getData().setScale(2.0f);
+            font.setColor(Color.CYAN);
+            font.draw(uiBatch, "MANA COST -50%", startX + iconSize + 10, startY + 35);
+            startY -= gap;
+        }
 
-            // 2. 回血 Buff (绿色)
-            if (player.hasBuffRegen()) {
-                if (iconRegen != null) uiBatch.draw(iconRegen, startX, startY, iconSize, iconSize);
+        // ⚠️ 还原字体设置
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.2f);
 
-                font.getData().setScale(2.0f);
-                font.setColor(Color.GREEN);
-                font.draw(uiBatch, "REGEN ON", startX + iconSize + 10, startY + 35);
+        // ============================================
+        // 🔥 [Treasure] 屏幕中央飘字 (超大字体通知)
+        // ============================================
+        String msg = player.getNotificationMessage();
+        if (msg != null && !msg.isEmpty()) {
+            float w = Gdx.graphics.getWidth();
+            float h = Gdx.graphics.getHeight();
 
-                startY -= gap;
-            }
+            // 设置超大字体
+            font.getData().setScale(2.5f);
 
-            // 3. 耗蓝 Buff (青色)
-            if (player.hasBuffManaEfficiency()) {
-                if (iconMana != null) uiBatch.draw(iconMana, startX, startY, iconSize, iconSize);
+            // 阴影
+            font.setColor(Color.BLACK);
+            font.draw(uiBatch, msg, w / 2f - 200 + 3, h / 2f + 100 - 3);
 
-                font.getData().setScale(2.0f);
-                font.setColor(Color.CYAN);
-                font.draw(uiBatch, "MANA COST -50%", startX + iconSize + 10, startY + 35);
+            // 正文
+            font.setColor(Color.YELLOW);
+            font.draw(uiBatch, msg, w / 2f - 200, h / 2f + 100);
 
-                startY -= gap;
-            }
-
-            // ⚠️ 还原字体设置 (非常重要，否则界面其他地方会乱)
+            // 还原
             font.setColor(Color.WHITE);
-            font.getData().setScale(1.2f); // 还原回默认大小
-
-            // ============================================
-            // 🔥 [Treasure] 屏幕中央飘字 (超大字体通知)
-            // ============================================
-            String msg = player.getNotificationMessage();
-            if (msg != null && !msg.isEmpty()) {
-                float w = Gdx.graphics.getWidth();
-                float h = Gdx.graphics.getHeight();
-
-                // 设置超大字体
-                font.getData().setScale(2.5f); // 🔥 2.5倍大小
-
-                // 阴影
-                font.setColor(Color.BLACK);
-                font.draw(uiBatch, msg, w / 2f - 200 + 3, h / 2f + 100 - 3);
-
-                // 正文
-                font.setColor(Color.YELLOW);
-                font.draw(uiBatch, msg, w / 2f - 200, h / 2f + 100);
-
-                // 还原
-                font.setColor(Color.WHITE);
-                font.getData().setScale(1.2f);
-            }
+            font.getData().setScale(1.2f);
+        }
 
     }
 
@@ -328,7 +321,7 @@ public class HUD {
             );
         }
 
-        // ===== 成就弹窗 ===== new
+        // ===== 成就弹窗 =====
         renderAchievementPopup(uiBatch);
 
         int topY = Gdx.graphics.getHeight() - 90;
@@ -577,24 +570,33 @@ public class HUD {
     }
 
     // =========================================================
-    // Score
+    // Score (修复后)
     private void renderScore(SpriteBatch uiBatch) {
         int score = gameManager.getScore();
-
         String text = "SCORE: " + formatScore(score);
 
         font.getData().setScale(1.5f);
         GlyphLayout layout = new GlyphLayout(font, text);
 
-        float x = Gdx.graphics.getWidth() - layout.width - 30;
+        float x;
+        // 🔥 如果是双人模式，分数居中显示；否则在右上角
+        if (gameManager.isTwoPlayerMode()) {
+            x = (Gdx.graphics.getWidth() - layout.width) / 2f;
+        } else {
+            x = Gdx.graphics.getWidth() - layout.width - 30;
+        }
+
         float y = Gdx.graphics.getHeight() - 60;
 
+        // 阴影
         font.setColor(0f, 0f, 0f, 0.7f);
         font.draw(uiBatch, text, x + 2, y - 2);
 
+        // 正文
         font.setColor(Color.GOLD);
         font.draw(uiBatch, text, x, y);
 
+        // 还原
         font.setColor(Color.WHITE);
         font.getData().setScale(1.2f);
     }
@@ -621,19 +623,13 @@ public class HUD {
 
 
 
-        float maxMana = Math.max(1f, player.getMaxMana()); // ⭐ 关键
+        float maxMana = Math.max(1f, player.getMaxMana());
         float percent = Math.max(
                 0f,
                 Math.min(1f, player.getMana() / maxMana)
         );
 
-        Logger.debug(
-                "[ManaBar] percent | playerId=" + playerId +
-                        " percent=" + percent +
-                        " (mana=" + player.getMana() + "/" + maxMana + ")"
-        );
-
-
+        // barHeight 计算
         float barHeight = barWidth * (32f / 256f);
 
         float fillInsetLeft  = barWidth * 0.02f;
@@ -642,14 +638,11 @@ public class HUD {
         float fillStartX = x + fillInsetLeft;
         float fillWidth  = barWidth - fillInsetLeft - fillInsetRight;
 
-        // ✅ 屏幕上的“帽子宽度”（跟 barWidth 成比例）
-        float capW = fillWidth * 0.06f;          // 你可以微调 0.05~0.08
-        capW = Math.max(8f, capW);              // 防止太小
+        float capW = fillWidth * 0.06f;
+        capW = Math.max(8f, capW);
 
-        // ✅ 贴图中用于裁剪的“帽子宽度”（贴图像素单位）
         int capSrcW = (int)(manaFill.getWidth() * 0.09f);
 
-        // ✅ 中段可用宽度
         float liquidMaxW = Math.max(0f, fillWidth - capW * 2f);
         float liquidW    = liquidMaxW * percent;
 
@@ -693,7 +686,7 @@ public class HUD {
             );
         }
 
-        // --- 右帽（只有 percent>0 才画）---
+        // --- 右帽 ---
         uiBatch.draw(
                 manaFill,
                 fillStartX + capW + liquidW,
@@ -707,11 +700,10 @@ public class HUD {
                 false, false
         );
 
-        // === 特效（用 fillWidth / percent，不要用 capWidth 原来的像素）===
         renderManaGlowEffect(uiBatch,  manaGlow, fillStartX, y, fillWidth, barHeight, percent);
         updateAndRenderLongTrail(
                 uiBatch,
-                manaGlow,      // ⭐ 同一个 manaGlow
+                manaGlow,
                 particles,
                 playerId,
                 fillStartX,
@@ -720,8 +712,6 @@ public class HUD {
                 barHeight,
                 percent
         );
-
-
 
         if (manaDeco != null) {
             float decoWidth = barWidth * 0.12f;
@@ -740,14 +730,13 @@ public class HUD {
             uiBatch.draw(manaDeco, decoX, y, decoWidth, barHeight);
         }
 
-
         uiBatch.setColor(1f, 1f, 1f, 1f);
     }
 
 
     private void renderManaGlowEffect(
             SpriteBatch uiBatch,
-            Texture manaGlow,   // ⭐ 新增
+            Texture manaGlow,
             float fillStartX,
             float y,
             float fillWidth,
@@ -789,7 +778,7 @@ public class HUD {
 
     private void updateAndRenderLongTrail(
             SpriteBatch uiBatch,
-            Texture manaGlow,        // ⭐ 加这一行
+            Texture manaGlow,
             List<ManaParticle> particles,
             int playerId,
             float fillStartX,
@@ -799,9 +788,8 @@ public class HUD {
             float percent
     )
     {
-        // 🔒 只有满蓝才显示拖尾
         if (percent < 0.999f) {
-            particles.clear();   // 防止拖尾残影
+            particles.clear();
             return;
         }
         if (manaGlow == null) return;
@@ -835,13 +823,10 @@ public class HUD {
         // === 粒子渲染 ===
         uiBatch.setBlendFunction(GL_SRC_ALPHA, GL_ONE);
 
-
-
         for (int i = particles.size() - 1; i >= 0; i--) {
             ManaParticle p = particles.get(i);
             p.life -= delta;
 
-            // ⭐ 统一使用 fillStartX 作为消失边界
             if (p.life <= 0 || p.x < fillStartX) {
                 particles.remove(i);
                 continue;
@@ -933,7 +918,7 @@ public class HUD {
             }
         }
 
-        /* ================= 心数计算（你的规则） ================= */
+        /* ================= 心数计算 ================= */
         int fullHearts = lives / 10;
         int remainder = lives % 10;
 

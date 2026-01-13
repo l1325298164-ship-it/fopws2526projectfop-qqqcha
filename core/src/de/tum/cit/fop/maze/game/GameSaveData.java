@@ -30,6 +30,10 @@ public class GameSaveData {
     /** ✨ [新增] 游戏难度（用于恢复存档时使用正确的难度配置） */
     public String difficulty = "NORMAL";
 
+    /** ✨ [新增] 单/双人模式（用于 Continue 时恢复正确的玩家数量） */
+    // 默认单人模式（旧存档缺字段时也会落到 false）
+    public boolean twoPlayerMode = false;
+
     // --- 玩家状态 ---
     public int lives = 0;
     public int maxLives = 0;

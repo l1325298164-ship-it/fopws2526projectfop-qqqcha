@@ -1,5 +1,6 @@
 package de.tum.cit.fop.maze.entities;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -14,79 +15,11 @@ import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
+
+    private GameManager gameManager;
+
     protected boolean isTutorial = false;
-    public Player(int x, int y) {
-        super(x, y);
 
-        this.worldX = x;
-        this.worldY = y;
-        this.targetX = x;
-        this.targetY = y;
-
-        this.playerIndex = PlayerIndex.P1;
-        this.isTutorial = true;
-
-        // ===== 生命值随便给个安全值 =====
-        this.lives = 1;
-        this.maxLives = 1;
-
-        // ===== 贴图 & 动画（必须）=====
-        frontAtlas = new TextureAtlas("Character/player1/front.atlas");
-        backAtlas  = new TextureAtlas("Character/player1/back.atlas");
-        leftAtlas  = new TextureAtlas("Character/player1/left.atlas");
-        rightAtlas = new TextureAtlas("Character/player1/right.atlas");
-
-        frontAnim = new Animation<>(0.1f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
-        backAnim  = new Animation<>(0.1f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
-        leftAnim  = new Animation<>(0.1f, leftAtlas.getRegions(), Animation.PlayMode.LOOP);
-        rightAnim = new Animation<>(0.1f, rightAtlas.getRegions(), Animation.PlayMode.LOOP);
-
-        this.abilityManager = null;
-    }
-
-    /**
-     * 双人模式复活专用
-     */
-    public void reviveAt(int x, int y, int hp) {
-        // ===== 基础状态 =====
-        this.isDead = false;
-
-        this.lives = Math.min(hp, this.maxLives);
-        if (this.lives <= 0) {
-            this.lives = 1;
-        }
-
-        // ===== 位置 =====
-        setPosition(x, y);
-
-        // ===== 无敌帧（防止刚复活被秒）=====
-        this.damageInvincible = true;
-        this.damageInvincibleTimer = 0f;
-
-        this.hitFlash = false;
-        this.hitFlashTimer = 0f;
-
-        // ===== 移动 / 行为状态重置 =====
-        this.inHitStun = false;
-        this.hitStunTimer = 0f;
-
-        this.isAttacking = false;
-        this.attackAnimTimer = 0f;
-
-        this.isCasting = false;
-        this.castAnimTimer = 0f;
-
-        this.moving = false;
-        this.isMovingContinuous = false;
-
-        Logger.gameEvent(
-                "Player " + playerIndex + " revived at (" + x + "," + y + ") with HP=" + lives
-        );
-    }
-
-
-
-    //双人模式
     public enum PlayerIndex {
         P1, P2
     }
@@ -97,13 +30,10 @@ public class Player extends GameObject {
         return playerIndex;
     }
 
+    private static final float VISUAL_SCALE = 2.9f;
+    private static final float ANIM_SPEED_MULTIPLIER = 0.15f;
 
-
-    private static final float VISUAL_SCALE = 2.9f; // ⭐ 1.2 ~ 1.6 都很舒服
-    private static final float ANIM_SPEED_MULTIPLIER = 0.15f; // ⭐ 0.45 ~ 0.65 最舒服
-//move
-// ===== 连续移动坐标 =====
-private float worldX;
+    private float worldX;
     private float worldY;
 
     private float targetX;
@@ -111,32 +41,27 @@ private float worldX;
 
     private boolean isMovingContinuous = false;
 
-
     private boolean hasKey = false;
     private int lives;
     private int maxLives;
 
     private boolean isDead = false;
-//判定效果重新设计
-// ===== 受伤无敌（i-frame）=====
-private boolean damageInvincible = false;
+
+    private boolean damageInvincible = false;
     private float damageInvincibleTimer = 0f;
     private static final float DAMAGE_INVINCIBLE_TIME = 0.6f;
 
-    // ===== 受击闪烁（仅视觉）=====
     private boolean hitFlash = false;
     private float hitFlashTimer = 0f;
     private static final float HIT_FLASH_TIME = 0.25f;
 
-    // ===== 移动 =====
     private boolean moving = false;
     private float moveTimer = 0f;
     private static final float MOVE_COOLDOWN = 0.15f;
 
-    //
     private TextureAtlas frontAtkAtlas, backAtkAtlas, leftAtkAtlas, rightAtkAtlas;
     private Animation<TextureRegion> frontAtkAnim, backAtkAnim, leftAtkAnim, rightAtkAnim;
-    // ===== Player2 Cast (Magic) 动画 =====
+
     private TextureAtlas castAtlas;
     private Animation<TextureRegion> frontCastAnim;
     private Animation<TextureRegion> backCastAnim;
@@ -147,35 +72,23 @@ private boolean damageInvincible = false;
     private float castAnimTimer = 0f;
     private static final float CAST_DURATION = 0.8f;
 
-
-    // 攻击状态控制
     private boolean isAttacking = false;
     private float attackAnimTimer = 0f;
-    private static final float ATTACK_DURATION = 0.4f; // 假设攻击动画持续 0.4 秒
+    private static final float ATTACK_DURATION = 0.4f;
 
-    // ===== Ability System =====
     private AbilityManager abilityManager;
 
-    // ===== Mana =====
     private float mana = 100;
     private float maxMana = 100;
     private float manaRegenRate = 5.0f;
 
-    // ==========================================
-    // 🔥 [Treasure] 新增：三种唯一 Buff 状态
-    // ==========================================
-    private boolean buffAttack = false;         // 1. 攻击力 +50%
-    private boolean buffRegen = false;          // 2. 每5秒回5血
-    private boolean buffManaEfficiency = false; // 3. 耗蓝减半
+    private boolean buffAttack = false;
+    private boolean buffRegen = false;
+    private boolean buffManaEfficiency = false;
 
-    // 🔥 [Treasure] 辅助变量
-    private float regenTimer = 0f;           // 回血计时器
-    private String notificationMessage = ""; // 屏幕飘字内容
-    private float notificationTimer = 0f;    // 飘字持续时间
-
-    /* =======================================================
-       ====================== DASH ===========================
-       ======================================================= */
+    private float regenTimer = 0f;
+    private String notificationMessage = "";
+    private float notificationTimer = 0f;
 
     private boolean dashInvincible = false;
     private float dashInvincibleTimer = 0f;
@@ -184,217 +97,86 @@ private boolean damageInvincible = false;
     private float dashSpeedTimer = 0f;
 
     public static final float DASH_DURATION = 1f;
-    public static final float DASH_SPEED_MULTIPLIER = 0.35f; // delay * 0.4 = 更快
+    public static final float DASH_SPEED_MULTIPLIER = 0.35f;
 
-    public boolean useMana(int manaCost) {
-        if (buffManaEfficiency) {
-            manaCost = manaCost / 2;
-            if (manaCost < 1) manaCost = 1;
-        }
-
-        if (mana < manaCost) {
-            return false;
-        }
-        mana -= manaCost;
-        return true;
-    }
-
-    public void useAbility(int slot) {
-        if (isDead() || abilityManager == null) return;
-
-        Logger.debug("Player.useAbility(" + slot + ") called");
-
-        // 🔥 直接调用 AbilityManager.activateSlot
-        boolean success = abilityManager.activateSlot(slot);
-
-        if (success) {
-            Logger.debug("Ability activation successful");
-        } else {
-            Logger.debug("Ability activation failed");
-        }
-    }
     private boolean dashJustEnded = false;
-    public boolean onPushedBy(PushSource source, int dx, int dy, GameManager gm) {
 
-        int strength = source.getPushStrength();
-
-        int targetX = x + dx * strength;
-        int targetY = y + dy * strength;
-
-        if (!gm.canPlayerMoveTo(targetX, targetY)) {
-            // 推不动：可以选择受伤 / 硬直 / 死亡
-            takeDamage(1);//推不动扣血 移动墙扣血
-            return false;
-        }
-
-        setPosition(targetX, targetY);
-        enterHitStun(0.1f);
-
-        return true;
-    }
-    @Override
-    public void setPosition(int x, int y) {
-        super.setPosition(x, y);
-        this.worldX = x;
-        this.worldY = y;
-        this.targetX = x;
-        this.targetY = y;
-        this.isMovingContinuous = false;
-    }
-
-
-    private float hitStunTimer = 0f;
-    private boolean inHitStun = false;
-
-    private void enterHitStun(float duration) {
-        inHitStun = true;
-        hitStunTimer = duration;
-    }
-
-    public boolean didDashJustEnd() {
-        return dashJustEnded;
-    }
-
-    public void addScore(int i) {
-        score+=i;
-
-    }
-
-    public int getScore() {
-        return this.score;
-    }
-
-    public float getWorldX() {
-        return worldX;
-    }
-
-    public float getWorldY() {
-        return worldY;
-    }
-
-    public float getMaxMana() { return maxMana;
-    }
-
-
-
-
-
-    /* ======================================================= */
-
-    // ===== 朝向 =====
     public enum Direction {
         UP, DOWN, LEFT, RIGHT
     }
 
     private Direction direction = Direction.DOWN;
 
-    // ===== 动画 =====
     private TextureAtlas frontAtlas, backAtlas, leftAtlas, rightAtlas;
     private Animation<TextureRegion> frontAnim, backAnim, leftAnim, rightAnim;
     private float stateTime = 0f;
     private boolean isMovingAnim = false;
 
-    // ===== 状态效果 =====
     private boolean slowed = false;
     private float slowTimer = 0f;
 
-    // ===== 分数 =====
     private int score = 0;
 
+    private float hitStunTimer = 0f;
+    private boolean inHitStun = false;
 
-
-    /// //////////////////////////
-    public Player(int x, int y, GameManager gameManager,PlayerIndex index) {
+    public Player(int x, int y, GameManager gameManager, PlayerIndex index) {
         super(x, y);
-//        this.lives = GameConstants.MAX_LIVES;
-//        this.maxLives = GameConstants.MAX_LIVES;
-          this.lives = 200;
-          this.maxLives = 200;
+
+        this.gameManager = gameManager;
+
+        this.lives = 200;
+        this.maxLives = 200;
         this.worldX = x;
         this.worldY = y;
         this.targetX = x;
         this.targetY = y;
         this.playerIndex = index;
+
         if (playerIndex == PlayerIndex.P2) {
             loadPlayer2Animations();
-            // ===== 施法动画（magic）=====
             castAtlas = new TextureAtlas("Character/magic/player2.atlas");
 
-            frontCastAnim = new Animation<>(0.08f,
-                    castAtlas.findRegions("player2_front"),
-                    Animation.PlayMode.NORMAL);
-
-            backCastAnim = new Animation<>(0.08f,
-                    castAtlas.findRegions("player2_back"),
-                    Animation.PlayMode.NORMAL);
-
-            leftCastAnim = new Animation<>(0.08f,
-                    castAtlas.findRegions("player2_left"),
-                    Animation.PlayMode.NORMAL);
-
-            rightCastAnim = new Animation<>(0.08f,
-                    castAtlas.findRegions("player2_right"),
-                    Animation.PlayMode.NORMAL);
+            frontCastAnim = new Animation<>(0.08f, castAtlas.findRegions("player2_front"), Animation.PlayMode.NORMAL);
+            backCastAnim = new Animation<>(0.08f, castAtlas.findRegions("player2_back"), Animation.PlayMode.NORMAL);
+            leftCastAnim = new Animation<>(0.08f, castAtlas.findRegions("player2_left"), Animation.PlayMode.NORMAL);
+            rightCastAnim = new Animation<>(0.08f, castAtlas.findRegions("player2_right"), Animation.PlayMode.NORMAL);
         } else {
             loadPlayer1Animations();
         }
-
-
-
-
 
         abilityManager = new AbilityManager(this, gameManager);
 
         Logger.gameEvent("Player spawned at " + getPositionString());
 
-        // 加载攻击贴图 (请根据你的文件名修改)
         if (playerIndex == PlayerIndex.P1) {
-
-            TextureAtlas attackAtlas =
-                    new TextureAtlas("Character/melee/player1.atlas");
-
-            backAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player1_back"),
-                    Animation.PlayMode.NORMAL);
-
-            frontAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player1_front"),
-                    Animation.PlayMode.NORMAL);
-
-            leftAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player1_left"),
-                    Animation.PlayMode.NORMAL);
-
-            rightAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player1_right"),
-                    Animation.PlayMode.NORMAL);
-
-        } else { // ===== P2 =====
-
-            TextureAtlas attackAtlas =
-                    new TextureAtlas("Character/magic/player2.atlas");
-
-            backAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player2_back"),
-                    Animation.PlayMode.NORMAL);
-
-            frontAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player2_front"),
-                    Animation.PlayMode.NORMAL);
-
-            leftAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player2_left"),
-                    Animation.PlayMode.NORMAL);
-
-            rightAtkAnim = new Animation<>(0.08f,
-                    attackAtlas.findRegions("player2_right"),
-                    Animation.PlayMode.NORMAL);
+            TextureAtlas attackAtlas = new TextureAtlas("Character/melee/player1.atlas");
+            backAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player1_back"), Animation.PlayMode.NORMAL);
+            frontAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player1_front"), Animation.PlayMode.NORMAL);
+            leftAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player1_left"), Animation.PlayMode.NORMAL);
+            rightAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player1_right"), Animation.PlayMode.NORMAL);
+        } else {
+            TextureAtlas attackAtlas = new TextureAtlas("Character/magic/player2.atlas");
+            backAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player2_back"), Animation.PlayMode.NORMAL);
+            frontAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player2_front"), Animation.PlayMode.NORMAL);
+            leftAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player2_left"), Animation.PlayMode.NORMAL);
+            rightAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player2_right"), Animation.PlayMode.NORMAL);
         }
+    }
 
+    public Player(int x, int y) {
+        super(x, y);
+        this.worldX = x;
+        this.worldY = y;
+        this.targetX = x;
+        this.targetY = y;
+        this.playerIndex = PlayerIndex.P1;
+        this.isTutorial = true;
+        this.lives = 1;
+        this.maxLives = 1;
 
-
-
-
+        loadPlayer1Animations();
+        this.abilityManager = null;
     }
 
     private void loadPlayer1Animations() {
@@ -411,28 +193,44 @@ private boolean damageInvincible = false;
 
     private void loadPlayer2Animations() {
         TextureAtlas atlas = new TextureAtlas("Character/player2/player2.atlas");
-
         frontAnim = new Animation<>(0.1f, atlas.findRegions("player2_front"));
         backAnim  = new Animation<>(0.1f, atlas.findRegions("player2_back"));
         leftAnim  = new Animation<>(0.1f, atlas.findRegions("player2_left"));
         rightAnim = new Animation<>(0.1f, atlas.findRegions("player2_right"));
     }
 
+    public void reviveAt(int x, int y, int hp) {
+        this.isDead = false;
+        this.lives = Math.min(hp, this.maxLives);
+        if (this.lives <= 0) {
+            this.lives = 1;
+        }
+        setPosition(x, y);
+        this.damageInvincible = true;
+        this.damageInvincibleTimer = 0f;
+        this.hitFlash = false;
+        this.hitFlashTimer = 0f;
+        this.inHitStun = false;
+        this.hitStunTimer = 0f;
+        this.isAttacking = false;
+        this.attackAnimTimer = 0f;
+        this.isCasting = false;
+        this.castAnimTimer = 0f;
+        this.moving = false;
+        this.isMovingContinuous = false;
 
-    /* ====================== UPDATE ====================== */
-
+        Logger.gameEvent("Player " + playerIndex + " revived at (" + x + "," + y + ") with HP=" + lives);
+    }
 
     public void update(float delta) {
-
-        // ===== Tutorial 模式：只跑动画 =====
         if (isTutorial) {
             float animationSpeed = 1f;
             stateTime += delta * animationSpeed * ANIM_SPEED_MULTIPLIER;
-
             if (!isMovingAnim) stateTime = 0f;
             isMovingAnim = false;
             return;
         }
+
         if (isCasting) {
             castAnimTimer += delta;
             if (castAnimTimer >= CAST_DURATION) {
@@ -447,13 +245,13 @@ private boolean damageInvincible = false;
                 inHitStun = false;
             }
         }
-        // ===== 动画 =====
+
         float animationSpeed = 1f / getMoveDelayMultiplier();
         stateTime += delta * animationSpeed * ANIM_SPEED_MULTIPLIER;
 
         if (!isMovingAnim) stateTime = 0f;
         isMovingAnim = false;
-// ===== 攻击动画推进 =====
+
         if (isAttacking) {
             attackAnimTimer += delta;
             if (attackAnimTimer >= ATTACK_DURATION) {
@@ -461,8 +259,7 @@ private boolean damageInvincible = false;
                 attackAnimTimer = 0f;
             }
         }
-        // ===== 无敌 =====
-        // 1️⃣ 受伤无敌（i-frame）
+
         if (damageInvincible) {
             damageInvincibleTimer += delta;
             if (damageInvincibleTimer >= DAMAGE_INVINCIBLE_TIME) {
@@ -471,7 +268,6 @@ private boolean damageInvincible = false;
             }
         }
 
-// 2️⃣ 受击闪烁（纯视觉）
         if (hitFlash) {
             hitFlashTimer += delta;
             if (hitFlashTimer >= HIT_FLASH_TIME) {
@@ -480,7 +276,6 @@ private boolean damageInvincible = false;
             }
         }
 
-// 3️⃣ Dash 无敌（技能）
         if (dashInvincible) {
             dashInvincibleTimer += delta;
             if (dashInvincibleTimer >= DASH_DURATION) {
@@ -490,9 +285,6 @@ private boolean damageInvincible = false;
             }
         }
 
-
-
-        // ===== Dash 加速 =====
         if (dashSpeedBoost) {
             dashSpeedTimer += delta;
             if (dashSpeedTimer >= DASH_DURATION) {
@@ -501,7 +293,6 @@ private boolean damageInvincible = false;
             }
         }
 
-        // ===== 减速 =====
         if (slowed) {
             slowTimer -= delta;
             if (slowTimer <= 0f) {
@@ -510,7 +301,6 @@ private boolean damageInvincible = false;
             }
         }
 
-        // ===== 移动冷却 =====
         if (moving) {
             moveTimer += delta;
             if (moveTimer >= MOVE_COOLDOWN) {
@@ -518,43 +308,39 @@ private boolean damageInvincible = false;
             }
         }
 
-        // ===== Mana 恢复 =====
         if (mana < maxMana) {
             mana += manaRegenRate * delta;
             if (mana > maxMana) mana = maxMana;
         }
 
-        // ===== Ability =====
         if (abilityManager != null) {
             abilityManager.update(delta);
         }
 
-        // ===== [Treasure] 自动回血逻辑 =====
+        // 自动回血逻辑
         if (buffRegen) {
             regenTimer += delta;
-            if (regenTimer >= 5.0f) { // 每 5 秒
-                heal(5); // 回 5 点血
+            if (regenTimer >= 5.0f) {
+                heal(5);
                 regenTimer = 0f;
             }
         }
 
-        // ===== [Treasure] UI通知倒计时 =====
         if (notificationTimer > 0) {
             notificationTimer -= delta;
             if (notificationTimer <= 0) {
-                notificationMessage = ""; // 时间到，清空消息
+                notificationMessage = "";
             }
         }
 
         dashJustEnded = false;
-//连续移动
+
         if (isMovingContinuous) {
             float dx = targetX - worldX;
             float dy = targetY - worldY;
             float distSq = dx * dx + dy * dy;
 
             if (distSq < 0.0001f) {
-                // 到达目标，强制对齐
                 worldX = targetX;
                 worldY = targetY;
                 x = (int) targetX;
@@ -562,7 +348,6 @@ private boolean damageInvincible = false;
                 isMovingContinuous = false;
             } else {
                 float dist = (float) Math.sqrt(distSq);
-                // 根据当前的移动延迟倍率计算速度（加速/减速会影响滑动感）
                 float currentMoveDelay = MOVE_COOLDOWN * getMoveDelayMultiplier();
                 float speed = 1f / currentMoveDelay;
                 float step = speed * delta;
@@ -579,48 +364,93 @@ private boolean damageInvincible = false;
                 }
             }
         }
-
     }
 
-    /* ====================== DASH API（给 Ability 调）====================== */
+    public boolean useMana(int manaCost) {
+        if (buffManaEfficiency) {
+            manaCost = manaCost / 2;
+            if (manaCost < 1) manaCost = 1;
+        }
+
+        if (mana < manaCost) {
+            return false;
+        }
+        mana -= manaCost;
+        return true;
+    }
+
+    public void useAbility(int slot) {
+        if (isDead() || abilityManager == null) return;
+        boolean success = abilityManager.activateSlot(slot);
+    }
+
+    public boolean onPushedBy(PushSource source, int dx, int dy, GameManager gm) {
+        int strength = source.getPushStrength();
+        int targetX = x + dx * strength;
+        int targetY = y + dy * strength;
+
+        if (!gm.canPlayerMoveTo(targetX, targetY)) {
+            takeDamage(1);
+            return false;
+        }
+        setPosition(targetX, targetY);
+        enterHitStun(0.1f);
+        return true;
+    }
+
+    @Override
+    public void setPosition(int x, int y) {
+        super.setPosition(x, y);
+        this.worldX = x;
+        this.worldY = y;
+        this.targetX = x;
+        this.targetY = y;
+        this.isMovingContinuous = false;
+    }
+
+    private void enterHitStun(float duration) {
+        inHitStun = true;
+        hitStunTimer = duration;
+    }
+
+    public boolean didDashJustEnd() {
+        return dashJustEnded;
+    }
+
+    public void addScore(int i) {
+        score+=i;
+    }
+
+    public int getScore() {
+        return this.score;
+    }
+
+    public float getWorldX() { return worldX; }
+    public float getWorldY() { return worldY; }
+    public float getMaxMana() { return maxMana; }
 
     public void startDash() {
         dashInvincible = true;
         dashSpeedBoost = true;
         dashInvincibleTimer = 0f;
         dashSpeedTimer = 0f;
-
-        Logger.debug("Dash started");
     }
 
     public boolean isDashInvincible() {
         return dashInvincible;
     }
 
-    /* ====================== ATTACK API ====================== */
-
-    /* ====================== 移动相关 ====================== */
-
     public float getMoveDelayMultiplier() {
         float multiplier = 1f;
-
         if (slowed) multiplier *= 2.0f;
         if (dashSpeedBoost) multiplier *= DASH_SPEED_MULTIPLIER;
-
         return multiplier;
     }
 
     public void move(int dx, int dy) {
         if (isDead || inHitStun) return;
-
-        // ⭐ 1. 强制转向：即使卡在墙里，点击按键也会立即改变朝向
         updateDirection(dx, dy);
-
-        // 2. 检查当前是否可以开启新的位移（如果正在移动或攻击，则不位移，但上面已经转过向了）
         if (isMovingContinuous || isAttacking) return;
-
-        // 3. 这里的逻辑通常由 GameManager 调用 canPlayerMoveTo(x + dx, y + dy)
-        // 如果外部 InputHandler 已经判断过碰撞，则直接执行：
         isMovingAnim = true;
         moving = true;
         moveTimer = 0f;
@@ -630,51 +460,49 @@ private boolean damageInvincible = false;
     }
 
     public void updateDirection(int dx, int dy) {
-        // 🔥 无条件更新方向，即使不移动
         if (dx != 0 || dy != 0) {
-            // 优先水平方向
             if (dx != 0) {
                 direction = (dx > 0) ? Direction.RIGHT : Direction.LEFT;
             } else {
                 direction = (dy > 0) ? Direction.UP : Direction.DOWN;
             }
-
-            // 🔥 只要方向改变，就重置动画时间
             stateTime = 0f;
         }
     }
 
     public void startAttack() {
-
-        Logger.debug("🎬 startAttack() called, isAttacking=" + isAttacking);
         if (isDead) return;
         isAttacking = true;
         attackAnimTimer = 0f;
-        Logger.debug("Player attack started facing: " + direction);
     }
-    /* ====================== 状态效果 ====================== */
 
-    /**
-     * 对玩家施加减速效果
-     * 不叠加倍率，但会刷新持续时间
-     */
     public void applySlow(float duration) {
         slowed = true;
         slowTimer = Math.max(slowTimer, duration);
     }
-    /* ====================== 受伤 ====================== */
 
+    // ==========================================
+    // 受伤 -> 小字 RED "HP -x"
+    // ==========================================
     public void takeDamage(int damage) {
         if (isDead || damageInvincible || dashInvincible) return;
         if (damage <= 0) return;
+
         lives -= damage;
         AudioManager.getInstance().play(AudioType.PLAYER_ATTACKED);
 
-        // ⭐ 受伤无敌（防秒杀）
+        if (gameManager != null && gameManager.getCombatEffectManager() != null) {
+            gameManager.getCombatEffectManager().spawnStatusText(
+                    this.worldX * GameConstants.CELL_SIZE,
+                    this.worldY * GameConstants.CELL_SIZE + 40,
+                    "HP -" + damage,
+                    Color.RED
+            );
+        }
+
         damageInvincible = true;
         damageInvincibleTimer = 0f;
 
-        // ⭐ 受击闪烁（视觉）
         hitFlash = true;
         hitFlashTimer = 0f;
 
@@ -683,33 +511,42 @@ private boolean damageInvincible = false;
             Logger.gameEvent("Player died");
         }
     }
-    // 🔥 新增：回复生命值 (对应 Heart / 柠檬脆波波)
+
+    // ==========================================
+    // 回血 -> 小字 GREEN "HP +x"
+    // ==========================================
     public void heal(int amount) {
         if (isDead) return;
 
+        int oldLives = this.lives;
         this.lives += amount;
-        // 限制回血不能超过当前的上限
         if (this.lives > this.maxLives) {
             this.lives = this.maxLives;
         }
+
+        int actualHeal = this.lives - oldLives;
+
+        if (actualHeal > 0 && gameManager != null && gameManager.getCombatEffectManager() != null) {
+            gameManager.getCombatEffectManager().spawnStatusText(
+                    this.worldX * GameConstants.CELL_SIZE,
+                    this.worldY * GameConstants.CELL_SIZE + 40,
+                    "HP +" + actualHeal,
+                    Color.GREEN
+            );
+        }
+
         Logger.gameEvent("Player healed by " + amount + ". Current HP: " + lives + "/" + maxLives);
     }
 
-    // 🔥 新增：增加生命上限 (对应 HeartContainer / 焦糖核心)
     public void increaseMaxLives(int amount) {
         this.maxLives += amount;
-        // 增加上限的同时，顺便把增加的那部分血补上
         this.lives += amount;
-
         Logger.gameEvent("Max HP increased by " + amount + ". New Max: " + maxLives);
     }
 
-    // 🔥 新增：获取最大生命值 (UI可能需要用到)
     public int getMaxLives() {
         return maxLives;
     }
-
-    /* ====================== 渲染 ====================== */
 
     @Override
     public void drawSprite(SpriteBatch batch) {
@@ -742,16 +579,12 @@ private boolean damageInvincible = false;
             };
         }
 
-
-
-        // 如果不在位移也不在攻击，getKeyFrame 会根据 stateTime(0) 返回该方向的站立帧
         TextureRegion frame = anim.getKeyFrame(
                 isCasting ? castAnimTimer :
                         isAttacking ? attackAnimTimer :
                                 stateTime,
                 !isCasting && !isAttacking
         );
-
 
         float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
         float scale = baseScale * VISUAL_SCALE;
@@ -771,94 +604,56 @@ private boolean damageInvincible = false;
                 batch.setColor(1, 1, 1, 1);
             }
         } else {
-            // ⭐ 施法时：始终正常显示
             batch.setColor(1, 1, 1, 1);
         }
-
 
         batch.draw(frame, drawX, drawY, drawW, drawH);
         batch.setColor(1, 1, 1, 1);
     }
 
     @Override
-    public void drawShape(ShapeRenderer shapeRenderer) {}
+    public void drawShape(ShapeRenderer shapeRenderer) {
+    }
 
     @Override
     public RenderType getRenderType() {
         return RenderType.SPRITE;
     }
 
-    /* ====================== Getter ====================== */
-
     public AbilityManager getAbilityManager() { return abilityManager; }
     public int getLives() { return lives; }
     public boolean hasKey() { return hasKey; }
     public void setHasKey(boolean hasKey) { this.hasKey = hasKey; }
     public boolean isDead() { return isDead; }
-    public float getMana() {
-        return mana;
-    }
-    public boolean isMoving() {
-        return moving;
-    }
+    public float getMana() { return mana; }
+    public boolean isMoving() { return moving; }
 
-    /**
-     * 重置玩家状态
-     */
-    /**
-     * 重置玩家状态（重开关卡 / 重新开始游戏）
-     */
     public void reset() {
-
-        // ===== 基础生命 =====
-//        this.lives = GameConstants.MAX_LIVES;
-//        this.maxLives = GameConstants.MAX_LIVES;
         this.lives = 100000;
         this.maxLives = 100000;
-
         this.isDead = false;
-
-        // ===== 钥匙 =====
         this.hasKey = false;
-
-        // ===== Dash 状态 =====
         this.dashInvincible = false;
         this.dashInvincibleTimer = 0f;
-
         this.dashSpeedBoost = false;
         this.dashSpeedTimer = 0f;
-
         this.dashJustEnded = false;
-
-        // ===== 移动状态 =====
         this.moving = false;
         this.moveTimer = 0f;
-
-        // ===== 状态效果 =====
         this.slowed = false;
         this.slowTimer = 0f;
-
-        // ===== 资源 =====
         this.mana = maxMana;
         this.score = 0;
-
-        // 🔥 [Treasure] 重置 Buff
         this.buffAttack = false;
         this.buffRegen = false;
         this.buffManaEfficiency = false;
         this.regenTimer = 0f;
         this.notificationMessage = "";
 
-        // ===== 能力系统 =====
         if (abilityManager != null) {
             abilityManager.reset();
         }
-
-        Logger.debug(
-                "Player reset complete | HP=" + lives + "/" + maxLives +
-                        ", Mana=" + mana +
-                        ", Key=" + hasKey
-        );
+        Logger.debug("Player reset complete");
     }
 
     public String getPositionString() {
@@ -868,59 +663,73 @@ private boolean damageInvincible = false;
         return direction;
     }
 
-
     public boolean isDashing(){
         return dashInvincible;
-    }// 现在 Dash 的唯一真状态
+    }
 
-    /* ================= [Treasure] Buff API ================= */
+    // ==========================================
+    // BUFF -> 小字 BLUE (已移除 showNotification)
+    // ==========================================
 
-    // 1. 激活攻击 Buff (Treasure调用)
     public void activateAttackBuff() {
         if (!buffAttack) {
             buffAttack = true;
-            showNotification("Buff Acquired: ATK +50%!");
+            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
+                gameManager.getCombatEffectManager().spawnStatusText(
+                        this.worldX * GameConstants.CELL_SIZE,
+                        this.worldY * GameConstants.CELL_SIZE + 50,
+                        "ATK UP",
+                        Color.BLUE
+                );
+            }
             Logger.gameEvent("acquire ATK Buff");
         }
     }
 
-    // 2. 激活回血 Buff (Treasure调用)
     public void activateRegenBuff() {
         if (!buffRegen) {
             buffRegen = true;
-            showNotification("Buff Acquired: Auto-Regen!");
+            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
+                gameManager.getCombatEffectManager().spawnStatusText(
+                        this.worldX * GameConstants.CELL_SIZE,
+                        this.worldY * GameConstants.CELL_SIZE + 50,
+                        "REGEN UP",
+                        Color.BLUE
+                );
+            }
             Logger.gameEvent("acquire HP Buff");
         }
     }
 
-    // 3. 激活耗蓝 Buff (Treasure调用)
     public void activateManaBuff() {
         if (!buffManaEfficiency) {
             buffManaEfficiency = true;
-            showNotification("Buff Acquired: Mana Saver (-50% Cost)!");
+            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
+                gameManager.getCombatEffectManager().spawnStatusText(
+                        this.worldX * GameConstants.CELL_SIZE,
+                        this.worldY * GameConstants.CELL_SIZE + 50,
+                        "MANA UP",
+                        Color.BLUE
+                );
+            }
             Logger.gameEvent("acquire Mana Buff");
         }
     }
 
-    // 显示屏幕通知
     public void showNotification(String msg) {
         this.notificationMessage = msg;
-        this.notificationTimer = 3.0f; // 显示3秒
+        this.notificationTimer = 3.0f;
     }
 
-    // Getters (HUD调用)
     public boolean hasBuffAttack() { return buffAttack; }
     public boolean hasBuffRegen() { return buffRegen; }
     public boolean hasBuffManaEfficiency() { return buffManaEfficiency; }
     public String getNotificationMessage() { return notificationMessage; }
 
-    // 🔥 供 AbilityManager 计算伤害时调用
     public float getDamageMultiplier() {
         return buffAttack ? 1.5f : 1.0f;
     }
     public float getMoveSpeed() {
-        // MOVE_COOLDOWN 表示「走一格需要多少秒」
-        // 所以速度 = 1 / cooldown 防止除数为0
         return Math.max(0.01f, 1f / MOVE_COOLDOWN);
     }
     public void setWorldPosition(float worldX, float worldY) {
@@ -933,9 +742,12 @@ private boolean damageInvincible = false;
 
     public void startCasting() {
         if (isDead) return;
-
         isCasting = true;
         castAnimTimer = 0f;
     }
 
+    // 🔥 新增接口：允许外部访问 GameManager (用于 Treasure 等实体调用特效)
+    public GameManager getGameManager() {
+        return gameManager;
+    }
 }

@@ -26,27 +26,20 @@ public class ScoreManager implements GameListener {
         data.levelBaseScore = this.levelBaseScore;
         data.levelPenalty = this.levelPenalty;
         data.sessionDamageTaken = this.hitsTaken;
-        // 注意：总分已由 SettlementScreen 更新到 data.score，此处只需保存临时统计
     }
 
     public void restoreState(GameSaveData data) {
-        // 当从存档恢复时，data.score 代表了之前的总分（如果是过关存档）
         this.accumulatedScore = data.score;
-
-        // 恢复临时统计（如果是中途存档，这些值会有意义；如果是过关存档，通常为0）
         this.levelBaseScore = data.levelBaseScore;
         this.levelPenalty = data.levelPenalty;
         this.hitsTaken = data.sessionDamageTaken;
-
         Logger.info("ScoreManager Restored: Total=" + accumulatedScore + ", LevelBase=" + levelBaseScore);
     }
 
     public int getCurrentScore() {
-        // 实时总分 = 历史分 + (本关基础分 - 本关扣分) * 倍率
         int currentLevelRaw = Math.max(0, levelBaseScore - levelPenalty);
         int currentLevelFinal = (int) (currentLevelRaw * config.scoreMultiplier);
         long totalScore = (long) accumulatedScore + currentLevelFinal;
-        // 防止整数溢出，限制最大分数为 Integer.MAX_VALUE
         return (int) Math.min(totalScore, Integer.MAX_VALUE);
     }
 
@@ -57,11 +50,24 @@ public class ScoreManager implements GameListener {
             case E01 -> points = ScoreConstants.SCORE_E01_PEARL;
             case E02 -> points = ScoreConstants.SCORE_E02_COFFEE;
             case E03 -> points = ScoreConstants.SCORE_E03_CARAMEL;
-            case E04 -> points = ScoreConstants.SCORE_E04_SHELL;
+
+            // 🔥 E04 必须使用 Dash 击杀才得分
+            case E04 -> {
+                if (isDashKill) {
+                    points = ScoreConstants.SCORE_E04_SHELL;
+                } else {
+                    points = 0;
+                    Logger.debug("E04 Normal Kill - No Score (Requires Dash)");
+                }
+            }
+
             case BOSS -> points = ScoreConstants.SCORE_BOSS;
         }
-        levelBaseScore += points;
-        Logger.debug("Score + " + points + " (Enemy: " + tier + ")");
+
+        if (points > 0) {
+            levelBaseScore += points;
+            // 注意：飘字逻辑需在 GameManager/Player 处调用 spawnScoreText，此处仅处理数值
+        }
     }
 
     @Override
@@ -69,7 +75,7 @@ public class ScoreManager implements GameListener {
         hitsTaken++;
         int penalty = (int) (source.penaltyScore * config.penaltyMultiplier);
         levelPenalty += penalty;
-        Logger.debug("Score Penalty - " + penalty + " (" + source + ")");
+        // 注意：飘字逻辑需在 Player.takeDamage 处处理
     }
 
     @Override
@@ -89,13 +95,12 @@ public class ScoreManager implements GameListener {
 
         if (points > 0) {
             levelBaseScore += points;
-            Logger.debug("Score + " + points + " (Item: " + itemType + ")");
+            // 注意：拾取物品的飘字逻辑（如 KEY）需要在 GameManager 或 Item 逻辑中调用
         }
     }
 
     @Override
     public void onLevelFinished(int levelNumber) {
-        // 关卡结束逻辑主要在 SettlementScreen 处理
     }
 
     public LevelResult calculateResult(int theoreticalMaxBaseScore) {
