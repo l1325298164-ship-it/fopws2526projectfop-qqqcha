@@ -5,29 +5,25 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Interpolation;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 /**
- * 游戏内成就解锁弹窗
+ * 游戏内成就解锁弹窗 - 视觉升级版
  * <p>
- * 效果：从屏幕顶部向下滑入，停留2秒，然后自动收起。
- * <p>
- * 生命周期：
- * 1. SLIDING_IN (0.5秒) - 从屏幕顶部滑入
- * 2. VISIBLE (2.0秒) - 显示成就信息
- * 3. SLIDING_OUT (0.5秒) - 滑出屏幕
- * 4. HIDDEN - 完全隐藏，不占用屏幕空间
- * <p>
- * 总时长：约3秒（0.5 + 2.0 + 0.5），之后自动关闭，不会一直占用屏幕。
+ * 改进：
+ * 1. 视觉：深色卡片 + 金色左边栏 + 星星图标。
+ * 2. 动效：加入淡入淡出 (Alpha) 和 弹跳 (Bounce) 效果。
+ * 3. 布局：左图右文，信息层次更清晰。
  */
 public class AchievementPopup {
 
     // === 状态定义 ===
     private enum State {
         HIDDEN,
-        SLIDING_IN,
-        VISIBLE,
-        SLIDING_OUT
+        ENTERING, // 进场动画
+        VISIBLE,  // 停留展示
+        EXITING   // 退场动画
     }
 
     private State state = State.HIDDEN;
@@ -35,41 +31,36 @@ public class AchievementPopup {
 
     // === 动画参数 ===
     private float timer = 0f;
-    private static final float ANIM_DURATION = 0.5f; // 滑入/滑出耗时
-    private static final float DISPLAY_DURATION = 2.0f; // 停留耗时（缩短到2秒，避免长时间占用屏幕）
+    private static final float ANIM_IN_DURATION = 0.6f;  // 进场稍慢，配合弹跳
+    private static final float DISPLAY_DURATION = 2.5f;  // 停留时间
+    private static final float ANIM_OUT_DURATION = 0.4f; // 退场快一点
 
-    // === 布局参数 ===
-    // 弹窗尺寸：更紧凑的设计
-    private static final float POPUP_WIDTH_BASE = 320f;  // 基础宽度
-    private static final float POPUP_HEIGHT = 65f;       // 减小高度，更紧凑
-    private static final float MARGIN_TOP = 100f;        // 距离屏幕顶部（稍微减小，因为弹窗更小了）
-    private static final float PADDING = 12f;             // 内边距
+    // === 布局尺寸 ===
+    private static final float POPUP_WIDTH = 360f;
+    private static final float POPUP_HEIGHT = 80f;
+    private static final float MARGIN_TOP = 80f; // 距离屏幕顶部的距离
 
     // === 资源 ===
     private final BitmapFont font;
-    private final TextureRegion whitePixel; // 用于绘制纯色背景
+    private final TextureRegion whitePixel;
 
     public AchievementPopup(BitmapFont font) {
         this.font = font;
-        // ❌ 原代码（报错）：
-        // this.whitePixel = TextureManager.getInstance().getWhitePixel();
-
-        // ✅ 修正后（加上 new TextureRegion(...)）：
+        // 获取纯白像素用于绘制矩形
         this.whitePixel = new TextureRegion(TextureManager.getInstance().getWhitePixel());
     }
 
     /**
-     * 触发显示成就
+     * 显示成就弹窗
      */
     public void show(AchievementType achievement) {
         this.currentAchievement = achievement;
-        this.state = State.SLIDING_IN;
+        this.state = State.ENTERING;
         this.timer = 0f;
     }
 
     /**
-     * 渲染弹窗
-     * 必须在 SpriteBatch.begin() / end() 之间调用
+     * 渲染方法
      */
     public void render(SpriteBatch batch) {
         if (state == State.HIDDEN || currentAchievement == null) return;
@@ -77,114 +68,109 @@ public class AchievementPopup {
         float delta = Gdx.graphics.getDeltaTime();
         updateAnimation(delta);
 
+        // === 计算动画状态 ===
         float screenW = Gdx.graphics.getWidth();
         float screenH = Gdx.graphics.getHeight();
-        
-        // 根据屏幕宽度自适应弹窗宽度（但不超过基础宽度的1.2倍）
-        float popupWidth = Math.min(POPUP_WIDTH_BASE * 1.2f, screenW * 0.4f);
-        popupWidth = Math.max(popupWidth, POPUP_WIDTH_BASE); // 最小为基础宽度
 
-        // 实际绘制位置 Y (根据动画偏移)
-        float drawY = 0;
+        float animProgress = 0f;
+        float alpha = 1f;
+        float yOffset = 0f;
 
         switch (state) {
-            case SLIDING_IN: {
-                float progress = Math.min(1f, timer / ANIM_DURATION);
-                // 使用平滑函数 (Ease Out Quad)
-                progress = 1 - (1 - progress) * (1 - progress);
-                // 修正逻辑：
-                // Start: screenH (屏幕外)
-                // End: screenH - MARGIN_TOP - POPUP_HEIGHT
-                float startY = screenH;
-                float endY = screenH - MARGIN_TOP - POPUP_HEIGHT;
-                drawY = startY + (endY - startY) * progress;
+            case ENTERING:
+                animProgress = Math.min(1f, timer / ANIM_IN_DURATION);
+                // 弹跳进场效果 (BounceOut)
+                yOffset = Interpolation.swingOut.apply(-100f, 0f, animProgress);
+                alpha = animProgress; // 同时淡入
                 break;
-            }
-            case VISIBLE: {
-                drawY = screenH - MARGIN_TOP - POPUP_HEIGHT;
+            case VISIBLE:
+                yOffset = 0f;
+                alpha = 1f;
                 break;
-            }
-            case SLIDING_OUT: {
-                float progress = Math.min(1f, timer / ANIM_DURATION);
-                // Ease In Quad
-                progress = progress * progress;
-                float startY = screenH - MARGIN_TOP - POPUP_HEIGHT;
-                float endY = screenH;
-                drawY = startY + (endY - startY) * progress;
+            case EXITING:
+                animProgress = Math.min(1f, timer / ANIM_OUT_DURATION);
+                // 上滑淡出
+                yOffset = Interpolation.pow2In.apply(0f, 100f, animProgress);
+                alpha = 1f - animProgress;
                 break;
-            }
-            // HIDDEN状态在方法开头已经处理，不会执行到这里
         }
 
-        float drawX = (screenW - popupWidth) / 2f;
+        // 最终绘制坐标
+        float drawX = (screenW - POPUP_WIDTH) / 2f;
+        float drawY = screenH - MARGIN_TOP - POPUP_HEIGHT + yOffset;
 
-        // 1. 绘制背景框 (半透明黑色，带圆角效果)
-        batch.setColor(0f, 0f, 0f, 0.9f); // 稍微更不透明，更清晰
-        batch.draw(whitePixel, drawX, drawY, popupWidth, POPUP_HEIGHT);
+        // === 1. 绘制背景 (深色卡片) ===
+        batch.setColor(0.1f, 0.1f, 0.12f, 0.9f * alpha);
+        batch.draw(whitePixel, drawX, drawY, POPUP_WIDTH, POPUP_HEIGHT);
 
-        // 2. 绘制金色边框 (左侧粗，其他细)
-        batch.setColor(1f, 0.84f, 0f, 1f); // 金色
-        float borderThickness = 4f; // 左侧边框稍微细一点
-        batch.draw(whitePixel, drawX, drawY, borderThickness, POPUP_HEIGHT); // 左侧金条
-        batch.draw(whitePixel, drawX, drawY, popupWidth, 2); // 下边
-        batch.draw(whitePixel, drawX, drawY + POPUP_HEIGHT - 2, popupWidth, 2); // 上边
-        batch.draw(whitePixel, drawX + popupWidth - 2, drawY, 2, POPUP_HEIGHT); // 右边
+        // === 2. 绘制左侧金色装饰条 (Accent) ===
+        batch.setColor(1f, 0.8f, 0.0f, 1f * alpha); // 金色
+        batch.draw(whitePixel, drawX, drawY, 6f, POPUP_HEIGHT); // 6px 宽
 
-        // 3. 绘制文字（更紧凑的布局）
-        float textX = drawX + PADDING;
-        
-        // 标题 "ACHIEVEMENT UNLOCKED"（更小更紧凑）
-        font.getData().setScale(0.65f);
-        font.setColor(Color.GOLD);
-        font.draw(batch, "ACHIEVEMENT UNLOCKED", textX, drawY + POPUP_HEIGHT - 12);
+        // === 3. 绘制图标 (左侧星星) ===
+        // 使用字体绘制一颗大星星作为图标
+        float iconCenterX = drawX + 40f;
+        float iconCenterY = drawY + POPUP_HEIGHT / 2f + 10f;
 
-        // 成就名称（稍微减小）
-        font.getData().setScale(0.95f);
-        font.setColor(Color.WHITE);
-        font.draw(batch, currentAchievement.displayName, textX, drawY + POPUP_HEIGHT - 30);
+        font.getData().setScale(2.5f); // 大图标
+        font.setColor(1f, 0.84f, 0f, alpha); // 金色星星
+        // 简单的抖动效果
+        if (state == State.VISIBLE) {
+            float shake = (float)Math.sin(timer * 5f) * 2f;
+            font.draw(batch, "★", iconCenterX - 10, iconCenterY + shake);
+        } else {
+            font.draw(batch, "★", iconCenterX - 10, iconCenterY);
+        }
 
-        // 成就描述（更紧凑，只显示关键信息）
-        font.getData().setScale(0.6f);
-        font.setColor(Color.LIGHT_GRAY);
+        // === 4. 绘制文字信息 (右侧) ===
+        float textX = drawX + 70f; // 避开图标
+        float textTopY = drawY + POPUP_HEIGHT - 10f;
+
+        // 小标题: ACHIEVEMENT UNLOCKED
+        font.getData().setScale(0.7f);
+        font.setColor(1f, 0.8f, 0.2f, 0.8f * alpha); // 淡金色
+        font.draw(batch, "ACHIEVEMENT UNLOCKED", textX, textTopY);
+
+        // 主标题: 成就名称
+        font.getData().setScale(1.1f);
+        font.setColor(1f, 1f, 1f, 1f * alpha); // 亮白
+        font.draw(batch, currentAchievement.displayName, textX, textTopY - 20f);
+
+        // 描述: 具体内容
+        font.getData().setScale(0.75f);
+        font.setColor(0.8f, 0.8f, 0.8f, 0.8f * alpha); // 灰白
+
+        // 简单截断防止溢出
         String desc = currentAchievement.description;
-        // 根据弹窗宽度调整描述长度
-        int maxDescLength = (int)(popupWidth / 8f); // 大约每8像素一个字符
-        if (desc.length() > maxDescLength) {
-            desc = desc.substring(0, maxDescLength - 3) + "...";
-        }
-        font.draw(batch, desc, textX, drawY + 15);
+        if (desc.length() > 35) desc = desc.substring(0, 32) + "...";
+        font.draw(batch, desc, textX, textTopY - 45f);
 
-        // 恢复 batch 颜色
-        batch.setColor(1f, 1f, 1f, 1f);
-        // 恢复字体
-        font.getData().setScale(1.2f);
+        // === 恢复环境 ===
+        batch.setColor(Color.WHITE);
+        font.getData().setScale(1.2f); // 还原默认大小
         font.setColor(Color.WHITE);
     }
 
     private void updateAnimation(float delta) {
         timer += delta;
-
         switch (state) {
-            case SLIDING_IN:
-                if (timer >= ANIM_DURATION) {
+            case ENTERING:
+                if (timer >= ANIM_IN_DURATION) {
                     state = State.VISIBLE;
                     timer = 0f;
                 }
                 break;
             case VISIBLE:
                 if (timer >= DISPLAY_DURATION) {
-                    state = State.SLIDING_OUT;
+                    state = State.EXITING;
                     timer = 0f;
                 }
                 break;
-            case SLIDING_OUT:
-                if (timer >= ANIM_DURATION) {
+            case EXITING:
+                if (timer >= ANIM_OUT_DURATION) {
                     state = State.HIDDEN;
                     currentAchievement = null;
                 }
-                break;
-            case HIDDEN:
-                // HIDDEN状态不需要更新
                 break;
         }
     }
