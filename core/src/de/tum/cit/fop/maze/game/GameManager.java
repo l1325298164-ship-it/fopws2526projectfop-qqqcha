@@ -12,6 +12,7 @@ import de.tum.cit.fop.maze.effects.key.KeyEffectManager;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.trap.*;
@@ -98,8 +99,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private int currentLevel = 1;
 
     private PortalEffectManager playerSpawnPortal;
-
-    public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode) {
+    private final ChapterContext  chapterContext;
+    private boolean chapterMode = false;
+    private Chapter1Relic chapter1Relic;
+    private final List<Chapter1Relic> chapterRelics = new ArrayList<>();
+    private boolean viewingChapterRelic = false;
+    public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode,ChapterContext chapterContext)  {
+        this.chapterContext = chapterContext;
         this.inputHandler = new PlayerInputHandler();
         if (difficultyConfig == null) {
             throw new IllegalArgumentException("difficultyConfig must not be null");
@@ -126,7 +132,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         eventSource.addListener(this.achievementManager);
 
         this.twoPlayerMode = twoPlayerMode;
+        this.chapterMode = (chapterContext != null);
         resetGame();
+    }
+    public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode) {
+        this(difficultyConfig,twoPlayerMode,null);
     }
 
     private void resetGame() {
@@ -298,7 +308,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return maze[y][x] == 1;
     }
     public void update(float delta) {
-
+        if (viewingChapterRelic) {
+            return;
+        }
         inputHandler.update(delta, this, Player.PlayerIndex.P1);
         if (twoPlayerMode) {
             inputHandler.update(delta, this, Player.PlayerIndex.P2);
@@ -1286,7 +1298,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         int px = p.getX();
         int py = p.getY();
-
+        for (Chapter1Relic relic : chapterRelics) {
+            if (relic.isInteractable()
+                    && relic.getX() == px
+                    && relic.getY() == py) {
+                relic.onInteract(p);
+                return;
+            }
+        }
         for (Treasure t : treasures) {
             if (t.isInteractable() && t.getX() == px && t.getY() == py) {
                 t.onInteract(p);
@@ -1303,7 +1322,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     @Override
-    public void onMenuInput() {}
+    public void onMenuInput() {
+        if (viewingChapterRelic) {
+            exitChapterRelicView();
+            Logger.debug("Exit ChapterRelic view by ESC");
+        }
+    }
 
     public void setVariable(String key, float value) {
         if (gameVariables == null) gameVariables = new HashMap<>();
@@ -1477,6 +1501,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return maxScore;
     }
 
+
+
+
     public GameSaveData getGameSaveData() {
         return gameSaveData;
     }
@@ -1571,5 +1598,123 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (p2.isDead() && !p1.isDead()) return p2;
 
         return null;
+    }
+    public void readChapter1Relic(Chapter1Relic relic) {
+        relic.onRead();
+        chapterRelics.remove(relic);
+        chapter1Relic = null;
+    }
+
+    public void discardChapter1Relic(Chapter1Relic relic) {
+        relic.onDiscard();
+        chapterRelics.remove(relic);
+        chapter1Relic = null;
+    }
+    private Chapter1RelicListener chapter1RelicListener;
+    public void setChapter1RelicListener(Chapter1RelicListener listener) {
+        this.chapter1RelicListener = listener;
+    }
+
+
+    public void requestChapter1Relic(Chapter1Relic relic) {
+        if (chapter1RelicListener != null) {
+            enterChapterRelicView();  // ⭐ 进入查看态
+            chapter1RelicListener.onChapter1RelicRequested(relic);
+        } else {
+            Logger.warning(
+                    "Chapter1Relic requested but no Chapter1RelicListener registered"
+            );
+        }
+    }
+    public void onTreasureOpened(Player player, Treasure treasure) {
+        Logger.debug(
+                "onTreasureOpened | chapterContext=" + chapterContext
+        );
+        if (chapterMode && chapterContext.shouldSpawnChapter1Relic()){
+
+            Chapter1Relic relic = new Chapter1Relic(
+                    treasure.getX(),
+                    treasure.getY(),
+                    chapterContext
+            );
+
+            spawnChapter1Relic(relic);
+            return;
+        }
+
+        // 否则走原 Buff 逻辑
+        applyTreasureBuff(player);
+    }
+    private void applyTreasureBuff(Player player) {
+
+        // === 🎲 智能掉落逻辑 ===
+        // 只掉玩家当前没有的 Buff
+
+        List<Integer> dropPool = new ArrayList<>();
+
+        // 0️⃣ 攻击 Buff
+        if (!player.hasBuffAttack()) {
+            dropPool.add(0);
+        }
+
+        // 1️⃣ 回血 Buff
+        if (!player.hasBuffRegen()) {
+            dropPool.add(1);
+        }
+
+        // 2️⃣ 蓝耗减半 Buff
+        if (!player.hasBuffManaEfficiency()) {
+            dropPool.add(2);
+        }
+
+        // === 抽取奖励 ===
+        if (!dropPool.isEmpty()) {
+            int choice = dropPool.get((int)(Math.random() * dropPool.size()));
+
+            switch (choice) {
+                case 0 -> {
+                    player.activateAttackBuff();
+                    Logger.gameEvent("💥 Treasure Buff: Attack +50%");
+                }
+                case 1 -> {
+                    player.activateRegenBuff();
+                    Logger.gameEvent("❤️ Treasure Buff: Regeneration");
+                }
+                case 2 -> {
+                    player.activateManaBuff();
+                    Logger.gameEvent("🔮 Treasure Buff: Mana Efficiency");
+                }
+            }
+        } else {
+            // 🎁 保底奖励
+            player.heal(20);
+            player.showNotification("宝箱里只有一瓶药水 (HP +20)");
+            Logger.gameEvent("🧪 Treasure fallback: HP +20");
+        }
+    }
+
+    private void spawnChapter1Relic(Chapter1Relic relic) {
+        this.chapter1Relic = relic;
+        chapterRelics.add(relic);
+
+        Logger.gameEvent("📜 Chapter1Relic added to world");
+
+    }
+
+
+    public List<Chapter1Relic> getChapterRelics() {
+        return chapterRelics;
+    }
+    public void enterChapterRelicView() {
+        viewingChapterRelic = true;
+    }
+
+    public void exitChapterRelicView() {
+        viewingChapterRelic = false;
+    }
+
+
+    public boolean isViewingChapterRelic() {
+        return viewingChapterRelic;
     }
 }

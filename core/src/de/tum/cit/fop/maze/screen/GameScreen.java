@@ -23,6 +23,8 @@ import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1RelicDialog;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.*;
@@ -39,7 +41,7 @@ import de.tum.cit.fop.maze.utils.StorageManager;
 
 import java.util.*;
 
-public class GameScreen implements Screen {
+public class GameScreen implements Screen, Chapter1RelicListener {
 
     private Viewport worldViewport;
     private Stage uiStage;
@@ -68,6 +70,40 @@ public class GameScreen implements Screen {
     private boolean gameOverShown = false;
     private Stage gameOverStage;
 
+    @Override
+    public void onChapter1RelicRequested(Chapter1Relic relic) {
+
+        // 1️⃣ 通知 GameManager：进入查看态（停游戏逻辑）
+        gm.enterChapterRelicView();
+
+        Chapter1RelicDialog dialog =
+                new Chapter1RelicDialog(
+                        game.getSkin(),
+                        relic
+                );
+
+        dialog.setOnRead(() -> {
+            gm.exitChapterRelicView();
+            dialog.hide();
+
+            // ✅ 关闭后：把输入还给“游戏”
+            Gdx.input.setInputProcessor(null);
+        });
+
+        dialog.setOnDiscard(() -> {
+            gm.exitChapterRelicView();
+            dialog.hide();
+
+            // ✅ 关闭后：把输入还给“游戏”
+            Gdx.input.setInputProcessor(null);
+        });
+
+        dialog.show(uiStage);
+
+        // 2️⃣ 打开 Dialog 时：输入只给 UI
+        Gdx.input.setInputProcessor(uiStage);
+    }
+    private final ChapterContext chapterContext;
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
     static class Item {
@@ -90,13 +126,17 @@ public class GameScreen implements Screen {
             type = Type.ENTITY;
         }
     }
-
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
+        this(game, difficultyConfig, null);
+    }
+    public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig,ChapterContext chapterContext) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
-
+        this.chapterContext = chapterContext;
         // HARD 才有雾
-        if (difficultyConfig.difficulty == Difficulty.HARD) {
+        // ⭐ 所有规则只写在这里
+        if (difficultyConfig.difficulty == Difficulty.HARD
+                || (chapterContext != null && chapterContext.enableFogOverride())) {
             fogSystem = new FogSystem();
         } else {
             fogSystem = null;
@@ -115,11 +155,12 @@ public class GameScreen implements Screen {
         batch = game.getSpriteBatch();
 
         gm = game.getGameManager();
-        if (gm == null) {
-            Logger.warning("GameManager is null, creating new one");
-            gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
-            game.setGameManager(gm);
-        }
+        gm = new GameManager(
+                difficultyConfig,
+                game.isTwoPlayerMode() // ⭐ 从 Settings 来的值
+                ,chapterContext
+        );
+        gm.setChapter1RelicListener(this);
 
         maze = new MazeRenderer(gm, difficultyConfig);
         cam  = new CameraManager(difficultyConfig);
