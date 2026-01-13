@@ -155,7 +155,8 @@ public class MenuScreen implements Screen {
             game.setScreen(new KeyMappingScreen(game, this));
         })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
 
-        root.add(bf.create("INFO", this::showInfoMenu))
+        // 🔥 修改：跳转到新的 InfoScreen (不再使用旧弹窗)
+        root.add(bf.create("INFO", () -> game.setScreen(new InfoScreen(game, this))))
                 .width(buttonWidth).height(BUTTON_HEIGHT)
                 .padBottom(buttonPadding).row();
 
@@ -186,33 +187,6 @@ public class MenuScreen implements Screen {
         if (isMusicOn) {
             audioManager.playMusic(AudioType.MUSIC_MENU);
         }
-    }
-
-    private void showInfoMenu() {
-        Dialog infoDialog = new Dialog(" INFO ", game.getSkin()) {
-            @Override
-            protected void result(Object object) {}
-        };
-
-        ButtonFactory bf = new ButtonFactory(game.getSkin());
-        Table contentTable = new Table();
-        float subButtonWidth = getButtonWidth() * 0.8f;
-
-        contentTable.add(bf.create("ACHIEVEMENTS", () -> {
-            infoDialog.hide();
-            game.setScreen(new AchievementScreen(game, this));
-        })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
-
-        contentTable.add(bf.create("LEADERBOARD", () -> {
-            infoDialog.hide();
-            game.setScreen(new LeaderboardScreen(game, this));
-        })).width(subButtonWidth).height(BUTTON_HEIGHT).padBottom(15).row();
-
-        contentTable.add(bf.create("BACK", () -> infoDialog.hide()))
-                .width(subButtonWidth).height(BUTTON_HEIGHT).row();
-
-        infoDialog.getContentTable().add(contentTable);
-        infoDialog.show(stage);
     }
 
     private void showOverwriteDialog() {
