@@ -109,6 +109,7 @@ public class MazeRunnerGame extends Game {
         STORY_BEGIN, MAZE_GAME_TUTORIAL, PV4, MODE_MENU, MAZE_GAME, MAIN_MENU
     }
 
+
     private StoryStage stage = StoryStage.MAIN_MENU;
 
     @Override
