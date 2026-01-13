@@ -19,6 +19,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import de.tum.cit.fop.maze.audio.AudioConfig;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.entities.boss.BossLoadingScreen;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -101,8 +102,9 @@ public class MazeRunnerGame extends Game {
     }
 
     public void debugEnterBoss() {
-
+        setScreen(new BossLoadingScreen(this));
     }
+
 
     public enum PV4Result { START, EXIT }
     public enum StoryStage {
