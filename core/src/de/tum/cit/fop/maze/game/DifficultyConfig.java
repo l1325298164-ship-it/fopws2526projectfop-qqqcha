@@ -12,41 +12,31 @@ public class DifficultyConfig {
     public final int enemyE01PearlCount;
     public final int enemyE02CoffeeBeanCount;
     public final int enemyE03CaramelCount;
-
+    public int enemyE04ShellCount;
 
     /* ===== 陷阱数量 ===== */
     public final int trapT01GeyserCount;
     public final int trapT02PearlMineCount;
     public final int trapT03TeaShardCount;
     public final int trapT04MudTileCount;
-    public int enemyE04ShellCount;
     /* ===== 战斗参数 ===== */
     public final int initialLives;
     public final float enemyHpMultiplier;
     public final float enemyDamageMultiplier;
     public final int keyCount;
 
+    /* ===== 【新增】 分数与惩罚倍率 ===== */
+    public final float scoreMultiplier;
+    public final float penaltyMultiplier;
 
-    /* ===== 构造器（私有，强制走工厂） ===== */
     public DifficultyConfig(
-            Difficulty difficulty, int mazeWidth,
-            int mazeHeight,
-            int exitCount,
+            Difficulty difficulty, int mazeWidth, int mazeHeight, int exitCount,
+            int enemyE01PearlCount, int enemyE02CoffeeBeanCount, int enemyE03CaramelCount, int enemyE04ShellCount,
+            int trapT01GeyserCount, int trapT02PearlMineCount, int trapT03TeaShardCount, int trapT04MudTileCount,
+            int initialLives, float enemyHpMultiplier, float enemyDamageMultiplier, int keyCount,
+            // 【新增】 构造参数
+            float scoreMultiplier, float penaltyMultiplier
 
-            int enemyE01PearlCount,
-            int enemyE02CoffeeBeanCount,
-            int enemyE03CaramelCount,
-            int enemyE04ShellCount,
-
-            int trapT01GeyserCount,
-            int trapT02PearlMineCount,
-            int trapT03TeaShardCount,
-            int trapT04MudTileCount,
-
-            int initialLives,
-            float enemyHpMultiplier,
-            float enemyDamageMultiplier,
-            int keyCount
     ) {
         this.difficulty = difficulty;
         this.mazeWidth = mazeWidth;
@@ -67,94 +57,69 @@ public class DifficultyConfig {
         this.enemyHpMultiplier = enemyHpMultiplier;
         this.enemyDamageMultiplier = enemyDamageMultiplier;
         this.keyCount = keyCount;
+
+        // 【新增】 赋值
+        this.scoreMultiplier = scoreMultiplier;
+        this.penaltyMultiplier = penaltyMultiplier;
     }
 
     /* ===== 难度工厂 ===== */
-    public static DifficultyConfig  of(Difficulty d) {
+    public static DifficultyConfig of(Difficulty d) {
         return switch (d) {
 
             case EASY -> new DifficultyConfig(
-                    /* 地图 */
                     Difficulty.EASY, 40, 40, 1,
+                    4, 2, 0, 0,  // 敌人
+                    0, 0, 0, 0,  // 陷阱
+                    200, 0.7f, 0.6f, 2, // 战斗
+                    1.0f, 0.5f // 【新增】 scoreMultiplier, penaltyMultiplier
 
-                    /* 敌人 */
-                    4, 2, 0,0,
-
-                    /* 陷阱 */
-                    0, 0, 0, 0,
-
-                    /* 战斗 */
-                    200,
-                    0.7f,
-                    0.6f,
-                    2
             );
 
             case NORMAL -> new DifficultyConfig(
-                    /* 地图 */
                     Difficulty.NORMAL, 50, 50, 3,
+                    8, 6, 2, 0,
 
                     /* 敌人 */
                     8, 6, 2,0,
 
                     /* 陷阱 */
                     2, 1, 1, 10,
-
-                    /* 战斗 */
-                    200,
-                    1.0f,
-                    1.0f,
-                    1
+                    200, 1.0f
             );
 
             case HARD -> new DifficultyConfig(
                     /* 地图 */
                     Difficulty.HARD, 100, 100, 4,
+                    12, 10, 6, 1,
 
                     /* 敌人 */
                     12, 10, 6,1,
 
                     /* 陷阱 */
                     4, 3, 3, 20,
-
-                    /* 战斗 */
-                    200,
-                    1.4f,
-                    1.3f,
-                    1
+                    200, 1.4f
             );
+
             case TUTORIAL -> new DifficultyConfig(
                     /* 地图 */
                     Difficulty.TUTORIAL, 40, 40, 1,
+                    0, 0, 0, 0,
 
                     /* 敌人 */
                     0, 0, 0,0,
 
                     /* 陷阱 */
                     0, 0, 0, 0,
-
-                    /* 战斗 */
-                    5,
-                    1.4f,
-                    1.3f,
-                    2
+                    5, 1.4f
             );
             case ENDLESS -> new DifficultyConfig(
-                    /* 地图 */
-                    Difficulty.ENDLESS,40, 40, 0,
-
-                    /* 敌人 */
-                    7, 5, 4,4,
-
-                    /* 陷阱 */
-                    10, 5, 3, 2,2,
-
-                    /* 战斗 */
-                    400,
-                    1.3f,
-                    0
+                    Difficulty.ENDLESS, 40, 40, 0,
+                    7, 5, 4, 4,
+                    10, 5, 3, 2, // 修正了这里原本的语法错误 (原代码有一堆奇怪的逗号)
+                    400, 1.3f, 1.3f, 0, // 修正了原本缺少的参数
+                    2.0f, 1.2f
             );
         };
     }
 }
-

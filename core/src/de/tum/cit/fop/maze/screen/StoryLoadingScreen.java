@@ -13,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.TimeUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class StoryLoadingScreen implements Screen {
     private TextureRegion starRegion;
@@ -114,9 +115,13 @@ public class StoryLoadingScreen implements Screen {
         // 让进度条高度略低于猫猫 (猫猫在 0.2f，进度条可以设在 0.18f)
         float barY = Gdx.graphics.getHeight() * 0.18f;
 
-        // 获取基础白色贴图 (假设你的 skin 里有白色像素块，这在 LibGDX Skin 中是标配)
-        // 如果报错找不到 "white"，请尝试 "pixel" 或者直接用一张纯色小图
-        TextureRegion white = game.getSkin().getRegion("white");
+        // 获取基础白色贴图（不要强依赖 Skin 的 region，避免不同 skin 兼容性导致闪退）
+        TextureRegion white;
+        try {
+            white = game.getSkin().getRegion("white");
+        } catch (Exception ignored) {
+            white = new TextureRegion(TextureManager.getInstance().getWhitePixel());
+        }
 
         // --- 5. 绘制背景 (深灰色/半透明) ---
         batch.setColor(0.2f, 0.2f, 0.2f, 0.5f); // 深色透明背景
