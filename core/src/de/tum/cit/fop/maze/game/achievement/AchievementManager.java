@@ -2,12 +2,12 @@ package de.tum.cit.fop.maze.game.achievement;
 
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.EnemyTier;
-import de.tum.cit.fop.maze.game.GameSaveData;
+import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.game.event.GameListener;
 import de.tum.cit.fop.maze.game.score.DamageSource;
 import de.tum.cit.fop.maze.game.score.ScoreConstants;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.StorageManager;
+import de.tum.cit.fop.maze.game.save.StorageManager;
 
 import java.util.LinkedList;
 import java.util.Queue;

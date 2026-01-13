@@ -429,6 +429,15 @@ public class Player extends GameObject {
         this.targetY = y;
         this.isMovingContinuous = false;
     }
+    public void teleportTo(int x, int y) {
+        super.setPosition(x, y);
+        this.worldX = x;
+        this.worldY = y;
+        this.targetX = x;
+        this.targetY = y;
+        this.isMovingContinuous = false;
+        this.moving = false;
+    }
 
     private void enterHitStun(float duration) {
         inHitStun = true;
@@ -568,6 +577,12 @@ public class Player extends GameObject {
 
     public int getMaxLives() {
         return maxLives;
+    }
+    public void setMaxLives(int maxLives) {
+        this.maxLives = maxLives;
+        if (this.lives > this.maxLives) {
+            this.lives = this.maxLives;
+        }
     }
 
     @Override

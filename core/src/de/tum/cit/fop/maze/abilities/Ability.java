@@ -5,12 +5,17 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameManager;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public abstract class Ability {
 
     public enum AbilityInputType {
-        INSTANT,    // 一按就触发（P1、Dash）
-        CONTINUOUS  // 多阶段 / 状态机（Magic）
+        INSTANT,
+        CONTINUOUS
     }
+
+    public abstract String getId();
 
     public AbilityInputType getInputType() {
         return AbilityInputType.INSTANT;
@@ -39,16 +44,13 @@ public abstract class Ability {
         this.duration = duration;
     }
 
-    /* =================== 对外统一入口（新增） =================== */
+    /* ================= 输入入口 ================= */
 
-    /**
-     * 👉 推荐：所有输入系统 / Screen / Controller 都只调用这个方法
-     */
     public boolean activate(Player player, GameManager gameManager) {
         return tryActivate(player, gameManager);
     }
 
-    /* =================== 核心生命周期 =================== */
+    /* ================= 生命周期 ================= */
 
     protected boolean tryActivate(Player player, GameManager gameManager) {
         if (!canActivate(player)) return false;
@@ -59,13 +61,11 @@ public abstract class Ability {
 
         onActivate(player, gameManager);
 
-        // 是否立刻进入冷却
         if (shouldStartCooldown()) {
             ready = false;
             cooldownTimer = 0f;
         }
 
-        // 是否进入 active/duration 阶段
         if (shouldBecomeActive()) {
             active = true;
             durationTimer = 0f;
@@ -74,21 +74,19 @@ public abstract class Ability {
         return true;
     }
 
-    public void update(float delta) {
+    public void update(float delta, Player player, GameManager gameManager) {
 
-        // Active 阶段
         if (active) {
             durationTimer += delta;
-            updateActive(delta);
+            updateActive(delta, player, gameManager);
 
             if (durationTimer >= duration) {
                 active = false;
                 durationTimer = 0f;
-                onDeactivate();
+                onDeactivate(player, gameManager);
             }
         }
 
-        // 冷却
         if (!ready) {
             cooldownTimer += delta;
             if (cooldownTimer >= getCooldownDuration()) {
@@ -98,7 +96,7 @@ public abstract class Ability {
         }
     }
 
-    /* =================== 子类钩子 =================== */
+    /* ================= 子类钩子 ================= */
 
     protected boolean shouldBecomeActive() {
         return duration > 0;
@@ -118,15 +116,15 @@ public abstract class Ability {
 
     protected abstract void onActivate(Player player, GameManager gameManager);
 
-    protected void updateActive(float delta) {}
+    protected void updateActive(float delta, Player player, GameManager gameManager) {}
 
-    protected void onDeactivate() {}
+    protected void onDeactivate(Player player, GameManager gameManager) {}
 
     protected abstract void onUpgrade();
 
     public abstract void draw(SpriteBatch batch, ShapeRenderer shapeRenderer, Player player);
 
-    /* =================== 状态查询 =================== */
+    /* ================= 状态 ================= */
 
     public boolean canActivate(Player player) {
         return ready && player.getMana() >= manaCost;
@@ -155,9 +153,11 @@ public abstract class Ability {
             onUpgrade();
         }
     }
+
     public void setLevel(int level) {
         this.level = level;
     }
+
     public void forceReset() {
         active = false;
         ready = true;
@@ -172,4 +172,24 @@ public abstract class Ability {
     public float getCooldown() { return cooldown; }
 
     public float getDuration() { return duration; }
+
+    public Map<String, Object> saveState() {
+        Map<String, Object> m = new HashMap<>();
+        m.put("level", level);
+        m.put("ready", ready);
+        m.put("active", active);
+        m.put("cooldownTimer", cooldownTimer);
+        m.put("durationTimer", durationTimer);
+        return m;
+    }
+
+    public void loadState(Map<String, Object> m) {
+        if (m == null) return;
+
+        level = (int) m.getOrDefault("level", level);
+        ready = (boolean) m.getOrDefault("ready", true);
+        active = (boolean) m.getOrDefault("active", false);
+        cooldownTimer = ((Number)m.getOrDefault("cooldownTimer", 0f)).floatValue();
+        durationTimer = ((Number)m.getOrDefault("durationTimer", 0f)).floatValue();
+    }
 }

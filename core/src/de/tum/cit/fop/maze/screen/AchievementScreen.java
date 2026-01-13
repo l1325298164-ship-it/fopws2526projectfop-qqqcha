@@ -17,10 +17,9 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.game.achievement.AchievementType;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
-import de.tum.cit.fop.maze.game.score.ScoreConstants;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.StorageManager;
+import de.tum.cit.fop.maze.game.save.StorageManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;

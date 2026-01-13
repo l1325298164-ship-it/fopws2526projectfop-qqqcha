@@ -2,6 +2,7 @@ package de.tum.cit.fop.maze.game;
 
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.graphics.Color;
+import de.tum.cit.fop.maze.abilities.Ability;
 import de.tum.cit.fop.maze.effects.Enemy.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager;
@@ -19,14 +20,13 @@ import de.tum.cit.fop.maze.entities.trap.*;
 import de.tum.cit.fop.maze.game.achievement.AchievementManager;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
 import de.tum.cit.fop.maze.game.event.GameEventSource;
-import de.tum.cit.fop.maze.game.score.DamageSource;
-import de.tum.cit.fop.maze.game.score.LevelResult;
-import de.tum.cit.fop.maze.game.score.ScoreConstants;
-import de.tum.cit.fop.maze.game.score.ScoreManager;
+import de.tum.cit.fop.maze.game.save.GameSaveData;
+import de.tum.cit.fop.maze.game.save.PlayerSaveData;
+import de.tum.cit.fop.maze.game.score.*;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.StorageManager;
+import de.tum.cit.fop.maze.game.save.StorageManager;
 
 import java.util.*;
 import static com.badlogic.gdx.math.MathUtils.random;
@@ -41,6 +41,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private static final float REVIVE_DELAY = 10f;
 
     // ✨ 自动保存
+    private boolean restoringFromSave = false;
     private float autoSaveTimer = 0f;
     private static final float AUTO_SAVE_INTERVAL = 30f;
 
@@ -147,7 +148,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         gameVariables.put("cam_zoom", 1.0f);
         gameVariables.put("time_scale", 1.0f);
 
-        maze = generator.generateMaze(difficultyConfig);
+        if (!restoringFromSave) {
+            maze = generator.generateMaze(difficultyConfig);
+        } else {
+            maze = deepCopyMaze(gameSaveData.maze);
+        }
 
         enemies.clear();
         traps.clear();
@@ -220,7 +225,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // 这样即使玩家刚进游戏就退出，磁盘上也有存档文件，Continue 按钮不会消失。
         saveGameProgress();
     }
-
+    public void restoreFromSaveData(GameSaveData saveData) {
+        this.restoringFromSave = true;
+        this.gameSaveData = saveData;
+        resetGame();
+        restorePlayers(saveData);
+        this.restoringFromSave = false;
+    }
     public void debugEnemiesAndBullets() {
         Logger.debug("=== GameManager Debug ===");
         Logger.debug("Player at: (" + player.getX() + ", " + player.getY() + ")");
@@ -1449,19 +1460,42 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (gameSaveData == null) {
             gameSaveData = new GameSaveData();
         }
-
+        gameSaveData.maze = deepCopyMaze(maze);
         gameSaveData.currentLevel = currentLevel;
         gameSaveData.difficulty = difficultyConfig.difficulty.name();
         gameSaveData.twoPlayerMode = twoPlayerMode;
 
-        if (player != null) {
-            gameSaveData.lives = player.getLives();
-            gameSaveData.maxLives = player.getMaxLives();
-            gameSaveData.mana = (int) player.getMana();
-            gameSaveData.hasKey = player.hasKey();
-            gameSaveData.buffAttack = player.hasBuffAttack();
-            gameSaveData.buffRegen = player.hasBuffRegen();
-            gameSaveData.buffManaEfficiency = player.hasBuffManaEfficiency();
+        gameSaveData.players.clear();
+
+        for (Player p : players) {
+            if (p == null) continue;
+
+            PlayerSaveData ps = new PlayerSaveData();
+
+            ps.x = p.getX();
+            ps.y = p.getY();
+
+            ps.lives = p.getLives();
+            ps.maxLives = p.getMaxLives();
+            ps.mana = (int) p.getMana();
+
+            ps.hasKey = p.hasKey();
+            ps.buffAttack = p.hasBuffAttack();
+            ps.buffRegen = p.hasBuffRegen();
+            ps.buffManaEfficiency = p.hasBuffManaEfficiency();
+
+            // 技能等级
+            if (p.getAbilityManager() != null) {
+                for (Ability a : p.getAbilityManager().getAbilities().values()) {
+                    ps.abilityStates.put(
+                            a.getId(),
+                            a.saveState()
+                    );
+
+                }
+            }
+
+            gameSaveData.players.put(p.getPlayerIndex(), ps);
         }
 
         if (scoreManager != null) {
@@ -1475,6 +1509,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         StorageManager.getInstance().saveGame(gameSaveData);
         Logger.info("Game progress saved: Level=" + currentLevel + ", Score=" + gameSaveData.score);
     }
+
+    private int[][] deepCopyMaze(int[][] src) {
+        if (src == null) return null;
+        int[][] copy = new int[src.length][];
+        for (int i = 0; i < src.length; i++) {
+            copy[i] = Arrays.copyOf(src[i], src[i].length);
+        }
+        return copy;
+    }
+
 
     public LevelResult getLevelResult() {
         if (scoreManager == null) {
@@ -1516,30 +1560,41 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return achievementManager;
     }
 
-    public void restoreFromSaveData(GameSaveData saveData) {
+    private void restorePlayers(GameSaveData saveData) {
         if (saveData == null) return;
 
-        this.gameSaveData = saveData;
         this.currentLevel = saveData.currentLevel;
 
         if (scoreManager != null) {
             scoreManager.restoreState(saveData);
         }
 
-        if (player != null) {
-            int targetLives = saveData.lives > 0 ? saveData.lives : difficultyConfig.initialLives;
-            int currentLives = player.getLives();
-            if (targetLives > currentLives) {
-                player.heal(targetLives - currentLives);
-            }
-            player.setHasKey(saveData.hasKey);
-            if (saveData.buffAttack) player.activateAttackBuff();
-            if (saveData.buffRegen) player.activateRegenBuff();
-            if (saveData.buffManaEfficiency) player.activateManaBuff();
-        }
+        for (Player p : players) {
+            PlayerSaveData ps = saveData.players.get(p.getPlayerIndex());
+            if (ps == null) continue;
 
-        Logger.info("Game state restored: Level=" + currentLevel + ", Score=" + saveData.score);
+            p.teleportTo(ps.x, ps.y);
+            p.setLives(ps.lives);
+            p.setMaxLives(ps.maxLives);
+            p.setMana(ps.mana);
+            p.setHasKey(ps.hasKey);
+
+            if (ps.buffAttack) p.activateAttackBuff();
+            if (ps.buffRegen) p.activateRegenBuff();
+            if (ps.buffManaEfficiency) p.activateManaBuff();
+
+            if (p.getAbilityManager() != null) {
+                for (Ability a : p.getAbilityManager().getAbilities().values()) {
+                    Map<String, Object> state = ps.abilityStates.get(a.getId());
+                    if (state != null) {
+                        a.loadState(state);
+                    }
+                }
+            }
+
+        }
     }
+
 
     public ItemEffectManager getItemEffectManager() {
         return itemEffectManager;
