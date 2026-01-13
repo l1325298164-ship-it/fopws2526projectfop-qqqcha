@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
@@ -104,6 +105,8 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         Gdx.input.setInputProcessor(uiStage);
     }
     private final ChapterContext chapterContext;
+    private BitmapFont worldHintFont;
+
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
     static class Item {
@@ -145,6 +148,10 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
     @Override
     public void show() {
+        worldHintFont = new BitmapFont(); // LibGDX 默认字体
+        worldHintFont.setColor(Color.GOLD);
+        worldHintFont.getData().setScale(0.9f);
+
 
         uiTop    = new Texture("Wallpaper/HUD_up.png");
         uiBottom = new Texture("Wallpaper/HUD_down.png");
@@ -332,6 +339,34 @@ public class GameScreen implements Screen, Chapter1RelicListener {
             }
         }
         batch.end();
+        batch.begin();
+
+        Player player = gm.getPlayer();
+
+        for (Chapter1Relic relic : gm.getChapterRelics()) {
+            if (!relic.isInteractable()) continue;
+
+            // 只在玩家靠近时显示（1.5 格）
+            int dx = relic.getX() - player.getX();
+            int dy = relic.getY() - player.getY();
+            if (dx * dx + dy * dy > 2) continue;
+
+            float wx = (relic.getX() + 0.5f) * GameConstants.CELL_SIZE;
+            float wy = (relic.getY() + 0.5f) * GameConstants.CELL_SIZE;
+
+            // 轻微上下浮动
+            float bob = (float)Math.sin(Gdx.graphics.getFrameId() * 0.1f) * 4f;
+
+            worldHintFont.draw(
+                    batch,
+                    "Press E",
+                    wx - 20,
+                    wy + GameConstants.CELL_SIZE + 10 + bob
+            );
+        }
+
+        batch.end();
+
 
         /* =========================================================
            ③ 门前龙卷风粒子 + 特效
@@ -544,5 +579,6 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         maze.dispose();
         if (console != null) console.dispose();
         if (gameOverStage != null) gameOverStage.dispose();
+        if (worldHintFont != null) worldHintFont.dispose();
     }
 }

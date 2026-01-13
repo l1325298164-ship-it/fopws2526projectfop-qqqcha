@@ -1183,7 +1183,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     private void generateTreasures() {
-        int targetCount = 3;
+        int targetCount = 10; //宝箱数目
         int spawned = 0;
         int attempts = 0;
 
