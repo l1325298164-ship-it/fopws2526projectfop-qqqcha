@@ -19,10 +19,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import de.tum.cit.fop.maze.audio.AudioConfig;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
-import de.tum.cit.fop.maze.game.Difficulty;
-import de.tum.cit.fop.maze.game.DifficultyConfig;
-import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.game.GameSaveData;
+import de.tum.cit.fop.maze.entities.boss.BossLoadingScreen;
+import de.tum.cit.fop.maze.game.*;
 import de.tum.cit.fop.maze.screen.*;
 import de.tum.cit.fop.maze.tools.MazeRunnerGameHolder;
 import de.tum.cit.fop.maze.tools.PVAnimationCache;
@@ -101,13 +99,30 @@ public class MazeRunnerGame extends Game {
     }
 
     public void debugEnterBoss() {
+        setScreen(new BossLoadingScreen(this));
+    }
 
+    public void startChapterGame(
+            Difficulty difficulty,
+            ChapterContext chapterContext
+    ) {
+        this.currentDifficulty = difficulty;
+        this.difficultyConfig = DifficultyConfig.of(difficulty);
+
+        this.gameManager = new GameManager(
+                this.difficultyConfig,
+                this.twoPlayerMode,
+                chapterContext   // ⭐ 唯一传入点
+        );
+
+        setScreen(new GameScreen(this, difficultyConfig, chapterContext));
     }
 
     public enum PV4Result { START, EXIT }
     public enum StoryStage {
         STORY_BEGIN, MAZE_GAME_TUTORIAL, PV4, MODE_MENU, MAZE_GAME, MAIN_MENU
     }
+
 
     private StoryStage stage = StoryStage.MAIN_MENU;
 

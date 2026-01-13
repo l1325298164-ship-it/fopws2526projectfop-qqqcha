@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.abilities.AbilityManager;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
@@ -30,6 +31,15 @@ public class Player extends GameObject {
 
     public void enableTutorialMode() {
 
+    }
+
+    public void requestChapter1RelicFromTreasure(Treasure treasure) {
+        gameManager.onTreasureOpened(this, treasure);
+    }
+
+    public void requestChapter1Relic(Chapter1Relic relic) {
+        if (isTutorial) return; // tutorial 不弹
+        gameManager.requestChapter1Relic(relic);
     }
 
     public enum PlayerIndex {

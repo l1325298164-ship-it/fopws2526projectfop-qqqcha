@@ -46,7 +46,7 @@ public class Treasure extends GameObject {
 
         // === 🎲 智能掉落逻辑 ===
         // 只掉落玩家还没有的 Buff
-
+        player.requestChapter1RelicFromTreasure(this);
         List<Integer> dropPool = new ArrayList<>();
 
         // 0. 检查是否已有 攻击 Buff

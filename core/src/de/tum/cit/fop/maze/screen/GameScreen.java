@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
@@ -23,6 +24,8 @@ import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
+import de.tum.cit.fop.maze.entities.chapter.Chapter1RelicDialog;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.*;
@@ -39,7 +42,7 @@ import de.tum.cit.fop.maze.utils.StorageManager;
 
 import java.util.*;
 
-public class GameScreen implements Screen {
+public class GameScreen implements Screen, Chapter1RelicListener {
 
     private Viewport worldViewport;
     private Stage uiStage;
@@ -68,6 +71,42 @@ public class GameScreen implements Screen {
     private boolean gameOverShown = false;
     private Stage gameOverStage;
 
+    @Override
+    public void onChapter1RelicRequested(Chapter1Relic relic) {
+
+        // 1️⃣ 通知 GameManager：进入查看态（停游戏逻辑）
+        gm.enterChapterRelicView();
+
+        Chapter1RelicDialog dialog =
+                new Chapter1RelicDialog(
+                        game.getSkin(),
+                        relic
+                );
+
+        dialog.setOnRead(() -> {
+            gm.exitChapterRelicView();
+            dialog.hide();
+
+            // ✅ 关闭后：把输入还给“游戏”
+            Gdx.input.setInputProcessor(null);
+        });
+
+        dialog.setOnDiscard(() -> {
+            gm.exitChapterRelicView();
+            dialog.hide();
+
+            // ✅ 关闭后：把输入还给“游戏”
+            Gdx.input.setInputProcessor(null);
+        });
+
+        dialog.show(uiStage);
+
+        // 2️⃣ 打开 Dialog 时：输入只给 UI
+        Gdx.input.setInputProcessor(uiStage);
+    }
+    private final ChapterContext chapterContext;
+    private BitmapFont worldHintFont;
+
     enum Type { WALL_BEHIND, ENTITY, WALL_FRONT }
 
     static class Item {
@@ -90,13 +129,17 @@ public class GameScreen implements Screen {
             type = Type.ENTITY;
         }
     }
-
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
+        this(game, difficultyConfig, null);
+    }
+    public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig,ChapterContext chapterContext) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
-
+        this.chapterContext = chapterContext;
         // HARD 才有雾
-        if (difficultyConfig.difficulty == Difficulty.HARD) {
+        // ⭐ 所有规则只写在这里
+        if (difficultyConfig.difficulty == Difficulty.HARD
+                || (chapterContext != null && chapterContext.enableFogOverride())) {
             fogSystem = new FogSystem();
         } else {
             fogSystem = null;
@@ -105,6 +148,10 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+        worldHintFont = new BitmapFont(); // LibGDX 默认字体
+        worldHintFont.setColor(Color.GOLD);
+        worldHintFont.getData().setScale(0.9f);
+
 
         uiTop    = new Texture("Wallpaper/HUD_up.png");
         uiBottom = new Texture("Wallpaper/HUD_down.png");
@@ -115,11 +162,12 @@ public class GameScreen implements Screen {
         batch = game.getSpriteBatch();
 
         gm = game.getGameManager();
-        if (gm == null) {
-            Logger.warning("GameManager is null, creating new one");
-            gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
-            game.setGameManager(gm);
-        }
+        gm = new GameManager(
+                difficultyConfig,
+                game.isTwoPlayerMode() // ⭐ 从 Settings 来的值
+                ,chapterContext
+        );
+        gm.setChapter1RelicListener(this);
 
         maze = new MazeRenderer(gm, difficultyConfig);
         cam  = new CameraManager(difficultyConfig);
@@ -263,7 +311,12 @@ public class GameScreen implements Screen {
 
         List<Treasure> treasuresCopy = new ArrayList<>(gm.getTreasures());
         treasuresCopy.forEach(t -> items.add(new Item(t, 20)));
+        List<Chapter1Relic> relicsCopy =
+                new ArrayList<>(gm.getChapterRelics());
 
+        relicsCopy.forEach(r -> {
+            items.add(new Item(r, 25)); // 层级：比宝箱高一点
+        });
         List<HeartContainer> containersCopy = new ArrayList<>(gm.getHeartContainers());
         containersCopy.forEach(hc -> { if (hc.isActive()) items.add(new Item(hc, 30)); });
 
@@ -286,6 +339,34 @@ public class GameScreen implements Screen {
             }
         }
         batch.end();
+        batch.begin();
+
+        Player player = gm.getPlayer();
+
+        for (Chapter1Relic relic : gm.getChapterRelics()) {
+            if (!relic.isInteractable()) continue;
+
+            // 只在玩家靠近时显示（1.5 格）
+            int dx = relic.getX() - player.getX();
+            int dy = relic.getY() - player.getY();
+            if (dx * dx + dy * dy > 2) continue;
+
+            float wx = (relic.getX() + 0.5f) * GameConstants.CELL_SIZE;
+            float wy = (relic.getY() + 0.5f) * GameConstants.CELL_SIZE;
+
+            // 轻微上下浮动
+            float bob = (float)Math.sin(Gdx.graphics.getFrameId() * 0.1f) * 4f;
+
+            worldHintFont.draw(
+                    batch,
+                    "Press E",
+                    wx - 20,
+                    wy + GameConstants.CELL_SIZE + 10 + bob
+            );
+        }
+
+        batch.end();
+
 
         /* =========================================================
            ③ 门前龙卷风粒子 + 特效
@@ -498,5 +579,6 @@ public class GameScreen implements Screen {
         maze.dispose();
         if (console != null) console.dispose();
         if (gameOverStage != null) gameOverStage.dispose();
+        if (worldHintFont != null) worldHintFont.dispose();
     }
 }
