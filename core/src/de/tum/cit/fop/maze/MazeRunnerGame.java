@@ -425,4 +425,40 @@ public class MazeRunnerGame extends Game {
         twoPlayerModeDirty = false;
         return dirty;
     }
+
+    public void loadGameFromSlot(int slot) {
+        Logger.info("Loading game from slot " + slot);
+
+        StorageManager storage = StorageManager.getInstance();
+        GameSaveData saveData = storage.loadGameFromSlot(slot);
+
+        if (saveData == null) {
+            Logger.warning("Save slot " + slot + " is empty, starting new game.");
+            startNewGameFromMenu();
+            return;
+        }
+
+        Difficulty savedDifficulty;
+        try {
+            savedDifficulty = Difficulty.valueOf(saveData.difficulty);
+        } catch (Exception e) {
+            savedDifficulty = Difficulty.NORMAL;
+        }
+
+        this.currentDifficulty = savedDifficulty;
+        this.difficultyConfig = DifficultyConfig.of(savedDifficulty);
+        this.setTwoPlayerMode(saveData.twoPlayerMode);
+
+        // 🔥 关键：重建 GameManager
+        this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
+        this.gameManager.restoreFromSaveData(saveData);
+
+        // 🔥 切屏
+        if (savedDifficulty == Difficulty.ENDLESS) {
+            setScreen(new EndlessScreen(this, difficultyConfig));
+        } else {
+            setScreen(new GameScreen(this, difficultyConfig));
+        }
+    }
+
 }
