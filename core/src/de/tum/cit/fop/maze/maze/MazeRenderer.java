@@ -19,7 +19,7 @@ import java.util.List;
 public class MazeRenderer {
 
     private final GameManager gameManager;
-    private final DifficultyConfig difficultyConfig;
+    protected final DifficultyConfig difficultyConfig;
     private final TextureManager textureManager = TextureManager.getInstance();
     private int[][] lastMazeRef = null;
 

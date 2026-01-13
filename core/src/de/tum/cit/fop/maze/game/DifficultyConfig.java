@@ -120,6 +120,19 @@ public class DifficultyConfig {
                     400, 1.3f, 1.3f, 0, // 修正了原本缺少的参数
                     2.0f, 1.2f
             );
+            case BOSS -> new DifficultyConfig(
+                    Difficulty.BOSS, 40, 40, 0,
+
+                    5, 3, 0, 0,   // enemies
+                    0, 0, 0, 0,   // traps
+
+                    200,
+                    1.0f,
+                    1.0f,
+                    0
+            );
+
+
         };
     }
 }

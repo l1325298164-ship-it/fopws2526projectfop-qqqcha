@@ -10,7 +10,9 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.game.ChapterContext;
 import de.tum.cit.fop.maze.game.Difficulty;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
 
 /**
  * Chapter Select Screen
@@ -39,9 +41,10 @@ public class ChapterSelectScreen implements Screen {
             public void clicked(InputEvent event, float x, float y) {
 
                 Difficulty difficulty = Difficulty.NORMAL;
-                // 保持和 DifficultySelectScreen 一致：只启动一次新游戏并进入 GameScreen
-                game.startNewGame(difficulty);
-                game.goToGame();
+
+                ChapterContext chapterContext = ChapterContext.chapter1();
+
+                game.startChapterGame(difficulty, chapterContext);
             }
         });
 

@@ -12,7 +12,7 @@ public class PackPV {
 
         // === ⭐ 新增：自动缩小比例 ⭐ ===
         // 1248 * 0.25 = 312 像素，非常完美
-        settings.scale = new float[]{0.25f};
+        settings.scale = new float[]{1f};
 
         // === 因为缩小了，最大尺寸也可以调小了 ===
         // 1024x1024 足够装下缩小后的 9 帧
@@ -32,11 +32,11 @@ public class PackPV {
         // 执行打包（记得把路径改成你小猫素材的路径）
         TexturePacker.process(
                 settings,
-                root + "/assets_raw/pv4", // 假设你的大猫原图在这里
-                root + "/assets/pv/4", // 输出到 assets
-                "PV_4"                // 输出文件名
+                root + "/assets_raw/boss", // 假设你的大猫原图在这里
+                root + "/assets/Wallpaper/boss", // 输出到 assets
+                "wallpaper"                // 输出文件名
         );
 
-        System.out.println("Cat atlas packed successfully with 0.25x scale.");
+        System.out.println("Cat atlas packed successfully with 1x scale.");
     }
 }

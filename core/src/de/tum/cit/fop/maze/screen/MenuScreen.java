@@ -215,6 +215,9 @@ public class MenuScreen implements Screen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             changeEnabled = !changeEnabled;
         }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.B)) {
+            game.debugEnterBoss();
+        }
 
         int w = Gdx.graphics.getWidth();
         int h = Gdx.graphics.getHeight();
