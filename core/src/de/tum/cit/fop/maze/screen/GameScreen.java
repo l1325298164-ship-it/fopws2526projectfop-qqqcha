@@ -304,7 +304,12 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         List<Treasure> treasuresCopy = new ArrayList<>(gm.getTreasures());
         treasuresCopy.forEach(t -> items.add(new Item(t, 20)));
+        List<Chapter1Relic> relicsCopy =
+                new ArrayList<>(gm.getChapterRelics());
 
+        relicsCopy.forEach(r -> {
+            items.add(new Item(r, 25)); // 层级：比宝箱高一点
+        });
         List<HeartContainer> containersCopy = new ArrayList<>(gm.getHeartContainers());
         containersCopy.forEach(hc -> { if (hc.isActive()) items.add(new Item(hc, 30)); });
 

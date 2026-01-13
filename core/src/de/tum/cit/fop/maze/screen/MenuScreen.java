@@ -151,9 +151,9 @@ public class MenuScreen implements Screen {
                 .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
                 .padBottom(20).row();
 
-        root.add(bf.create("CONTROLS", () -> {
-            game.setScreen(new KeyMappingScreen(game, this));
-        })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
+        root.add(bf.create("RESET THE WORLD", game::startStoryWithLoading))
+                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
+                .padBottom(20).row();
 
         // 🔥 修改：跳转到新的 InfoScreen (不再使用旧弹窗)
         root.add(bf.create("INFO", () -> game.setScreen(new InfoScreen(game, this))))
