@@ -1318,6 +1318,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     private Player getPlayerByIndex(Player.PlayerIndex index) {
         for (Player p : players) {
+
             if (p.getPlayerIndex() == index) return p;
         }
         return null;
@@ -1547,7 +1548,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 }
             }
 
-            gameSaveData.players.put(p.getPlayerIndex(), ps);
+            gameSaveData.players.put(p.getPlayerIndex().name(), ps);
         }
 
         if (scoreManager != null) {
@@ -1629,7 +1630,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
 
         for (Player p : players) {
-            PlayerSaveData ps = saveData.players.get(p.getPlayerIndex());
+            PlayerSaveData ps = saveData.players.get(p.getPlayerIndex().name());
             if (ps == null) continue;
 
 
@@ -1949,6 +1950,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.error("🧩 buildWorldFromRestore DONE");
     }
 
+    public void markAsNewGame() {
+        Logger.error("🆕 MARK AS NEW GAME");
+
+        // 🔥 清空 restore 状态
+        restoringFromSave = false;
+        restoreLock = false;
+        pendingRestoreData = null;
+
+        // 🔥 新游戏 = 立刻初始化世界
+        resetGame();
+    }
 
 
 }

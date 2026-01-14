@@ -42,12 +42,24 @@ public class Player extends GameObject {
     }
 
     public enum PlayerIndex {
-        P1, P2
+        P1(0),
+        P2(1);
+
+        private final int number;
+
+        PlayerIndex(int number) {
+            this.number = number;
+        }
+
+        public int getNumber() {
+            return number;
+        }
+
     }
 
     private PlayerIndex playerIndex;
 
-    public String getPlayerIndex() {
+    public PlayerIndex getPlayerIndex() {
         return playerIndex;
     }
 

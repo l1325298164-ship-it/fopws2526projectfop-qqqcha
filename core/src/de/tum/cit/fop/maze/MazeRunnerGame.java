@@ -71,7 +71,7 @@ public class MazeRunnerGame extends Game {
 
         this.difficultyConfig = createDifficultyConfig(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
-
+        this.gameManager.markAsNewGame();
         if (difficulty == Difficulty.ENDLESS) {
             if (getScreen() != null) getScreen().hide();
             EndlessScreen endlessScreen = new EndlessScreen(this, difficultyConfig);
@@ -344,7 +344,7 @@ public class MazeRunnerGame extends Game {
         this.currentDifficulty = difficulty;
         this.difficultyConfig = DifficultyConfig.of(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
-
+        this.gameManager.markAsNewGame();
         if (difficulty == Difficulty.ENDLESS) {
             setScreen(new EndlessScreen(this, difficultyConfig));
             return;
@@ -465,5 +465,7 @@ public class MazeRunnerGame extends Game {
             setScreen(new GameScreen(this, difficultyConfig));
         }
     }
+
+
 
 }

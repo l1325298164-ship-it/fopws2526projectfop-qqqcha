@@ -169,11 +169,18 @@ public class MenuScreen implements Screen {
 
         // ===== QUICK PLAY（临时测试按钮，不读主存档）=====
         buttonTable.add(
-                        bf.create("QUICK PLAY (NORMAL)", () -> {
+                        bf.create("DEBUG-STORY MODE", () -> {
                             game.startNewGame(Difficulty.NORMAL);
                         })
                 ).width(buttonWidth).height(BUTTON_HEIGHT)
                 .padBottom(buttonPadding).row();
+
+        // ===== 剧情模式（独立系统）=====
+        buttonTable.add(
+                        bf.create("RESET THE WORLD", game::startStoryWithLoading)
+                ).width(buttonWidth).height(BUTTON_HEIGHT)
+                .padBottom(20).row();
+
 
         // ===== 难度选择（仍然是主模式入口）=====
         buttonTable.add(
@@ -182,11 +189,6 @@ public class MenuScreen implements Screen {
                 ).width(buttonWidth).height(BUTTON_HEIGHT)
                 .padBottom(20).row();
 
-        // ===== 剧情模式（独立系统）=====
-        buttonTable.add(
-                        bf.create("RESET THE WORLD", game::startStoryWithLoading)
-                ).width(buttonWidth).height(BUTTON_HEIGHT)
-                .padBottom(20).row();
 
         buttonTable.add(
                         bf.create("INFO", () -> game.setScreen(new InfoScreen(game, this)))
@@ -209,20 +211,6 @@ public class MenuScreen implements Screen {
     }
 
 
-    private void showOverwriteDialog() {
-        Dialog dialog = new Dialog(" WARNING ", game.getSkin()) {
-            @Override
-            protected void result(Object object) {
-                if ((Boolean) object) {
-                    game.startNewGameFromMenu();
-                }
-            }
-        };
-        dialog.text("\n  Starting a new game will ERASE your current progress!  \n  Are you sure you want to continue?  \n");
-        dialog.button(" YES, ERASE IT ", true);
-        dialog.button(" CANCEL ", false);
-        dialog.show(stage);
-    }
 
     @Override
     public void render(float delta) {
