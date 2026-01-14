@@ -352,7 +352,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return maze[y][x] == 1;
     }
     public void update(float delta) {
-        uiConsumesMouse = false;
         if (viewingChapterRelic) {
             return;
         }
@@ -1373,13 +1372,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
 
-    @Override
-    public void onMenuInput() {
-        if (viewingChapterRelic) {
-            exitChapterRelicView();
-            Logger.debug("Exit ChapterRelic view by ESC");
-        }
-    }
+
 
     public void setVariable(String key, float value) {
         if (gameVariables == null) gameVariables = new HashMap<>();

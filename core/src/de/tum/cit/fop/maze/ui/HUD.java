@@ -29,6 +29,72 @@ public class HUD {
     private Ability hoveredUpgradeAbility = null;
     private float upgradeHoverAnim = 0f;
 
+    public boolean isMouseOverInteractiveUI() {
+        int mx = Gdx.input.getX();
+        int my = Gdx.graphics.getHeight() - Gdx.input.getY();
+
+        // 只要有一个升级按钮 hover，就算 UI consume
+        for (Player p : gameManager.getPlayers()) {
+            if (p == null || p.getAbilityManager() == null) continue;
+
+            for (Ability ability : p.getAbilityManager().getAbilities().values()) {
+                if (!canShowUpgrade(p, ability)) continue;
+
+                // ===== 复用 renderUpgradeButton 的“同一套布局算法” =====
+                float iconX, iconY, iconSize;
+                boolean mirror = p.getPlayerIndex() == Player.PlayerIndex.P2;
+
+                if (ability instanceof DashAbility) {
+                    iconSize = DASH_ICON_SIZE;
+                    iconX = getIconX(iconSize, mirror);
+                    iconY = DASH_UI_MARGIN_Y;
+                } else if (ability instanceof MeleeAttackAbility) {
+                    iconSize = MELEE_ICON_SIZE;
+                    float dashX = getIconX(DASH_ICON_SIZE, mirror);
+                    iconX = mirror
+                            ? dashX - MELEE_UI_OFFSET_X
+                            : dashX + MELEE_UI_OFFSET_X + 50;
+                    iconY = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - iconSize) / 2f;
+                } else if (ability instanceof MagicAbility) {
+                    iconSize = MELEE_ICON_SIZE;
+                    float dashX = getIconX(DASH_ICON_SIZE, mirror);
+                    iconX = mirror
+                            ? dashX - MELEE_UI_OFFSET_X
+                            : dashX + MELEE_UI_OFFSET_X;
+                    iconY = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - iconSize) / 2f;
+                } else {
+                    continue;
+                }
+
+                // ===== 升级按钮位置（和 renderUpgradeButton 完全一致）=====
+                float btnSize = UPG_BTN_SIZE;
+                float anchorX = mirror
+                        ? iconX - UPG_BTN_OFF_X - btnSize
+                        : iconX + iconSize + UPG_BTN_OFF_X;
+                float anchorY = iconY + iconSize * 0.5f;
+
+                float bx = anchorX;
+                float by = anchorY - btnSize * 0.5f + UPG_BTN_OFF_Y;
+
+                // per-ability tweak
+                if (ability instanceof MeleeAttackAbility) {
+                    bx -= 4f; by -= 2f;
+                } else if (ability instanceof MagicAbility) {
+                    bx += 6f; by += 3f;
+                }
+
+                boolean hover =
+                        mx >= bx && mx <= bx + btnSize &&
+                                my >= by && my <= by + btnSize;
+
+                if (hover) return true;
+            }
+        }
+        return false;
+    }
+
+
+
     // ===== HUD 布局模式 =====
     private enum HUDLayoutMode {
         SINGLE,
@@ -222,7 +288,6 @@ public class HUD {
     // =========================================================
 
     public void renderInGameUI(SpriteBatch uiBatch) {
-        try {
             if (gameManager.isTwoPlayerMode()) {
                 renderTwoPlayerHUD(uiBatch);
             } else {
@@ -237,9 +302,7 @@ public class HUD {
             lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
 
 
-        } catch (Exception e) {
-            Logger.error("HUD render failed"+e);
-        }
+
     }
 
     private void renderSinglePlayerHUD(SpriteBatch uiBatch) {
@@ -1340,7 +1403,10 @@ public class HUD {
         boolean hover =
                 mx >= bx && mx <= bx + BTN_SIZE &&
                         my >= by && my <= by + BTN_SIZE;
-
+        if (hover) {
+            gameManager.setUIConsumesMouse(true);
+            Logger.error("UI CONSUME MOUSE");
+        }
 
 
         float perAbilityX = 0f;

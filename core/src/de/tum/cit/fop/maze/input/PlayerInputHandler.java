@@ -32,6 +32,9 @@ public class PlayerInputHandler {
             InputHandlerCallback callback,
             Player.PlayerIndex index
     ) {
+        Logger.error("INPUT UPDATE CALLED");
+        if (callback.isUIConsumingMouse())
+            return;
         // ===== 移动 =====
         handleMovementInput(delta, callback, index);
 
@@ -41,9 +44,7 @@ public class PlayerInputHandler {
         // ===== 交互 =====
         handleActionInput(callback, index);
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            callback.onMenuInput();
-        }
+
     }
 
     /* ================= 移动 ================= */
@@ -105,6 +106,10 @@ public class PlayerInputHandler {
             InputHandlerCallback callback,
             Player.PlayerIndex index
     ){
+        // 🔒 UI 吃鼠标 → 本帧不允许任何技能
+        if (callback.isUIConsumingMouse()) {
+            return;
+        }
         float cd = (index == Player.PlayerIndex.P1)
                 ? abilityCooldownP1
                 : abilityCooldownP2;
@@ -181,7 +186,7 @@ public class PlayerInputHandler {
         float getMoveDelayMultiplier();
         boolean onAbilityInput(Player.PlayerIndex index, int slot);
         void onInteractInput(Player.PlayerIndex index);
-        void onMenuInput();
+        boolean isUIConsumingMouse();
     }
 
     // ================= 教程接口 =================

@@ -1103,9 +1103,10 @@ public class EndlessScreen implements Screen {
                 gm.onInteractInput(index);
             }
 
+
             @Override
-            public void onMenuInput() {
-                togglePause();
+            public boolean isUIConsumingMouse() {
+                return gm.isUIConsumingMouse();
             }
 
         }, Player.PlayerIndex.P1);
@@ -1136,9 +1137,10 @@ public class EndlessScreen implements Screen {
                     gm.onInteractInput(index);
                 }
 
+
                 @Override
-                public void onMenuInput() {
-                    // P2 不控制暂停
+                public boolean isUIConsumingMouse() {
+                    return gm.isUIConsumingMouse();
                 }
 
             }, Player.PlayerIndex.P2);
