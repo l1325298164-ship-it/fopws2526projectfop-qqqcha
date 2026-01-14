@@ -288,12 +288,8 @@ public class TrapT01_Geyser extends Trap {
             batch.setColor(1, 1, 1, 1);
         }
 
-        // 🔥 调试信息
-        if (Logger.isDebugEnabled()) {
-            Logger.debug("T01渲染: 状态=" + state +
-                    " 尺寸=" + renderWidth + "x" + renderHeight +
-                    " 位置=(" + (x * size + offsetX) + "," + (y * size + offsetY) + ")");
-        }
+
+
     }
 
     @Override

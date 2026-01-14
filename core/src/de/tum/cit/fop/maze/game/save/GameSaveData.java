@@ -1,7 +1,10 @@
-package de.tum.cit.fop.maze.game;
+package de.tum.cit.fop.maze.game.save;
+
+import de.tum.cit.fop.maze.entities.Player;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 /**
  * 单局/当前关卡存档数据 (Level Snapshot)
@@ -18,7 +21,7 @@ public class GameSaveData {
     // ==========================================
     // 1. 基础存档信息 (用于恢复游戏状态)
     // ==========================================
-
+    public int[][] maze;
     /** 当前关卡数 */
     public int currentLevel = 1;
 
@@ -35,15 +38,7 @@ public class GameSaveData {
     public boolean twoPlayerMode = false;
 
     // --- 玩家状态 ---
-    public int lives = 0;
-    public int maxLives = 0;
-    public int mana = 0;
-    public boolean hasKey = false;
-
-    // --- Buff 状态 (道具增益) ---
-    public boolean buffAttack = false;
-    public boolean buffRegen = false;
-    public boolean buffManaEfficiency = false;
+    public Map<String, PlayerSaveData> players = new HashMap<>();
 
     // ==========================================
     // 2. ScoreManager 状态同步 (用于读档恢复)

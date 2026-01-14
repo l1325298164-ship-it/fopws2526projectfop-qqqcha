@@ -8,6 +8,8 @@ import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
+import java.util.Map;
+
 public class MagicAbility extends Ability {
 
     private GameManager gameManager;
@@ -167,20 +169,20 @@ public class MagicAbility extends Ability {
     /* ================= Update ================= */
 
     @Override
-    public void update(float delta) {
-        super.update(delta);
+    public void update(float delta, Player player, GameManager gm) {
+        super.update(delta, player, gm);
         inputConsumedThisFrame = false;
-        // ⭐ 核心：统一累加
+
         phaseTimer += delta;
 
         if (phase == Phase.COOLDOWN && ready) {
             setPhase(Phase.IDLE);
         }
 
-        if (phase == Phase.AIMING && gameManager != null) {
+        if (phase == Phase.AIMING) {
             aimingTimer += delta;
-            aoeCenterX = gameManager.getMouseTileX();
-            aoeCenterY = gameManager.getMouseTileY();
+            aoeCenterX = gm.getMouseTileX();
+            aoeCenterY = gm.getMouseTileY();
 
             if (aimingTimer >= AIMING_TIMEOUT) {
                 setPhase(Phase.IDLE);
@@ -194,6 +196,7 @@ public class MagicAbility extends Ability {
             }
         }
     }
+
 
     /* ================= Phase Helper ================= */
 
@@ -275,4 +278,23 @@ public class MagicAbility extends Ability {
     public AbilityInputType getInputType() {
         return AbilityInputType.CONTINUOUS;
     }
+    public String getId() {
+        return "magic";
+    }
+
+    @Override
+    public Map<String, Object> saveState() {
+        Map<String, Object> m = super.saveState();
+        m.put("phase", phase.name());
+        m.put("currentCooldown", currentCooldown);
+        return m;
+    }
+
+    @Override
+    public void loadState(Map<String, Object> m) {
+        super.loadState(m);
+        phase = Phase.valueOf((String)m.getOrDefault("phase", Phase.IDLE.name()));
+        currentCooldown = ((Number)m.getOrDefault("currentCooldown", 0f)).floatValue();
+    }
+
 }

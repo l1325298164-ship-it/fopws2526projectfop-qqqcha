@@ -21,13 +21,14 @@ import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.boss.BossLoadingScreen;
 import de.tum.cit.fop.maze.game.*;
+import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.screen.*;
 import de.tum.cit.fop.maze.tools.MazeRunnerGameHolder;
 import de.tum.cit.fop.maze.tools.PVAnimationCache;
 import de.tum.cit.fop.maze.tools.PVNode;
 import de.tum.cit.fop.maze.tools.PVPipeline;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.StorageManager;
+import de.tum.cit.fop.maze.game.save.StorageManager;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 import java.util.List;
@@ -70,7 +71,7 @@ public class MazeRunnerGame extends Game {
 
         this.difficultyConfig = createDifficultyConfig(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
-
+        this.gameManager.markAsNewGame();
         if (difficulty == Difficulty.ENDLESS) {
             if (getScreen() != null) getScreen().hide();
             EndlessScreen endlessScreen = new EndlessScreen(this, difficultyConfig);
@@ -343,7 +344,7 @@ public class MazeRunnerGame extends Game {
         this.currentDifficulty = difficulty;
         this.difficultyConfig = DifficultyConfig.of(difficulty);
         this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
-
+        this.gameManager.markAsNewGame();
         if (difficulty == Difficulty.ENDLESS) {
             setScreen(new EndlessScreen(this, difficultyConfig));
             return;
@@ -372,7 +373,10 @@ public class MazeRunnerGame extends Game {
         this.difficultyConfig = DifficultyConfig.of(savedDifficulty);
         this.setTwoPlayerMode(saveData.twoPlayerMode);
         this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
-        this.gameManager.restoreFromSaveData(saveData);
+        this.gameManager.restoreFromSaveData(
+                saveData,
+                StorageManager.SaveTarget.AUTO
+        );
 
         if (savedDifficulty == Difficulty.ENDLESS) {
             setScreen(new EndlessScreen(this, difficultyConfig));
@@ -384,7 +388,6 @@ public class MazeRunnerGame extends Game {
     public void startNewGameFromMenu() {
         Logger.info("Starting new game from menu...");
         StorageManager storage = StorageManager.getInstance();
-        storage.deleteSave();
 
         Difficulty difficulty = this.currentDifficulty != null ? this.currentDifficulty : Difficulty.NORMAL;
         // 强制跳过 StoryLoadingScreen，直接开始游戏
@@ -424,4 +427,45 @@ public class MazeRunnerGame extends Game {
         twoPlayerModeDirty = false;
         return dirty;
     }
+
+    public void loadGameFromSlot(int slot) {
+        Logger.info("Loading game from slot " + slot);
+
+        StorageManager storage = StorageManager.getInstance();
+        GameSaveData saveData = storage.loadGameFromSlot(slot);
+
+        if (saveData == null) {
+            Logger.warning("Save slot " + slot + " is empty, starting new game.");
+            startNewGameFromMenu();
+            return;
+        }
+
+        Difficulty savedDifficulty;
+        try {
+            savedDifficulty = Difficulty.valueOf(saveData.difficulty);
+        } catch (Exception e) {
+            savedDifficulty = Difficulty.NORMAL;
+        }
+
+        this.currentDifficulty = savedDifficulty;
+        this.difficultyConfig = DifficultyConfig.of(savedDifficulty);
+        this.setTwoPlayerMode(saveData.twoPlayerMode);
+
+        // 🔥 关键：重建 GameManager
+        this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
+        this.gameManager.restoreFromSaveData(
+                saveData,
+                StorageManager.SaveTarget.fromSlot(slot)
+        );
+
+        // 🔥 切屏
+        if (savedDifficulty == Difficulty.ENDLESS) {
+            setScreen(new EndlessScreen(this, difficultyConfig));
+        } else {
+            setScreen(new GameScreen(this, difficultyConfig));
+        }
+    }
+
+
+
 }

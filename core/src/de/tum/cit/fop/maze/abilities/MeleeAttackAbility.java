@@ -60,11 +60,11 @@ public class MeleeAttackAbility extends Ability {
 
         AudioManager.getInstance().play(AudioType.UI_CLICK);
 
-        // ⭐⭐ 手动开始冷却
-        ready = false;
-        cooldownTimer = 0f;
     }
-
+    @Override
+    protected boolean shouldStartCooldown() {
+        return true;
+    }
 
 
     @Override
@@ -75,10 +75,9 @@ public class MeleeAttackAbility extends Ability {
 
 
     @Override
-    public void update(float delta) {
-        super.update(delta);
+    public void update(float delta, Player player, GameManager gameManager) {
+        super.update(delta, player, gameManager);
 
-        // 如果这一轮攻击有效 → 才推进攻击计时
         if (gameManager == null) return;
 
         attackTimer += delta;
@@ -88,6 +87,7 @@ public class MeleeAttackAbility extends Ability {
             damageDone = true;
         }
     }
+
 
 
 
@@ -168,5 +168,9 @@ public class MeleeAttackAbility extends Ability {
     @Override
     protected void onUpgrade() {
         // 升级逻辑通过 getLevel() 动态计算 damage 实现
+    }
+    @Override
+    public String getId() {
+        return "melee";
     }
 }

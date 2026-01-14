@@ -22,11 +22,14 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.game.Difficulty;
+import de.tum.cit.fop.maze.game.save.SaveListPanel;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.tools.PerlinNoise;
-import de.tum.cit.fop.maze.utils.StorageManager;
+import de.tum.cit.fop.maze.game.save.StorageManager;
 
 public class MenuScreen implements Screen {
+    private Table buttonTable;
 
     private final MazeRunnerGame game;
     private boolean changeEnabled = false;
@@ -126,55 +129,11 @@ public class MenuScreen implements Screen {
         title2.setFontScale(1.1f);
         root.add(title2).padBottom(80).row();
 
-        ButtonFactory bf = new ButtonFactory(game.getSkin());
-        boolean hasSave = storage.hasSaveFile();
-        float buttonWidth = getButtonWidth();
-        float buttonPadding = Gdx.graphics.getWidth() > 1920 ? 18f : 15f;
 
-        if (hasSave) {
-            root.add(bf.create("CONTINUE", game::loadGame))
-                    .width(buttonWidth).height(BUTTON_HEIGHT)
-                    .padBottom(buttonPadding).row();
-        }
+        buttonTable = new Table();
+        root.add(buttonTable).row();
 
-        String startText = hasSave ? "NEW GAME" : "START GAME";
-        root.add(bf.create(startText, () -> {
-            if (hasSave) {
-                showOverwriteDialog();
-            } else {
-                game.startNewGameFromMenu();
-            }
-        })).width(buttonWidth).height(BUTTON_HEIGHT).padBottom(buttonPadding).row();
-
-        root.add(bf.create("DIFFICULTY", () ->
-                        game.setScreen(new DifficultySelectScreen(game, this))))
-                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
-                .padBottom(20).row();
-
-        root.add(bf.create("RESET THE WORLD", game::startStoryWithLoading))
-                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
-                .padBottom(20).row();
-
-        // 🔥 修改：跳转到新的 InfoScreen (不再使用旧弹窗)
-        root.add(bf.create("INFO", () -> game.setScreen(new InfoScreen(game, this))))
-                .width(buttonWidth).height(BUTTON_HEIGHT)
-                .padBottom(buttonPadding).row();
-
-        root.add(bf.create("SETTINGS", () ->
-                        game.setScreen(
-                                new SettingsScreen(
-                                        game,
-                                        SettingsScreen.SettingsSource.MAIN_MENU,
-                                        this
-                                )
-                        )))
-                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
-                .padBottom(20)
-                .row();
-
-        root.add(bf.create("EXIT", game::exitGame))
-                .width(BUTTON_WIDTH).height(BUTTON_HEIGHT)
-                .row();
+        rebuildButtons();
 
         createMusicButton();
 
@@ -188,21 +147,70 @@ public class MenuScreen implements Screen {
             audioManager.playMusic(AudioType.MUSIC_MENU);
         }
     }
+    private void rebuildButtons() {
+        buttonTable.clear();
 
-    private void showOverwriteDialog() {
-        Dialog dialog = new Dialog(" WARNING ", game.getSkin()) {
-            @Override
-            protected void result(Object object) {
-                if ((Boolean) object) {
-                    game.startNewGameFromMenu();
-                }
-            }
-        };
-        dialog.text("\n  Starting a new game will ERASE your current progress!  \n  Are you sure you want to continue?  \n");
-        dialog.button(" YES, ERASE IT ", true);
-        dialog.button(" CANCEL ", false);
-        dialog.show(stage);
+        ButtonFactory bf = new ButtonFactory(game.getSkin());
+        boolean hasSave = storage.hasAnySave();
+
+        float buttonWidth = getButtonWidth();
+        float buttonPadding = Gdx.graphics.getWidth() > 1920 ? 18f : 15f;
+
+        // ===== CONTINUE：只在有主存档时出现 =====
+        if (hasSave) {
+            buttonTable.add(
+                            bf.create("CONTINUE", () -> {
+                                SaveListPanel panel = new SaveListPanel(game, game.getSkin());
+                                stage.addActor(panel);
+                            })
+                    ).width(buttonWidth).height(BUTTON_HEIGHT)
+                    .padBottom(buttonPadding).row();
+        }
+
+        // ===== QUICK PLAY（临时测试按钮，不读主存档）=====
+        buttonTable.add(
+                        bf.create("DEBUG-STORY MODE", () -> {
+                            game.startNewGame(Difficulty.NORMAL);
+                        })
+                ).width(buttonWidth).height(BUTTON_HEIGHT)
+                .padBottom(buttonPadding).row();
+
+        // ===== 剧情模式（独立系统）=====
+        buttonTable.add(
+                        bf.create("RESET THE WORLD", game::startStoryWithLoading)
+                ).width(buttonWidth).height(BUTTON_HEIGHT)
+                .padBottom(20).row();
+
+
+        // ===== 难度选择（仍然是主模式入口）=====
+        buttonTable.add(
+                        bf.create("DIFFICULTY", () ->
+                                game.setScreen(new DifficultySelectScreen(game, this)))
+                ).width(buttonWidth).height(BUTTON_HEIGHT)
+                .padBottom(20).row();
+
+
+        buttonTable.add(
+                        bf.create("INFO", () -> game.setScreen(new InfoScreen(game, this)))
+                ).width(buttonWidth).height(BUTTON_HEIGHT)
+                .padBottom(buttonPadding).row();
+
+        buttonTable.add(
+                        bf.create("SETTINGS", () ->
+                                game.setScreen(new SettingsScreen(
+                                        game,
+                                        SettingsScreen.SettingsSource.MAIN_MENU,
+                                        this)))
+                ).width(buttonWidth).height(BUTTON_HEIGHT)
+                .padBottom(20).row();
+
+        buttonTable.add(
+                        bf.create("EXIT", game::exitGame)
+                ).width(buttonWidth).height(BUTTON_HEIGHT)
+                .row();
     }
+
+
 
     @Override
     public void render(float delta) {
@@ -318,6 +326,7 @@ public class MenuScreen implements Screen {
 
     @Override public void show() {
         Gdx.input.setInputProcessor(stage);
+        rebuildButtons();
         game.getSoundManager().playMusic(AudioType.MUSIC_MENU);
     }
     @Override public void hide() {}

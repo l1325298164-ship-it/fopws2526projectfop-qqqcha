@@ -19,13 +19,13 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.game.GameSaveData;
+import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.game.achievement.AchievementType;
 import de.tum.cit.fop.maze.game.score.LevelResult;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.utils.LeaderboardManager;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.StorageManager;
+import de.tum.cit.fop.maze.game.save.StorageManager;
 
 /**
  * 结算界面 (Settlement Screen) - 布局优化版

@@ -2,7 +2,7 @@ package de.tum.cit.fop.maze.game.score;
 
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.EnemyTier;
-import de.tum.cit.fop.maze.game.GameSaveData;
+import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.game.event.GameListener;
 import de.tum.cit.fop.maze.utils.Logger;
 

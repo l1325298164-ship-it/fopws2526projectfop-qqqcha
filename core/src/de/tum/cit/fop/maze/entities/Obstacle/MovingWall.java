@@ -288,7 +288,6 @@ public class MovingWall extends DynamicObstacle implements PushSource {
                     height
             );
         }
-        Logger.debug("DRAW MovingWall at world=(" + worldX + "," + worldY + ")");
 
     }
 

@@ -12,7 +12,9 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -29,6 +31,7 @@ import de.tum.cit.fop.maze.entities.chapter.Chapter1RelicDialog;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.*;
+import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.game.score.LevelResult;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
@@ -38,7 +41,7 @@ import de.tum.cit.fop.maze.tools.DeveloperConsole;
 import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
-import de.tum.cit.fop.maze.utils.StorageManager;
+import de.tum.cit.fop.maze.game.save.StorageManager;
 
 import java.util.*;
 
@@ -162,11 +165,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         batch = game.getSpriteBatch();
 
         gm = game.getGameManager();
-        gm = new GameManager(
-                difficultyConfig,
-                game.isTwoPlayerMode() // ⭐ 从 Settings 来的值
-                ,chapterContext
-        );
+
         gm.setChapter1RelicListener(this);
 
         maze = new MazeRenderer(gm, difficultyConfig);
@@ -180,9 +179,10 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         uiStage = new Stage(new ScreenViewport(), batch);
         hud = new HUD(gm);
-
+        gm.applyRestoreIfNeeded();
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
+
     }
 
     @Override
@@ -373,7 +373,9 @@ public class GameScreen implements Screen, Chapter1RelicListener {
            ========================================================= */
         batch.begin();
         exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
-        gm.getKeyEffectManager().render(batch);
+        if (gm.getKeyEffectManager() != null) {
+            gm.getKeyEffectManager().render(batch);
+        }
         gm.getBobaBulletEffectManager().render(batch);
         if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderSprites(batch);
         if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderSprites(batch);
@@ -516,10 +518,45 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         buttonTable.add(bf.create("RESET MAZE", () -> game.resetMaze(difficultyConfig.difficulty))).width(btnW).height(btnH).pad(padding);
         buttonTable.add(bf.create("SETTINGS", () -> game.setScreen(new SettingsScreen(game, SettingsScreen.SettingsSource.PAUSE_MENU, game.getScreen())))).width(btnW).height(btnH).pad(padding);
         buttonTable.add(bf.create("MENU", game::goToMenu)).width(btnW).height(btnH).pad(padding);
-
+        buttonTable.add(
+                bf.create("SAVE GAME", this::openManualSaveDialog)
+        ).width(btnW).height(btnH).pad(padding);
+        
         root.add(buttonTable).expandY().center();
         pauseUIInitialized = true;
     }
+
+    private void openManualSaveDialog() {
+        Stage dialogStage = pauseStage; // 用 pause 的 stage
+        Skin skin = game.getSkin();
+
+        Dialog dialog = new Dialog(" SAVE GAME ", skin) {
+            @Override
+            protected void result(Object object) {
+                if (object instanceof Integer slot) {
+                    // 1️⃣ 切 SaveTarget
+                    gm.setCurrentSaveTarget(
+                            StorageManager.SaveTarget.fromSlot(slot)
+                    );
+
+                    // 2️⃣ 立刻存一次
+                    gm.saveGameProgress();
+
+                    Logger.info("Manual save to slot " + slot);
+                }
+            }
+        };
+
+        dialog.text("\n  Choose a save slot:\n");
+
+        dialog.button(" SLOT 1 ", 1);
+        dialog.button(" SLOT 2 ", 2);
+        dialog.button(" SLOT 3 ", 3);
+        dialog.button(" CANCEL ", null);
+
+        dialog.show(dialogStage);
+    }
+
 
     private void renderMazeBorderDecorations(SpriteBatch batch) {
         int w = Gdx.graphics.getWidth();

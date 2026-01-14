@@ -1,11 +1,11 @@
-package de.tum.cit.fop.maze.utils;
+package de.tum.cit.fop.maze.game.save;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonWriter;
-import de.tum.cit.fop.maze.game.GameSaveData;
 import de.tum.cit.fop.maze.game.achievement.CareerData;
+import de.tum.cit.fop.maze.utils.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -24,7 +24,36 @@ import java.util.zip.GZIPOutputStream;
  * 4. 线程安全，支持等待所有异步任务完成
  */
 public class StorageManager {
+    public void saveGameSync(GameSaveData data) {
+        if (data == null) return;
 
+        // 同步存：用于结算、退出、关键节点
+        writeJsonSafelySync(AUTO_SAVE_FILE, data, compressionEnabled);
+    }
+
+
+    public enum SaveTarget {
+        AUTO,
+        SLOT_1,
+        SLOT_2,
+        SLOT_3;
+
+        public static SaveTarget fromSlot(int slot) {
+            return switch (slot) {
+                case 1 -> SLOT_1;
+                case 2 -> SLOT_2;
+                case 3 -> SLOT_3;
+                default -> AUTO;
+            };
+        }
+    }
+
+
+    // ===== 主存档 Slot =====
+    public static final int MAX_SAVE_SLOTS = 3;
+    private static final String AUTO_SAVE_FILE = "save_auto.json.gz";
+
+    private static final String SAVE_SLOT_PATTERN = "save_slot_%d.json.gz";
     // ==========================================
     // 单例模式实现
     // ==========================================
@@ -88,7 +117,69 @@ public class StorageManager {
             }
         }));
     }
-    
+    private String getSlotFileName(int slot) {
+        if (slot < 1 || slot > MAX_SAVE_SLOTS) {
+            throw new IllegalArgumentException("Invalid save slot: " + slot);
+        }
+        return String.format(SAVE_SLOT_PATTERN, slot);
+    }
+    public void saveGameToSlot(int slot, GameSaveData data) {
+        if (data == null) return;
+
+        String fileName = getSlotFileName(slot);
+
+        if (asyncEnabled) {
+            writeJsonSafelyAsync(fileName, data, compressionEnabled);
+            Logger.debug("Game saved to slot " + slot + " (async)");
+        } else {
+            writeJsonSafelySync(fileName, data, compressionEnabled);
+            Logger.info("Game saved to slot " + slot);
+        }
+    }
+    public GameSaveData loadGameFromSlot(int slot) {
+        String fileName = getSlotFileName(slot);
+        return loadGameInternal(fileName);
+    }
+    public boolean hasSaveInSlot(int slot) {
+        String fileName = getSlotFileName(slot);
+        return getFile(fileName).exists();
+    }
+    public boolean[] getSaveSlotStates() {
+        boolean[] result = new boolean[MAX_SAVE_SLOTS + 1];
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            result[i] = hasSaveInSlot(i);
+        }
+        return result;
+    }
+    private GameSaveData loadGameInternal(String fileName) {
+        FileHandle file = getFile(fileName);
+        boolean isCompressed = fileName.endsWith(".gz");
+
+        if (!file.exists()) return null;
+
+        try {
+            String jsonStr;
+
+            if (isCompressed) {
+                byte[] compressed = file.readBytes();
+                jsonStr = decompressData(compressed);
+            } else {
+                jsonStr = file.readString();
+            }
+
+            if (jsonStr == null || jsonStr.isBlank()) return null;
+
+            GameSaveData data = json.fromJson(GameSaveData.class, jsonStr);
+            return data;
+
+        } catch (Exception e) {
+            Logger.error("Failed to load save: " + fileName);
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
     /**
      * ✨ [新增] 设置是否启用压缩
      */
@@ -258,110 +349,65 @@ public class StorageManager {
     // 1. 单局存档 (GameSaveData)
     // ==========================================
     
-    /**
-     * 保存游戏进度（异步，压缩）
-     */
-    public void saveGame(GameSaveData data) {
-        if (asyncEnabled) {
-            writeJsonSafelyAsync(SAVE_FILE_NAME, data, compressionEnabled);
-            Logger.debug("Game progress queued for async save.");
-        } else {
-            writeJsonSafelySync(SAVE_FILE_NAME, data, compressionEnabled);
-            Logger.info("Game progress saved.");
-        }
-    }
-    
-    /**
-     * ✨ [新增] 同步保存游戏进度（用于关键节点，如关卡结束）
-     */
-    public void saveGameSync(GameSaveData data) {
-        writeJsonSafelySync(SAVE_FILE_NAME, data, compressionEnabled);
-        Logger.info("Game progress saved (sync).");
-    }
+
 
     /**
      * 加载游戏进度（支持压缩和旧格式）
      */
     public GameSaveData loadGame() {
-        // 优先尝试加载压缩文件
-        FileHandle file = getFile(SAVE_FILE_NAME);
-        boolean isCompressed = true;
-        
-        // 如果压缩文件不存在，尝试加载旧格式
-        if (!file.exists()) {
-            file = getFile(SAVE_FILE_NAME_LEGACY);
-            isCompressed = false;
+
+        // 1️⃣ AUTO（真正的 continue）
+        GameSaveData auto = loadAutoSave();
+        if (auto != null) {
+            Logger.info("Loaded auto save");
+            return auto;
         }
-        
-        if (!file.exists()) {
-            Logger.info("No save file found.");
-            return null;
+
+        // 2️⃣ Slot 1（手动存档）
+        GameSaveData slot1 = loadGameFromSlot(1);
+        if (slot1 != null) {
+            Logger.info("Loaded save from slot 1");
+            return slot1;
         }
-        
-        try {
-            String jsonStr;
-            
-            if (isCompressed) {
-                // 读取并解压
-                byte[] compressed = file.readBytes();
-                jsonStr = decompressData(compressed);
-            } else {
-                // 读取原始JSON
-                jsonStr = file.readString();
-            }
-            
-            if (jsonStr == null || jsonStr.trim().isEmpty()) {
-                Logger.warning("Save file is empty, treating as no save.");
-                return null;
-            }
-            
-            GameSaveData data = json.fromJson(GameSaveData.class, jsonStr);
-            
-            // 数据验证
-            if (data == null) {
-                Logger.error("Failed to parse save data: data is null");
-                return null;
-            }
-            
-            // 验证关键字段的合理性
-            if (data.currentLevel < 1) {
-                Logger.warning("Invalid level in save data: " + data.currentLevel + ", resetting to 1");
-                data.currentLevel = 1;
-            }
-            if (data.score < 0) {
-                Logger.warning("Invalid score in save data: " + data.score + ", resetting to 0");
-                data.score = 0;
-            }
-            if (data.lives < 0) {
-                Logger.warning("Invalid lives in save data: " + data.lives + ", resetting to 0");
-                data.lives = 0;
-            }
-            
-            Logger.info("Game progress loaded successfully (" + (isCompressed ? "compressed" : "legacy") + ").");
-            return data;
-        } catch (Exception e) {
-            Logger.error("Failed to load save data: " + e.getMessage());
-            e.printStackTrace();
-            return null;
+
+        // 3️⃣ legacy
+        FileHandle legacy = getFile(SAVE_FILE_NAME);
+        if (legacy.exists()) {
+            Logger.warning("Legacy save detected");
+            return loadGameInternal(SAVE_FILE_NAME);
         }
+
+        Logger.info("No save file found");
+        return null;
     }
+
+
 
     public void deleteSave() {
-        // 删除压缩和旧格式文件
-        FileHandle file = getFile(SAVE_FILE_NAME);
-        if (file.exists()) {
-            file.delete();
+        // 删 Slot
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            FileHandle slot = getFile(getSlotFileName(i));
+            if (slot.exists()) slot.delete();
         }
-        FileHandle legacyFile = getFile(SAVE_FILE_NAME_LEGACY);
-        if (legacyFile.exists()) {
-            legacyFile.delete();
-        }
-        Logger.info("Save file deleted.");
+
+        // 删 legacy
+        FileHandle legacy = getFile(SAVE_FILE_NAME);
+        if (legacy.exists()) legacy.delete();
+
+        FileHandle legacyRaw = getFile(SAVE_FILE_NAME_LEGACY);
+        if (legacyRaw.exists()) legacyRaw.delete();
+
+        Logger.info("All save files deleted.");
     }
 
-    public boolean hasSaveFile() {
-        return getFile(SAVE_FILE_NAME).exists() || getFile(SAVE_FILE_NAME_LEGACY).exists();
+    public boolean hasAnySave() {
+        if (hasAutoSave()) return true;
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            if (hasSaveInSlot(i)) return true;
+        }
+        return getFile(SAVE_FILE_NAME).exists();
     }
+
 
     // ==========================================
     // 2. 生涯档案 (CareerData)
@@ -458,4 +504,52 @@ public class StorageManager {
     private FileHandle getFile(String fileName) {
         return Gdx.files.local(fileName);
     }
+
+    /**
+     * 删除指定存档 Slot
+     * @param slot Slot 编号 (1 ~ MAX_SAVE_SLOTS)
+     * @return 是否成功删除（不存在也算 false）
+     */
+    public boolean deleteSaveSlot(int slot) {
+        if (slot < 1 || slot > MAX_SAVE_SLOTS) {
+            Logger.warning("Attempted to delete invalid save slot: " + slot);
+            return false;
+        }
+
+        FileHandle file = getFile(getSlotFileName(slot));
+        if (file.exists()) {
+            boolean success = file.delete();
+            if (success) {
+                Logger.info("Save slot " + slot + " deleted.");
+            } else {
+                Logger.warning("Failed to delete save slot " + slot);
+            }
+            return success;
+        }
+
+        Logger.info("Save slot " + slot + " does not exist.");
+        return false;
+    }
+    public void saveGameAuto(SaveTarget target,GameSaveData data) {
+
+        if (target == SaveTarget.AUTO) {
+            Logger.warning("AUTO SAVE DISABLED - skipping");
+            return; // 🔥 直接取消
+        }
+        writeJsonSafelyAsync(AUTO_SAVE_FILE, data, compressionEnabled);
+    }
+
+    public GameSaveData loadAutoSave() {
+        return loadGameInternal(AUTO_SAVE_FILE);
+    }
+
+    public boolean hasAutoSave() {
+        return getFile(AUTO_SAVE_FILE).exists();
+    }
+
+    public void deleteAutoSave() {
+        FileHandle f = getFile(AUTO_SAVE_FILE);
+        if (f.exists()) f.delete();
+    }
+
 }

@@ -12,7 +12,6 @@ import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.utils.Logger;
 
 public class Player extends GameObject {
@@ -43,7 +42,19 @@ public class Player extends GameObject {
     }
 
     public enum PlayerIndex {
-        P1, P2
+        P1(0),
+        P2(1);
+
+        private final int number;
+
+        PlayerIndex(int number) {
+            this.number = number;
+        }
+
+        public int getNumber() {
+            return number;
+        }
+
     }
 
     private PlayerIndex playerIndex;
@@ -429,6 +440,15 @@ public class Player extends GameObject {
         this.targetY = y;
         this.isMovingContinuous = false;
     }
+    public void teleportTo(int x, int y) {
+        super.setPosition(x, y);
+        this.worldX = x;
+        this.worldY = y;
+        this.targetX = x;
+        this.targetY = y;
+        this.isMovingContinuous = false;
+        this.moving = false;
+    }
 
     private void enterHitStun(float duration) {
         inHitStun = true;
@@ -569,6 +589,12 @@ public class Player extends GameObject {
     public int getMaxLives() {
         return maxLives;
     }
+    public void setMaxLives(int maxLives) {
+        this.maxLives = maxLives;
+        if (this.lives > this.maxLives) {
+            this.lives = this.maxLives;
+        }
+    }
 
     @Override
     public void drawSprite(SpriteBatch batch) {
@@ -696,6 +722,7 @@ public class Player extends GameObject {
     public void activateAttackBuff() {
         if (!buffAttack) {
             buffAttack = true;
+
             if (gameManager != null && gameManager.getCombatEffectManager() != null) {
                 gameManager.getCombatEffectManager().spawnStatusText(
                         this.worldX * GameConstants.CELL_SIZE,
@@ -704,40 +731,51 @@ public class Player extends GameObject {
                         Color.BLUE
                 );
             }
+
             Logger.gameEvent("acquire ATK Buff");
         }
+
+        // ⭐ 副作用一定要在外面
+        if (gameManager != null) {
+            gameManager.setVariable("dmg_taken", 0.7f);
+        }
     }
+
 
     public void activateRegenBuff() {
         if (!buffRegen) {
             buffRegen = true;
+            regenTimer = 0f;
+
             if (gameManager != null && gameManager.getCombatEffectManager() != null) {
                 gameManager.getCombatEffectManager().spawnStatusText(
-                        this.worldX * GameConstants.CELL_SIZE,
-                        this.worldY * GameConstants.CELL_SIZE + 50,
+                        worldX * GameConstants.CELL_SIZE,
+                        worldY * GameConstants.CELL_SIZE + 50,
                         "REGEN UP",
                         Color.BLUE
                 );
             }
-            Logger.gameEvent("acquire HP Buff");
+
+            Logger.gameEvent("acquire REGEN Buff");
         }
     }
 
     public void activateManaBuff() {
         if (!buffManaEfficiency) {
             buffManaEfficiency = true;
+
             if (gameManager != null && gameManager.getCombatEffectManager() != null) {
                 gameManager.getCombatEffectManager().spawnStatusText(
-                        this.worldX * GameConstants.CELL_SIZE,
-                        this.worldY * GameConstants.CELL_SIZE + 50,
+                        worldX * GameConstants.CELL_SIZE,
+                        worldY * GameConstants.CELL_SIZE + 50,
                         "MANA UP",
                         Color.BLUE
                 );
             }
-            Logger.gameEvent("acquire Mana Buff");
+
+            Logger.gameEvent("acquire MANA Buff");
         }
     }
-
     public void showNotification(String msg) {
         this.notificationMessage = msg;
         this.notificationTimer = 3.0f;
@@ -772,4 +810,33 @@ public class Player extends GameObject {
     public GameManager getGameManager() {
         return gameManager;
     }
+
+    public void restoreBuffState(
+            boolean atk,
+            boolean regen,
+            boolean mana
+    ) {
+        clearAllBuffEffects();   // 关键！！！
+
+        if (atk) activateAttackBuff();
+        if (regen) activateRegenBuff();
+        if (mana) activateManaBuff();
+    }
+
+    private void clearAllBuffEffects() {
+        buffAttack = false;
+        buffRegen = false;
+        buffManaEfficiency = false;
+
+        regenTimer = 0f;
+
+        if (gameManager != null) {
+            gameManager.setVariable("dmg_taken", 1.0f);
+            gameManager.setVariable("speed_mult", 1.0f);
+        }
+    }
+
+
+
+
 }
