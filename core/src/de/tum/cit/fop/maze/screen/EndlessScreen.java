@@ -205,7 +205,7 @@ public class EndlessScreen implements Screen {
 
     @Override
     public void render(float delta) {
-
+        gm.setUIConsumesMouse(hud.isMouseOverInteractiveUI());
         Vector3 world = cam.getCamera().unproject(
                 new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
         );
