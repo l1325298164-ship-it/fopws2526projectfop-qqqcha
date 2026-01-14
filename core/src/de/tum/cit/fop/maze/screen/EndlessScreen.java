@@ -37,7 +37,6 @@ import static com.badlogic.gdx.math.MathUtils.random;
 
 public class EndlessScreen implements Screen {
 
-    private boolean isInitialized = false;
     private final MazeRunnerGame game;
     private final DifficultyConfig difficultyConfig;
 
@@ -124,9 +123,6 @@ public class EndlessScreen implements Screen {
 
     @Override
     public void show() {
-
-        if (isInitialized) return;
-
         uiTop = new Texture("Wallpaper/HUD_up.png");
         uiBottom = new Texture("Wallpaper/HUD_down.png");
         uiLeft = new Texture("Wallpaper/HUD_left.png");
@@ -136,8 +132,7 @@ public class EndlessScreen implements Screen {
         batch = game.getSpriteBatch();
         shapeRenderer = new ShapeRenderer();
 
-        gm = new GameManager(difficultyConfig, game.isTwoPlayerMode());
-
+        gm = game.getGameManager();
         cam = new CameraManager(difficultyConfig);
         cam.resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
@@ -156,7 +151,6 @@ public class EndlessScreen implements Screen {
             initializeEndlessMode();
         }
 
-        isInitialized = true;
 
         // 🔥 关键修复：确保相机正确初始化并居中于玩家
         if (gm != null && gm.getPlayer() != null) {
@@ -256,8 +250,12 @@ public class EndlessScreen implements Screen {
             }
         }
 //TODO
-        gm.getKeyEffectManager().render(batch);
-        gm.getBobaBulletEffectManager().render(batch);
+        if (gm.getKeyEffectManager() != null) {
+            gm.getKeyEffectManager().render(batch);
+        }
+        if (gm.getBobaBulletEffectManager() != null) {
+            gm.getBobaBulletEffectManager().render(batch);
+        }
 
         if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderSprites(batch);
         if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderSprites(batch);

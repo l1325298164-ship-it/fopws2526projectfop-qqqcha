@@ -188,7 +188,7 @@ public class HUD {
     private static final float CAT_MARGIN = 10f;
     private static final float CAT_COMPASS_GAP = 40f;
     private static final float CAT_Y_OFFSET = -150f;
-    private static final float COMPASS_Y_OFFSET = 650f;
+    private static final float COMPASS_Y_OFFSET = -350f;
 
     // ===== Shape =====
     private ShapeRenderer shapeRenderer;
@@ -311,7 +311,7 @@ public class HUD {
 
         float barWidth = Gdx.graphics.getWidth() * 0.66f;
         float x = (Gdx.graphics.getWidth() - barWidth) / 2f - 50;
-        float y = 50;
+        float y = 10;
 
         renderManaBarForPlayer(uiBatch, player, 0,x, y, barWidth);
 
@@ -1203,7 +1203,7 @@ public class HUD {
         baseY   = 10f; // 贴底（你可以微调）
 
         // ===== 计算各自位置（相对不变）=====
-        float catX = centerX - catW / 2f;
+        float catX = centerX - catW / 2f+150;
         float catY = baseY + CAT_Y_OFFSET;
 
         float compassX = centerX - compassW / 2f;
@@ -1500,35 +1500,35 @@ public class HUD {
         font.setColor(Color.WHITE);
         font.getData().setScale(1.2f);
         batch.setColor(1f, 1f, 1f, 1f);
+        //debug
 
-
-        if (debugUpgradeInput) {
-
-
-            String debugText =
-                    "MX=" + (int) mx +
-                            " MY=" + (int) my +
-                            "\nBTN x=" + (int) bx +
-                            " y=" + (int) by +
-                            " size=" + (int) BTN_SIZE +
-                            "\nHOVER=" + hover +
-                            "\nmouseDown=" + mouseDown +
-                            "\nlastMouseDown=" + lastMouseDown +
-                            "\nCLICK=" + (hover && mouseDown );
-
-            font.getData().setScale(1.0f);
-            font.setColor(Color.RED);
-
-            font.draw(
-                    batch,
-                    debugText,
-                    bx,
-                    by + BTN_SIZE + 80
-            );
-
-            font.setColor(Color.WHITE);
-            font.getData().setScale(1.2f);
-        }
+//        if (debugUpgradeInput) {
+//
+//
+//            String debugText =
+//                    "MX=" + (int) mx +
+//                            " MY=" + (int) my +
+//                            "\nBTN x=" + (int) bx +
+//                            " y=" + (int) by +
+//                            " size=" + (int) BTN_SIZE +
+//                            "\nHOVER=" + hover +
+//                            "\nmouseDown=" + mouseDown +
+//                            "\nlastMouseDown=" + lastMouseDown +
+//                            "\nCLICK=" + (hover && mouseDown );
+//
+//            font.getData().setScale(1.0f);
+//            font.setColor(Color.RED);
+//
+//            font.draw(
+//                    batch,
+//                    debugText,
+//                    bx,
+//                    by + BTN_SIZE + 80
+//            );
+//
+//            font.setColor(Color.WHITE);
+//            font.getData().setScale(1.2f);
+//        }
 
 
 
