@@ -153,7 +153,9 @@ public abstract class Ability {
             onUpgrade();
         }
     }
-
+    public boolean canUpgrade() {
+        return level < maxLevel;
+    }
     public void setLevel(int level) {
         this.level = level;
     }

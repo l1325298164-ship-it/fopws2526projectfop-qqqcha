@@ -9,11 +9,14 @@ import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 
+import com.badlogic.gdx.utils.TimeUtils;
 import de.tum.cit.fop.maze.abilities.*;
 import de.tum.cit.fop.maze.entities.Compass;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.game.achievement.*;
+import de.tum.cit.fop.maze.game.score.UpgradeCost;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
@@ -403,6 +406,15 @@ public class HUD {
         }
 
         uiBatch.draw(icon, x, y, DASH_ICON_SIZE, DASH_ICON_SIZE);
+        renderAbilityLevel(uiBatch, dash, x, y, DASH_ICON_SIZE);
+        renderUpgradeButton(
+                uiBatch,
+                player,
+                dash,
+                x,
+                y,
+                DASH_ICON_SIZE
+        );
 
         if (dashCharges < 2) {
             float maskHeight = DASH_ICON_SIZE * (1f - progress);
@@ -453,6 +465,15 @@ public class HUD {
         }
 
         uiBatch.draw(meleeIcon, x, y, size, size);
+        renderAbilityLevel(uiBatch, melee, x, y, size);
+        renderUpgradeButton(
+                uiBatch,
+                player,
+                melee,
+                x,
+                y,
+                size
+        );
 
         if (onCooldown) {
             uiBatch.setShader(null);
@@ -515,6 +536,16 @@ public class HUD {
                     magicBg.getHeight(),
                     false, false
             );
+            renderAbilityLevel(batch, magic, x, y, size);
+            renderUpgradeButton(
+                    batch,
+                    player,
+                    magic,
+                    x,
+                    y,
+                    size
+            );
+
         }
 
         // ================= Grow（呼吸光） =================
@@ -1180,6 +1211,115 @@ public class HUD {
         font.getData().setScale(1.2f);
         batch.setColor(1f, 1f, 1f, 1f);
     }
+
+    private void renderAbilityLevel(
+            SpriteBatch batch,
+            Ability ability,
+            float iconX,
+            float iconY,
+            float iconSize
+    ) {
+        if (ability == null) return;
+
+        font.getData().setScale(1.0f);
+        font.setColor(1f, 1f, 1f, 0.85f);
+
+        String lv = "Lv." + ability.getLevel();
+
+        GlyphLayout layout = new GlyphLayout(font, lv);
+
+        float x = iconX + iconSize - layout.width - 6;
+        float y = iconY + 18;
+
+        // 阴影
+        font.setColor(0f, 0f, 0f, 0.8f);
+        font.draw(batch, lv, x + 1, y - 1);
+
+        // 正文
+        font.setColor(Color.WHITE);
+        font.draw(batch, lv, x, y);
+
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.2f);
+    }
+
+    private boolean canShowUpgrade(Player player, Ability ability) {
+        if (player == null || ability == null) return false;
+        if (!ability.canUpgrade()) return false;
+
+        return gameManager.getScore() >= UpgradeCost.SCORE_PER_UPGRADE;
+    }
+
+    private void renderUpgradeButton(
+            SpriteBatch batch,
+            Player player,
+            Ability ability,
+            float iconX,
+            float iconY,
+            float iconSize
+    ) {
+        if (!canShowUpgrade(player, ability)) return;
+
+        float time = Gdx.graphics.getDeltaTime();
+        float floatY = (float) Math.sin(TimeUtils.millis() * 0.005f) * 6f;
+
+        float x = iconX + iconSize + 6;
+        float y = iconY + iconSize / 2f + floatY;
+
+        font.getData().setScale(2.0f);
+
+        // 背景
+        font.setColor(0f, 0f, 0f, 0.6f);
+        font.draw(batch, "+", x + 2, y - 2);
+
+        // 正文
+        font.setColor(Color.GOLD);
+        font.draw(batch, "+", x, y);
+
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.2f);
+
+        // ⬇️ 点击检测
+        checkUpgradeClick(player, ability, x, y);
+    }
+    private void checkUpgradeClick(
+            Player player,
+            Ability ability,
+            float x,
+            float y
+    ) {
+        if (!Gdx.input.justTouched()) return;
+
+        float mx = Gdx.input.getX();
+        float my = Gdx.graphics.getHeight() - Gdx.input.getY();
+
+        float size = 30f;
+
+        if (mx >= x && mx <= x + size &&
+                my >= y - size && my <= y) {
+
+            // 扣分
+            gameManager.getScoreManager()
+                    .addScore(-UpgradeCost.SCORE_PER_UPGRADE);
+
+            // 升级
+            ability.upgrade();
+
+            // 反馈
+            if (gameManager.getCombatEffectManager() != null) {
+                gameManager.getCombatEffectManager().spawnStatusText(
+                        player.getWorldX() * GameConstants.CELL_SIZE,
+                        player.getWorldY() * GameConstants.CELL_SIZE + 60,
+                        ability.getName() + " Lv." + ability.getLevel(),
+                        Color.GOLD
+                );
+            }
+        }
+    }
+
+
+
+
     public void dispose() {
         font.dispose();
         heartFull.dispose();
