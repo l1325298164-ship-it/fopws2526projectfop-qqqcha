@@ -31,6 +31,12 @@ public class HUD {
         SINGLE,
         TWO_PLAYER
     }
+    // ===== 长按升级 =====
+    private Ability holdingAbility = null;
+    private Player holdingPlayer = null;
+    private float holdTimer = 0f;
+
+    private static final float HOLD_TO_UPGRADE_TIME = 0.8f;
 
     private BitmapFont font;
     private final GameManager gameManager;
@@ -1288,33 +1294,31 @@ public class HUD {
             float x,
             float y
     ) {
-        if (!Gdx.input.justTouched()) return;
-
         float mx = Gdx.input.getX();
         float my = Gdx.graphics.getHeight() - Gdx.input.getY();
 
         float size = 30f;
 
-        if (mx >= x && mx <= x + size &&
-                my >= y - size && my <= y) {
+        boolean hover =
+                mx >= x && mx <= x + size &&
+                        my >= y - size && my <= y;
 
-            // 扣分
-            gameManager.getScoreManager()
-                    .addScore(-UpgradeCost.SCORE_PER_UPGRADE);
-
-            // 升级
-            ability.upgrade();
-
-            // 反馈
-            if (gameManager.getCombatEffectManager() != null) {
-                gameManager.getCombatEffectManager().spawnStatusText(
-                        player.getWorldX() * GameConstants.CELL_SIZE,
-                        player.getWorldY() * GameConstants.CELL_SIZE + 60,
-                        ability.getName() + " Lv." + ability.getLevel(),
-                        Color.GOLD
-                );
-            }
+        // ⭐ 只要鼠标在升级按钮区域，UI 就声明“我吃输入”
+        if (hover) {
+            gameManager.setUIConsumesMouse(true);
         }
+
+        if (!hover) return;
+        if (!Gdx.input.justTouched()) return;
+
+        // 扣分 + 升级
+        boolean success = gameManager
+                .getScoreManager()
+                .spendScore(UpgradeCost.SCORE_PER_UPGRADE);
+
+        if (!success) return;
+
+        ability.upgrade();
     }
 
 

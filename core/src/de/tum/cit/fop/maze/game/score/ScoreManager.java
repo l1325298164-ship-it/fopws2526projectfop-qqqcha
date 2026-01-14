@@ -136,6 +136,24 @@ public class ScoreManager implements GameListener {
         levelPenalty = 0;
         hitsTaken = 0;
     }
+//新增 给升级用
+    /**
+     * 消费分数（用于技能升级 / 商店等）
+     * @return 是否消费成功
+     */
+    public boolean spendScore(int amount) {
+        if (amount <= 0) return true;
+
+        int available = accumulatedScore;
+        if (available < amount) {
+            return false;
+        }
+
+        accumulatedScore -= amount;
+
+        Logger.debug("Score spent: -" + amount + ", remaining=" + accumulatedScore);
+        return true;
+    }
 
     public int getHitsTaken() { return hitsTaken; }
 }

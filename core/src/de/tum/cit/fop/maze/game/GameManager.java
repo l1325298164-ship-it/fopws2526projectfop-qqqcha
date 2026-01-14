@@ -1961,6 +1961,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // 🔥 新游戏 = 立刻初始化世界
         resetGame();
     }
+    private boolean uiConsumesMouse = false;
 
+    public void setUIConsumesMouse(boolean v) {
+        uiConsumesMouse = v;
+    }
+
+    public boolean isUIConsumingMouse() {
+        return uiConsumesMouse;
+    }
 
 }
