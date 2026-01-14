@@ -21,6 +21,8 @@ public class MeleeAttackAbility extends Ability {
     /* ===== 数值 ===== */
     private int baseDamage = 5;
     private int damagePerLevel = 1;
+    // 命中提前修正（升级用）
+    private float hitTimeOffset = 0f;
 
     private static final float HIT_TIME = 0.12f;
     private GameManager gameManager;
@@ -82,7 +84,7 @@ public class MeleeAttackAbility extends Ability {
 
         attackTimer += delta;
 
-        if (!damageDone && attackTimer >= HIT_TIME) {
+        if (!damageDone && attackTimer >= HIT_TIME- hitTimeOffset) {
             dealDamage(gameManager);
             damageDone = true;
         }
@@ -167,8 +169,28 @@ public class MeleeAttackAbility extends Ability {
 
     @Override
     protected void onUpgrade() {
-        // 升级逻辑通过 getLevel() 动态计算 damage 实现
+
+        switch (level) {
+
+            case 2 -> {
+                baseDamage += 2;
+            }
+
+            case 3 -> {
+                damagePerLevel += 1;
+            }
+
+            case 4 -> {
+                // ⭐ 出伤提前 0.03 秒
+                hitTimeOffset += 0.03f;
+            }
+
+            case 5 -> {
+                baseDamage += 5;
+            }
+        }
     }
+
     @Override
     public String getId() {
         return "melee";

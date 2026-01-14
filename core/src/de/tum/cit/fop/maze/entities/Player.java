@@ -90,7 +90,7 @@ public class Player extends GameObject {
 
     private boolean moving = false;
     private float moveTimer = 0f;
-    private static final float MOVE_COOLDOWN = 0.15f;
+    private static final float MOVE_COOLDOWN = 0.35f;
 
     private TextureAtlas frontAtkAtlas, backAtkAtlas, leftAtkAtlas, rightAtkAtlas;
     private Animation<TextureRegion> frontAtkAnim, backAtkAnim, leftAtkAnim, rightAtkAnim;
@@ -130,7 +130,10 @@ public class Player extends GameObject {
     private float dashSpeedTimer = 0f;
 
     public static final float DASH_DURATION = 1f;
-    public static final float DASH_SPEED_MULTIPLIER = 0.35f;
+    public static final float DASH_SPEED_MULTIPLIER = 0.15f;
+    // === Dash runtime durations（每次 Dash 独立）===
+    private float dashSpeedDuration = DASH_DURATION;
+    private float dashInvincibleDuration = DASH_DURATION;
 
     private boolean dashJustEnded = false;
 
@@ -311,7 +314,7 @@ public class Player extends GameObject {
 
         if (dashInvincible) {
             dashInvincibleTimer += delta;
-            if (dashInvincibleTimer >= DASH_DURATION) {
+            if (dashInvincibleTimer >= dashInvincibleDuration) {
                 dashInvincible = false;
                 dashInvincibleTimer = 0f;
                 dashJustEnded = true;
@@ -320,7 +323,7 @@ public class Player extends GameObject {
 
         if (dashSpeedBoost) {
             dashSpeedTimer += delta;
-            if (dashSpeedTimer >= DASH_DURATION) {
+            if (dashSpeedTimer >= dashSpeedDuration) {
                 dashSpeedBoost = false;
                 dashSpeedTimer = 0f;
             }
@@ -471,12 +474,20 @@ public class Player extends GameObject {
     public float getWorldY() { return worldY; }
     public float getMaxMana() { return maxMana; }
 
-    public void startDash() {
+    public void startDash(float duration, float invincibleBonus) {
+        // 开启状态
         dashInvincible = true;
         dashSpeedBoost = true;
+
+        // 重置计时器
         dashInvincibleTimer = 0f;
         dashSpeedTimer = 0f;
+
+        // ⭐ 设定“本次 Dash”的持续时间
+        dashSpeedDuration = duration;
+        dashInvincibleDuration = duration + invincibleBonus;
     }
+
 
     public boolean isDashInvincible() {
         return dashInvincible;
@@ -834,6 +845,15 @@ public class Player extends GameObject {
             gameManager.setVariable("dmg_taken", 1.0f);
             gameManager.setVariable("speed_mult", 1.0f);
         }
+    }
+    private float dashDurationBonus = 0f;
+
+    public void addDashDurationBonus(float bonus) {
+        this.dashDurationBonus += bonus;
+    }
+
+    public float getDashDuration() {
+        return DASH_DURATION + dashDurationBonus;
     }
 
 

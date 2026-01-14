@@ -9,15 +9,18 @@ import java.util.Map;
 
 public class DashAbility extends Ability {
 
-    private static final int MAX_CHARGES = 2;
-    private static final float CHARGE_COOLDOWN = 2f;
+    private int maxCharges = 2;
+    private float chargeCooldown = 2.0f;
+    private float dashDuration = 0.8f;
+    private float invincibleBonus = 0f;
 
-    private int charges = MAX_CHARGES;
+    private int charges = maxCharges;
     private float chargeTimer = 0f;
 
     public DashAbility() {
         // cooldown = 0（不用），duration = Dash 持续时间
         super("Dash", "Quick dash forward", 0f, 0.8f);
+        this.dashDuration = 0.8f;
     }
 
     /* ================= Ability Hooks ================= */
@@ -42,14 +45,14 @@ public class DashAbility extends Ability {
         return charges > 0 && !player.isDashing();
     }
 
+
     /* ================= Activate ================= */
 
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
         charges--;
-        player.startDash();
+        player.startDash(dashDuration, invincibleBonus);
     }
-
     /* ================= Active ================= */
 
     protected void updateActive(float delta) {
@@ -66,9 +69,9 @@ public class DashAbility extends Ability {
     public void update(float delta, Player player, GameManager gameManager) {
         super.update(delta, player, gameManager);
 
-        if (charges < MAX_CHARGES) {
+        if (charges < maxCharges) {
             chargeTimer += delta;
-            if (chargeTimer >= CHARGE_COOLDOWN) {
+            if (chargeTimer >= chargeCooldown) {
                 charges++;
                 chargeTimer = 0f;
             }
@@ -86,8 +89,26 @@ public class DashAbility extends Ability {
 
     @Override
     protected void onUpgrade() {
-        // 以后可以做：+1 charge / cooldown -x
+        switch (level) {
+            case 2 -> {
+                // Lv2：回充更快
+                chargeCooldown = 1.6f;
+            }
+            case 3 -> {
+                // Lv3：+1 充能
+                maxCharges = 3;
+                charges = Math.min(charges + 1, maxCharges);
+            }
+            case 4 -> {
+                // Lv4：Dash 更持久
+                dashDuration = 1.0f;
+            }
+            case 5 -> {
+                invincibleBonus = 0.2f;
+            }
+        }
     }
+
 
     /* ================= HUD Getter ================= */
 
@@ -96,12 +117,12 @@ public class DashAbility extends Ability {
     }
 
     public int getMaxCharges() {
-        return MAX_CHARGES;
+        return maxCharges;
     }
 
     public float getChargeProgress() {
-        if (charges >= MAX_CHARGES) return 1f;
-        return chargeTimer / CHARGE_COOLDOWN;
+        if (charges >= maxCharges) return 1f;
+        return chargeTimer / chargeCooldown;
     }
     @Override
     public String getId() {
@@ -118,7 +139,7 @@ public class DashAbility extends Ability {
     @Override
     public void loadState(Map<String, Object> m) {
         super.loadState(m);
-        charges = (int) m.getOrDefault("charges", MAX_CHARGES);
+        charges = (int) m.getOrDefault("charges", maxCharges);
         chargeTimer = ((Number)m.getOrDefault("chargeTimer", 0f)).floatValue();
     }
 

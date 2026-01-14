@@ -50,7 +50,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
     private Viewport worldViewport;
     private Stage uiStage;
     private FogSystem fogSystem;
-
+    private Label pauseScoreLabel;
     private final MazeRunnerGame game;
     private final DifficultyConfig difficultyConfig;
 
@@ -187,7 +187,26 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
     @Override
     public void render(float delta) {
+        // ✅ 必须在处理输入之前先算好 UI 是否吃鼠标
+        gm.setUIConsumesMouse(hud.isMouseOverInteractiveUI());
 
+// ===== Global Menu / Pause Input =====
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+
+            // ① 优先：Chapter Relic
+            if (gm.isViewingChapterRelic()) {
+                gm.exitChapterRelicView();
+                Gdx.input.setInputProcessor(null);
+                Logger.debug("ESC: exit ChapterRelic view");
+                return;
+            }
+
+            // ② 再处理 Pause
+            if (!gameOverShown) {
+                togglePause();
+                return;
+            }
+        }
         // ===== Mouse → Tile (Ability Targeting) =====
         Vector3 world = cam.getCamera().unproject(
                 new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
@@ -220,26 +239,35 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         // ===== Input (如果 Game Over 显示了，禁止玩家操作) =====
         // 🔥 [修复] 添加 && !gameOverShown
-        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !gameOverShown) {
-
-            input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
-                @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
-                @Override public float getMoveDelayMultiplier() { return 1f; }
-                @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
-                @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
-                @Override public void onMenuInput() { togglePause(); }
-            }, Player.PlayerIndex.P1);
-
-            if (gm.isTwoPlayerMode()) {
-                input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
-                    @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
-                    @Override public float getMoveDelayMultiplier() { return 1f; }
-                    @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
-                    @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
-                    @Override public void onMenuInput() {}
-                }, Player.PlayerIndex.P2);
-            }
-        }
+//        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !gameOverShown) {
+//
+//            input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+//                @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
+//                @Override public float getMoveDelayMultiplier() { return 1f; }
+//                @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
+//                @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
+//                @Override public void onMenuInput() { togglePause();  }
+//                @Override
+//                public boolean isUIConsumingMouse() {
+//                    return gm.isUIConsumingMouse();
+//                }
+//            }, Player.PlayerIndex.P1);
+//
+//            if (gm.isTwoPlayerMode()) {
+//                input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+//                    @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
+//                    @Override public float getMoveDelayMultiplier() { return 1f; }
+//                    @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
+//                    @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
+//                    @Override public void onMenuInput() {}
+//                    // ⭐ 同样必须有
+//                    @Override
+//                    public boolean isUIConsumingMouse() {
+//                        return gm.isUIConsumingMouse();
+//                    }
+//                }, Player.PlayerIndex.P2);
+//            }
+//        }
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
 
         // ===== Update (如果 Game Over 显示了，暂停游戏逻辑) =====
@@ -455,6 +483,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         // ===== Pause Logic =====
         if (paused) {
             if (!pauseUIInitialized) initPauseUI();
+            pauseScoreLabel.setText("SCORE: " + gm.getScore());
             Gdx.input.setInputProcessor(pauseStage);
             pauseStage.act(delta);
             pauseStage.draw();
@@ -507,8 +536,9 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         root.setFillParent(true);
         pauseStage.addActor(root);
 
-        Label score = new Label("SCORE: " + gm.getScore(), game.getSkin(), "title");
-        root.add(score).padBottom(40).row();
+        pauseScoreLabel = new Label("", game.getSkin(), "title");
+        pauseScoreLabel.setColor(Color.GOLD);
+        root.add(pauseScoreLabel).padBottom(40).row();
 
         Table buttonTable = new Table();
         ButtonFactory bf = new ButtonFactory(game.getSkin());

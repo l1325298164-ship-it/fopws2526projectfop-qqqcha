@@ -491,6 +491,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 currentSaveTarget = old; // 恢复
             }
         }
+
     }
     public float getReviveProgress() {
         if (!revivePending) return 0f;
@@ -1371,13 +1372,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
 
-    @Override
-    public void onMenuInput() {
-        if (viewingChapterRelic) {
-            exitChapterRelicView();
-            Logger.debug("Exit ChapterRelic view by ESC");
-        }
-    }
+
 
     public void setVariable(String key, float value) {
         if (gameVariables == null) gameVariables = new HashMap<>();
@@ -1961,6 +1956,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // 🔥 新游戏 = 立刻初始化世界
         resetGame();
     }
+    private boolean uiConsumesMouse = false;
 
+    public void setUIConsumesMouse(boolean v) {
+        uiConsumesMouse = v;
+    }
+
+    public boolean isUIConsumingMouse() {
+        return uiConsumesMouse;
+    }
 
 }

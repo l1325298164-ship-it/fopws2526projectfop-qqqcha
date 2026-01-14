@@ -305,7 +305,10 @@ public class MazeRunnerGame extends Game {
     }
 
     public void goToGame() {
-        if (getScreen() instanceof EndlessScreen) return;
+        if (currentDifficulty == Difficulty.ENDLESS) {
+            setScreen(new EndlessScreen(this, difficultyConfig));
+            return;
+        }
         if (difficultyConfig == null) {
             difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
             gameManager = new GameManager(difficultyConfig, twoPlayerMode);
@@ -342,14 +345,21 @@ public class MazeRunnerGame extends Game {
 
     public void resetMaze(Difficulty difficulty) {
         this.currentDifficulty = difficulty;
-        this.difficultyConfig = DifficultyConfig.of(difficulty);
+        this.difficultyConfig = createDifficultyConfig(difficulty);
+
+        // 🔥 永远重建 GameManager
         this.gameManager = new GameManager(this.difficultyConfig, this.twoPlayerMode);
         this.gameManager.markAsNewGame();
+
+        Screen old = getScreen();
+
         if (difficulty == Difficulty.ENDLESS) {
             setScreen(new EndlessScreen(this, difficultyConfig));
-            return;
+        } else {
+            setScreen(new GameScreen(this, difficultyConfig));
         }
-        setScreen(new GameScreen(this, difficultyConfig));
+
+        if (old != null) old.dispose();
     }
 
     public void loadGame() {

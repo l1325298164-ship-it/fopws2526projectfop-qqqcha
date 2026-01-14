@@ -136,6 +136,66 @@ public class ScoreManager implements GameListener {
         levelPenalty = 0;
         hitsTaken = 0;
     }
+//新增 给升级用
+    /**
+     * 消费分数（用于技能升级 / 商店等）
+     * @return 是否消费成功
+     */
+    public boolean spendScore(int amount) {
+        if (amount <= 0) return true;
+
+        int available = accumulatedScore;
+        if (available < amount) {
+            return false;
+        }
+
+        accumulatedScore -= amount;
+
+        Logger.debug("Score spent: -" + amount + ", remaining=" + accumulatedScore);
+        return true;
+    }
+    public boolean spendUpgradeScore(int cost) {
+        if (cost <= 0) return true;
+
+        int currentLevelRaw =
+                Math.max(0, levelBaseScore - levelPenalty);
+        int currentLevelFinal =
+                (int) (currentLevelRaw * config.scoreMultiplier);
+
+        int totalAvailable = accumulatedScore + currentLevelFinal;
+
+        if (totalAvailable < cost) {
+            Logger.error(
+                    "[UPGRADE FAIL] cost=" + cost +
+                            " accumulated=" + accumulatedScore +
+                            " levelFinal=" + currentLevelFinal
+            );
+            return false;
+        }
+
+        int remain = cost;
+
+        // 1️⃣ 先扣 accumulated（永久分）
+        int useFromAccumulated = Math.min(accumulatedScore, remain);
+        accumulatedScore -= useFromAccumulated;
+        remain -= useFromAccumulated;
+
+        // 2️⃣ 再扣本关分（反推回 levelBaseScore）
+        if (remain > 0) {
+            // 把 multiplier 还原回 raw
+            int rawNeed =
+                    (int) Math.ceil(remain / config.scoreMultiplier);
+
+            levelBaseScore = Math.max(0, levelBaseScore - rawNeed);
+        }
+
+        Logger.debug(
+                "[UPGRADE OK] cost=" + cost +
+                        " remainingTotal=" + getCurrentScore()
+        );
+        return true;
+    }
+
 
     public int getHitsTaken() { return hitsTaken; }
 }

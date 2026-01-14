@@ -9,11 +9,14 @@ import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 
+import com.badlogic.gdx.utils.TimeUtils;
 import de.tum.cit.fop.maze.abilities.*;
 import de.tum.cit.fop.maze.entities.Compass;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.game.achievement.*;
+import de.tum.cit.fop.maze.game.score.UpgradeCost;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
@@ -22,12 +25,85 @@ import java.util.*;
 import static com.badlogic.gdx.graphics.GL20.*;
 
 public class HUD {
+    // ===== Upgrade Button Hover =====
+    private Ability hoveredUpgradeAbility = null;
+    private float upgradeHoverAnim = 0f;
+
+    public boolean isMouseOverInteractiveUI() {
+        int mx = Gdx.input.getX();
+        int my = Gdx.graphics.getHeight() - Gdx.input.getY();
+
+        // 只要有一个升级按钮 hover，就算 UI consume
+        for (Player p : gameManager.getPlayers()) {
+            if (p == null || p.getAbilityManager() == null) continue;
+
+            for (Ability ability : p.getAbilityManager().getAbilities().values()) {
+                if (!canShowUpgrade(p, ability)) continue;
+
+                // ===== 复用 renderUpgradeButton 的“同一套布局算法” =====
+                float iconX, iconY, iconSize;
+                boolean mirror = p.getPlayerIndex() == Player.PlayerIndex.P2;
+
+                if (ability instanceof DashAbility) {
+                    iconSize = DASH_ICON_SIZE;
+                    iconX = getIconX(iconSize, mirror);
+                    iconY = DASH_UI_MARGIN_Y;
+                } else if (ability instanceof MeleeAttackAbility) {
+                    iconSize = MELEE_ICON_SIZE;
+                    float dashX = getIconX(DASH_ICON_SIZE, mirror);
+                    iconX = mirror
+                            ? dashX - MELEE_UI_OFFSET_X
+                            : dashX + MELEE_UI_OFFSET_X + 50;
+                    iconY = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - iconSize) / 2f;
+                } else if (ability instanceof MagicAbility) {
+                    iconSize = MELEE_ICON_SIZE;
+                    float dashX = getIconX(DASH_ICON_SIZE, mirror);
+                    iconX = mirror
+                            ? dashX - MELEE_UI_OFFSET_X
+                            : dashX + MELEE_UI_OFFSET_X;
+                    iconY = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - iconSize) / 2f;
+                } else {
+                    continue;
+                }
+
+                // ===== 升级按钮位置（和 renderUpgradeButton 完全一致）=====
+                float btnSize = UPG_BTN_SIZE;
+                float anchorX = mirror
+                        ? iconX - UPG_BTN_OFF_X - btnSize
+                        : iconX + iconSize + UPG_BTN_OFF_X;
+                float anchorY = iconY + iconSize * 0.5f;
+
+                float bx = anchorX;
+                float by = anchorY - btnSize * 0.5f + UPG_BTN_OFF_Y;
+
+                // per-ability tweak
+                if (ability instanceof MeleeAttackAbility) {
+                    bx -= 4f; by -= 2f;
+                } else if (ability instanceof MagicAbility) {
+                    bx += 6f; by += 3f;
+                }
+
+                boolean hover =
+                        mx >= bx && mx <= bx + btnSize &&
+                                my >= by && my <= by + btnSize;
+
+                if (hover) return true;
+            }
+        }
+        return false;
+    }
+
+
 
     // ===== HUD 布局模式 =====
     private enum HUDLayoutMode {
         SINGLE,
         TWO_PLAYER
     }
+    private long lastUpgradeTime = 0;
+    private static final long UPGRADE_COOLDOWN_MS = 300;
+
+    private static final float HOLD_TO_UPGRADE_TIME = 0.8f;
 
     private BitmapFont font;
     private final GameManager gameManager;
@@ -99,6 +175,8 @@ public class HUD {
     private Texture iconAtk;
     private Texture iconRegen;
     private Texture iconMana;
+    // ===== Mouse Click Edge Detect =====
+    private boolean lastMouseDown = false;
 
     // ===== Cat HUD =====
     private TextureAtlas catAtlas;
@@ -110,10 +188,37 @@ public class HUD {
     private static final float CAT_MARGIN = 10f;
     private static final float CAT_COMPASS_GAP = 40f;
     private static final float CAT_Y_OFFSET = -150f;
-    private static final float COMPASS_Y_OFFSET = 650f;
+    private static final float COMPASS_Y_OFFSET = -350f;
 
     // ===== Shape =====
     private ShapeRenderer shapeRenderer;
+
+
+    // =========================================================
+// UI TUNING (MAGIC NUMBERS ZONE)
+// 所有 HUD 微调只改这里，不要在下面散落写 +10f +18f
+// =========================================================
+
+    // --- Upgrade Button ---
+    private static final float UPG_BTN_SIZE = 36f;      // 按钮尺寸
+    private static final float UPG_BTN_OFF_X = 10f;     // 相对 icon 右边偏移
+    private static final float UPG_BTN_OFF_Y = 0f;      // 相对 icon 中心偏移（向上为 +）
+
+    private static final float UPG_BTN_FLOAT_AMP = 6f;  // 上下浮动幅度
+    private static final float UPG_BTN_FLOAT_SPEED = 0.005f; // 浮动速度(TimeUtils.millis()*speed)
+
+    private static final float UPG_HOVER_SCALE = 0.15f; // hover 放大幅度
+    private static final float UPG_HOVER_ALPHA_BASE = 0.70f;
+    private static final float UPG_HOVER_ALPHA_ADD  = 0.30f;
+
+    // “+”文字
+    private static final float UPG_PLUS_FONT_SCALE = 2.0f;
+
+    // --- Ability Level Text ---
+    private static final float LV_FONT_SCALE = 1.0f;
+    private static final float LV_PAD_RIGHT = 6f;       // 距离 icon 右边
+    private static final float LV_PAD_BOTTOM = 18f;     // 距离 icon 底部（注意：是 baseline 位置）
+
 
     // =========================================================
 
@@ -183,7 +288,6 @@ public class HUD {
     // =========================================================
 
     public void renderInGameUI(SpriteBatch uiBatch) {
-        try {
             if (gameManager.isTwoPlayerMode()) {
                 renderTwoPlayerHUD(uiBatch);
             } else {
@@ -193,9 +297,12 @@ public class HUD {
             renderScore(uiBatch);
 
             renderBottomCenterHUD(uiBatch);
-        } catch (Exception e) {
-            Logger.error("HUD render failed"+e);
-        }
+
+// ===== END OF UI FRAME =====
+            lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
+
+
+
     }
 
     private void renderSinglePlayerHUD(SpriteBatch uiBatch) {
@@ -204,7 +311,7 @@ public class HUD {
 
         float barWidth = Gdx.graphics.getWidth() * 0.66f;
         float x = (Gdx.graphics.getWidth() - barWidth) / 2f - 50;
-        float y = 50;
+        float y = 10;
 
         renderManaBarForPlayer(uiBatch, player, 0,x, y, barWidth);
 
@@ -403,6 +510,15 @@ public class HUD {
         }
 
         uiBatch.draw(icon, x, y, DASH_ICON_SIZE, DASH_ICON_SIZE);
+        renderAbilityLevel(uiBatch, dash, x, y, DASH_ICON_SIZE, mirror);
+        renderUpgradeButton(
+                uiBatch,
+                player,
+                dash,
+                x,
+                y,
+                DASH_ICON_SIZE, mirror
+        );
 
         if (dashCharges < 2) {
             float maskHeight = DASH_ICON_SIZE * (1f - progress);
@@ -441,7 +557,7 @@ public class HUD {
 
         float x = mirror
                 ? dashX - MELEE_UI_OFFSET_X
-                : dashX + MELEE_UI_OFFSET_X;
+                : dashX + MELEE_UI_OFFSET_X+50;
 
         float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - size) / 2f;
 
@@ -453,6 +569,15 @@ public class HUD {
         }
 
         uiBatch.draw(meleeIcon, x, y, size, size);
+        renderAbilityLevel(uiBatch, melee, x, y, size, mirror);
+        renderUpgradeButton(
+                uiBatch,
+                player,
+                melee,
+                x,
+                y,
+                size, mirror
+        );
 
         if (onCooldown) {
             uiBatch.setShader(null);
@@ -515,7 +640,18 @@ public class HUD {
                     magicBg.getHeight(),
                     false, false
             );
+
+
         }
+        renderAbilityLevel(batch, magic, x, y, size, mirror);
+        renderUpgradeButton(
+                batch,
+                player,
+                magic,
+                x,
+                y,
+                size, mirror
+        );
 
         // ================= Grow（呼吸光） =================
         if (phase != MagicAbility.Phase.IDLE
@@ -1067,7 +1203,7 @@ public class HUD {
         baseY   = 10f; // 贴底（你可以微调）
 
         // ===== 计算各自位置（相对不变）=====
-        float catX = centerX - catW / 2f;
+        float catX = centerX - catW / 2f+150;
         float catY = baseY + CAT_Y_OFFSET;
 
         float compassX = centerX - compassW / 2f;
@@ -1180,6 +1316,236 @@ public class HUD {
         font.getData().setScale(1.2f);
         batch.setColor(1f, 1f, 1f, 1f);
     }
+
+    private void renderAbilityLevel(
+            SpriteBatch batch,
+            Ability ability,
+            float iconX,
+            float iconY,
+            float iconSize,
+            boolean mirror
+    ) {
+        if (ability == null) return;
+
+        font.getData().setScale(1.0f);
+        font.setColor(1f, 1f, 1f, 0.85f);
+
+        String lv = "Lv." + ability.getLevel();
+
+        GlyphLayout layout = new GlyphLayout(font, lv);
+
+        // 锚点：icon 右下角
+        float x = mirror
+                ? iconX + LV_PAD_RIGHT                 // P2：贴 icon 左边
+                : iconX + iconSize - layout.width - LV_PAD_RIGHT; // P1
+// y 是 baseline，所以要加 layout.height 才“真正贴底”
+        float y = iconY + LV_PAD_BOTTOM + layout.height;
+
+        // 阴影
+        font.setColor(0f, 0f, 0f, 0.8f);
+        font.draw(batch, lv, x + 1, y - 1);
+
+        // 正文
+        font.setColor(Color.WHITE);
+        font.draw(batch, lv, x, y);
+
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.2f);
+    }
+
+    private boolean canShowUpgrade(Player player, Ability ability) {
+        if (player == null || ability == null) return false;
+        if (!ability.canUpgrade()) return false;
+
+        return gameManager.getScore() >= UpgradeCost.SCORE_PER_UPGRADE;
+    }
+
+    private void renderUpgradeButton(
+            SpriteBatch batch,
+            Player player,
+            Ability ability,
+            float iconX,
+            float iconY,
+            float iconSize,
+            boolean mirror
+    ) {
+
+        if (!canShowUpgrade(player, ability)) return;
+
+
+
+
+
+
+        // ===============================
+// Button 布局（锚点 + 偏移）
+// ===============================
+        final float BTN_SIZE = UPG_BTN_SIZE;
+
+        float floatY = (float) Math.sin(TimeUtils.millis() * UPG_BTN_FLOAT_SPEED) * UPG_BTN_FLOAT_AMP;
+
+// 锚点：icon 的右侧中点
+        float anchorX = mirror
+                ? iconX - UPG_BTN_OFF_X - BTN_SIZE   // P2：icon 左侧
+                : iconX + iconSize + UPG_BTN_OFF_X;  // P1：icon 右侧
+        float anchorY = iconY + iconSize * 0.5f;
+
+// 左下角坐标（按钮是正方形）
+        float bx = anchorX ;
+        float by = anchorY - BTN_SIZE * 0.5f + UPG_BTN_OFF_Y + floatY;
+
+        // ===============================
+        // Hover 检测（UI 坐标）
+        // ===============================
+        float mx = Gdx.input.getX();
+        float my = Gdx.graphics.getHeight() - Gdx.input.getY();
+
+        boolean hover =
+                mx >= bx && mx <= bx + BTN_SIZE &&
+                        my >= by && my <= by + BTN_SIZE;
+        if (hover) {
+            gameManager.setUIConsumesMouse(true);
+            Logger.error("UI CONSUME MOUSE");
+        }
+
+
+        float perAbilityX = 0f;
+        float perAbilityY = 0f;
+
+        if (ability instanceof DashAbility) {
+            perAbilityX = 0f;
+            perAbilityY = 0f;
+        } else if (ability instanceof MeleeAttackAbility) {
+            perAbilityX = -4f;
+            perAbilityY = -2f;
+        } else if (ability instanceof MagicAbility) {
+            perAbilityX = 6f;
+            perAbilityY = 3f;
+        }
+
+        bx += perAbilityX;
+        by += perAbilityY;
+
+        // ===============================
+        // Hover 动画
+        // ===============================
+        if (hover) {
+            hoveredUpgradeAbility = ability;
+            upgradeHoverAnim = Math.min(1f, upgradeHoverAnim + Gdx.graphics.getDeltaTime() * 8f);
+        } else if (hoveredUpgradeAbility == ability) {
+            upgradeHoverAnim = Math.max(0f, upgradeHoverAnim - Gdx.graphics.getDeltaTime() * 8f);
+            if (upgradeHoverAnim <= 0f) hoveredUpgradeAbility = null;
+        }
+
+        float scale = 1f + UPG_HOVER_SCALE * upgradeHoverAnim;
+        float alpha = UPG_HOVER_ALPHA_BASE + UPG_HOVER_ALPHA_ADD * upgradeHoverAnim;
+
+        // ===============================
+        // 绘制 Button 背板（白像素）
+        // ===============================
+        batch.setColor(1f, 0.85f, 0.2f, alpha);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                bx - (BTN_SIZE * (scale - 1f) / 2f),
+                by - (BTN_SIZE * (scale - 1f) / 2f),
+                BTN_SIZE * scale,
+                BTN_SIZE * scale
+        );
+
+        // ===============================
+        // 绘制 "+"
+        // ===============================
+        font.getData().setScale(2.0f * scale);
+
+        GlyphLayout layout = new GlyphLayout(font, "+");
+
+        float tx = bx + BTN_SIZE / 2f - layout.width / 2f;
+        float ty = by + BTN_SIZE / 2f + layout.height / 2f;
+
+        // 阴影
+        font.setColor(0f, 0f, 0f, 0.6f);
+        font.draw(batch, "+", tx + 2, ty - 2);
+
+        // 正文
+        font.setColor(Color.WHITE);
+        font.draw(batch, "+", tx, ty);
+
+        // ===============================
+        // 点击
+        // ===============================
+        boolean mouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
+
+        if (hover && mouseDown) {
+            long now = TimeUtils.millis();
+            if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
+                lastUpgradeTime = now;
+                gameManager.setUIConsumesMouse(true);
+                boolean success =  gameManager
+                        .getScoreManager()
+                        .spendUpgradeScore(UpgradeCost.SCORE_PER_UPGRADE);
+                Logger.error(
+                        "UPGRADE TRY | score=" + gameManager.getScore()
+                                + " success=" + success
+                );
+                if (success) {
+                    ability.upgrade();
+                }
+            }
+        }
+
+
+        // ===============================
+        // 还原状态
+        // ===============================
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.2f);
+        batch.setColor(1f, 1f, 1f, 1f);
+        //debug
+
+//        if (debugUpgradeInput) {
+//
+//
+//            String debugText =
+//                    "MX=" + (int) mx +
+//                            " MY=" + (int) my +
+//                            "\nBTN x=" + (int) bx +
+//                            " y=" + (int) by +
+//                            " size=" + (int) BTN_SIZE +
+//                            "\nHOVER=" + hover +
+//                            "\nmouseDown=" + mouseDown +
+//                            "\nlastMouseDown=" + lastMouseDown +
+//                            "\nCLICK=" + (hover && mouseDown );
+//
+//            font.getData().setScale(1.0f);
+//            font.setColor(Color.RED);
+//
+//            font.draw(
+//                    batch,
+//                    debugText,
+//                    bx,
+//                    by + BTN_SIZE + 80
+//            );
+//
+//            font.setColor(Color.WHITE);
+//            font.getData().setScale(1.2f);
+//        }
+
+
+
+
+
+
+
+    }
+
+    // ===== DEBUG =====
+    private boolean debugUpgradeInput = true;
+
+
+
+
+
+
     public void dispose() {
         font.dispose();
         heartFull.dispose();
