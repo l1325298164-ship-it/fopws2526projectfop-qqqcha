@@ -1406,7 +1406,16 @@ public class HUD {
             long now = TimeUtils.millis();
             if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
                 lastUpgradeTime = now;
-                ability.upgrade();
+                boolean success =  gameManager
+                        .getScoreManager()
+                        .spendUpgradeScore(UpgradeCost.SCORE_PER_UPGRADE);
+                Logger.error(
+                        "UPGRADE TRY | score=" + gameManager.getScore()
+                                + " success=" + success
+                );
+                if (success) {
+                    ability.upgrade();
+                }
             }
         }
 
