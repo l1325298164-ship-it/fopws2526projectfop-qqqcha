@@ -1632,6 +1632,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             PlayerSaveData ps = saveData.players.get(p.getPlayerIndex());
             if (ps == null) continue;
 
+
             p.teleportTo(ps.x, ps.y);
             p.setLives(ps.lives);
             p.setMaxLives(ps.maxLives);
