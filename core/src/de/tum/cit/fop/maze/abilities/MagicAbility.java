@@ -100,6 +100,9 @@ public class MagicAbility extends Ability {
 
     @Override
     protected void onActivate(Player player, GameManager gm) {
+        if (gm.isUIConsumingMouse()) {
+            return;
+        }
         // 🔒 同一帧内，Magic 只能推进一次状态
         if (inputConsumedThisFrame) return;
         inputConsumedThisFrame = true;
@@ -184,6 +187,10 @@ public class MagicAbility extends Ability {
             aoeCenterX = gm.getMouseTileX();
             aoeCenterY = gm.getMouseTileY();
 
+            if (!gm.isUIConsumingMouse()) {
+                aoeCenterX = gm.getMouseTileX();
+                aoeCenterY = gm.getMouseTileY();
+            }
             if (aimingTimer >= AIMING_TIMEOUT) {
                 setPhase(Phase.IDLE);
             }

@@ -50,7 +50,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
     private Viewport worldViewport;
     private Stage uiStage;
     private FogSystem fogSystem;
-
+    private Label pauseScoreLabel;
     private final MazeRunnerGame game;
     private final DifficultyConfig difficultyConfig;
 
@@ -455,6 +455,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         // ===== Pause Logic =====
         if (paused) {
             if (!pauseUIInitialized) initPauseUI();
+            pauseScoreLabel.setText("SCORE: " + gm.getScore());
             Gdx.input.setInputProcessor(pauseStage);
             pauseStage.act(delta);
             pauseStage.draw();
@@ -507,8 +508,9 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         root.setFillParent(true);
         pauseStage.addActor(root);
 
-        Label score = new Label("SCORE: " + gm.getScore(), game.getSkin(), "title");
-        root.add(score).padBottom(40).row();
+        pauseScoreLabel = new Label("", game.getSkin(), "title");
+        pauseScoreLabel.setColor(Color.GOLD);
+        root.add(pauseScoreLabel).padBottom(40).row();
 
         Table buttonTable = new Table();
         ButtonFactory bf = new ButtonFactory(game.getSkin());

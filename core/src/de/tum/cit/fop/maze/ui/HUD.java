@@ -25,16 +25,17 @@ import java.util.*;
 import static com.badlogic.gdx.graphics.GL20.*;
 
 public class HUD {
+    // ===== Upgrade Button Hover =====
+    private Ability hoveredUpgradeAbility = null;
+    private float upgradeHoverAnim = 0f;
 
     // ===== HUD 布局模式 =====
     private enum HUDLayoutMode {
         SINGLE,
         TWO_PLAYER
     }
-    // ===== 长按升级 =====
-    private Ability holdingAbility = null;
-    private Player holdingPlayer = null;
-    private float holdTimer = 0f;
+    private long lastUpgradeTime = 0;
+    private static final long UPGRADE_COOLDOWN_MS = 300;
 
     private static final float HOLD_TO_UPGRADE_TIME = 0.8f;
 
@@ -108,6 +109,8 @@ public class HUD {
     private Texture iconAtk;
     private Texture iconRegen;
     private Texture iconMana;
+    // ===== Mouse Click Edge Detect =====
+    private boolean lastMouseDown = false;
 
     // ===== Cat HUD =====
     private TextureAtlas catAtlas;
@@ -123,6 +126,33 @@ public class HUD {
 
     // ===== Shape =====
     private ShapeRenderer shapeRenderer;
+
+
+    // =========================================================
+// UI TUNING (MAGIC NUMBERS ZONE)
+// 所有 HUD 微调只改这里，不要在下面散落写 +10f +18f
+// =========================================================
+
+    // --- Upgrade Button ---
+    private static final float UPG_BTN_SIZE = 36f;      // 按钮尺寸
+    private static final float UPG_BTN_OFF_X = 10f;     // 相对 icon 右边偏移
+    private static final float UPG_BTN_OFF_Y = 0f;      // 相对 icon 中心偏移（向上为 +）
+
+    private static final float UPG_BTN_FLOAT_AMP = 6f;  // 上下浮动幅度
+    private static final float UPG_BTN_FLOAT_SPEED = 0.005f; // 浮动速度(TimeUtils.millis()*speed)
+
+    private static final float UPG_HOVER_SCALE = 0.15f; // hover 放大幅度
+    private static final float UPG_HOVER_ALPHA_BASE = 0.70f;
+    private static final float UPG_HOVER_ALPHA_ADD  = 0.30f;
+
+    // “+”文字
+    private static final float UPG_PLUS_FONT_SCALE = 2.0f;
+
+    // --- Ability Level Text ---
+    private static final float LV_FONT_SCALE = 1.0f;
+    private static final float LV_PAD_RIGHT = 6f;       // 距离 icon 右边
+    private static final float LV_PAD_BOTTOM = 18f;     // 距离 icon 底部（注意：是 baseline 位置）
+
 
     // =========================================================
 
@@ -202,6 +232,11 @@ public class HUD {
             renderScore(uiBatch);
 
             renderBottomCenterHUD(uiBatch);
+
+// ===== END OF UI FRAME =====
+            lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
+
+
         } catch (Exception e) {
             Logger.error("HUD render failed"+e);
         }
@@ -1234,8 +1269,10 @@ public class HUD {
 
         GlyphLayout layout = new GlyphLayout(font, lv);
 
-        float x = iconX + iconSize - layout.width - 6;
-        float y = iconY + 18;
+        // 锚点：icon 右下角
+        float x = iconX + iconSize - layout.width - LV_PAD_RIGHT;
+// y 是 baseline，所以要加 layout.height 才“真正贴底”
+        float y = iconY + LV_PAD_BOTTOM + layout.height;
 
         // 阴影
         font.setColor(0f, 0f, 0f, 0.8f);
@@ -1264,62 +1301,164 @@ public class HUD {
             float iconY,
             float iconSize
     ) {
+
         if (!canShowUpgrade(player, ability)) return;
 
-        float time = Gdx.graphics.getDeltaTime();
-        float floatY = (float) Math.sin(TimeUtils.millis() * 0.005f) * 6f;
 
-        float x = iconX + iconSize + 6;
-        float y = iconY + iconSize / 2f + floatY;
 
-        font.getData().setScale(2.0f);
 
-        // 背景
-        font.setColor(0f, 0f, 0f, 0.6f);
-        font.draw(batch, "+", x + 2, y - 2);
 
-        // 正文
-        font.setColor(Color.GOLD);
-        font.draw(batch, "+", x, y);
 
-        font.setColor(Color.WHITE);
-        font.getData().setScale(1.2f);
+        // ===============================
+// Button 布局（锚点 + 偏移）
+// ===============================
+        final float BTN_SIZE = UPG_BTN_SIZE;
 
-        // ⬇️ 点击检测
-        checkUpgradeClick(player, ability, x, y);
-    }
-    private void checkUpgradeClick(
-            Player player,
-            Ability ability,
-            float x,
-            float y
-    ) {
+        float floatY = (float) Math.sin(TimeUtils.millis() * UPG_BTN_FLOAT_SPEED) * UPG_BTN_FLOAT_AMP;
+
+// 锚点：icon 的右侧中点
+        float anchorX = iconX + iconSize;
+        float anchorY = iconY + iconSize * 0.5f;
+
+// 左下角坐标（按钮是正方形）
+        float bx = anchorX + UPG_BTN_OFF_X;
+        float by = anchorY - BTN_SIZE * 0.5f + UPG_BTN_OFF_Y + floatY;
+
+        // ===============================
+        // Hover 检测（UI 坐标）
+        // ===============================
         float mx = Gdx.input.getX();
         float my = Gdx.graphics.getHeight() - Gdx.input.getY();
 
-        float size = 30f;
-
         boolean hover =
-                mx >= x && mx <= x + size &&
-                        my >= y - size && my <= y;
+                mx >= bx && mx <= bx + BTN_SIZE &&
+                        my >= by && my <= by + BTN_SIZE;
 
-        // ⭐ 只要鼠标在升级按钮区域，UI 就声明“我吃输入”
-        if (hover) {
-            gameManager.setUIConsumesMouse(true);
+
+
+        float perAbilityX = 0f;
+        float perAbilityY = 0f;
+
+        if (ability instanceof DashAbility) {
+            perAbilityX = 0f;
+            perAbilityY = 0f;
+        } else if (ability instanceof MeleeAttackAbility) {
+            perAbilityX = -4f;
+            perAbilityY = -2f;
+        } else if (ability instanceof MagicAbility) {
+            perAbilityX = 6f;
+            perAbilityY = 3f;
         }
 
-        if (!hover) return;
-        if (!Gdx.input.justTouched()) return;
+        bx += perAbilityX;
+        by += perAbilityY;
 
-        // 扣分 + 升级
-        boolean success = gameManager
-                .getScoreManager()
-                .spendScore(UpgradeCost.SCORE_PER_UPGRADE);
+        // ===============================
+        // Hover 动画
+        // ===============================
+        if (hover) {
+            hoveredUpgradeAbility = ability;
+            upgradeHoverAnim = Math.min(1f, upgradeHoverAnim + Gdx.graphics.getDeltaTime() * 8f);
+        } else if (hoveredUpgradeAbility == ability) {
+            upgradeHoverAnim = Math.max(0f, upgradeHoverAnim - Gdx.graphics.getDeltaTime() * 8f);
+            if (upgradeHoverAnim <= 0f) hoveredUpgradeAbility = null;
+        }
 
-        if (!success) return;
+        float scale = 1f + UPG_HOVER_SCALE * upgradeHoverAnim;
+        float alpha = UPG_HOVER_ALPHA_BASE + UPG_HOVER_ALPHA_ADD * upgradeHoverAnim;
 
-        ability.upgrade();
+        // ===============================
+        // 绘制 Button 背板（白像素）
+        // ===============================
+        batch.setColor(1f, 0.85f, 0.2f, alpha);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                bx - (BTN_SIZE * (scale - 1f) / 2f),
+                by - (BTN_SIZE * (scale - 1f) / 2f),
+                BTN_SIZE * scale,
+                BTN_SIZE * scale
+        );
+
+        // ===============================
+        // 绘制 "+"
+        // ===============================
+        font.getData().setScale(2.0f * scale);
+
+        GlyphLayout layout = new GlyphLayout(font, "+");
+
+        float tx = bx + BTN_SIZE / 2f - layout.width / 2f;
+        float ty = by + BTN_SIZE / 2f + layout.height / 2f;
+
+        // 阴影
+        font.setColor(0f, 0f, 0f, 0.6f);
+        font.draw(batch, "+", tx + 2, ty - 2);
+
+        // 正文
+        font.setColor(Color.WHITE);
+        font.draw(batch, "+", tx, ty);
+
+        // ===============================
+        // 点击
+        // ===============================
+        boolean mouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
+
+        if (hover && mouseDown) {
+            long now = TimeUtils.millis();
+            if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
+                lastUpgradeTime = now;
+                ability.upgrade();
+            }
+        }
+
+
+        // ===============================
+        // 还原状态
+        // ===============================
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.2f);
+        batch.setColor(1f, 1f, 1f, 1f);
+
+
+        if (debugUpgradeInput) {
+
+
+            String debugText =
+                    "MX=" + (int) mx +
+                            " MY=" + (int) my +
+                            "\nBTN x=" + (int) bx +
+                            " y=" + (int) by +
+                            " size=" + (int) BTN_SIZE +
+                            "\nHOVER=" + hover +
+                            "\nmouseDown=" + mouseDown +
+                            "\nlastMouseDown=" + lastMouseDown +
+                            "\nCLICK=" + (hover && mouseDown );
+
+            font.getData().setScale(1.0f);
+            font.setColor(Color.RED);
+
+            font.draw(
+                    batch,
+                    debugText,
+                    bx,
+                    by + BTN_SIZE + 80
+            );
+
+            font.setColor(Color.WHITE);
+            font.getData().setScale(1.2f);
+        }
+
+
+
+
+
+
+
     }
+
+    // ===== DEBUG =====
+    private boolean debugUpgradeInput = true;
+
+
 
 
 
