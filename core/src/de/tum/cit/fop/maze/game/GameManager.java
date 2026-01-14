@@ -352,6 +352,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return maze[y][x] == 1;
     }
     public void update(float delta) {
+        uiConsumesMouse = false;
         if (viewingChapterRelic) {
             return;
         }
@@ -491,6 +492,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 currentSaveTarget = old; // 恢复
             }
         }
+
     }
     public float getReviveProgress() {
         if (!revivePending) return 0f;

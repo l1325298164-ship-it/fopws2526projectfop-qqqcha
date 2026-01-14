@@ -65,6 +65,7 @@ public class MagicAbility extends Ability {
                 0f
         );
         this.manaCost = 20;
+        this.currentCooldown = COOLDOWN_SUCCESS;
     }
 
     /* ================= Ability Hooks ================= */
@@ -159,12 +160,9 @@ public class MagicAbility extends Ability {
                 // 再一次扩大范围（后期爽点）
                 aoeTileRadius += 1;
                 aoeVisualRadius = (aoeTileRadius + 0.5f) * GameConstants.CELL_SIZE;
+                currentCooldown = Math.max(3.5f, currentCooldown  - 0.5f);
             }
 
-            case 6 -> {
-                // 成功施法冷却略微降低
-                currentCooldown = Math.max(3.5f, COOLDOWN_SUCCESS - 0.5f);
-            }
         }
     }
 

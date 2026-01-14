@@ -447,14 +447,14 @@ public class HUD {
         }
 
         uiBatch.draw(icon, x, y, DASH_ICON_SIZE, DASH_ICON_SIZE);
-        renderAbilityLevel(uiBatch, dash, x, y, DASH_ICON_SIZE);
+        renderAbilityLevel(uiBatch, dash, x, y, DASH_ICON_SIZE, mirror);
         renderUpgradeButton(
                 uiBatch,
                 player,
                 dash,
                 x,
                 y,
-                DASH_ICON_SIZE
+                DASH_ICON_SIZE, mirror
         );
 
         if (dashCharges < 2) {
@@ -494,7 +494,7 @@ public class HUD {
 
         float x = mirror
                 ? dashX - MELEE_UI_OFFSET_X
-                : dashX + MELEE_UI_OFFSET_X;
+                : dashX + MELEE_UI_OFFSET_X+50;
 
         float y = DASH_UI_MARGIN_Y + (DASH_ICON_SIZE - size) / 2f;
 
@@ -506,14 +506,14 @@ public class HUD {
         }
 
         uiBatch.draw(meleeIcon, x, y, size, size);
-        renderAbilityLevel(uiBatch, melee, x, y, size);
+        renderAbilityLevel(uiBatch, melee, x, y, size, mirror);
         renderUpgradeButton(
                 uiBatch,
                 player,
                 melee,
                 x,
                 y,
-                size
+                size, mirror
         );
 
         if (onCooldown) {
@@ -577,17 +577,18 @@ public class HUD {
                     magicBg.getHeight(),
                     false, false
             );
-            renderAbilityLevel(batch, magic, x, y, size);
-            renderUpgradeButton(
-                    batch,
-                    player,
-                    magic,
-                    x,
-                    y,
-                    size
-            );
+
 
         }
+        renderAbilityLevel(batch, magic, x, y, size, mirror);
+        renderUpgradeButton(
+                batch,
+                player,
+                magic,
+                x,
+                y,
+                size, mirror
+        );
 
         // ================= Grow（呼吸光） =================
         if (phase != MagicAbility.Phase.IDLE
@@ -1258,7 +1259,8 @@ public class HUD {
             Ability ability,
             float iconX,
             float iconY,
-            float iconSize
+            float iconSize,
+            boolean mirror
     ) {
         if (ability == null) return;
 
@@ -1270,7 +1272,9 @@ public class HUD {
         GlyphLayout layout = new GlyphLayout(font, lv);
 
         // 锚点：icon 右下角
-        float x = iconX + iconSize - layout.width - LV_PAD_RIGHT;
+        float x = mirror
+                ? iconX + LV_PAD_RIGHT                 // P2：贴 icon 左边
+                : iconX + iconSize - layout.width - LV_PAD_RIGHT; // P1
 // y 是 baseline，所以要加 layout.height 才“真正贴底”
         float y = iconY + LV_PAD_BOTTOM + layout.height;
 
@@ -1299,7 +1303,8 @@ public class HUD {
             Ability ability,
             float iconX,
             float iconY,
-            float iconSize
+            float iconSize,
+            boolean mirror
     ) {
 
         if (!canShowUpgrade(player, ability)) return;
@@ -1317,11 +1322,13 @@ public class HUD {
         float floatY = (float) Math.sin(TimeUtils.millis() * UPG_BTN_FLOAT_SPEED) * UPG_BTN_FLOAT_AMP;
 
 // 锚点：icon 的右侧中点
-        float anchorX = iconX + iconSize;
+        float anchorX = mirror
+                ? iconX - UPG_BTN_OFF_X - BTN_SIZE   // P2：icon 左侧
+                : iconX + iconSize + UPG_BTN_OFF_X;  // P1：icon 右侧
         float anchorY = iconY + iconSize * 0.5f;
 
 // 左下角坐标（按钮是正方形）
-        float bx = anchorX + UPG_BTN_OFF_X;
+        float bx = anchorX ;
         float by = anchorY - BTN_SIZE * 0.5f + UPG_BTN_OFF_Y + floatY;
 
         // ===============================
@@ -1406,6 +1413,7 @@ public class HUD {
             long now = TimeUtils.millis();
             if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
                 lastUpgradeTime = now;
+                gameManager.setUIConsumesMouse(true);
                 boolean success =  gameManager
                         .getScoreManager()
                         .spendUpgradeScore(UpgradeCost.SCORE_PER_UPGRADE);
