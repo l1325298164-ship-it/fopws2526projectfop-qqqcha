@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -55,7 +56,8 @@ public class BossFightScreen implements Screen {
     private float mergeProgress = 0f; // 0 → 1
     private static final float MERGE_TIME = 3.6f;
     private float mergeTimer = 0f;
-
+    // ===== Cup Shake Time =====
+    private float phaseTime = 0f;
     private enum BossDeathState {
         NONE,
         TRIGGERED,      // 已触发（冻结游戏）
@@ -221,12 +223,19 @@ public class BossFightScreen implements Screen {
                 BOSS_HEIGHT
         );
 
+        float time = phaseTime;
+        float shakeIntensity = isViolentShake() ? 1.0f : 0.25f;
+// 杯子晃动（世界坐标）
+        float cupShakeX =
+                MathUtils.sin(time * 1.6f) * 6f * shakeIntensity;
 
+        float cupShakeY =
+                MathUtils.cos(time * 1.2f) * 4f * shakeIntensity;
         // ===== 茶杯（全屏层，但用魔法数字定位）=====
         batch.draw(
                 teacupTex,
-                teacupWorldX - teacupSize / 2f,
-                teacupWorldY - teacupSize / 2f,
+                teacupWorldX - teacupSize / 2f + cupShakeX,
+                teacupWorldY - teacupSize / 2f + cupShakeY,
                 teacupSize,
                 teacupSize
         );
@@ -248,8 +257,14 @@ public class BossFightScreen implements Screen {
             OrthographicCamera cam = mazeCameraManager.getCamera();
             cam.update();
             // ===== 圆形裁剪参数（迷宫世界坐标）=====
-            cupCenterX = cam.position.x;
-            cupCenterY = cam.position.y;
+            float maskShakeX =
+                    MathUtils.sin(time * 1.9f + 10f) * 8f * shakeIntensity;
+
+            float maskShakeY =
+                    MathUtils.cos(time * 1.4f + 5f) * 6f * shakeIntensity;
+
+            cupCenterX = cam.position.x + maskShakeX;
+            cupCenterY = cam.position.y + maskShakeY;
             cupRadius  = cam.viewportHeight * cam.zoom * 0.30f;
 
             // ===== 写入 Stencil（圆形）=====
@@ -289,8 +304,23 @@ public class BossFightScreen implements Screen {
                     e.drawSprite(batch);
                 }
             }
-
+            if (gameManager.getBobaBulletEffectManager() != null) {
+                gameManager.getBobaBulletEffectManager().render(batch);
+            }
+            if (gameManager.getCombatEffectManager() != null) {
+                gameManager.getCombatEffectManager().renderSprites(batch);
+            }
             batch.end();
+
+            if (gameManager.getCombatEffectManager() != null) {
+                Gdx.gl.glEnable(GL20.GL_BLEND);
+                Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+                shapeRenderer.setProjectionMatrix(cam.combined);
+                shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+                gameManager.getCombatEffectManager().renderShapes(shapeRenderer);
+                shapeRenderer.end();
+            }
             Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
         }
 
@@ -324,6 +354,7 @@ public class BossFightScreen implements Screen {
     }
 
     private void update(float delta) {
+        phaseTime += delta;
         switch (transitionState) {
             case NONE -> {
                 if (bossDeathState == BossDeathState.NONE &&
@@ -372,6 +403,7 @@ public class BossFightScreen implements Screen {
     }
 
     private void applyPhase(BossMazeConfig.Phase phase) {
+        phaseTime = 0f;
         // ===============================
         // 1️⃣ 快照旧 Player（如果存在）
         // ===============================
@@ -634,6 +666,19 @@ public class BossFightScreen implements Screen {
         return bossDeathState != BossDeathState.NONE
                 || transitionState != PhaseTransitionState.NONE;
     }
+
+    private boolean isViolentShake() {
+        float t = phaseTime % 30f;
+        return t < 5f;
+    }
+
+
+
+
+
+
+
+
 
     private void resetViewportsToDefault() {
         // ✅ Boss视口：全屏
