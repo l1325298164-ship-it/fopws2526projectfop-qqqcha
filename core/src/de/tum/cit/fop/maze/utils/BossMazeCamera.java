@@ -9,64 +9,58 @@ import de.tum.cit.fop.maze.game.GameConstants;
 public class BossMazeCamera {
 
     private final OrthographicCamera camera;
+    private final DifficultyConfig dc;
 
-    // Arena 边界（世界坐标）
-    private final float minX, maxX, minY, maxY;
+    // 平滑度（和 CameraManager 风格一致）
+    private float smoothSpeed = 5.0f;
 
-    // zoom 控制
-    private float targetZoom = 1.3f;
+    // 茶杯摇动
+    private float shakeStrengthX = 6f;
+    private float shakeStrengthY = 4f;
 
     public BossMazeCamera(OrthographicCamera camera, DifficultyConfig dc) {
         this.camera = camera;
-
-        // Arena 边界（用迷宫尺寸即可）
-        this.minX = 0;
-        this.minY = 0;
-        this.maxX = dc.mazeWidth * GameConstants.CELL_SIZE;
-        this.maxY = dc.mazeHeight * GameConstants.CELL_SIZE;
-    }
-
-    public void setTargetZoom(float zoom) {
-        this.targetZoom = zoom;
+        this.dc = dc;
     }
 
     public void update(float delta, Player player) {
-        // ===== 平滑跟随 =====
-        camera.position.x = MathUtils.lerp(
-                camera.position.x,
-                player.getX(),
-                0.08f
-        );
+        if (player == null) {
+            camera.update();
+            return;
+        }
 
-        camera.position.y = MathUtils.lerp(
-                camera.position.y,
-                player.getY(),
-                0.04f
-        );
+        // ===== 1️⃣ 玩家「像素坐标」（关键修复）=====
+        float targetX =
+                player.getX() * GameConstants.CELL_SIZE
+                        + GameConstants.CELL_SIZE / 2f;
+        float targetY =
+                player.getY() * GameConstants.CELL_SIZE
+                        + GameConstants.CELL_SIZE / 2f;
 
-        // ===== zoom 插值 =====
-        camera.zoom = MathUtils.lerp(
-                camera.zoom,
-                targetZoom,
-                0.05f
-        );
+        // ===== 2️⃣ clamp 到迷宫边界 =====
+        float halfW = camera.viewportWidth / 2f;
+        float halfH = camera.viewportHeight / 2f;
 
-        // ===== Arena Clamp =====
-        float halfW = camera.viewportWidth * camera.zoom * 0.5f;
-        float halfH = camera.viewportHeight * camera.zoom * 0.5f;
+        float maxX = dc.mazeWidth * GameConstants.CELL_SIZE - halfW;
+        float maxY = dc.mazeHeight * GameConstants.CELL_SIZE - halfH;
 
-        camera.position.x = MathUtils.clamp(
-                camera.position.x,
-                minX + halfW,
-                maxX - halfW
-        );
+        targetX = MathUtils.clamp(targetX, halfW, maxX);
+        targetY = MathUtils.clamp(targetY, halfH, maxY);
 
-        camera.position.y = MathUtils.clamp(
-                camera.position.y,
-                minY + halfH,
-                maxY - halfH
-        );
+        // ===== 3️⃣ 平滑跟随（和 CameraManager 同模型）=====
+        float newX = camera.position.x + (targetX - camera.position.x) * smoothSpeed * delta;
+        float newY = camera.position.y + (targetY - camera.position.y) * smoothSpeed * delta;
 
+        // ===== 4️⃣ 茶杯“假摇动”（只影响视觉）=====
+        float t = (float)(System.currentTimeMillis() * 0.001);
+        newX += MathUtils.sin(t * 1.3f) * shakeStrengthX;
+        newY += MathUtils.cos(t * 1.7f) * shakeStrengthY;
+
+        camera.position.set(newX, newY, 0);
         camera.update();
+    }
+
+    public OrthographicCamera getCamera() {
+        return camera;
     }
 }
