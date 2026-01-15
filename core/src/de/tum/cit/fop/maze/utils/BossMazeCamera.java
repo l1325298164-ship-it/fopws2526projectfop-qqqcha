@@ -8,7 +8,7 @@ import de.tum.cit.fop.maze.game.GameConstants;
 
 public class BossMazeCamera {
 
-    private static final float CAMERA_PADDING_CELLS = 10f; // ← 已调整
+    private static final float CAMERA_PADDING_CELLS = 12f; // ← 已调整
     private static final float CAMERA_PADDING =
             CAMERA_PADDING_CELLS * GameConstants.CELL_SIZE;
     // ===== 视觉锚点修正（向上抬相机）=====
