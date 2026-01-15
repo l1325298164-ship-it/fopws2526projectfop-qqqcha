@@ -164,7 +164,10 @@ public class BossFightScreen implements Screen {
     @Override
     public void render(float delta) {
 
-
+        Gdx.app.log(
+                "MAZE_VIEWPORT",
+                "screen = " + mazeViewport.getScreenWidth() + " x " + mazeViewport.getScreenHeight()
+        );
         boolean isMergingOrAfter =
                 bossDeathState == BossDeathState.TRIGGERED
                         || bossDeathState == BossDeathState.MERGING_SCREEN
@@ -238,12 +241,12 @@ public class BossFightScreen implements Screen {
             mazeViewport.apply();
 
             // ===== 更新迷宫相机（现在终于生效了）=====
-            if (bossDeathState == BossDeathState.NONE) {
+            if (!isMazeFrozen()) {
                 bossMazeCamera.update(delta, gameManager.getPlayer());
             }
 
             OrthographicCamera cam = mazeCameraManager.getCamera();
-
+            cam.update();
             // ===== 圆形裁剪参数（迷宫世界坐标）=====
             cupCenterX = cam.position.x;
             cupCenterY = cam.position.y;
@@ -516,6 +519,16 @@ public class BossFightScreen implements Screen {
                 viewWorldHeight, // 最小高度
                 cam
         );
+        mazeViewport.update(screenWidth, screenHeight, false);
+
+// ⭐ phase 切换后，强制对齐相机
+        mazeCameraManager.centerOnPlayerImmediately(newPlayer);
+
+// ⭐ 确保 camera 的 combined 是最新的
+        mazeCameraManager.getCamera().update();
+
+
+
     }
 
     @Override
