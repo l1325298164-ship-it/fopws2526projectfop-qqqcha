@@ -176,7 +176,10 @@ public class BossFightScreen implements Screen {
         fadeAlpha = 0f;
         // ===== HUD 初始化 =====
         applyPhase(phaseSelector.getCurrent());
-
+        gameManager.setEnemyKillListener(enemy -> {
+            // 🔥 魔法数字阶段
+            dealDamageToBoss(50f);
+        });
         hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
         hud.enableBossHUD(bossMaxHp);
         hud.updateBossHp(bossHp);
@@ -615,6 +618,18 @@ public class BossFightScreen implements Screen {
         if (uiCamera != null) {
             uiCamera.setToOrtho(false, width, height);
             uiCamera.update();
+        }
+    }
+    public void dealDamageToBoss(float damage) {
+        if (bossHp <= 0f) return;
+
+        bossHp -= damage;
+        bossHp = Math.max(0f, bossHp);
+
+        hud.updateBossHp(bossHp);
+
+        if (bossHp <= 0f) {
+            triggerBossDeath();
         }
     }
 

@@ -29,6 +29,8 @@ import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.game.save.StorageManager;
 
 import java.util.*;
+import java.util.function.Consumer;
+
 import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
@@ -111,6 +113,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     //
     private StorageManager.SaveTarget currentSaveTarget = StorageManager.SaveTarget.AUTO;
+    private Consumer<Enemy> enemyKillListener;
+
+    public void setEnemyKillListener(Consumer<Enemy> listener) {
+        this.enemyKillListener = listener;
+    }
 
 
 
@@ -417,7 +424,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         while (enemyIterator.hasNext()) {
             Enemy e = enemyIterator.next();
             e.update(delta, this);
-
+            e.setGameManager(this);
             if (e.isDead() || !e.isActive()) {
                 if (e.isDead()) {
                     EnemyTier tier = EnemyTier.E01;
@@ -1965,5 +1972,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public boolean isUIConsumingMouse() {
         return uiConsumesMouse;
     }
+
+    public void onEnemyKilled(Enemy enemy) {
+        // 先什么都不做，留给外部监听
+        if (enemyKillListener != null) {
+            enemyKillListener.accept(enemy);
+        }
+    }
+
 
 }
