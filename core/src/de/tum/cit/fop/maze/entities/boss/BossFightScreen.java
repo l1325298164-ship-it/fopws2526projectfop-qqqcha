@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
@@ -37,8 +38,19 @@ import java.util.List;
 import java.util.Map;
 
 public class BossFightScreen implements Screen {
-    private OrthographicCamera uiCamera;
 
+    // ===== Maze Rebuild Warning =====
+    private boolean showMazeWarning = false;
+    private float mazeWarningTimer = 0f;
+    private static final float MAZE_WARNING_TIME = 10f;
+    private BitmapFont uiFont;
+    private boolean phaseSwitchQueued = false;
+
+
+
+    private OrthographicCamera uiCamera;
+    private Texture aoeFillTex;
+    private Texture aoeRingTex;
     // ===== Boss HP =====
     private float bossMaxHp = 1000f;
     private float bossHp = bossMaxHp;
@@ -87,7 +99,21 @@ public class BossFightScreen implements Screen {
         SWITCHING,   // 重建迷宫
         FADING_IN    // 渐亮
     }
+    private static class BossAOE {
+        float x;
+        float y;
 
+        float radius;
+
+        float life;        // 剩余总时间
+        float maxLife;
+
+        float warningTime; // 预警时间（0.5s）
+        boolean active;    // 是否已生效（危险）
+        boolean damageDone; // 防止一帧扣多次血
+    }
+
+    private final List<BossAOE> activeAOEs = new ArrayList<>();
     private PhaseTransitionState transitionState = PhaseTransitionState.NONE;
     private float transitionTimer = 0f;
 
@@ -145,13 +171,23 @@ public class BossFightScreen implements Screen {
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
 
+
+        uiFont = game.getSkin().get("default-font", BitmapFont.class);
+
         bg = new Texture(Gdx.files.internal("debug/boss_bg.jpg"));
         bossTex = new Texture(Gdx.files.internal("debug/boss.png"));
         teacupTex = new Texture(Gdx.files.internal("debug/teacup_top.png"));
+        aoeFillTex = new Texture(Gdx.files.internal("effects/aoe_fill.png"));
+        aoeRingTex = new Texture(Gdx.files.internal("effects/aoe_ring.png"));
 
         currentBossConfig = BossMazeConfigLoader.loadOne("boss/boss_phases.json");
         phaseSelector = new BossMazePhaseSelector(currentBossConfig.phases);
-
+        if (currentBossConfig.aoeTimeline != null) {
+            Gdx.app.log(
+                    "BOSS_AOE",
+                    "patterns = " + currentBossConfig.aoeTimeline.patterns.size
+            );
+        }
         // ===== boss camera =====
         bossCamera = new BossCamera(1280, 720);
         bossCamera.getCamera().position.set(640f, 360f, 0f);
@@ -320,7 +356,37 @@ public class BossFightScreen implements Screen {
             for (MazeRenderer.WallGroup g : mazeRenderer.getWallGroups()) {
                 mazeRenderer.renderWallGroup(batch, g);
             }
+            if (!activeAOEs.isEmpty()) {
+                Gdx.gl.glEnable(GL20.GL_BLEND);
+                Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
+                batch.setProjectionMatrix(mazeCameraManager.getCamera().combined);
+
+
+                for (BossAOE aoe : activeAOEs) {
+                    float size = aoe.radius * 2f;
+                    float drawX = aoe.x - aoe.radius;
+                    float drawY = aoe.y - aoe.radius;
+
+                    // ===== 填充 =====
+                    batch.setColor(1f, 1f, 1f, 0.35f);
+                    batch.draw(aoeFillTex, drawX, drawY, size, size);
+
+                    // ===== 外圈 =====
+                    if (aoe.active) {
+                        // ⭐ 生效：红色
+                        batch.setColor(1f, 0.1f, 0.1f, 0.9f);
+                    } else {
+                        // 预警：白 / 橙
+                        batch.setColor(1f, 0.8f, 0.3f, 0.9f);
+                    }
+
+                    batch.draw(aoeRingTex, drawX, drawY, size, size);
+                }
+
+                batch.setColor(1f, 1f, 1f, 1f);
+
+            }
             Player p = gameManager.getPlayer();
             if (p != null) {
                 p.drawSprite(batch);
@@ -350,6 +416,18 @@ public class BossFightScreen implements Screen {
             }
             Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
 
+
+
+
+
+
+
+
+
+
+            if (showMazeWarning) {
+                renderMazeRebuildWarning();
+            }
 // =====================================
 // ✅ Boss HUD（血条）
 // =====================================
@@ -393,16 +471,111 @@ public class BossFightScreen implements Screen {
         }
     }
 
+    private void renderMazeRebuildWarning() {
+        float w = Gdx.graphics.getWidth();
+        float h = Gdx.graphics.getHeight();
+
+        // 方框尺寸 & 位置（正中偏上）
+        float boxW = 420f;
+        float boxH = 140f;
+        float boxX = w / 2f - boxW / 2f;
+        float boxY = h * 0.62f;
+
+        // 文字闪烁
+        float blink =
+                0.75f + 0.25f * MathUtils.sin(mazeWarningTimer * 6f);
+
+        // ===== 画底框 =====
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapeRenderer.setProjectionMatrix(uiCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // 亮卡其色
+        shapeRenderer.setColor(0.96f, 0.90f, 0.72f, 0.95f);
+        shapeRenderer.rect(boxX, boxY, boxW, boxH);
+
+        shapeRenderer.end();
+
+        // ===== 画文字 =====
+        batch.setProjectionMatrix(uiCamera.combined);
+        batch.begin();
+
+        batch.setColor(0.15f, 0.12f, 0.05f, blink);
+
+        String title = "MAZE RECONFIGURING";
+        int seconds = MathUtils.ceil(mazeWarningTimer);
+        uiFont.getData().setScale(0.3f); // 标题
+        uiFont.setColor(0.15f, 0.12f, 0.05f, blink);
+
+        uiFont.draw(
+                batch,
+                title,
+                boxX - 40,
+                boxY + boxH - 30
+        );
+
+        uiFont.draw(
+                batch,
+                String.valueOf(seconds),
+                boxX + boxW / 2f - 10,
+                boxY + 40
+        );
+
+        batch.setColor(1, 1, 1, 1);
+        batch.end();
+    }
+
+
+    private float aoeSpawnTimer = 0f;
     private void update(float delta) {
-        phaseTime += delta;
+        float t = phaseTime % 30f;
+
+// 只在 0–3s 和 0–10s 期间生成 AOE!!
+        boolean shouldSpawn =
+                (t >= 4f && t < 7f)
+                        || (t >= 14f && t < 17f);
+
+        if (shouldSpawn) {
+            aoeSpawnTimer += delta;
+
+            // 1 秒内生成 5 个 ≈ 每 0.2s 一个
+            if (aoeSpawnTimer >= 0.2f) {
+                aoeSpawnTimer = 0f;
+                spawnTrackingAOE(gameManager.getPlayer());
+            }
+        } else {
+            aoeSpawnTimer = 0f;
+        }
+
+        //warning time
+        if (showMazeWarning) {
+            mazeWarningTimer -= delta;
+
+            if (mazeWarningTimer <= 0f) {
+                mazeWarningTimer = 0f;
+                showMazeWarning = false;
+
+                transitionState = PhaseTransitionState.FREEZE;
+                transitionTimer = 0f;
+            }
+        }
+            phaseTime += delta;
+
         switch (transitionState) {
             case NONE -> {
                 if (bossDeathState == BossDeathState.NONE &&
-                        phaseSelector.update(delta)) {
-                    transitionState = PhaseTransitionState.FREEZE;
-                    transitionTimer = 0f;
+                        !phaseSwitchQueued &&
+                        phaseSelector.shouldPrepareNextPhase(
+                                showMazeWarning ? 0f : delta
+                        )) {
+
+                    phaseSwitchQueued = true;
+
+                    showMazeWarning = true;
+                    mazeWarningTimer = MAZE_WARNING_TIME;
                 }
             }
+
 
             case FREEZE -> {
                 transitionTimer += delta;
@@ -423,7 +596,13 @@ public class BossFightScreen implements Screen {
 
             case SWITCHING -> {
                 if (bossDeathState != BossDeathState.NONE) return;
-                applyPhase(phaseSelector.getCurrent());
+
+                // ⭐ 真正推进 phase（只发生一次）
+                BossMazeConfig.Phase next = phaseSelector.advanceAndGet();
+                applyPhase(next);
+
+                phaseSwitchQueued = false;
+
                 transitionState = PhaseTransitionState.FADING_IN;
                 transitionTimer = 0f;
             }
@@ -440,6 +619,30 @@ public class BossFightScreen implements Screen {
         }
 
         updateBossDeath(delta);
+        for (int i = activeAOEs.size() - 1; i >= 0; i--) {
+            BossAOE aoe = activeAOEs.get(i);
+
+            aoe.life -= delta;
+
+            // ⭐ 预警结束 → 生效
+            if (!aoe.active && aoe.life <= aoe.maxLife - aoe.warningTime) {
+                aoe.active = true;
+                // 这里是“描边变红”的时刻
+            }
+
+            if (aoe.life <= 0f) {
+                activeAOEs.remove(i);
+            }
+            if (aoe.active && !aoe.damageDone) {
+                Player p = gameManager.getPlayer();
+                if (p != null && isPlayerInsideAOE(p, aoe)) {
+                    p.takeDamage(1); // 或你自己的伤害接口
+                    aoe.damageDone = true; // ⭐ 防止一帧多次
+                }
+            }
+
+        }
+
     }
 
     private void applyPhase(BossMazeConfig.Phase phase) {
@@ -755,4 +958,46 @@ public class BossFightScreen implements Screen {
             mazeCameraManager.centerOnPlayerImmediately(player);
         }
     }
+
+    private void spawnTrackingAOE(Player player) {
+        if (player == null) return;
+
+        float px =
+                player.getX() * GameConstants.CELL_SIZE
+                        + GameConstants.CELL_SIZE / 2f;
+
+        float py =
+                player.getY() * GameConstants.CELL_SIZE
+                        + GameConstants.CELL_SIZE / 2f;
+
+        BossAOE aoe = new BossAOE();
+        aoe.x = px;
+        aoe.y = py;
+
+        aoe.radius = GameConstants.CELL_SIZE * 1.8f;
+
+        aoe.maxLife = 1.5f;     // 总时长
+        aoe.life = aoe.maxLife;
+
+        aoe.warningTime = 1.2f; // ⭐ 关键
+        aoe.active = false;
+        aoe.damageDone = false;
+
+        activeAOEs.add(aoe);
+    }
+
+    private boolean isPlayerInsideAOE(Player player, BossAOE aoe) {
+        float px =
+                player.getX() * GameConstants.CELL_SIZE
+                        + GameConstants.CELL_SIZE / 2f;
+        float py =
+                player.getY() * GameConstants.CELL_SIZE
+                        + GameConstants.CELL_SIZE / 2f;
+
+        float dx = px - aoe.x;
+        float dy = py - aoe.y;
+
+        return dx * dx + dy * dy <= aoe.radius * aoe.radius;
+    }
+
 }

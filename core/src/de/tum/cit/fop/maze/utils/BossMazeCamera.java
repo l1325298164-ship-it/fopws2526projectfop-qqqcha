@@ -8,22 +8,23 @@ import de.tum.cit.fop.maze.game.GameConstants;
 
 public class BossMazeCamera {
 
-    private static final float CAMERA_PADDING_CELLS = 12f; // ← 已调整
-    private static final float CAMERA_PADDING =
-            CAMERA_PADDING_CELLS * GameConstants.CELL_SIZE;
+    // ===== Boss 战：禁止 padding（这是关键）=====
+    // ❌ 不要 CAMERA_PADDING
+    // ❌ 不要 CAMERA_PADDING_CELLS
+
     // ===== 视觉锚点修正（向上抬相机）=====
-    private static final float VISUAL_Y_OFFSET = GameConstants.CELL_SIZE * 0.5f;
-// 如果还不够：0.6f / 0.7f 都很正常
+    private static final float VISUAL_Y_OFFSET =
+            GameConstants.CELL_SIZE * 0.5f; // 0.5 ~ 0.7 都正常
 
     private final OrthographicCamera camera;
     private final DifficultyConfig dc;
 
-    // 平滑度（和 CameraManager 风格一致）
-    private float smoothSpeed = 5.0f;
+    // 平滑度
+    private static final float SMOOTH_SPEED = 5.0f;
 
-    // 茶杯摇动
-    private float shakeStrengthX = 6f;
-    private float shakeStrengthY = 4f;
+    // 轻微视觉摇动（只影响表现）
+    private static final float SHAKE_X = 6f;
+    private static final float SHAKE_Y = 4f;
 
     public BossMazeCamera(OrthographicCamera camera, DifficultyConfig dc) {
         this.camera = camera;
@@ -31,48 +32,52 @@ public class BossMazeCamera {
     }
 
     public void update(float delta, Player player) {
-
-
         if (player == null) {
             camera.update();
             return;
         }
 
-        // ===== 1️⃣ 玩家「像素坐标」（关键修复）=====
+        // ===== 1️⃣ 玩家世界坐标（像素）=====
         float targetX =
                 player.getX() * GameConstants.CELL_SIZE
                         + GameConstants.CELL_SIZE / 2f;
+
         float targetY =
                 player.getY() * GameConstants.CELL_SIZE
                         + GameConstants.CELL_SIZE / 2f
                         + VISUAL_Y_OFFSET;
 
-        // ===== 2️⃣ clamp 到迷宫边界 =====
-        float halfW = camera.viewportWidth * camera.zoom / 2f;
+        // ===== 2️⃣ 计算相机可视半径 =====
+        float halfW = camera.viewportWidth  * camera.zoom / 2f;
         float halfH = camera.viewportHeight * camera.zoom / 2f;
 
-        float mazeWorldW = dc.mazeWidth * GameConstants.CELL_SIZE;
+        float mazeWorldW = dc.mazeWidth  * GameConstants.CELL_SIZE;
         float mazeWorldH = dc.mazeHeight * GameConstants.CELL_SIZE;
 
-        float minX = halfW - CAMERA_PADDING;
-        float maxX = mazeWorldW - halfW + CAMERA_PADDING;
+        // ===== 3️⃣ Boss 战正确的 clamp（无 padding）=====
+        targetX = MathUtils.clamp(
+                targetX,
+                halfW,
+                mazeWorldW - halfW
+        );
 
-        float minY = halfH - CAMERA_PADDING;
-        float maxY = mazeWorldH - halfH + CAMERA_PADDING;
+        targetY = MathUtils.clamp(
+                targetY,
+                halfH,
+                mazeWorldH - halfH
+        );
 
-        targetX = MathUtils.clamp(targetX, minX, maxX);
-        targetY = MathUtils.clamp(targetY, minY, maxY);
+        // ===== 4️⃣ 平滑插值 =====
+        float newX = MathUtils.lerp(camera.position.x, targetX, SMOOTH_SPEED * delta);
+        float newY = MathUtils.lerp(camera.position.y, targetY, SMOOTH_SPEED * delta);
 
-        // ===== 3️⃣ 平滑跟随（和 CameraManager 同模型）=====
-        float newX = camera.position.x + (targetX - camera.position.x) * smoothSpeed * delta;
-        float newY = camera.position.y + (targetY - camera.position.y) * smoothSpeed * delta;
+        // ===== 5️⃣ 轻微“假摇动”（只影响视觉）=====
+        float t = (float) (System.currentTimeMillis() * 0.001);
 
-        // ===== 4️⃣ 茶杯“假摇动”（只影响视觉）=====
-        float t = (float)(System.currentTimeMillis() * 0.001);
-        newX += MathUtils.sin(t * 1.3f) * shakeStrengthX;
-        newY += MathUtils.cos(t * 1.7f) * shakeStrengthY;
+        newX += MathUtils.sin(t * 1.3f) * SHAKE_X;
+        newY += MathUtils.cos(t * 1.7f) * SHAKE_Y;
 
-        camera.position.set(newX, newY, 0);
+        camera.position.set(newX, newY, 0f);
         camera.update();
     }
 
