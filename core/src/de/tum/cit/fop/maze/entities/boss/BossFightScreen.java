@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.entities.boss;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -17,10 +18,7 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.abilities.Ability;
 import de.tum.cit.fop.maze.abilities.AbilityManager;
 import de.tum.cit.fop.maze.entities.Player;
-import de.tum.cit.fop.maze.entities.boss.config.BossDifficultyFactory;
-import de.tum.cit.fop.maze.entities.boss.config.BossMazeConfig;
-import de.tum.cit.fop.maze.entities.boss.config.BossMazeConfigLoader;
-import de.tum.cit.fop.maze.entities.boss.config.BossMazePhaseSelector;
+import de.tum.cit.fop.maze.entities.boss.config.*;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -38,6 +36,15 @@ import java.util.List;
 import java.util.Map;
 
 public class BossFightScreen implements Screen {
+    private enum BossRageState {
+        NORMAL,             // < 90s
+        RAGE_WARNING,       // >= 90s 进入狂暴判定
+        MAZE_TRAP_END,      // 未达 50% → 永久困住
+        RAGE_PUNISH,        // 达 50% → 全屏AOE惩罚
+        FINAL_LOCKED,       // <5% 锁血无敌
+        AUTO_DEATH          // 120s 自动死亡
+    }
+
     // ===== Victory Flow =====
     private enum VictoryState {
         NONE,
@@ -45,8 +52,29 @@ public class BossFightScreen implements Screen {
         STORY_DIALOG,   // 剧情确认框
         CREDITS         // 滚动谢幕
     }
+    // ===== AOE Timeline Runtime =====
+    private float aoeCycleTime = 0f;
+    private float aoeIntervalTimer = 0f;
+    private final Map<AoeTimeline.AoePattern, Float> aoeTimers = new HashMap<>();
+
+
+
+    private Sound currentDialogueSound;
+
+    private BossTimeline bossTimeline;
+    private BossTimelineRunner timelineRunner;
+
 
     private VictoryState victoryState = VictoryState.NONE;
+    private BossRageState rageState = BossRageState.NORMAL;
+    private static final float RAGE_TIME = 90f;
+    private static final float AUTO_DEATH_TIME = 120f;
+
+    private boolean rageChecked = false;
+    private float rageAoeTimer = 0f;
+    private float rageAoeTickTimer = 0f;
+    private static final float RAGE_AOE_DURATION = 2f;
+    private boolean showMazeTrapEnding = false;
 
     // Boss 时间轴：永远跑（不要被迷宫冻结影响）
     private float bossTimelineTime = 0f;
@@ -148,6 +176,8 @@ public class BossFightScreen implements Screen {
         float warningTime; // 预警时间（0.5s）
         boolean active;    // 是否已生效（危险）
         boolean damageDone; // 防止一帧扣多次血
+
+        int damage;
     }
 
     private final List<BossAOE> activeAOEs = new ArrayList<>();
@@ -216,6 +246,8 @@ public class BossFightScreen implements Screen {
         teacupTex = new Texture(Gdx.files.internal("debug/teacup_top.png"));
         aoeFillTex = new Texture(Gdx.files.internal("effects/aoe_fill.png"));
         aoeRingTex = new Texture(Gdx.files.internal("effects/aoe_ring.png"));
+        bossTimeline = BossTimelineLoader.load("boss/boss_timeline.json");
+        timelineRunner = new BossTimelineRunner(bossTimeline);
 
         currentBossConfig = BossMazeConfigLoader.loadOne("boss/boss_phases.json");
         phaseSelector = new BossMazePhaseSelector(currentBossConfig.phases);
@@ -249,6 +281,11 @@ public class BossFightScreen implements Screen {
         fadeAlpha = 0f;
         // ===== HUD 初始化 =====
         applyPhase(phaseSelector.getCurrent());
+
+        aoeTimers.clear();
+        aoeCycleTime = 0f;
+
+
         gameManager.setEnemyKillListener(enemy -> {
             // 🔥 魔法数字阶段
             dealDamageToBoss(50f);
@@ -260,6 +297,15 @@ public class BossFightScreen implements Screen {
 
     @Override
     public void render(float delta) {
+
+        if (rageState == BossRageState.MAZE_TRAP_END) {
+            renderMazeTrapEnding();
+            return;
+        }
+
+
+
+
         boolean renderMazeLayer = (victoryState == VictoryState.NONE);
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
             bossHp -= 50f;
@@ -323,6 +369,7 @@ public class BossFightScreen implements Screen {
                 BOSS_WIDTH,
                 BOSS_HEIGHT
         );
+
 // ===== Victory Overlay =====
         if (victoryState != VictoryState.NONE) {
             renderVictoryOverlays(batch);
@@ -439,6 +486,9 @@ public class BossFightScreen implements Screen {
                     float drawX = aoe.x - aoe.radius;
                     float drawY = aoe.y - aoe.radius;
 
+
+
+
                     // ===== 填充 =====
                     batch.setColor(1f, 1f, 1f, 0.35f);
                     batch.draw(aoeFillTex, drawX, drawY, size, size);
@@ -542,6 +592,13 @@ public class BossFightScreen implements Screen {
         }
     }
 
+
+
+
+    private void renderMazeTrapEnding() {
+        //TODO
+    }
+
     private void enterVictoryMode() {
         victoryState = VictoryState.BOSS_ONLY;
         bossTimelineTime = 0f;
@@ -617,6 +674,26 @@ public class BossFightScreen implements Screen {
 
     private float aoeSpawnTimer = 0f;
     private void update(float delta) {
+        if (rageState == BossRageState.RAGE_PUNISH) {
+            rageAoeTimer += delta;
+            rageAoeTickTimer += delta;
+
+            if (rageAoeTickTimer >= 0.5f) { // 1s 2 次
+                rageAoeTickTimer = 0f;
+                Player p = gameManager.getPlayer();
+                if (p != null) {
+                    p.takeDamage(5);
+                }
+            }
+
+            if (rageAoeTimer >= RAGE_AOE_DURATION) {
+                rageState = BossRageState.NORMAL;
+            }
+        }
+
+
+        bossTimelineTime += delta;
+        timelineRunner.update(bossTimelineTime, this);
 
         if (bossTimelineFinished()) {
             game.setScreen(new BossStoryScreen(game));
@@ -626,7 +703,9 @@ public class BossFightScreen implements Screen {
 
 
 
-        bossTimelineTime += delta;
+
+
+
 
 // 胜利后：迷宫不再推进（但 Boss 时间轴继续）
         if (victoryState != VictoryState.NONE) {
@@ -634,24 +713,48 @@ public class BossFightScreen implements Screen {
             updateVictoryFlow(delta);
             return;
         }
-        float t = phaseTime % 30f;
+// ===============================
+// AOE TIMELINE (JSON driven)
+// ===============================
+        if (victoryState == VictoryState.NONE
+                && !isMazeFrozen()
+                && currentBossConfig.aoeTimeline != null) {
 
-// 只在 0–3s 和 0–10s 期间生成 AOE!!
-        boolean shouldSpawn =
-                (t >= 4f && t < 7f)
-                        || (t >= 14f && t < 17f);
+            AoeTimeline aoeTimeline = currentBossConfig.aoeTimeline;
 
-        if (shouldSpawn) {
-            aoeSpawnTimer += delta;
+            // 推进 cycle 时间
+            aoeCycleTime += delta;
+            float t = aoeCycleTime % aoeTimeline.cycle;
 
-            // 1 秒内生成 5 个 ≈ 每 0.2s 一个
-            if (aoeSpawnTimer >= 0.2f) {
-                aoeSpawnTimer = 0f;
-                spawnTrackingAOE(gameManager.getPlayer());
+            for (AoeTimeline.AoePattern p : aoeTimeline.patterns) {
+
+                if (t >= p.start && t <= p.end) {
+
+                    float timer = aoeTimers.getOrDefault(p, 0f);
+                    timer += delta;
+
+                    if (timer >= p.interval) {
+                        timer = 0f;
+
+                        for (int i = 0; i < p.count; i++) {
+                            spawnTimelineAOE(
+                                    gameManager.getPlayer(),
+                                    p.radius,
+                                    p.damage
+                            );
+                        }
+                    }
+
+                    aoeTimers.put(p, timer);
+
+                } else {
+                    // 离开区间 → 清 timer，防止瞬爆
+                    aoeTimers.remove(p);
+                }
             }
-        } else {
-            aoeSpawnTimer = 0f;
         }
+
+
 
         //warning time
         if (showMazeWarning) {
@@ -742,12 +845,13 @@ public class BossFightScreen implements Screen {
             if (aoe.active && !aoe.damageDone) {
                 Player p = gameManager.getPlayer();
                 if (p != null && isPlayerInsideAOE(p, aoe)) {
-                    p.takeDamage(1); // 或你自己的伤害接口
+                    p.takeDamage(aoe.damage); // 或你自己的伤害接口
                     aoe.damageDone = true; // ⭐ 防止一帧多次
                 }
             }
 
         }
+
 
     }
 
@@ -908,7 +1012,8 @@ public class BossFightScreen implements Screen {
 // ⭐ 确保 camera 的 combined 是最新的
         mazeCameraManager.getCamera().update();
 
-
+        aoeCycleTime = 0f;
+        aoeTimers.clear();
 
     }
 
@@ -930,16 +1035,20 @@ public class BossFightScreen implements Screen {
         }
     }
     public void dealDamageToBoss(float damage) {
-        if (bossHp <= 0f) return;
 
+        if (bossHp <= bossMaxHp * 0.05f && rageState != BossRageState.FINAL_LOCKED) {
+            bossHp = bossMaxHp * 0.05f;
+            rageState = BossRageState.FINAL_LOCKED;
+        }
+
+        if (rageState == BossRageState.FINAL_LOCKED) {
+            return; // 不再扣血
+        }
         bossHp -= damage;
         bossHp = Math.max(0f, bossHp);
 
         hud.updateBossHp(bossHp);
 
-        if (bossHp <= 0f) {
-            triggerBossDeath();
-        }
     }
 
     @Override
@@ -959,6 +1068,9 @@ public class BossFightScreen implements Screen {
         bossTex.dispose();
         if (gameManager != null) {
             gameManager.dispose();
+        }
+        if (currentDialogueSound != null) {
+            currentDialogueSound.dispose();
         }
 
     }
@@ -1033,6 +1145,8 @@ public class BossFightScreen implements Screen {
     }
 
     private boolean isViolentShake() {
+        if (bossTimelineTime >= RAGE_TIME) return true;
+
         float t = phaseTime % 30f;
         return t < 5f;
     }
@@ -1063,6 +1177,33 @@ public class BossFightScreen implements Screen {
             // 设置固定的视野范围
             mazeCameraManager.centerOnPlayerImmediately(player);
         }
+    }
+    private void spawnTimelineAOE(Player player, float radius, int damage) {
+        if (player == null) return;
+
+        float px =
+                player.getX() * GameConstants.CELL_SIZE
+                        + GameConstants.CELL_SIZE / 2f;
+
+        float py =
+                player.getY() * GameConstants.CELL_SIZE
+                        + GameConstants.CELL_SIZE / 2f;
+
+        BossAOE aoe = new BossAOE();
+        aoe.x = px;
+        aoe.y = py;
+        aoe.damage = damage;
+        aoe.radius = radius;
+
+        aoe.maxLife = 1.5f;
+        aoe.life = aoe.maxLife;
+
+        aoe.warningTime = 0.8f;
+        aoe.active = false;
+        aoe.damageDone = false;
+
+        // ⭐ 你以后如果要不同 damage，这里可以扩展 BossAOE
+        activeAOEs.add(aoe);
     }
 
     private void spawnTrackingAOE(Player player) {
@@ -1141,9 +1282,7 @@ public class BossFightScreen implements Screen {
 
     // ⚠️ 你要改的就这里：接你的 Boss 时间轴“结束”判断
     private boolean bossTimelineFinished() {
-        // ✅ 临时兜底：Boss 表演 6 秒后结束
-        // 等你真正接 Boss 时间轴系统，再替换这里
-        return bossTimelineTime >= 999.0f;
+        return bossTimelineTime >= bossTimeline.length;
     }
     private void renderVictoryOverlays(SpriteBatch batch) {
         if (victoryState == VictoryState.STORY_DIALOG) {
@@ -1198,64 +1337,73 @@ public class BossFightScreen implements Screen {
         }
     }
 
+    public void playBossDialogue(String speaker, String text, String voicePath) {
 
-    private void renderStoryDialog() {
-        float w = Gdx.graphics.getWidth();
-        float h = Gdx.graphics.getHeight();
 
-        float boxW = 720f;
-        float boxH = 240f;
-        float boxX = w / 2f - boxW / 2f;
-        float boxY = h * 0.55f;
-
-        // 背景框
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        shapeRenderer.setProjectionMatrix(uiCamera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.08f, 0.08f, 0.10f, 0.88f);
-        shapeRenderer.rect(boxX, boxY, boxW, boxH);
-        shapeRenderer.end();
-
-        // 文本
-        batch.setProjectionMatrix(uiCamera.combined);
-        batch.begin();
-
-        uiFont.getData().setScale(0.45f);
-        uiFont.setColor(1f, 1f, 1f, 1f);
-
-        float y = boxY + boxH - 40f;
-        for (String line : storyLines) {
-            uiFont.draw(batch, line, boxX + 30f, y);
-            y -= 28f;
+        if (currentDialogueSound != null) {
+            currentDialogueSound.stop();
+            currentDialogueSound.dispose();
+            currentDialogueSound = null;
         }
 
-        uiFont.getData().setScale(0.35f);
-        uiFont.setColor(0.9f, 0.9f, 0.6f, 1f);
-        uiFont.draw(batch, "[Click / ENTER to continue]", boxX + 30f, boxY + 35f);
-
-        batch.end();
-    }
-
-    private void renderCredits() {
-        float w = Gdx.graphics.getWidth();
-        float h = Gdx.graphics.getHeight();
-
-        batch.setProjectionMatrix(uiCamera.combined);
-        batch.begin();
-
-        uiFont.getData().setScale(0.5f);
-        uiFont.setColor(1f, 1f, 1f, 1f);
-
-        float startX = w * 0.25f;
-        float y = creditsY;
-
-        for (String line : creditsLines) {
-            uiFont.draw(batch, line, startX, y);
-            y += 30f;
+        if (voicePath != null && !voicePath.isEmpty()) {
+            currentDialogueSound = Gdx.audio.newSound(Gdx.files.internal(voicePath));
+            currentDialogueSound.play(1.0f);
         }
-
-        batch.end();
     }
+// ===============================
+// Timeline Interface (FOR RUNNER)
+// ===============================
+
+    /** 90s 狂暴检查触发点（目前你逻辑已在 update 里） */
+    public void enterRageCheck() {
+        // 现在不需要做任何事
+        // 真正逻辑仍由 update() 中的 rageChecked 控制
+    }
+
+    /** 强制进入“剧烈晃动” */
+    public void setCupShakeViolent(boolean value) {
+        // 你目前是用 bossTimelineTime >= RAGE_TIME 判断
+        // 这里可以留空，或将来改成一个 boolean 控制
+    }
+
+    /** 血量阈值检查（50% 判定） */
+    public void handleHpThreshold(float threshold, String failEnding) {
+        if (bossHp > bossMaxHp * threshold) {
+            // 没打够 → 失败结局
+            rageState = BossRageState.MAZE_TRAP_END;
+            showMazeTrapEnding = true;
+        } else {
+            // 打够 → AOE 惩罚
+            rageState = BossRageState.RAGE_PUNISH;
+            rageAoeTimer = 0f;
+            rageAoeTickTimer = 0f;
+        }
+    }
+
+    /** 全屏 AOE（时间轴版） */
+    public void startGlobalAoe(float duration, float tickInterval, int damage) {
+        rageState = BossRageState.RAGE_PUNISH;
+        rageAoeTimer = 0f;
+        rageAoeTickTimer = 0f;
+        // 如果你以后要参数化，可以把 duration / damage 存字段
+    }
+
+    /** 锁定最终血量（5%） */
+    public void lockFinalHp(float threshold) {
+        if (rageState != BossRageState.FINAL_LOCKED) {
+            bossHp = bossMaxHp * threshold;
+            rageState = BossRageState.FINAL_LOCKED;
+            hud.updateBossHp(bossHp);
+        }
+    }
+
+    /** 时间轴结束（120s） */
+    public void markTimelineFinished() {
+        // 你已经在 bossTimelineFinished() 里用时间判断
+        // 所以这里可以什么都不做
+    }
+
 
 
 }

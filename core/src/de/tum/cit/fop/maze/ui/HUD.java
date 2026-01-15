@@ -7,12 +7,14 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.*;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
 
 import com.badlogic.gdx.utils.TimeUtils;
 import de.tum.cit.fop.maze.abilities.*;
 import de.tum.cit.fop.maze.entities.Compass;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.entities.boss.BossFightScreen;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.game.achievement.*;
@@ -103,6 +105,9 @@ public class HUD {
         }
         return false;
     }
+    // ===== Boss HUD 状态 =====
+    private boolean bossFinalLocked = false;
+    private final Color bossHpColor = new Color(0.85f, 0.15f, 0.15f, 1f);
 
 
 
@@ -349,13 +354,31 @@ public class HUD {
                 barWidth, barHeight
         );
 
-        // ===== HP =====
-        batch.setColor(0.85f, 0.15f, 0.15f, 1f);
+        // ===== HP 颜色计算 =====
+        if (bossFinalLocked) {
+            float blink =
+                    0.6f + 0.4f *
+                            MathUtils.sin(TimeUtils.nanoTime() * 0.00000001f);
+
+            // ☕ 咖啡金（锁血）
+            bossHpColor.set(0.75f, 0.6f, 0.25f, blink);
+        } else {
+            // 普通红
+            bossHpColor.set(0.85f, 0.15f, 0.15f, 1f);
+        }
+
+// ⭐ 关键：这里才 setColor
+        batch.setColor(bossHpColor);
+
+// ===== HP 条 =====
         batch.draw(
                 TextureManager.getInstance().getWhitePixel(),
                 x, y,
                 barWidth * ratio, barHeight
         );
+
+// ===== 立刻还原 =====
+        batch.setColor(1f, 1f, 1f, 1f);
 
         // ===== 文本 =====
         font.getData().setScale(1.4f);
@@ -1646,5 +1669,9 @@ public class HUD {
 
     public void disableBossHUD() {
         this.hudMode = HUDMode.NORMAL;
+    }
+
+    public void setBossFinalLocked(boolean locked) {
+        this.bossFinalLocked = locked;
     }
 }
