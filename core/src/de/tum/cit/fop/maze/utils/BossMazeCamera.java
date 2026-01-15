@@ -7,6 +7,10 @@ import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 
 public class BossMazeCamera {
+
+    private static final float CAMERA_PADDING_CELLS = 10f; // ← 已调整
+    private static final float CAMERA_PADDING =
+            CAMERA_PADDING_CELLS * GameConstants.CELL_SIZE;
     // ===== 视觉锚点修正（向上抬相机）=====
     private static final float VISUAL_Y_OFFSET = GameConstants.CELL_SIZE * 0.5f;
 // 如果还不够：0.6f / 0.7f 都很正常
@@ -27,6 +31,8 @@ public class BossMazeCamera {
     }
 
     public void update(float delta, Player player) {
+
+
         if (player == null) {
             camera.update();
             return;
@@ -42,14 +48,20 @@ public class BossMazeCamera {
                         + VISUAL_Y_OFFSET;
 
         // ===== 2️⃣ clamp 到迷宫边界 =====
-        float halfW = camera.viewportWidth / 2f;
-        float halfH = camera.viewportHeight / 2f;
+        float halfW = camera.viewportWidth * camera.zoom / 2f;
+        float halfH = camera.viewportHeight * camera.zoom / 2f;
 
-        float maxX = dc.mazeWidth * GameConstants.CELL_SIZE - halfW;
-        float maxY = dc.mazeHeight * GameConstants.CELL_SIZE - halfH;
+        float mazeWorldW = dc.mazeWidth * GameConstants.CELL_SIZE;
+        float mazeWorldH = dc.mazeHeight * GameConstants.CELL_SIZE;
 
-        targetX = MathUtils.clamp(targetX, halfW, maxX);
-        targetY = MathUtils.clamp(targetY, halfH, maxY);
+        float minX = halfW - CAMERA_PADDING;
+        float maxX = mazeWorldW - halfW + CAMERA_PADDING;
+
+        float minY = halfH - CAMERA_PADDING;
+        float maxY = mazeWorldH - halfH + CAMERA_PADDING;
+
+        targetX = MathUtils.clamp(targetX, minX, maxX);
+        targetY = MathUtils.clamp(targetY, minY, maxY);
 
         // ===== 3️⃣ 平滑跟随（和 CameraManager 同模型）=====
         float newX = camera.position.x + (targetX - camera.position.x) * smoothSpeed * delta;

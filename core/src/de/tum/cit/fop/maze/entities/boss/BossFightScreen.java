@@ -37,6 +37,15 @@ import java.util.List;
 import java.util.Map;
 
 public class BossFightScreen implements Screen {
+    private OrthographicCamera uiCamera;
+
+    // ===== Boss HP =====
+    private float bossMaxHp = 1000f;
+    private float bossHp = bossMaxHp;
+
+    // ===== HUD =====
+    private de.tum.cit.fop.maze.ui.HUD hud;
+
     // ===== Tea Cup =====
     private Texture teacupTex;
     // ===== Tea Cup (Boss Fullscreen Layer) =====
@@ -126,7 +135,13 @@ public class BossFightScreen implements Screen {
 
     @Override
     public void show() {
-
+        uiCamera = new OrthographicCamera();
+        uiCamera.setToOrtho(
+                false,
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight()
+        );
+        uiCamera.update();
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
 
@@ -159,12 +174,21 @@ public class BossFightScreen implements Screen {
         transitionState = PhaseTransitionState.NONE;
         transitionTimer = 0f;
         fadeAlpha = 0f;
-
+        // ===== HUD 初始化 =====
         applyPhase(phaseSelector.getCurrent());
+
+        hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
+        hud.enableBossHUD(bossMaxHp);
+        hud.updateBossHp(bossHp);
     }
 
     @Override
     public void render(float delta) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
+            bossHp -= 50f;
+            bossHp = Math.max(0f, bossHp);
+            hud.updateBossHp(bossHp);
+        }
 
         Gdx.app.log(
                 "MAZE_VIEWPORT",
@@ -322,6 +346,19 @@ public class BossFightScreen implements Screen {
                 shapeRenderer.end();
             }
             Gdx.gl.glDisable(GL20.GL_STENCIL_TEST);
+
+// =====================================
+// ✅ Boss HUD（血条）
+// =====================================
+            batch.setProjectionMatrix(uiCamera.combined);
+            batch.begin();
+            hud.renderInGameUI(batch);
+            batch.end();
+
+
+
+
+
         }
 
 
@@ -574,6 +611,10 @@ public class BossFightScreen implements Screen {
         // ✅ 迷宫视口：使用新的屏幕尺寸
         if (mazeViewport != null) {
             mazeViewport.update(width, height);
+        }
+        if (uiCamera != null) {
+            uiCamera.setToOrtho(false, width, height);
+            uiCamera.update();
         }
     }
 

@@ -25,6 +25,17 @@ import java.util.*;
 import static com.badlogic.gdx.graphics.GL20.*;
 
 public class HUD {
+
+    // ===== Boss HUD =====
+    private HUDMode hudMode = HUDMode.NORMAL;
+
+    private float bossHp = 0f;
+    private float bossMaxHp = 0f;
+    public enum HUDMode {
+        NORMAL,     // 迷宫常规
+        BOSS        // Boss 战
+    }
+
     // ===== Upgrade Button Hover =====
     private Ability hoveredUpgradeAbility = null;
     private float upgradeHoverAnim = 0f;
@@ -288,6 +299,10 @@ public class HUD {
     // =========================================================
 
     public void renderInGameUI(SpriteBatch uiBatch) {
+        if (hudMode == HUDMode.BOSS) {
+            renderBossHUD(uiBatch);
+            return; // ❗ Boss HUD 接管顶部区域
+        }
             if (gameManager.isTwoPlayerMode()) {
                 renderTwoPlayerHUD(uiBatch);
             } else {
@@ -304,6 +319,63 @@ public class HUD {
 
 
     }
+
+    private void renderBossHUD(SpriteBatch batch) {
+        float screenW = Gdx.graphics.getWidth();
+        float screenH = Gdx.graphics.getHeight();
+
+        float barWidth  = screenW * 0.6f;
+        float barHeight = 26f;
+
+        float x = (screenW - barWidth) / 2f;
+        float y = screenH - 80f;
+
+        float ratio = bossMaxHp <= 0f ? 0f : bossHp / bossMaxHp;
+        ratio = Math.max(0f, Math.min(1f, ratio));
+
+        // ===== 背景 =====
+        batch.setColor(0f, 0f, 0f, 0.65f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x - 6, y - 6,
+                barWidth + 12, barHeight + 12
+        );
+
+        // ===== 槽底 =====
+        batch.setColor(0.25f, 0.05f, 0.05f, 1f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x, y,
+                barWidth, barHeight
+        );
+
+        // ===== HP =====
+        batch.setColor(0.85f, 0.15f, 0.15f, 1f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x, y,
+                barWidth * ratio, barHeight
+        );
+
+        // ===== 文本 =====
+        font.getData().setScale(1.4f);
+        font.setColor(Color.WHITE);
+
+        String text = "BOSS  " + (int)bossHp + " / " + (int)bossMaxHp;
+        GlyphLayout layout = new GlyphLayout(font, text);
+
+        font.draw(
+                batch,
+                text,
+                screenW / 2f - layout.width / 2f,
+                y + barHeight + 28
+        );
+
+        // restore
+        font.getData().setScale(1.2f);
+        batch.setColor(1f, 1f, 1f, 1f);
+    }
+
 
     private void renderSinglePlayerHUD(SpriteBatch uiBatch) {
         var player = gameManager.getPlayer();
@@ -1562,5 +1634,17 @@ public class HUD {
         manaGlowP1.dispose();
         manaGlowP2.dispose();
     }
+    public void enableBossHUD(float maxHp) {
+        this.hudMode = HUDMode.BOSS;
+        this.bossMaxHp = maxHp;
+        this.bossHp = maxHp;
+    }
 
+    public void updateBossHp(float hp) {
+        this.bossHp = Math.max(0f, hp);
+    }
+
+    public void disableBossHUD() {
+        this.hudMode = HUDMode.NORMAL;
+    }
 }
