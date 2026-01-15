@@ -47,8 +47,8 @@ public class BossFightScreen implements Screen {
     private float cupRadius;
     private float cupCenterX;
     private float cupCenterY;
-    private static final float BOSS_WIDTH  = 420f;
-    private static final float BOSS_HEIGHT = 420f;
+    private static final float BOSS_WIDTH  = 1320f;
+    private static final float BOSS_HEIGHT = 1120f;
 
     // 合屏动画用
     private float mazeSlideOffsetY = 0f;
@@ -211,7 +211,7 @@ public class BossFightScreen implements Screen {
         float worldWidth = bossViewport.getWorldWidth();
         float worldHeight = bossViewport.getWorldHeight();
         float bossWorldX = worldWidth / 2 - BOSS_WIDTH / 2;
-        float bossWorldY = 80f; // 离底部一些距离
+        float bossWorldY = -80f; // 离底部一些距离
 
         batch.draw(
                 bossTex,
