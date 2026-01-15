@@ -193,6 +193,7 @@ public class BossFightScreen implements Screen {
 
         int damage;
     }
+    private float rageOverlayPulse = 0f;
 
     private final List<BossAOE> activeAOEs = new ArrayList<>();
     private PhaseTransitionState transitionState = PhaseTransitionState.NONE;
@@ -327,7 +328,11 @@ public class BossFightScreen implements Screen {
         }
 
 
-
+        if (rageState == BossRageState.RAGE_PUNISH) {
+            rageOverlayPulse += delta * 4f; // 呼吸速度
+        } else {
+            rageOverlayPulse = 0f;
+        }
 
         boolean renderMazeLayer = (victoryState == VictoryState.NONE);
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
@@ -574,6 +579,10 @@ public class BossFightScreen implements Screen {
             if (showMazeWarning) {
                 renderMazeRebuildWarning();
             }
+
+
+
+
 // =====================================
 // ✅ Boss HUD（血条）
 // =====================================
@@ -583,7 +592,9 @@ public class BossFightScreen implements Screen {
             batch.end();
 
 
-
+            if (rageState == BossRageState.RAGE_PUNISH) {
+                drawRageOverlay();
+            }
 
 
         }
@@ -617,6 +628,36 @@ public class BossFightScreen implements Screen {
         }
     }
 
+    private void drawRageOverlay() {
+        // 呼吸式 alpha（0.25 ~ 0.45）
+        float pulse =
+                0.35f
+                        + 0.10f * MathUtils.sin(rageOverlayPulse);
+
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+        shapeRenderer.setProjectionMatrix(uiCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // 深红偏黑（不像普通受伤红）
+        shapeRenderer.setColor(
+                0.35f,   // R
+                0.05f,   // G
+                0.05f,   // B
+                pulse    // A
+        );
+
+        shapeRenderer.rect(
+                0,
+                0,
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight()
+        );
+
+        shapeRenderer.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
 
 
 
