@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
@@ -52,12 +53,25 @@ public class BossFightScreen implements Screen {
         STORY_DIALOG,   // 剧情确认框
         CREDITS         // 滚动谢幕
     }
+
+    // ===== Cup Shake Runtime =====
+    private boolean cupShakeActive = false;
+    private float cupShakeTimer = 0f;
+    private float cupShakeDuration = 0f;
+
+    private float cupShakeXAmp = 0f;
+    private float cupShakeYAmp = 0f;
+    private float cupShakeXFreq = 1f;
+    private float cupShakeYFreq = 1f;
+
+
     // ===== AOE Timeline Runtime =====
     private float aoeCycleTime = 0f;
     private float aoeIntervalTimer = 0f;
     private final Map<AoeTimeline.AoePattern, Float> aoeTimers = new HashMap<>();
 
 
+    private final GlyphLayout glyphLayout = new GlyphLayout();
 
     private Sound currentDialogueSound;
 
@@ -217,6 +231,15 @@ public class BossFightScreen implements Screen {
     // 屏幕尺寸
     private int screenWidth;
     private int screenHeight;
+    // ===== Phase Shake（迷宫切换前用）=====
+    private boolean phaseShakeActive = false;
+    private float phaseShakeTimer = 0f;
+    private float phaseShakeDuration = 0f;
+
+    private float phaseShakeXAmp;
+    private float phaseShakeYAmp;
+    private float phaseShakeXFreq;
+    private float phaseShakeYFreq;
 
     // ✅ 迷宫相机的固定视野范围（格子数）
     private static final float MAZE_VIEW_CELLS_WIDTH = 20f;  // 横向看8格
@@ -379,20 +402,28 @@ public class BossFightScreen implements Screen {
 
 
 
-        float time = phaseTime;
-        float shakeIntensity = isViolentShake() ? 1.0f : 0.25f;
-// 杯子晃动（世界坐标）
-        float cupShakeX =
-                MathUtils.sin(time * 1.6f) * 6f * shakeIntensity;
+        float shakeX = 0f;
+        float shakeY = 0f;
 
-        float cupShakeY =
-                MathUtils.cos(time * 1.2f) * 4f * shakeIntensity;
+        // ===== Boss Timeline / CUP_SHAKE =====
+        if (cupShakeActive) {
+            float t = cupShakeTimer;
+            shakeX += MathUtils.sin(t * cupShakeXFreq) * cupShakeXAmp;
+            shakeY += MathUtils.cos(t * cupShakeYFreq) * cupShakeYAmp;
+        }
+
+// ===== Phase Transition Shake（迷宫切换前）=====
+        if (phaseShakeActive) {
+            float t = phaseShakeTimer;
+            shakeX += MathUtils.sin(t * phaseShakeXFreq) * phaseShakeXAmp;
+            shakeY += MathUtils.cos(t * phaseShakeYFreq) * phaseShakeYAmp;
+        }
         // ===== 茶杯（胜利后不再渲染）=====
         if (victoryState == VictoryState.NONE) {
             batch.draw(
                     teacupTex,
-                    teacupWorldX - teacupSize / 2f + cupShakeX,
-                    teacupWorldY - teacupSize / 2f + cupShakeY,
+                    teacupWorldX - teacupSize / 2f + shakeX,
+                    teacupWorldY - teacupSize / 2f + shakeY,
                     teacupSize,
                     teacupSize
             );
@@ -419,14 +450,8 @@ public class BossFightScreen implements Screen {
             OrthographicCamera cam = mazeCameraManager.getCamera();
             cam.update();
             // ===== 圆形裁剪参数（迷宫世界坐标）=====
-            float maskShakeX =
-                    MathUtils.sin(time * 1.9f + 10f) * 8f * shakeIntensity;
-
-            float maskShakeY =
-                    MathUtils.cos(time * 1.4f + 5f) * 6f * shakeIntensity;
-
-            cupCenterX = cam.position.x + maskShakeX;
-            cupCenterY = cam.position.y + maskShakeY;
+            cupCenterX = cam.position.x + shakeX;
+            cupCenterY = cam.position.y + shakeY;
             cupRadius  = cam.viewportHeight * cam.zoom * 0.30f;
 
             // ===== 写入 Stencil（圆形）=====
@@ -442,8 +467,8 @@ public class BossFightScreen implements Screen {
 
 // ===== 椭圆参数 =====
             float ellipseRadius = cupRadius;
-            float ellipseScaleX = 1.05f; // ← 左右更宽（1.3 ~ 1.6 都行）
-            float ellipseScaleY = 0.80f; // ← 上下更矮（0.75 ~ 0.95 都行）
+            float ellipseScaleX = 1.15f; // ← 左右更宽（1.3 ~ 1.6 都行）
+            float ellipseScaleY = 0.85f; // ← 上下更矮（0.75 ~ 0.95 都行）
 
 // 保存原矩阵
             shapeRenderer.identity();
@@ -624,23 +649,13 @@ public class BossFightScreen implements Screen {
         // 方框尺寸 & 位置（正中偏上）
         float boxW = 420f;
         float boxH = 140f;
-        float boxX = w / 2f - boxW / 2f;
-        float boxY = h * 0.62f;
+        float boxX = w / 2f ;
+        float boxY = h * 0.82f;
 
         // 文字闪烁
         float blink =
                 0.75f + 0.25f * MathUtils.sin(mazeWarningTimer * 6f);
 
-        // ===== 画底框 =====
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        shapeRenderer.setProjectionMatrix(uiCamera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-
-        // 亮卡其色
-        shapeRenderer.setColor(0.96f, 0.90f, 0.72f, 0.95f);
-        shapeRenderer.rect(boxX, boxY, boxW, boxH);
-
-        shapeRenderer.end();
 
         // ===== 画文字 =====
         batch.setProjectionMatrix(uiCamera.combined);
@@ -648,22 +663,26 @@ public class BossFightScreen implements Screen {
 
         batch.setColor(0.15f, 0.12f, 0.05f, blink);
 
-        String title = "MAZE RECONFIGURING";
+        String title = "ATTENTION";
         int seconds = MathUtils.ceil(mazeWarningTimer);
-        uiFont.getData().setScale(0.3f); // 标题
-        uiFont.setColor(0.15f, 0.12f, 0.05f, blink);
+        uiFont.getData().setScale(0.5f);
+        uiFont.setColor(0.92f, 0.90f, 0.78f, blink);
 
-        uiFont.draw(
-                batch,
-                title,
-                boxX - 40,
-                boxY + boxH - 30
-        );
+// 计算文字尺寸
+        glyphLayout.setText(uiFont, title);
+
+// ⭐ 居中 X
+        float textX = boxX - glyphLayout.width / 2f;
+
+// ⭐ 垂直位置（你原来的逻辑）
+        float textY = boxY + boxH - 30f;
+
+        uiFont.draw(batch, glyphLayout, textX, textY);
 
         uiFont.draw(
                 batch,
                 String.valueOf(seconds),
-                boxX + boxW / 2f - 10,
+                boxX,
                 boxY + 40
         );
 
@@ -672,7 +691,6 @@ public class BossFightScreen implements Screen {
     }
 
 
-    private float aoeSpawnTimer = 0f;
     private void update(float delta) {
         if (rageState == BossRageState.RAGE_PUNISH) {
             rageAoeTimer += delta;
@@ -700,7 +718,12 @@ public class BossFightScreen implements Screen {
             return;
         }
 
-
+        if (cupShakeActive) {
+            cupShakeTimer += delta;
+            if (cupShakeTimer >= cupShakeDuration) {
+                cupShakeActive = false;
+            }
+        }
 
 
 
@@ -770,6 +793,19 @@ public class BossFightScreen implements Screen {
         }
             phaseTime += delta;
 
+
+        if (phaseShakeActive) {
+            phaseShakeTimer += delta;
+            if (phaseShakeTimer >= phaseShakeDuration) {
+                phaseShakeActive = false;
+            }
+        }
+
+
+
+
+
+
         switch (transitionState) {
             case NONE -> {
                 if (bossDeathState == BossDeathState.NONE &&
@@ -779,7 +815,7 @@ public class BossFightScreen implements Screen {
                         )) {
 
                     phaseSwitchQueued = true;
-
+                    triggerPhaseShake();
                     showMazeWarning = true;
                     mazeWarningTimer = MAZE_WARNING_TIME;
                 }
@@ -854,6 +890,18 @@ public class BossFightScreen implements Screen {
 
 
     }
+
+    private void triggerPhaseShake() {
+        phaseShakeActive = true;
+        phaseShakeTimer = 0f;
+        phaseShakeDuration = 0.6f; // ⭐ 短促但有力
+
+        phaseShakeXAmp = 9f;
+        phaseShakeYAmp = 7f;
+        phaseShakeXFreq = 2.8f;
+        phaseShakeYFreq = 2.4f;
+    }
+
 
     private void applyPhase(BossMazeConfig.Phase phase) {
         phaseTime = 0f;
@@ -1361,11 +1409,7 @@ public class BossFightScreen implements Screen {
         // 真正逻辑仍由 update() 中的 rageChecked 控制
     }
 
-    /** 强制进入“剧烈晃动” */
-    public void setCupShakeViolent(boolean value) {
-        // 你目前是用 bossTimelineTime >= RAGE_TIME 判断
-        // 这里可以留空，或将来改成一个 boolean 控制
-    }
+
 
     /** 血量阈值检查（50% 判定） */
     public void handleHpThreshold(float threshold, String failEnding) {
@@ -1404,6 +1448,22 @@ public class BossFightScreen implements Screen {
         // 所以这里可以什么都不做
     }
 
+    public void startCupShake(
+            float duration,
+            float xAmp,
+            float yAmp,
+            float xFreq,
+            float yFreq
+    ) {
+        cupShakeActive = true;
+        cupShakeTimer = 0f;
+        cupShakeDuration = duration;
+
+        cupShakeXAmp = xAmp;
+        cupShakeYAmp = yAmp;
+        cupShakeXFreq = xFreq;
+        cupShakeYFreq = yFreq;
+    }
 
 
 }

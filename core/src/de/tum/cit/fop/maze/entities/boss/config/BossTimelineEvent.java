@@ -5,19 +5,23 @@ public class BossTimelineEvent {
     public String type;
 
     // ===== Dialogue =====
-    public String speaker;   // "BOSS" / "SYSTEM"
-    public String text;      // 显示文本
-    public String voice;     // 音频路径（可空）
+    public String speaker;
+    public String text;
+    public String voice;
 
-    // ===== 通用参数 =====
+    // ===== 通用事件参数 =====
     public Float threshold;
-    public Float duration;
+    public Float duration;      // ⭐ 统一：事件持续时间
     public Float tickInterval;
     public Integer damage;
-    public String intensity;
-    public String onFail;
-    public String onSuccess;
 
-    // 运行时
+    // ===== CUP_SHAKE 专用参数 =====
+    public Float xAmp;
+    public Float yAmp;
+    public Float xFreq;
+    public Float yFreq;
+
+    // ===== 运行时 =====
     public boolean triggered = false;
 }
+

@@ -21,38 +21,50 @@ public class BossTimelineRunner {
 
     private void execute(BossTimelineEvent e, BossFightScreen s) {
         switch (e.type) {
-            case "RAGE_CHECK":
+
+            case "RAGE_CHECK" -> {
                 s.enterRageCheck();
-                break;
+            }
 
-            case "CUP_SHAKE":
-                s.setCupShakeViolent(true);
-                break;
+            case "LOCK_HP" -> {
+                s.handleHpThreshold(e.threshold, null);
+            }
 
-            case "LOCK_HP":
-                s.handleHpThreshold(e.threshold,  e.onFail);
-                break;
+            case "GLOBAL_AOE" -> {
+                s.startGlobalAoe(
+                        e.duration,
+                        e.tickInterval,
+                        e.damage
+                );
+            }
 
-            case "GLOBAL_AOE":
-                s.startGlobalAoe(e.duration, e.tickInterval, e.damage);
-                break;
-
-            case "LOCK_FINAL_HP":
+            case "LOCK_FINAL_HP" -> {
                 s.lockFinalHp(e.threshold);
-                break;
+            }
 
-            case "TIMELINE_END":
-                s.markTimelineFinished();
-                break;
+            case "CUP_SHAKE" -> {
+                s.startCupShake(
+                        e.duration != null ? e.duration : 0f,
+                        e.xAmp != null ? e.xAmp : 0f,
+                        e.yAmp != null ? e.yAmp : 0f,
+                        e.xFreq != null ? e.xFreq : 1f,
+                        e.yFreq != null ? e.yFreq : 1f
+                );
+            }
 
-            case "DIALOGUE":
+            case "DIALOGUE" -> {
                 s.playBossDialogue(e.speaker, e.text, e.voice);
-                break;
+            }
 
-            default:
-                // unknown event type, ignore
-                break;
+            case "TIMELINE_END" -> {
+                s.markTimelineFinished();
+            }
+
+            default -> {
+                // ignore unknown
+            }
         }
     }
+
 
 }
