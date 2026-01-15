@@ -390,10 +390,29 @@ public class BossFightScreen implements Screen {
             Gdx.gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xFF);
             Gdx.gl.glStencilOp(GL20.GL_KEEP, GL20.GL_KEEP, GL20.GL_REPLACE);
             Gdx.gl.glColorMask(false, false, false, false);
-
             shapeRenderer.setProjectionMatrix(cam.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.circle(cupCenterX, cupCenterY, cupRadius, 64);
+
+// ===== 椭圆参数 =====
+            float ellipseRadius = cupRadius;
+            float ellipseScaleX = 1.05f; // ← 左右更宽（1.3 ~ 1.6 都行）
+            float ellipseScaleY = 0.80f; // ← 上下更矮（0.75 ~ 0.95 都行）
+
+// 保存原矩阵
+            shapeRenderer.identity();
+
+// 平移到中心
+            shapeRenderer.translate(cupCenterX, cupCenterY, 0);
+
+// 缩放成椭圆
+            shapeRenderer.scale(ellipseScaleX, ellipseScaleY, 1f);
+
+// 画“单位圆”（经过 scale 后就是椭圆）
+            shapeRenderer.circle(0, 0, ellipseRadius, 64);
+
+// 恢复
+            shapeRenderer.identity();
+
             shapeRenderer.end();
 
             // ===== 只在圆内画迷宫 =====
@@ -1124,7 +1143,7 @@ public class BossFightScreen implements Screen {
     private boolean bossTimelineFinished() {
         // ✅ 临时兜底：Boss 表演 6 秒后结束
         // 等你真正接 Boss 时间轴系统，再替换这里
-        return bossTimelineTime >= 6.0f;
+        return bossTimelineTime >= 999.0f;
     }
     private void renderVictoryOverlays(SpriteBatch batch) {
         if (victoryState == VictoryState.STORY_DIALOG) {
