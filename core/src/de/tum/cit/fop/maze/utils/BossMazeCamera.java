@@ -7,6 +7,9 @@ import de.tum.cit.fop.maze.game.DifficultyConfig;
 import de.tum.cit.fop.maze.game.GameConstants;
 
 public class BossMazeCamera {
+    // ===== 视觉锚点修正（向上抬相机）=====
+    private static final float VISUAL_Y_OFFSET = GameConstants.CELL_SIZE * 0.5f;
+// 如果还不够：0.6f / 0.7f 都很正常
 
     private final OrthographicCamera camera;
     private final DifficultyConfig dc;
@@ -35,7 +38,8 @@ public class BossMazeCamera {
                         + GameConstants.CELL_SIZE / 2f;
         float targetY =
                 player.getY() * GameConstants.CELL_SIZE
-                        + GameConstants.CELL_SIZE / 2f;
+                        + GameConstants.CELL_SIZE / 2f
+                        + VISUAL_Y_OFFSET;
 
         // ===== 2️⃣ clamp 到迷宫边界 =====
         float halfW = camera.viewportWidth / 2f;

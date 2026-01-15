@@ -40,7 +40,18 @@ public class DesktopLauncher {
             config.useVsync(true);
             config.setForegroundFPS(60);
             config.setIdleFPS(30);
-
+// =====================================
+            // 🔥 关键：开启 Stencil Buffer
+            // =====================================
+            config.setBackBufferConfig(
+                    8,   // red
+                    8,   // green
+                    8,   // blue
+                    8,   // alpha
+                    16,  // depth
+                    8,   // stencil  ← ★ 必须 > 0
+                    0    // samples
+            );
             // 启动游戏
             new Lwjgl3Application(new MazeRunnerGame(), config);
         } catch (Exception e) {

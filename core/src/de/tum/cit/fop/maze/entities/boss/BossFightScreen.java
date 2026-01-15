@@ -41,7 +41,7 @@ public class BossFightScreen implements Screen {
     // ===== Tea Cup (Boss Fullscreen Layer) =====
     private float teacupWorldX = 640f;   // ← 左右（魔法数字）
     private float teacupWorldY = 230f;   // ← 上下（魔法数字）
-    private float teacupSize   = 520f;   // ← 茶杯大小
+    private float teacupSize   = 920f;   // ← 茶杯大小
 
     // 圆形裁剪参数（世界坐标）
     private float cupRadius;
@@ -115,8 +115,8 @@ public class BossFightScreen implements Screen {
     private int screenHeight;
 
     // ✅ 迷宫相机的固定视野范围（格子数）
-    private static final float MAZE_VIEW_CELLS_WIDTH = 15f;  // 横向看8格
-    private static final float MAZE_VIEW_CELLS_HEIGHT = 10f; // 纵向看6格
+    private static final float MAZE_VIEW_CELLS_WIDTH = 20f;  // 横向看8格
+    private static final float MAZE_VIEW_CELLS_HEIGHT = 17f; // 纵向看6格
 
     public BossFightScreen(MazeRunnerGame game) {
         this.game = game;
@@ -247,10 +247,11 @@ public class BossFightScreen implements Screen {
             // ===== 圆形裁剪参数（迷宫世界坐标）=====
             cupCenterX = cam.position.x;
             cupCenterY = cam.position.y;
-            cupRadius  = cam.viewportHeight * cam.zoom * 0.45f;
+            cupRadius  = cam.viewportHeight * cam.zoom * 0.30f;
 
             // ===== 写入 Stencil（圆形）=====
             Gdx.gl.glEnable(GL20.GL_STENCIL_TEST);
+            Gdx.gl.glClearStencil(0);
             Gdx.gl.glClear(GL20.GL_STENCIL_BUFFER_BIT);
 
             Gdx.gl.glStencilFunc(GL20.GL_ALWAYS, 1, 0xFF);
