@@ -661,8 +661,42 @@ public class BossFightScreen implements Screen {
 
 
 
+    private float failTimer = 0f;
+
     private void renderMazeTrapEnding() {
-        //TODO
+        failTimer += Gdx.graphics.getDeltaTime();
+
+        // 清屏
+        Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        batch.setProjectionMatrix(uiCamera.combined);
+        batch.begin();
+
+        uiFont.getData().setScale(0.5f);
+        uiFont.setColor(1f, 0.9f, 0.7f, 1f);
+        uiFont.draw(
+                batch,
+                "YOU ARE TRAPPED IN THE MAZE",
+                Gdx.graphics.getWidth() / 2f - 260f,
+                Gdx.graphics.getHeight() / 2f + 40f
+        );
+
+        uiFont.getData().setScale(0.35f);
+        uiFont.draw(
+                batch,
+                "[Click / ENTER to return to menu]",
+                Gdx.graphics.getWidth() / 2f - 240f,
+                Gdx.graphics.getHeight() / 2f - 20f
+        );
+
+        batch.end();
+
+        // 输入确认 → 回 Menu
+        if (Gdx.input.justTouched()
+                || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+            game.setScreen(new MenuScreen(game));
+        }
     }
 
     private void enterVictoryMode() {
