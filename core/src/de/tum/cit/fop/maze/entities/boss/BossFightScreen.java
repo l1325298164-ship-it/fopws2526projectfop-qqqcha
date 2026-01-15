@@ -38,6 +38,43 @@ import java.util.List;
 import java.util.Map;
 
 public class BossFightScreen implements Screen {
+    // ===== Victory Flow =====
+    private enum VictoryState {
+        NONE,
+        BOSS_ONLY,      // K 触发后：只渲染 Boss，Boss 时间轴继续
+        STORY_DIALOG,   // 剧情确认框
+        CREDITS         // 滚动谢幕
+    }
+
+    private VictoryState victoryState = VictoryState.NONE;
+
+    // Boss 时间轴：永远跑（不要被迷宫冻结影响）
+    private float bossTimelineTime = 0f;
+
+    // ===== Story / Credits UI =====
+    private boolean showStory = false;
+    private float creditsY = 0f;
+    private static final float CREDITS_SCROLL_SPEED = 60f; // 越大滚得越快
+
+    // 你自己的剧情文案（先写死，后面可换 json）
+    private final String[] storyLines = new String[] {
+            "Story: ...",
+            "The tea has cooled.",
+            "But the maze remembers."
+    };
+
+    private final String[] creditsLines = new String[] {
+            "THE END",
+            "",
+            "Thanks for playing",
+            "",
+            "QQCHA Team",
+            "Producer: You",
+            "Programmer: You",
+            "Art: You",
+            "",
+            "See you next time."
+    };
 
     // ===== Maze Rebuild Warning =====
     private boolean showMazeWarning = false;
@@ -223,6 +260,7 @@ public class BossFightScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        boolean renderMazeLayer = (victoryState == VictoryState.NONE);
         if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
             bossHp -= 50f;
             bossHp = Math.max(0f, bossHp);
@@ -239,10 +277,10 @@ public class BossFightScreen implements Screen {
                         || bossDeathState == BossDeathState.PLAYING_DEATH
                         || bossDeathState == BossDeathState.FINISHED;
 
-        if (bossDeathState == BossDeathState.NONE &&
-                Gdx.input.isKeyJustPressed(Input.Keys.K)) {
-            triggerBossDeath(); // 测试用
+        if (victoryState == VictoryState.NONE && Gdx.input.isKeyJustPressed(Input.Keys.K)) {
+            enterVictoryMode();
         }
+
 
         // ===== 测试期：ESC 直接回主菜单 =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -285,6 +323,14 @@ public class BossFightScreen implements Screen {
                 BOSS_WIDTH,
                 BOSS_HEIGHT
         );
+// ===== Victory Overlay =====
+        if (victoryState != VictoryState.NONE) {
+            renderVictoryOverlays(batch);
+        }
+
+
+
+
 
         float time = phaseTime;
         float shakeIntensity = isViolentShake() ? 1.0f : 0.25f;
@@ -294,20 +340,26 @@ public class BossFightScreen implements Screen {
 
         float cupShakeY =
                 MathUtils.cos(time * 1.2f) * 4f * shakeIntensity;
-        // ===== 茶杯（全屏层，但用魔法数字定位）=====
-        batch.draw(
-                teacupTex,
-                teacupWorldX - teacupSize / 2f + cupShakeX,
-                teacupWorldY - teacupSize / 2f + cupShakeY,
-                teacupSize,
-                teacupSize
-        );
+        // ===== 茶杯（胜利后不再渲染）=====
+        if (victoryState == VictoryState.NONE) {
+            batch.draw(
+                    teacupTex,
+                    teacupWorldX - teacupSize / 2f + cupShakeX,
+                    teacupWorldY - teacupSize / 2f + cupShakeY,
+                    teacupSize,
+                    teacupSize
+            );
+        }
         batch.end();
 
         // =====================================
 // ✅ 第二层：全屏迷宫（覆盖在 Boss 上面）
 // =====================================
-        if (gameManager != null && gameManager.getPlayer() != null) {
+
+
+        if (victoryState == VictoryState.NONE
+                && gameManager != null
+                && gameManager.getPlayer() != null) {
 
             // ❗ 只 apply，不 update
             mazeViewport.apply();
@@ -471,6 +523,24 @@ public class BossFightScreen implements Screen {
         }
     }
 
+    private void enterVictoryMode() {
+        victoryState = VictoryState.BOSS_ONLY;
+        bossTimelineTime = 0f;
+
+        // ✅ 下半屏全部立即消失
+        activeAOEs.clear();
+        showMazeWarning = false;
+        fadeAlpha = 0f;
+        transitionState = PhaseTransitionState.NONE;
+
+        // 这些资源你也可以不置空，只是不再渲染
+        // teacupTex = null;
+        // hud = null;
+
+        // ✅ 关键：不要冻结 bossTimelineTime（它继续跑）
+        // ✅ 关键：从现在开始不再 update gameManager（迷宫停止）
+    }
+
     private void renderMazeRebuildWarning() {
         float w = Gdx.graphics.getWidth();
         float h = Gdx.graphics.getHeight();
@@ -528,6 +598,23 @@ public class BossFightScreen implements Screen {
 
     private float aoeSpawnTimer = 0f;
     private void update(float delta) {
+
+        if (bossTimelineFinished()) {
+            game.setScreen(new BossStoryScreen(game));
+            return;
+        }
+
+
+
+
+        bossTimelineTime += delta;
+
+// 胜利后：迷宫不再推进（但 Boss 时间轴继续）
+        if (victoryState != VictoryState.NONE) {
+            // 只处理 Boss-only 状态的“结束检测”
+            updateVictoryFlow(delta);
+            return;
+        }
         float t = phaseTime % 30f;
 
 // 只在 0–3s 和 0–10s 期间生成 AOE!!
@@ -999,5 +1086,157 @@ public class BossFightScreen implements Screen {
 
         return dx * dx + dy * dy <= aoe.radius * aoe.radius;
     }
+    private void updateVictoryFlow(float delta) {
+        // 这里必须接你自己的 Boss 时间轴结束判断
+        // ✅ 你只要把 bossTimelineFinished() 换成你自己的条件就行
+
+        if (victoryState == VictoryState.BOSS_ONLY) {
+            if (bossTimelineFinished()) {
+                victoryState = VictoryState.STORY_DIALOG;
+                showStory = true;
+            }
+        }
+
+        if (victoryState == VictoryState.STORY_DIALOG) {
+            // 点击 / Enter 确认
+            if (Gdx.input.justTouched() || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                showStory = false;
+                victoryState = VictoryState.CREDITS;
+
+                // 字幕从屏幕底下开始
+                creditsY = -50f;
+            }
+        }
+
+        if (victoryState == VictoryState.CREDITS) {
+            creditsY += delta * CREDITS_SCROLL_SPEED;
+
+            // 全滚完：回 Menu
+            float endY = Gdx.graphics.getHeight() + creditsLines.length * 30f;
+            if (creditsY > endY) {
+                // TODO: 切 Menu + 切 BGM
+                game.setScreen(new MenuScreen(game));
+            }
+        }
+    }
+
+    // ⚠️ 你要改的就这里：接你的 Boss 时间轴“结束”判断
+    private boolean bossTimelineFinished() {
+        // ✅ 临时兜底：Boss 表演 6 秒后结束
+        // 等你真正接 Boss 时间轴系统，再替换这里
+        return bossTimelineTime >= 6.0f;
+    }
+    private void renderVictoryOverlays(SpriteBatch batch) {
+        if (victoryState == VictoryState.STORY_DIALOG) {
+            drawStoryDialog(batch);
+        } else if (victoryState == VictoryState.CREDITS) {
+            drawCredits(batch);
+        }
+    }
+    private void drawStoryDialog(SpriteBatch batch) {
+        float w = Gdx.graphics.getWidth();
+        float h = Gdx.graphics.getHeight();
+
+        float boxW = 720f;
+        float boxH = 240f;
+        float boxX = w / 2f - boxW / 2f;
+        float boxY = h * 0.55f;
+
+        // 背景框（ShapeRenderer 是独立的，OK）
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapeRenderer.setProjectionMatrix(uiCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.08f, 0.08f, 0.10f, 0.88f);
+        shapeRenderer.rect(boxX, boxY, boxW, boxH);
+        shapeRenderer.end();
+
+        // ⭐ 注意：这里【不】begin / end
+        uiFont.getData().setScale(0.45f);
+        uiFont.setColor(1f, 1f, 1f, 1f);
+
+        float y = boxY + boxH - 40f;
+        for (String line : storyLines) {
+            uiFont.draw(batch, line, boxX + 30f, y);
+            y -= 28f;
+        }
+
+        uiFont.getData().setScale(0.35f);
+        uiFont.setColor(0.9f, 0.9f, 0.6f, 1f);
+        uiFont.draw(batch, "[Click / ENTER to continue]", boxX + 30f, boxY + 35f);
+    }
+    private void drawCredits(SpriteBatch batch) {
+        float w = Gdx.graphics.getWidth();
+
+        uiFont.getData().setScale(0.5f);
+        uiFont.setColor(1f, 1f, 1f, 1f);
+
+        float startX = w * 0.25f;
+        float y = creditsY;
+
+        for (String line : creditsLines) {
+            uiFont.draw(batch, line, startX, y);
+            y += 30f;
+        }
+    }
+
+
+    private void renderStoryDialog() {
+        float w = Gdx.graphics.getWidth();
+        float h = Gdx.graphics.getHeight();
+
+        float boxW = 720f;
+        float boxH = 240f;
+        float boxX = w / 2f - boxW / 2f;
+        float boxY = h * 0.55f;
+
+        // 背景框
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapeRenderer.setProjectionMatrix(uiCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.08f, 0.08f, 0.10f, 0.88f);
+        shapeRenderer.rect(boxX, boxY, boxW, boxH);
+        shapeRenderer.end();
+
+        // 文本
+        batch.setProjectionMatrix(uiCamera.combined);
+        batch.begin();
+
+        uiFont.getData().setScale(0.45f);
+        uiFont.setColor(1f, 1f, 1f, 1f);
+
+        float y = boxY + boxH - 40f;
+        for (String line : storyLines) {
+            uiFont.draw(batch, line, boxX + 30f, y);
+            y -= 28f;
+        }
+
+        uiFont.getData().setScale(0.35f);
+        uiFont.setColor(0.9f, 0.9f, 0.6f, 1f);
+        uiFont.draw(batch, "[Click / ENTER to continue]", boxX + 30f, boxY + 35f);
+
+        batch.end();
+    }
+
+    private void renderCredits() {
+        float w = Gdx.graphics.getWidth();
+        float h = Gdx.graphics.getHeight();
+
+        batch.setProjectionMatrix(uiCamera.combined);
+        batch.begin();
+
+        uiFont.getData().setScale(0.5f);
+        uiFont.setColor(1f, 1f, 1f, 1f);
+
+        float startX = w * 0.25f;
+        float y = creditsY;
+
+        for (String line : creditsLines) {
+            uiFont.draw(batch, line, startX, y);
+            y += 30f;
+        }
+
+        batch.end();
+    }
+
 
 }
