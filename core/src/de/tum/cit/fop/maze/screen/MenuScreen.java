@@ -275,11 +275,6 @@ public class MenuScreen implements Screen {
 
 
 
-
-
-
-
-
         if (Gdx.input.isKeyJustPressed(Input.Keys.T)) {
             game.debugEnterTutorial();
         }
