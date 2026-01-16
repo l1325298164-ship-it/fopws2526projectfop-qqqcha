@@ -172,7 +172,7 @@ public class BossLoadingScreen implements Screen {
         new Thread(() -> {
 
             BossMazeConfig config =
-                    BossMazeConfigLoader.loadOne("boss/boss_phases.json");
+                    BossMazeConfigLoader.loadOne("story_file/boss/boss_phases.json");
 
             // ⭐ 每个线程一个独立 generator（安全）
             MazeGenerator generator = new MazeGenerator();
