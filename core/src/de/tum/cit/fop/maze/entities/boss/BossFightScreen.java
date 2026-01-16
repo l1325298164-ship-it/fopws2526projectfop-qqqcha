@@ -198,8 +198,6 @@ public class BossFightScreen implements Screen {
     private SpriteBatch batch;
 
     // ===== 占位资源 =====
-    private Texture bg;
-    private Texture bossTex;
 
     // 屏幕尺寸
     private int screenWidth;
@@ -245,7 +243,6 @@ public class BossFightScreen implements Screen {
         var assets = game.getAssets();
 
 // ===== 背景 & 茶杯 =====
-        bg = assets.get("debug/boss_bg.jpg", Texture.class);
         teacupTex = assets.get("debug/teacup_top.png", Texture.class);
 
 // ===== Boss Atlas Animation =====
