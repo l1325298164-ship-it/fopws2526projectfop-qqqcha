@@ -51,7 +51,8 @@ public enum AudioType {
             false
     ),
     BOSS_BGM("sounds_file/BGM/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, false, false),
-    MUSIC_MENU_END("sounds_file/BGM/menu_bgm2.mp3",AudioCategory.MUSIC, true, 0.7f, true, false);
+    MUSIC_MENU_END("sounds_file/BGM/menu_bgm2.mp3",AudioCategory.MUSIC, true, 0.7f, true, false),
+    BOSS_LOADING("sounds_file/BGM/BOSS_loading.wav",AudioCategory.MUSIC, true, 0.7f, true, false);
 
 
 

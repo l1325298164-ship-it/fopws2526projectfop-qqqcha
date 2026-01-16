@@ -54,6 +54,7 @@ public class BossLoadingScreen implements Screen {
     @Override
     public void show() {
         showTime = TimeUtils.millis();
+        AudioManager.getInstance().playMusic(AudioType.BOSS_LOADING);
         font = game.getSkin().getFont("default-font");
         queueBossAssets();
         preloadAllPhasesAsync();
@@ -158,7 +159,6 @@ public class BossLoadingScreen implements Screen {
                 Align.center,
                 true
         );
-        Gdx.app.log("FONT", "scale=" + font.getData().scaleX);
 
         batch.end();
         font.getData().setScale(1f);
