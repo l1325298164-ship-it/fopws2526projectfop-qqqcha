@@ -143,9 +143,7 @@ public class MenuScreen implements Screen {
         bottomRight.add(musicButton).size(100).padRight(40).padBottom(20);
         stage.addActor(bottomRight);
 
-        if (isMusicOn) {
-            audioManager.playMusic(AudioType.MUSIC_MENU);
-        }
+
     }
     private void rebuildButtons() {
         buttonTable.clear();
@@ -327,7 +325,7 @@ public class MenuScreen implements Screen {
     @Override public void show() {
         Gdx.input.setInputProcessor(stage);
         rebuildButtons();
-        game.getSoundManager().playMusic(AudioType.MUSIC_MENU);
+        audioManager.playMusic(AudioType.MUSIC_MENU);
     }
     @Override public void hide() {}
     @Override public void pause() {}

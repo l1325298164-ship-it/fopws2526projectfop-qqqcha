@@ -340,6 +340,7 @@ public class MazeRunnerGame extends Game {
         if (spriteBatch != null) spriteBatch.dispose();
         if (skin != null) skin.dispose();
         if (audioManager != null) audioManager.dispose();
+        assets.dispose();
         TextureManager.getInstance().dispose();
     }
 

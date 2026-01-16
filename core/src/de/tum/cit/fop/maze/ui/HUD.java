@@ -306,7 +306,6 @@ public class HUD {
     public void renderInGameUI(SpriteBatch uiBatch) {
         if (hudMode == HUDMode.BOSS) {
             renderBossHUD(uiBatch);
-            return; // ❗ Boss HUD 接管顶部区域
         }
             if (gameManager.isTwoPlayerMode()) {
                 renderTwoPlayerHUD(uiBatch);
