@@ -65,10 +65,10 @@ public class StoryLoadingScreen implements Screen {
         TextureAtlas atlas = assets.get("effects/sparkle.atlas", TextureAtlas.class);
         starRegion = atlas.findRegion("sparkle"); // 寻找名为 star 的 PNG 帧
         // 然后再加载大块头的 PV 素材
-        queuePV("pv/1/PV_1.atlas");
-        queuePV("pv/2/PV_2.atlas");
-        queuePV("pv/3/PV_3.atlas");
-        queuePV("pv/4/PV_4.atlas");
+        queuePV("ani/pv/1/PV_1.atlas");
+        queuePV("ani/pv/2/PV_2.atlas");
+        queuePV("ani/pv/3/PV_3.atlas");
+        queuePV("ani/pv/4/PV_4.atlas");
     }
 
     @Override

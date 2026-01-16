@@ -22,6 +22,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
@@ -234,8 +235,31 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         gm.applyRestoreIfNeeded();
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
+        playMazeBGM();
 
     }
+    private void playMazeBGM() {
+        AudioManager audio = AudioManager.getInstance();
+
+        // 防止叠加
+        audio.stopMusic();
+
+        // Endless 模式（如果你有）
+        if (difficultyConfig.difficulty == Difficulty.ENDLESS) {
+            audio.play(AudioType.MUSIC_MAZE_ENDLESS);
+            return;
+        }
+
+        // 普通迷宫按难度
+        switch (difficultyConfig.difficulty) {
+            case EASY -> audio.play(AudioType.MUSIC_MAZE_EASY);
+            case NORMAL -> audio.play(AudioType.MUSIC_MAZE_NORMAL);
+            case HARD -> audio.play(AudioType.MUSIC_MAZE_HARD);
+            case ENDLESS ->  audio.play(AudioType.MUSIC_MAZE_ENDLESS);
+            default -> audio.play(AudioType.MUSIC_MAZE_NORMAL);
+        }
+    }
+
 
     @Override
     public void render(float delta) {

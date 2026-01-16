@@ -7,6 +7,10 @@ package de.tum.cit.fop.maze.audio;
 public enum AudioType {
     // === 音乐 ===
     MUSIC_MENU("sounds_file/BGM/maze_bgm.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MAZE_EASY("sounds_file/BGM/maze_easy.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MAZE_NORMAL("sounds_file/BGM/maze_normal.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MAZE_HARD("sounds_file/BGM/maze_hard.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MAZE_ENDLESS("sounds_file/BGM/maze_endless.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
 
     // === 玩家音效 ===
     PLAYER_MOVE("sounds_file/SFX/move01.wav", AudioCategory.PLAYER, false, 0.8f, true, false),

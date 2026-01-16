@@ -234,13 +234,13 @@ public class MazeRunnerGame extends Game {
     }
 
     private void buildStoryPipeline() {
-        PVAnimationCache.get("pv/1/PV_1.atlas", "PV_1");
-        PVAnimationCache.get("pv/2/PV_2.atlas", "PV_2");
-        PVAnimationCache.get("pv/3/PV_3.atlas", "PV_3");
+        PVAnimationCache.get("ani/pv/1/PV_1.atlas", "PV_1");
+        PVAnimationCache.get("ani/pv/2/PV_2.atlas", "PV_2");
+        PVAnimationCache.get("ani/pv/3/PV_3.atlas", "PV_3");
         storyPipeline = new PVPipeline(this, List.of(
-                new PVNode("pv/1/PV_1.atlas", "PV_1", AudioType.PV_1, IntroScreen.PVExit.NEXT_STAGE),
-                new PVNode("pv/2/PV_2.atlas", "PV_2", AudioType.PV_2, IntroScreen.PVExit.NEXT_STAGE),
-                new PVNode("pv/3/PV_3.atlas", "PV_3", AudioType.PV_3, IntroScreen.PVExit.NEXT_STAGE)
+                new PVNode("ani/pv/1/PV_1.atlas", "PV_1", AudioType.PV_1, IntroScreen.PVExit.NEXT_STAGE),
+                new PVNode("ani/pv/2/PV_2.atlas", "PV_2", AudioType.PV_2, IntroScreen.PVExit.NEXT_STAGE),
+                new PVNode("ani/pv/3/PV_3.atlas", "PV_3", AudioType.PV_3, IntroScreen.PVExit.NEXT_STAGE)
         ));
 
         storyPipeline.onFinished(() -> {
@@ -270,7 +270,7 @@ public class MazeRunnerGame extends Game {
             }
             case MAZE_GAME_TUTORIAL -> {
                 stage = StoryStage.PV4;
-                Animation<TextureRegion> pv4 = PVAnimationCache.get("pv/4/PV_4.atlas", "PV_4");
+                Animation<TextureRegion> pv4 = PVAnimationCache.get("ani/pv/4/PV_4.atlas", "PV_4");
                 setScreen(new IntroScreen(this, pv4, IntroScreen.PVExit.PV4_CHOICE, AudioType.PV_4, null));
             }
             case PV4 -> {
@@ -429,9 +429,9 @@ public class MazeRunnerGame extends Game {
         difficultyConfig = DifficultyConfig.of(Difficulty.NORMAL);
         gameManager = new GameManager(difficultyConfig, twoPlayerMode);
         AssetManager am = getAssets();
-        if (!am.isLoaded("pv/4/PV_4.atlas")) {
-            am.load("pv/4/PV_4.atlas", TextureAtlas.class);
-            am.finishLoadingAsset("pv/4/PV_4.atlas");
+        if (!am.isLoaded("ani/pv/4/PV_4.atlas")) {
+            am.load("ani/pv/4/PV_4.atlas", TextureAtlas.class);
+            am.finishLoadingAsset("ani/pv/4/PV_4.atlas");
         }
         setScreen(new MazeGameTutorialScreen(this, difficultyConfig));
     }
