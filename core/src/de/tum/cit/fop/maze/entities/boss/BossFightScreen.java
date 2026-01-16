@@ -366,8 +366,6 @@ public class BossFightScreen implements Screen {
         batch.setProjectionMatrix(bossCamera.getCamera().combined);
         batch.begin();
 
-        // 使用整个屏幕绘制Boss
-        batch.draw(bg, 0, 0, bossViewport.getWorldWidth(), bossViewport.getWorldHeight());
 
         // 调整Boss位置
         float worldWidth = bossViewport.getWorldWidth();
@@ -1368,7 +1366,6 @@ public class BossFightScreen implements Screen {
         rageState = BossRageState.RAGE_PUNISH;
         rageAoeTimer = 0f;
         rageAoeTickTimer = 0f;
-        // 如果你以后要参数化，可以把 duration / damage 存字段
     }
 
     /** 锁定最终血量（5%） */
