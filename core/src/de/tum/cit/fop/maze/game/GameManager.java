@@ -14,6 +14,9 @@ import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
+import de.tum.cit.fop.maze.entities.chapter.ChapterContext;
+import de.tum.cit.fop.maze.entities.chapter.ChapterDropType;
+import de.tum.cit.fop.maze.entities.chapter.RelicData;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.trap.*;
@@ -29,14 +32,25 @@ import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.game.save.StorageManager;
 
 import java.util.*;
+import java.util.function.Consumer;
+
 import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
+
+
+    private boolean autoSaveEnabled = true;
+
+    public void setAutoSaveEnabled(boolean enabled) {
+        this.autoSaveEnabled = enabled;
+    }
+
+
     // ===== 延迟恢复用 =====
     private GameSaveData pendingRestoreData = null;
 
-    private final DifficultyConfig difficultyConfig;
+    private DifficultyConfig difficultyConfig;
     private float debugTimer = 0f;
 
     // ===== Endless Co-op Revive =====
@@ -102,7 +116,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private int currentLevel = 1;
 
     private PortalEffectManager playerSpawnPortal;
-    private final ChapterContext  chapterContext;
+    private final ChapterContext chapterContext;
     private boolean chapterMode = false;
     private Chapter1Relic chapter1Relic;
     private final List<Chapter1Relic> chapterRelics = new ArrayList<>();
@@ -111,6 +125,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     //
     private StorageManager.SaveTarget currentSaveTarget = StorageManager.SaveTarget.AUTO;
+    private Consumer<Enemy> enemyKillListener;
+
+    public void setEnemyKillListener(Consumer<Enemy> listener) {
+        this.enemyKillListener = listener;
+    }
 
 
 
@@ -228,7 +247,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             generateLevel();
 
 
-
         compass = new Compass(player);
 
         scoreManager.reset();
@@ -343,21 +361,28 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
         // ⭐ 新增检查：移动墙与所有动态障碍物
         for (DynamicObstacle o : obstacles) {
-            if (o.getX() == x && o.getY() == y) {
-                return false;  // 玩家不能走进移动的墙
+            if (o instanceof MovingWall mw) {
+                if (mw.occupiesCell(x, y)) {
+                    return false;
+                }
+            } else {
+                if (o.getX() == x && o.getY() == y) {
+                    return false;
+                }
             }
         }
+
 
         // 3️⃣ 普通墙体
         return maze[y][x] == 1;
     }
     public void update(float delta) {
-        if (viewingChapterRelic) {
-            return;
-        }
-        inputHandler.update(delta, this, Player.PlayerIndex.P1);
-        if (twoPlayerMode) {
-            inputHandler.update(delta, this, Player.PlayerIndex.P2);
+        // ===== 输入 =====
+        if (!viewingChapterRelic) {
+            inputHandler.update(delta, this, Player.PlayerIndex.P1);
+            if (twoPlayerMode) {
+                inputHandler.update(delta, this, Player.PlayerIndex.P2);
+            }
         }
 
         if (playerSpawnPortal != null) {
@@ -381,6 +406,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 levelTransitionInProgress = false;
                 levelTransitionTimer = 0f;
                 currentExitDoor = null;
+                if (chapterContext != null) {
+                    chapterContext.clearActiveRelic();
+                }
                 nextLevel();
             }
             return;
@@ -417,7 +445,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         while (enemyIterator.hasNext()) {
             Enemy e = enemyIterator.next();
             e.update(delta, this);
-
+            e.setGameManager(this);
             if (e.isDead() || !e.isActive()) {
                 if (e.isDead()) {
                     EnemyTier tier = EnemyTier.E01;
@@ -480,6 +508,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         autoSaveTimer += delta;
         if (autoSaveTimer >= AUTO_SAVE_INTERVAL) {
             autoSaveTimer = 0f;
+            if (!autoSaveEnabled) {
+                Logger.error("⛔ AutoSave skipped (disabled)");
+                return;
+            }
             if (restoringFromSave) return;
             if (!levelTransitionInProgress && player != null && !player.isDead()) {
 
@@ -759,6 +791,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.gameEvent("Level " + currentLevel + " completed");
         currentLevel++;
 
+
+
+
+
         if (currentLevel > GameConstants.MAX_LEVELS) {
             Logger.gameEvent("Game completed!");
             return;
@@ -766,6 +802,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         requestReset();
     }
+
+
     public void onKeyCollected() {
         player.setHasKey(true);
         unlockAllExitDoors();
@@ -807,15 +845,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelCompletedPendingSettlement = false;
     }
 
-    public void proceedToNextLevel() {
-        currentLevel++;
-        if (currentLevel > GameConstants.MAX_LEVELS) {
-            Logger.gameEvent("Game completed!");
-            return;
-        }
-        levelCompletedPendingSettlement = false;
-        requestReset();
-    }
+
 
     public void requestReset() {
         pendingReset = true;
@@ -927,7 +957,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                         itemEffectManager.spawnTreasure(fx, fy);
                     }
 
-                    t.onInteract(p);
+                    onTreasureOpened(p, t);
                     GameEventSource.getInstance().onItemCollected("TREASURE");
                     treasureIterator.remove();
 
@@ -1271,7 +1301,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 }
                 return new int[]{player.getX(), player.getY()};
             }
-        } while (maze[y][x] == 0 || isOccupied(x, y));
+        } while (!canPlayerMoveTo(x, y) || isOccupied(x, y));
 
         return new int[]{x, y};
     }
@@ -1477,10 +1507,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
 
         for (DynamicObstacle o : obstacles) {
-            if (o.getX() == nx && o.getY() == ny) {
-                return false;
+            if (o instanceof MovingWall mw) {
+                if (mw.occupiesCell(nx, ny)) {
+                    return false;
+                }
+            } else {
+                if (o.getX() == nx && o.getY() == ny) {
+                    return false;
+                }
             }
         }
+
 
         return true;
     }
@@ -1723,12 +1760,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
     public void readChapter1Relic(Chapter1Relic relic) {
         relic.onRead();
+        chapterContext.markRelicRead(relic.getData().id);
         chapterRelics.remove(relic);
         chapter1Relic = null;
     }
 
     public void discardChapter1Relic(Chapter1Relic relic) {
         relic.onDiscard();
+        chapterContext.markRelicDiscarded(relic.getData().id);
         chapterRelics.remove(relic);
         chapter1Relic = null;
     }
@@ -1749,24 +1788,34 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
     public void onTreasureOpened(Player player, Treasure treasure) {
-        Logger.debug(
-                "onTreasureOpened | chapterContext=" + chapterContext
-        );
-        if (chapterMode && chapterContext.shouldSpawnChapter1Relic()){
 
-            Chapter1Relic relic = new Chapter1Relic(
-                    treasure.getX(),
-                    treasure.getY(),
-                    chapterContext
-            );
-
-            spawnChapter1Relic(relic);
+        // 非章节模式 → 普通宝箱
+        if (!chapterMode || chapterContext == null) {
+            applyTreasureBuff(player);
+            treasure.onInteract(player);
             return;
         }
 
-        // 否则走原 Buff 逻辑
-        applyTreasureBuff(player);
+        // 🔥 新逻辑：每次宝箱都“请求 relic”
+        RelicData data = chapterContext.requestRelic();
+
+        if (data != null) {
+            Chapter1Relic relic = new Chapter1Relic(
+                    treasure.getX(),
+                    treasure.getY(),
+                    data,
+                    chapterContext
+            );
+            spawnChapter1Relic(relic);
+        } else {
+            // 没有可用 relic → 普通奖励
+            applyTreasureBuff(player);
+        }
+
+        treasure.onInteract(player);
     }
+
+
     private void applyTreasureBuff(Player player) {
 
         // === 🎲 智能掉落逻辑 ===
@@ -1965,5 +2014,91 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public boolean isUIConsumingMouse() {
         return uiConsumesMouse;
     }
+
+    public void onEnemyKilled(Enemy enemy) {
+        // 先什么都不做，留给外部监听
+        if (enemyKillListener != null) {
+            enemyKillListener.accept(enemy);
+        }
+    }
+    /**
+     * 🔥 Boss 专用：只重建迷宫与关卡内容
+     * ❗ 不创建 Player
+     * ❗ 不 reset 分数 / 技能 / Buff
+     */
+    public void rebuildMazeForBoss(DifficultyConfig dc) {
+
+        Logger.error("🔥 rebuildMazeForBoss CALLED");
+
+        this.difficultyConfig = dc;
+
+        // ===== 1️⃣ 重新生成 Maze =====
+        this.maze = generator.generateMaze(dc);
+
+        // ===== 2️⃣ 清空【环境实体】=====
+        enemies.clear();
+        traps.clear();
+        hearts.clear();
+        heartContainers.clear();
+        treasures.clear();
+        keys.clear();
+        obstacles.clear();
+        exitDoors.clear();
+        bullets.clear();
+
+        bobaBulletEffectManager.clearAllBullets(false);
+
+        // ===== 3️⃣ 重新生成关卡内容 =====
+        generateExitDoors();
+        generateEnemies();
+        generateTraps();
+        generateHearts();
+        generateTreasures();
+        generateKeys();
+        generateMovingWalls();
+
+        // ===== 4️⃣ 玩家重定位（Boss 战必须处理所有玩家）=====
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
+
+            int[] spawn = randomEmptyCell();
+            p.teleportTo(spawn[0], spawn[1]);
+        }
+
+
+        // ===== 5️⃣ Boss 战中：禁止这些状态 =====
+        levelTransitionInProgress = false;
+        pendingReset = false;
+        justReset = false;
+
+        Logger.error("🔥 rebuildMazeForBoss DONE");
+    }
+
+    public void rebuildMazeForBossWithPrebuilt(
+            DifficultyConfig dc,
+            int[][] prebuiltMaze
+    ) {
+        this.difficultyConfig = dc;
+
+        this.maze = deepCopyMaze(prebuiltMaze);
+
+        enemies.clear();
+        traps.clear();
+        hearts.clear();
+        treasures.clear();
+        keys.clear();
+        obstacles.clear();
+        exitDoors.clear();
+
+        generateExitDoors();
+        generateEnemies();
+        generateTraps();
+        generateHearts();
+        generateTreasures();
+        generateKeys();
+        generateMovingWalls();
+    }
+
+
 
 }

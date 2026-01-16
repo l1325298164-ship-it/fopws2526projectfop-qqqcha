@@ -1,6 +1,6 @@
 package de.tum.cit.fop.maze.entities.chapter;
 
-public interface LoreDialogCallback {
+public interface ChapterDialogCallback {
     void onRead();
     void onDiscard();
 }

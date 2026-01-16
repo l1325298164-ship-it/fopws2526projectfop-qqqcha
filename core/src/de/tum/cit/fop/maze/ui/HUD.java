@@ -7,12 +7,14 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.*;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
 
 import com.badlogic.gdx.utils.TimeUtils;
 import de.tum.cit.fop.maze.abilities.*;
 import de.tum.cit.fop.maze.entities.Compass;
 import de.tum.cit.fop.maze.entities.Player;
+import de.tum.cit.fop.maze.entities.boss.BossFightScreen;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.game.achievement.*;
@@ -25,6 +27,17 @@ import java.util.*;
 import static com.badlogic.gdx.graphics.GL20.*;
 
 public class HUD {
+
+    // ===== Boss HUD =====
+    private HUDMode hudMode = HUDMode.NORMAL;
+
+    private float bossHp = 0f;
+    private float bossMaxHp = 0f;
+    public enum HUDMode {
+        NORMAL,     // 迷宫常规
+        BOSS        // Boss 战
+    }
+
     // ===== Upgrade Button Hover =====
     private Ability hoveredUpgradeAbility = null;
     private float upgradeHoverAnim = 0f;
@@ -92,6 +105,12 @@ public class HUD {
         }
         return false;
     }
+    // ===== Boss HUD 状态 =====
+    private boolean bossFinalLocked = false;
+    private final Color bossHpColor = new Color(0.85f, 0.15f, 0.15f, 1f);
+    // ===== Boss HUD 扩展状态 =====
+    private int bossPhaseIndex = -1;
+    private boolean bossRageWarning = false;
 
 
 
@@ -219,6 +238,7 @@ public class HUD {
     private static final float LV_PAD_RIGHT = 6f;       // 距离 icon 右边
     private static final float LV_PAD_BOTTOM = 18f;     // 距离 icon 底部（注意：是 baseline 位置）
 
+    private boolean uiHoverThisFrame = false;
 
     // =========================================================
 
@@ -288,14 +308,20 @@ public class HUD {
     // =========================================================
 
     public void renderInGameUI(SpriteBatch uiBatch) {
+        uiHoverThisFrame = false;
+
+        if (hudMode == HUDMode.BOSS) {
+            renderBossHUD(uiBatch);
+        }
             if (gameManager.isTwoPlayerMode()) {
                 renderTwoPlayerHUD(uiBatch);
             } else {
                 renderSinglePlayerHUD(uiBatch);
             }
             // 🔥 修复：将分数渲染移到这里，确保单人/双人都能显示，且根据模式自动调整位置
+        if (hudMode == HUDMode.BOSS) {
             renderScore(uiBatch);
-
+        }
             renderBottomCenterHUD(uiBatch);
 
 // ===== END OF UI FRAME =====
@@ -304,6 +330,127 @@ public class HUD {
 
 
     }
+
+    private void renderBossHUD(SpriteBatch batch) {
+        float screenW = Gdx.graphics.getWidth();
+        float screenH = Gdx.graphics.getHeight();
+
+        float barWidth  = screenW * 0.6f;
+        float barHeight = 26f;
+
+        float x = (screenW - barWidth) / 2f;
+        float y = screenH - 80f;
+
+        float ratio = bossMaxHp <= 0f ? 0f : bossHp / bossMaxHp;
+        ratio = Math.max(0f, Math.min(1f, ratio));
+
+        // ===== 背景 =====
+        batch.setColor(0f, 0f, 0f, 0.65f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x - 6, y - 6,
+                barWidth + 12, barHeight + 12
+        );
+
+        // ===== 槽底 =====
+        batch.setColor(0.25f, 0.05f, 0.05f, 1f);
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x, y,
+                barWidth, barHeight
+        );
+
+        // ===== HP 颜色计算 =====
+        if (bossFinalLocked) {
+            float blink =
+                    0.6f + 0.4f *
+                            MathUtils.sin(TimeUtils.nanoTime() * 0.00000001f);
+
+            // ☕ 咖啡金（锁血）
+            bossHpColor.set(0.75f, 0.6f, 0.25f, blink);
+        } else {
+            // 普通红
+            bossHpColor.set(0.85f, 0.15f, 0.15f, 1f);
+        }
+
+// ⭐ 关键：这里才 setColor
+        batch.setColor(bossHpColor);
+
+// ===== HP 条 =====
+        batch.draw(
+                TextureManager.getInstance().getWhitePixel(),
+                x, y,
+                barWidth * ratio, barHeight
+        );
+
+// ===== 立刻还原 =====
+        batch.setColor(1f, 1f, 1f, 1f);
+
+        // ===== 文本 =====
+        font.getData().setScale(1.4f);
+        font.setColor(Color.WHITE);
+
+        String text = "BOSS  " + (int)bossHp + " / " + (int)bossMaxHp;
+        // ===== Phase Text =====
+        if (bossPhaseIndex >= 0) {
+            font.getData().setScale(1.1f);
+            font.setColor(0.85f, 0.85f, 0.85f, 0.9f);
+
+            String phaseText = "PHASE " + (bossPhaseIndex + 1);
+
+            GlyphLayout phaseLayout = new GlyphLayout(font, phaseText);
+
+            font.draw(
+                    batch,
+                    phaseText,
+                    screenW / 2f - phaseLayout.width / 2f,
+                    y - 18
+            );
+        }
+
+        // restore
+        font.getData().setScale(1.2f);
+        batch.setColor(1f, 1f, 1f, 1f);
+// ===== Rage / Lock Warning =====
+        if (bossRageWarning || bossFinalLocked) {
+
+            float blink =
+                    0.6f + 0.4f *
+                            MathUtils.sin(TimeUtils.nanoTime() * 0.00000001f);
+
+            font.getData().setScale(1.3f);
+
+            if (bossFinalLocked) {
+                font.setColor(0.85f, 0.65f, 0.25f, blink);
+            } else {
+                font.setColor(1.0f, 0.2f, 0.2f, blink);
+            }
+
+            String warn =
+                    bossFinalLocked
+                            ? "FINAL LOCK"
+                            : "RAGE";
+
+            GlyphLayout warnLayout = new GlyphLayout(font, warn);
+
+            font.draw(
+                    batch,
+                    warn,
+                    screenW / 2f - warnLayout.width / 2f,
+                    y + barHeight + 64
+            );
+
+            font.getData().setScale(1.2f);
+            font.setColor(Color.WHITE);
+        }
+
+
+        // restore
+        font.getData().setScale(1.2f);
+        batch.setColor(1f, 1f, 1f, 1f);
+
+    }
+
 
     private void renderSinglePlayerHUD(SpriteBatch uiBatch) {
         var player = gameManager.getPlayer();
@@ -322,10 +469,7 @@ public class HUD {
                 Gdx.graphics.getHeight() - 90,
                 false
         );
-        //关卡信息TODO
-        font.setColor(Color.CYAN);
-        font.draw(uiBatch, "start: " + gameManager.getCurrentLevel(),
-                20, Gdx.graphics.getHeight() - 120);
+
 
         renderCat(uiBatch);
         renderCompassAsUI(uiBatch);
@@ -1404,7 +1548,7 @@ public class HUD {
                 mx >= bx && mx <= bx + BTN_SIZE &&
                         my >= by && my <= by + BTN_SIZE;
         if (hover) {
-            gameManager.setUIConsumesMouse(true);
+            uiHoverThisFrame = true;
             Logger.error("UI CONSUME MOUSE");
         }
 
@@ -1479,7 +1623,7 @@ public class HUD {
             long now = TimeUtils.millis();
             if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
                 lastUpgradeTime = now;
-                gameManager.setUIConsumesMouse(true);
+//                gameManager.setUIConsumesMouse(true);
                 boolean success =  gameManager
                         .getScoreManager()
                         .spendUpgradeScore(UpgradeCost.SCORE_PER_UPGRADE);
@@ -1539,8 +1683,10 @@ public class HUD {
     }
 
     // ===== DEBUG =====
-    private boolean debugUpgradeInput = true;
 
+    public boolean isHoveringInteractiveUI() {
+        return uiHoverThisFrame;
+    }
 
 
 
@@ -1561,6 +1707,30 @@ public class HUD {
         manaFillP2.dispose();
         manaGlowP1.dispose();
         manaGlowP2.dispose();
+    }
+    public void enableBossHUD(float maxHp) {
+        this.hudMode = HUDMode.BOSS;
+        this.bossMaxHp = maxHp;
+        this.bossHp = maxHp;
+    }
+
+    public void updateBossHp(float hp) {
+        this.bossHp = Math.max(0f, hp);
+    }
+
+    public void disableBossHUD() {
+        this.hudMode = HUDMode.NORMAL;
+    }
+
+    public void setBossFinalLocked(boolean locked) {
+        this.bossFinalLocked = locked;
+    }
+    public void setBossPhase(int phaseIndex) {
+        this.bossPhaseIndex = phaseIndex;
+    }
+
+    public void setBossRageWarning(boolean warning) {
+        this.bossRageWarning = warning;
     }
 
 }

@@ -6,6 +6,7 @@ import com.badlogic.gdx.utils.ObjectMap;
 public class BossMazeConfig {
 
     public Base base;
+    public AoeTimeline aoeTimeline;
     public Array<Phase> phases;
 
     public static class Base {
@@ -20,6 +21,7 @@ public class BossMazeConfig {
     }
 
     public static class Phase {
+        public int index;
         public float duration;
         public int mazeWidth;
         public int mazeHeight;

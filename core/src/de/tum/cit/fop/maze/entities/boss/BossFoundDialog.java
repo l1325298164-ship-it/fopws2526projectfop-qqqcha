@@ -1,7 +1,9 @@
 package de.tum.cit.fop.maze.entities.boss;
 
 import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.utils.Align;
 
 public class BossFoundDialog extends Dialog {
 
@@ -13,13 +15,26 @@ public class BossFoundDialog extends Dialog {
 
         setModal(true);
         setMovable(false);
+
+        // 移除标题
         getTitleLabel().setVisible(false);
         getTitleTable().clear();
 
-        text("Boss finds you……");
+        // ===== 内容区 =====
+        getContentTable().pad(40); // ⭐ 核心：用 padding 撑气质
 
-        button("ready to combat", true);
-        button("run away", false);
+        Label label = new Label("Boss finds you.", skin);
+        label.setAlignment(Align.center);
+
+        getContentTable().add(label).width(420);
+
+        // ===== 按钮区 =====
+        getButtonTable().padTop(20).padBottom(25);
+
+        button("READY TO COMBAT", true);
+        button("RUN AWAY", false);
+
+        pack();
     }
 
     @Override
@@ -42,3 +57,5 @@ public class BossFoundDialog extends Dialog {
         this.onEscape = onEscape;
     }
 }
+
+

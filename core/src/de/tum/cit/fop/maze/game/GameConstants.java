@@ -12,14 +12,10 @@ public final class GameConstants {
     public static final float VIEWPORT_HEIGHT = 600;
 
     /* ===== 玩家 ===== */
-    public static final int MAX_LIVES = 999;
-    public static final float INVINCIBLE_TIME = 3.0f;
-    public static final float MOVE_DELAY_NORMAL = 0.18f;
-    public static final float MOVE_DELAY_FAST = 0.12f;
+    public static final float MOVE_DELAY_NORMAL = 0.08f;
 
     /* ===== 游戏进程 ===== */
-    public static final int MAX_LEVELS = 5;
-    public static final int KEYCOUNT = 1;
+    public static final int MAX_LEVELS = 9;
 
     /* ===== 颜色（纯表现 DEBUG用） ===== */
     public static final Color FLOOR_COLOR = new Color(0f, 200f/255f, 0f, 1f);

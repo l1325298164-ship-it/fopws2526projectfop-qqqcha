@@ -22,17 +22,23 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
+import de.tum.cit.fop.maze.entities.boss.BossFoundDialog;
+import de.tum.cit.fop.maze.entities.boss.BossLoadingScreen;
 import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
-import de.tum.cit.fop.maze.entities.chapter.Chapter1RelicDialog;
+import de.tum.cit.fop.maze.entities.chapter.ChapterContext;
+import de.tum.cit.fop.maze.entities.chapter.ChapterDialogCallback;
+import de.tum.cit.fop.maze.entities.chapter.ChapterTextDialog;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.*;
 import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.game.score.LevelResult;
+import de.tum.cit.fop.maze.game.story.StoryProgress;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -73,40 +79,81 @@ public class GameScreen implements Screen, Chapter1RelicListener {
     // ===== Game Over =====
     private boolean gameOverShown = false;
     private Stage gameOverStage;
+    // ⭐ Chapter / 剧情强制暂停
+    private boolean chapterPaused = false;
 
     @Override
     public void onChapter1RelicRequested(Chapter1Relic relic) {
 
-        // 1️⃣ 通知 GameManager：进入查看态（停游戏逻辑）
         gm.enterChapterRelicView();
-
-        Chapter1RelicDialog dialog =
-                new Chapter1RelicDialog(
-                        game.getSkin(),
-                        relic
-                );
-
-        dialog.setOnRead(() -> {
-            gm.exitChapterRelicView();
-            dialog.hide();
-
-            // ✅ 关闭后：把输入还给“游戏”
-            Gdx.input.setInputProcessor(null);
-        });
-
-        dialog.setOnDiscard(() -> {
-            gm.exitChapterRelicView();
-            dialog.hide();
-
-            // ✅ 关闭后：把输入还给“游戏”
-            Gdx.input.setInputProcessor(null);
-        });
-
-        dialog.show(uiStage);
-
-        // 2️⃣ 打开 Dialog 时：输入只给 UI
+        chapterPaused = true;
         Gdx.input.setInputProcessor(uiStage);
+        new ChapterTextDialog(
+                uiStage,
+                game.getSkin(),
+                relic.getData(),   // ⭐ 来自 RelicData
+                new ChapterDialogCallback() {
+
+                    @Override
+                    public void onRead() {
+
+                        gm.readChapter1Relic(relic);
+
+                        // ⭐ 立刻检查是否全部已读
+                        if (chapterContext != null
+                                && chapterContext.areAllRelicsRead()) {
+
+                            Logger.gameEvent("👁 All relics read — Boss found immediately");
+
+                            BossFoundDialog bossDialog =
+                                    new BossFoundDialog(game.getSkin());
+
+                            bossDialog.setOnFight(() -> {
+                                StoryProgress sp = StoryProgress.load();
+                                sp.markBossUnlocked(1);
+                                sp.save();
+                                Logger.gameEvent("⚔ Enter Boss Fight");
+
+                                gm.exitChapterRelicView();
+                                chapterPaused = false;
+                                Gdx.input.setInputProcessor(null);
+
+                                AudioManager.getInstance().stopMusic();
+                                game.setScreen(new BossLoadingScreen(game));
+                            });
+
+                            bossDialog.setOnEscape(() -> {
+                                Logger.gameEvent("🏃 Player escaped Boss");
+                                gm.exitChapterRelicView();
+                                chapterPaused = false;
+                            });
+
+                            bossDialog.show(uiStage);
+                            Gdx.input.setInputProcessor(uiStage);
+
+                            return; // ⛔ 不往下走
+                        }
+
+                        // 普通情况
+                        gm.exitChapterRelicView();
+                        chapterPaused = false;
+                        Gdx.input.setInputProcessor(null);
+                    }
+
+
+                    @Override
+                    public void onDiscard() {
+
+                        gm.discardChapter1Relic(relic);
+                        gm.exitChapterRelicView();
+                        chapterPaused = false;
+                        Gdx.input.setInputProcessor(null);
+                    }
+                }
+        );
     }
+
+
     private final ChapterContext chapterContext;
     private BitmapFont worldHintFont;
 
@@ -167,6 +214,11 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         gm = game.getGameManager();
 
         gm.setChapter1RelicListener(this);
+        // ⭐⭐⭐ 关键修复：剧情模式下，确保世界被初始化
+        if (gm.getPlayers().isEmpty()) {
+            Logger.error("🧩 GameScreen.show(): players empty, calling resetGame()");
+            gm.resetGame();
+        }
 
         maze = new MazeRenderer(gm, difficultyConfig);
         cam  = new CameraManager(difficultyConfig);
@@ -187,26 +239,26 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
     @Override
     public void render(float delta) {
+
         // ✅ 必须在处理输入之前先算好 UI 是否吃鼠标
         gm.setUIConsumesMouse(hud.isMouseOverInteractiveUI());
+
+
 
 // ===== Global Menu / Pause Input =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
 
-            // ① 优先：Chapter Relic
+            // ⚠️ Chapter Relic 期间，ESC 交给 Dialog
             if (gm.isViewingChapterRelic()) {
-                gm.exitChapterRelicView();
-                Gdx.input.setInputProcessor(null);
-                Logger.debug("ESC: exit ChapterRelic view");
                 return;
             }
 
-            // ② 再处理 Pause
             if (!gameOverShown) {
                 togglePause();
                 return;
             }
         }
+
         // ===== Mouse → Tile (Ability Targeting) =====
         Vector3 world = cam.getCamera().unproject(
                 new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
@@ -272,7 +324,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         // ===== Update (如果 Game Over 显示了，暂停游戏逻辑) =====
         // 🔥 [修复] 添加 && !gameOverShown
-        if (!paused && !console.isVisible() && !gameOverShown) {
+        if (!isGamePaused()) {
             gm.update(delta);
             if (fogSystem != null) fogSystem.update(delta);
 
@@ -291,6 +343,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
                 cam.update(gameDelta, gm);
             }
         }
+
 
         // ===== World Render =====
         worldViewport.apply();
@@ -497,6 +550,14 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         }
     }
 
+    private boolean isGamePaused() {
+        return paused              // ESC 暂停
+                || chapterPaused       // 📜 Chapter 阅读
+                || console.isVisible()
+                || gameOverShown;
+    }
+
+
     private void renderUI() {
         Matrix4 oldProjection = batch.getProjectionMatrix().cpy();
         Color oldColor = batch.getColor().cpy();
@@ -551,7 +612,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         buttonTable.add(
                 bf.create("SAVE GAME", this::openManualSaveDialog)
         ).width(btnW).height(btnH).pad(padding);
-        
+
         root.add(buttonTable).expandY().center();
         pauseUIInitialized = true;
     }

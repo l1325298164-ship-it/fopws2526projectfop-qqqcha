@@ -128,8 +128,15 @@ public abstract class Enemy extends GameObject {
         }
         Logger.debug(getClass().getSimpleName() + " took " + dmg + " damage, HP: " + hp);
     }
+    protected GameManager gameManager;
 
     private void onDeath() {
+        Logger.debug(getClass().getSimpleName() + " died");
+
+        // 通知 GameManager（如果存在）
+        if (gameManager != null) {
+            gameManager.onEnemyKilled(this);
+        }
     }
 
     protected void updateHitFlash(float delta) {
@@ -140,6 +147,10 @@ public abstract class Enemy extends GameObject {
             isHitFlash = false;
             hitFlashTimer = 0f;
         }
+    }
+
+    public void setGameManager(GameManager gm) {
+        this.gameManager = gm;
     }
 
     /* ================= 渲染 ================= */
