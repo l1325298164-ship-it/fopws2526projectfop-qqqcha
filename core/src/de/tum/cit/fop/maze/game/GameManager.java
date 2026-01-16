@@ -1294,7 +1294,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 }
                 return new int[]{player.getX(), player.getY()};
             }
-        } while (maze[y][x] == 0 || isOccupied(x, y));
+        } while (!canPlayerMoveTo(x, y) || isOccupied(x, y));
 
         return new int[]{x, y};
     }
@@ -2043,11 +2043,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         generateKeys();
         generateMovingWalls();
 
-        // ===== 4️⃣ 玩家重定位（不 new）=====
-        if (player != null) {
+        // ===== 4️⃣ 玩家重定位（Boss 战必须处理所有玩家）=====
+        for (Player p : players) {
+            if (p == null || p.isDead()) continue;
+
             int[] spawn = randomEmptyCell();
-            player.teleportTo(spawn[0], spawn[1]);
+            p.teleportTo(spawn[0], spawn[1]);
         }
+
 
         // ===== 5️⃣ Boss 战中：禁止这些状态 =====
         levelTransitionInProgress = false;

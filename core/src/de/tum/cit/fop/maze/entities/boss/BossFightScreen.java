@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.*;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -33,10 +34,7 @@ import de.tum.cit.fop.maze.utils.BossCamera;
 import de.tum.cit.fop.maze.utils.BossMazeCamera;
 import de.tum.cit.fop.maze.utils.CameraManager;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BossFightScreen implements Screen {
@@ -165,6 +163,7 @@ public class BossFightScreen implements Screen {
         boolean damageDone; // 防止一帧扣多次血
 
         int damage;
+        final Set<Player> damagedPlayers = new HashSet<>();
     }
     private float rageOverlayPulse = 0f;
 
@@ -341,13 +340,13 @@ public class BossFightScreen implements Screen {
         }
 
 
-        // ===== 测试期：ESC 直接回主菜单 =====
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            bossDeathState = BossDeathState.NONE;
-            mergeProgress = 0f;
-            game.setScreen(new MenuScreen(game));
-            return;
-        }
+//        // ===== 测试期：ESC 直接回主菜单 =====
+//        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+//            bossDeathState = BossDeathState.NONE;
+//            mergeProgress = 0f;
+//            game.setScreen(new MenuScreen(game));
+//            return;
+//        }
 
         update(delta);
 
@@ -430,9 +429,9 @@ public class BossFightScreen implements Screen {
 
             // ===== 更新迷宫相机（现在终于生效了）=====
             if (!isMazeFrozen()) {
-                bossMazeCamera.update(delta, gameManager.getPlayer());
+                bossMazeCamera.update(delta, gameManager.getPlayers());
             }
-
+            updateMouseTargetForBossMaze();
             OrthographicCamera cam = mazeCameraManager.getCamera();
             cam.update();
             // ===== 圆形裁剪参数（迷宫世界坐标）=====
@@ -559,9 +558,10 @@ public class BossFightScreen implements Screen {
                 batch.setColor(1f, 1f, 1f, 1f);
 
             }
-            Player p = gameManager.getPlayer();
-            if (p != null) {
-                p.drawSprite(batch);
+            for (Player p : gameManager.getPlayers()) {
+                if (p != null && !p.isDead()) {
+                    p.drawSprite(batch);
+                }
             }
 
             for (Enemy e : gameManager.getEnemies()) {
@@ -575,6 +575,26 @@ public class BossFightScreen implements Screen {
             if (gameManager.getCombatEffectManager() != null) {
                 gameManager.getCombatEffectManager().renderSprites(batch);
             }
+
+
+
+
+// ===== Ability Preview (AOE / Aim Circle) =====
+            shapeRenderer.setProjectionMatrix(
+                    mazeCameraManager.getCamera().combined
+            );
+
+            for (Player p : gameManager.getPlayers()) {
+                if (p == null || p.isDead()) continue;
+
+                AbilityManager am = p.getAbilityManager();
+                if (am == null) continue;
+
+                am.drawAbilities(batch, shapeRenderer, p);
+            }
+
+
+
             batch.end();
 
             if (gameManager.getCombatEffectManager() != null) {
@@ -648,6 +668,23 @@ public class BossFightScreen implements Screen {
             Gdx.gl.glDisable(GL20.GL_BLEND);
         }
     }
+
+    private void updateMouseTargetForBossMaze() {
+
+        if (mazeCameraManager == null || gameManager == null) return;
+
+        OrthographicCamera cam = mazeCameraManager.getCamera();
+
+        Vector3 world = cam.unproject(
+                new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
+        );
+
+        gameManager.setMouseTargetTile(
+                (int)(world.x / GameConstants.CELL_SIZE),
+                (int)(world.y / GameConstants.CELL_SIZE)
+        );
+    }
+
 
     private void drawRageOverlay() {
         // 呼吸式 alpha（0.25 ~ 0.45）
@@ -751,13 +788,12 @@ public class BossFightScreen implements Screen {
     private boolean bossBgmStarted = false;
 
     private void update(float delta) {
-
-        boolean uiConsume = false;
-        if (hud != null && hud.isHoveringInteractiveUI()) {
-            uiConsume = true;
-        }
-        if (gameManager != null) {
-            gameManager.setUIConsumesMouse(uiConsume);
+        if (checkPlayersDeath()) return;
+        // ✅ 和 GameScreen 完全一致
+        if (gameManager != null && hud != null) {
+            gameManager.setUIConsumesMouse(
+                    hud.isMouseOverInteractiveUI()
+            );
         }
         // ===============================
         // 1️⃣ BGM & Boss Timeline —— 永远跑
@@ -795,31 +831,22 @@ public class BossFightScreen implements Screen {
         // ===============================
         // 3️⃣ 下面才是迷宫 update
         // ===============================
-        Player player = gameManager.getPlayer();
-        if (checkPlayerDeath(player)) return;
+
 
         if (!isMazeFrozen()) {
             gameManager.update(delta);
         }
 
         updateCupShake(delta);
-        updateRagePunish(delta, player);
-        updateAoeTimeline(delta, player);
+        updateRagePunish(delta);
+        updateAoeTimeline(delta);
         updatePhaseTransition(delta);
         updateBossDeath(delta);
-        updateActiveAOEs(delta, player);
+        updateActiveAOEs(delta);
     }
 
 
-    private boolean checkPlayerDeath(Player player) {
-        if (player != null && player.getLives() <= 0) {
-            game.setScreen(
-                    new BossFailScreen(game, BossFailType.PLAYER_DEAD)
-            );
-            return true;
-        }
-        return false;
-    }
+
 
     private void updateCupShake(float delta) {
         if (!cupShakeActive) return;
@@ -829,7 +856,7 @@ public class BossFightScreen implements Screen {
             cupShakeActive = false;
         }
     }
-    private void updateRagePunish(float delta, Player player) {
+    private void updateRagePunish(float delta) {
         if (rageState != BossRageState.RAGE_PUNISH) return;
 
         rageAoeTimer += delta;
@@ -837,8 +864,11 @@ public class BossFightScreen implements Screen {
 
         if (rageAoeTickTimer >= 0.5f) {
             rageAoeTickTimer = 0f;
-            if (player != null) {
-                player.takeDamage(5);
+
+            for (Player p : gameManager.getPlayers()) {
+                if (p != null && !p.isDead()) {
+                    p.takeDamage(5);
+                }
             }
         }
 
@@ -846,19 +876,17 @@ public class BossFightScreen implements Screen {
             rageState = BossRageState.NORMAL;
         }
     }
-    private void updateAoeTimeline(float delta, Player player) {
-        if (player == null
-                || isMazeFrozen()
-                || currentBossConfig.aoeTimeline == null) {
-            return;
-        }
 
-        AoeTimeline aoeTimeline = currentBossConfig.aoeTimeline;
+    private void updateAoeTimeline(float delta) {
+
+        if (isMazeFrozen() || currentBossConfig.aoeTimeline == null) return;
+
+        AoeTimeline timeline = currentBossConfig.aoeTimeline;
         aoeCycleTime += delta;
 
-        float t = aoeCycleTime % aoeTimeline.cycle;
+        float t = aoeCycleTime % timeline.cycle;
 
-        for (AoeTimeline.AoePattern pattern : aoeTimeline.patterns) {
+        for (AoeTimeline.AoePattern pattern : timeline.patterns) {
 
             if (t < pattern.start || t > pattern.end) {
                 aoeTimers.remove(pattern);
@@ -870,18 +898,20 @@ public class BossFightScreen implements Screen {
             if (timer >= pattern.interval) {
                 timer = 0f;
 
-                for (int i = 0; i < pattern.count; i++) {
-                    spawnTimelineAOE(
-                            player,
-                            pattern.radius,
-                            pattern.damage
-                    );
+                // ⭐ 核心：对每个玩家生成
+                for (Player p : gameManager.getPlayers()) {
+                    if (p == null || p.isDead()) continue;
+
+                    for (int i = 0; i < pattern.count; i++) {
+                        spawnTimelineAOE(p, pattern.radius, pattern.damage);
+                    }
                 }
             }
 
             aoeTimers.put(pattern, timer);
         }
     }
+
     private void updatePhaseTransition(float delta) {
 
         if (showMazeWarning) {
@@ -951,7 +981,8 @@ public class BossFightScreen implements Screen {
             }
         }
     }
-    private void updateActiveAOEs(float delta, Player player) {
+    private void updateActiveAOEs(float delta) {
+
         for (int i = activeAOEs.size() - 1; i >= 0; i--) {
             BossAOE aoe = activeAOEs.get(i);
             aoe.life -= delta;
@@ -965,14 +996,22 @@ public class BossFightScreen implements Screen {
                 continue;
             }
 
-            if (aoe.active && !aoe.damageDone && player != null
-                    && isPlayerInsideAOE(player, aoe)) {
+            if (!aoe.active) continue;
 
-                player.takeDamage(aoe.damage);
-                aoe.damageDone = true;
+            // ⭐ 对所有玩家检测
+            for (Player p : gameManager.getPlayers()) {
+                if (p == null || p.isDead()) continue;
+
+                if (!aoe.damagedPlayers.contains(p)
+                        && isPlayerInsideAOE(p, aoe)) {
+
+                    p.takeDamage(aoe.damage);
+                    aoe.damagedPlayers.add(p);
+                }
             }
         }
     }
+
 
     private void triggerPhaseShake() {
         phaseShakeActive = true;
@@ -1226,7 +1265,7 @@ private final Map<Integer, BossPhasePreloadData> phaseCache =
             );
 
     // 1️⃣ 创建 GameManager & 迷宫（只一次）
-    gameManager = new GameManager(dc, false);
+    gameManager = new GameManager(dc,game.isTwoPlayerMode());
     gameManager.resetGame();
 
     player = gameManager.getPlayer();
@@ -1271,16 +1310,21 @@ private final Map<Integer, BossPhasePreloadData> phaseCache =
 }
     private void applyPhase(BossMazeConfig.Phase phase) {
 
+        // ===== 0️⃣ Phase 基础状态 =====
         phaseTime = 0f;
         hud.setBossPhase(phase.index);
 
+        // ===== 1️⃣ 在改迷宫之前：缓存玩家状态 =====
+        cachePlayersBeforeMazeReset();
+
+        // ===== 2️⃣ 构建新的 DifficultyConfig =====
         DifficultyConfig dc =
                 BossDifficultyFactory.create(
                         currentBossConfig.base,
                         phase
                 );
 
-        // ⭐ 用 phase.index
+        // ===== 3️⃣ 重建迷宫（不 new Player）=====
         BossPhasePreloadData preload = phaseCache.get(phase.index);
 
         if (preload != null) {
@@ -1292,15 +1336,21 @@ private final Map<Integer, BossPhasePreloadData> phaseCache =
 
         difficultyConfig = dc;
 
-        // ===== 相机 / Renderer =====
+        // ===== 4️⃣ 迷宫已是新的：恢复玩家状态 =====
+        restorePlayersAfterMazeReset();
+
+        // ===== 5️⃣ 相机 / Renderer 绑定新迷宫 =====
         rebuildMazeCameraAndViewport(dc);
 
+        // ===== 6️⃣ AOE / Phase 运行态清理 =====
         aoeCycleTime = 0f;
         aoeTimers.clear();
         activeAOEs.clear();
 
+        // ===== 7️⃣ Boss 伤害监听 =====
         gameManager.setEnemyKillListener(e -> dealDamageToBoss(50f));
     }
+
     private void rebuildMazeCameraAndViewport(DifficultyConfig dc) {
 
         mazeCameraManager = new CameraManager(dc);
@@ -1314,9 +1364,8 @@ private final Map<Integer, BossPhasePreloadData> phaseCache =
         cam.zoom = 1f;
         cam.update();
 
-        mazeCameraManager.centerOnPlayerImmediately(player);
-
         bossMazeCamera = new BossMazeCamera(cam, dc);
+        bossMazeCamera.snapToPlayers(gameManager.getPlayers());
         mazeRenderer = new BossMazeRenderer(gameManager, dc);
 
         mazeViewport = new ExtendViewport(viewW, viewH, cam);
@@ -1384,10 +1433,12 @@ private final Map<Integer, BossPhasePreloadData> phaseCache =
     }
 
     private static class PlayerSnapshot {
+        Player.PlayerIndex index;   // ⭐ 明确身份
         int lives;
         float mana;
         AbilityManagerSnapshot abilitySnapshot;
     }
+
 
     private static class AbilitySnapshot {
         String abilityId;
@@ -1397,6 +1448,68 @@ private final Map<Integer, BossPhasePreloadData> phaseCache =
     private static class AbilityManagerSnapshot {
         List<AbilitySnapshot> abilities = new ArrayList<>();
         int[] equippedSlots = new int[4]; // slot -> index
+        static AbilityManagerSnapshot from(AbilityManager am) {
+
+            AbilityManagerSnapshot snap = new AbilityManagerSnapshot();
+
+            if (am == null) return snap;
+
+            // ===== 1. 保存所有技能的 id + level =====
+            Map<String, Ability> abilities = am.getAbilities();
+
+            Map<Ability, Integer> abilityIndexMap = new HashMap<>();
+            int index = 0;
+
+            for (Map.Entry<String, Ability> entry : abilities.entrySet()) {
+                Ability a = entry.getValue();
+
+                AbilitySnapshot as = new AbilitySnapshot();
+                as.abilityId = entry.getKey();
+                as.level = a.getLevel();
+
+                snap.abilities.add(as);
+                abilityIndexMap.put(a, index++);
+            }
+
+            // ===== 2. 保存 slot 装备情况 =====
+            Ability[] slots = am.getAbilitySlots();
+            for (int i = 0; i < snap.equippedSlots.length; i++) {
+                Ability slotAbility = slots[i];
+                if (slotAbility != null && abilityIndexMap.containsKey(slotAbility)) {
+                    snap.equippedSlots[i] = abilityIndexMap.get(slotAbility);
+                } else {
+                    snap.equippedSlots[i] = -1;
+                }
+            }
+
+            return snap;
+        }
+        void applyTo(AbilityManager am) {
+
+            if (am == null) return;
+
+            // ===== 1. 恢复技能等级 =====
+            for (AbilitySnapshot as : abilities) {
+                Ability a = am.getAbilities().get(as.abilityId);
+                if (a != null) {
+                    a.setLevel(as.level);
+                }
+            }
+
+            // ===== 2. 恢复 slot 装备 =====
+            Ability[] slots = am.getAbilitySlots();
+            Arrays.fill(slots, null);
+
+            for (int i = 0; i < equippedSlots.length; i++) {
+                int idx = equippedSlots[i];
+                if (idx >= 0 && idx < abilities.size()) {
+                    AbilitySnapshot as = abilities.get(idx);
+                    Ability a = am.getAbilities().get(as.abilityId);
+                    slots[i] = a;
+                }
+            }
+        }
+
     }
 
     private void triggerBossDeath() {
@@ -1595,6 +1708,63 @@ private final Map<Integer, BossPhasePreloadData> phaseCache =
         cupShakeXFreq = xFreq;
         cupShakeYFreq = yFreq;
     }
+    private boolean checkPlayersDeath() {
+        for (Player p : gameManager.getPlayers()) {
+            if (p != null && p.getLives() <= 0) {
+                game.setScreen(
+                        new BossFailScreen(game, BossFailType.PLAYER_DEAD)
+                );
+                return true;
+            }
+        }
+        return false;
+    }
+    private final List<PlayerSnapshot> cachedPlayerSnapshots = new ArrayList<>();
+
+    private void cachePlayersBeforeMazeReset() {
+        cachedPlayerSnapshots.clear();
+
+        for (Player p : gameManager.getPlayers()) {
+            if (p == null) continue;
+
+            PlayerSnapshot snap = new PlayerSnapshot();
+            snap.index = p.getPlayerIndex();
+            snap.lives = p.getLives();
+            snap.mana  = p.getMana();
+
+            snap.abilitySnapshot =
+                    AbilityManagerSnapshot.from(p.getAbilityManager());
+
+            cachedPlayerSnapshots.add(snap);
+        }
+    }
+    private void restorePlayersAfterMazeReset() {
+        if (cachedPlayerSnapshots.isEmpty()) return;
+
+        for (PlayerSnapshot snap : cachedPlayerSnapshots) {
+            Player p = gameManager.getPlayers().stream()
+                    .filter(pp -> pp.getPlayerIndex() == snap.index)
+                    .findFirst()
+                    .orElse(null);
+
+            if (p == null) continue;
+
+            // ⭐ 核心修复点：恢复数值
+            p.setLives(snap.lives);
+            p.setMana(snap.mana);
+
+            // ⭐ 恢复技能状态
+            if (snap.abilitySnapshot != null) {
+                snap.abilitySnapshot.applyTo(p.getAbilityManager());
+            }
+
+            // 避免卡在死亡 / 动画异常态
+            p.setMovingAnim(false);
+        }
+
+        cachedPlayerSnapshots.clear();
+    }
+
 
 
 }
