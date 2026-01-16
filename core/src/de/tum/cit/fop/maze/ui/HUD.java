@@ -319,8 +319,9 @@ public class HUD {
                 renderSinglePlayerHUD(uiBatch);
             }
             // 🔥 修复：将分数渲染移到这里，确保单人/双人都能显示，且根据模式自动调整位置
+        if (hudMode == HUDMode.BOSS) {
             renderScore(uiBatch);
-
+        }
             renderBottomCenterHUD(uiBatch);
 
 // ===== END OF UI FRAME =====
@@ -468,10 +469,7 @@ public class HUD {
                 Gdx.graphics.getHeight() - 90,
                 false
         );
-        //关卡信息TODO
-        font.setColor(Color.CYAN);
-        font.draw(uiBatch, "start: " + gameManager.getCurrentLevel(),
-                20, Gdx.graphics.getHeight() - 120);
+
 
         renderCat(uiBatch);
         renderCompassAsUI(uiBatch);
