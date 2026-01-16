@@ -173,25 +173,33 @@ public class MovingWall extends DynamicObstacle implements PushSource {
 
 //        debugState("TRY_MOVE next=(" + nx + "," + ny + ")");
 
-        Player player = gm.getPlayer();
+        // ===== 玩家挡路 → 尝试推（支持双人）=====
+        boolean playerBlocked = false;
 
-        // 玩家挡路 → 尝试推
-        if (player != null && player.getX() == nx && player.getY() == ny) {
-            // 计算推力方向（从墙指向玩家）
-            int pushDirX = Integer.compare(nx, x);
-            int pushDirY = Integer.compare(ny, y);
+        for (Player p : gm.getPlayers()) {
+            if (p == null || p.isDead()) continue;
 
-            boolean pushed = player.onPushedBy(this, pushDirX, pushDirY, gm);
+            if (p.getX() == nx && p.getY() == ny) {
 
-            if (pushed) {
-//                debugState("PUSH_PLAYER_SUCCESS");
-                startMoveTo(nx, ny);
-                moveCooldown = moveInterval;
-            } else {
-//                debugState("PUSH_PLAYER_FAIL -> REVERSE");
-                forward = !forward;
-                moveCooldown = moveInterval;
+                int pushDirX = Integer.compare(nx, x);
+                int pushDirY = Integer.compare(ny, y);
+
+                boolean pushed = p.onPushedBy(this, pushDirX, pushDirY, gm);
+
+                if (pushed) {
+                    startMoveTo(nx, ny);
+                    moveCooldown = moveInterval;
+                } else {
+                    forward = !forward;
+                    moveCooldown = moveInterval;
+                }
+
+                playerBlocked = true;
+                break; // ⚠️ 只处理一个玩家即可
             }
+        }
+
+        if (playerBlocked) {
             return;
         }
 
@@ -207,6 +215,18 @@ public class MovingWall extends DynamicObstacle implements PushSource {
         }
     }
 
+    /**
+     * 移动过程中：同时占用当前格子和目标格子
+     */
+    public boolean occupiesCell(int cx, int cy) {
+        // 当前格子
+        if (x == cx && y == cy) return true;
+
+        // 正在移动时，占用目标格子
+        if (isMoving && targetX == cx && targetY == cy) return true;
+
+        return false;
+    }
 
 
     /* ================= 渲染 ================= */

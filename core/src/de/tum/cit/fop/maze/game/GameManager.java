@@ -361,10 +361,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
         // ⭐ 新增检查：移动墙与所有动态障碍物
         for (DynamicObstacle o : obstacles) {
-            if (o.getX() == x && o.getY() == y) {
-                return false;  // 玩家不能走进移动的墙
+            if (o instanceof MovingWall mw) {
+                if (mw.occupiesCell(x, y)) {
+                    return false;
+                }
+            } else {
+                if (o.getX() == x && o.getY() == y) {
+                    return false;
+                }
             }
         }
+
 
         // 3️⃣ 普通墙体
         return maze[y][x] == 1;
@@ -1500,10 +1507,17 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
 
         for (DynamicObstacle o : obstacles) {
-            if (o.getX() == nx && o.getY() == ny) {
-                return false;
+            if (o instanceof MovingWall mw) {
+                if (mw.occupiesCell(nx, ny)) {
+                    return false;
+                }
+            } else {
+                if (o.getX() == nx && o.getY() == ny) {
+                    return false;
+                }
             }
         }
+
 
         return true;
     }
