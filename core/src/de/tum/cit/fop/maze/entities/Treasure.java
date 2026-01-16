@@ -118,7 +118,7 @@ public class Treasure extends GameObject {
         if (closedTexture == null || openTexture == null) {
             try {
                 closedTexture = new Texture(Gdx.files.internal("imgs/Items/chest_closed.png"));
-                openTexture = new Texture(Gdx.files.internal("/imgsItems/chest_open.png"));
+                openTexture = new Texture(Gdx.files.internal("imgs/Items/chest_open.png"));
             } catch (Exception e) {
                 Logger.error("Failed to load treasure textures: " + e.getMessage());
             }

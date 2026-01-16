@@ -166,7 +166,7 @@ public class MazeRunnerGame extends Game {
         patchSkin(skin);
 
         initializeSoundManager();
-        goToMenu();
+        setScreen(new LogoScreen(this));
     }
 
     /**
