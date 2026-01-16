@@ -38,6 +38,7 @@ import de.tum.cit.fop.maze.entities.trap.Trap;
 import de.tum.cit.fop.maze.game.*;
 import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.game.score.LevelResult;
+import de.tum.cit.fop.maze.game.story.StoryProgress;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
@@ -108,6 +109,15 @@ public class GameScreen implements Screen, Chapter1RelicListener {
                                     new BossFoundDialog(game.getSkin());
 
                             bossDialog.setOnFight(() -> {
+                                StoryProgress sp = StoryProgress.load();
+                                sp.markBossUnlocked(1);
+                                sp.save();
+                                Logger.gameEvent("⚔ Enter Boss Fight");
+
+                                gm.exitChapterRelicView();
+                                chapterPaused = false;
+                                Gdx.input.setInputProcessor(null);
+
                                 AudioManager.getInstance().stopMusic();
                                 game.setScreen(new BossLoadingScreen(game));
                             });
@@ -230,41 +240,8 @@ public class GameScreen implements Screen, Chapter1RelicListener {
     @Override
     public void render(float delta) {
 
-
-
-        // ===============================
-// 🔥 Chapter Boss Encounter Check（最优先）
-// ===============================
-        if (chapterContext != null
-                && chapterContext.consumeBossPending()) {
-
-            BossFoundDialog bossDialog =
-                    new BossFoundDialog(game.getSkin());
-
-            bossDialog.setOnFight(() -> {
-                AudioManager.getInstance().stopMusic();
-                game.setScreen(new BossLoadingScreen(game));
-            });
-
-            bossDialog.setOnEscape(() -> {
-                Logger.gameEvent("🏃 Player escaped Boss");
-                gm.clearLevelCompletedFlag();
-                goToSettlementScreen();
-            });
-
-            bossDialog.show(uiStage);
-            Gdx.input.setInputProcessor(uiStage);
-            return; // ⛔ 整帧终止
-        }
-
         // ✅ 必须在处理输入之前先算好 UI 是否吃鼠标
         gm.setUIConsumesMouse(hud.isMouseOverInteractiveUI());
-
-
-
-
-
-
 
 
 
@@ -350,31 +327,6 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         if (!isGamePaused()) {
             gm.update(delta);
             if (fogSystem != null) fogSystem.update(delta);
-// ===============================
-// 🔥 Chapter Boss Encounter Check（必须在 Settlement 前）
-// ===============================
-            if (chapterContext != null
-                    && chapterContext.consumeBossPending()) {
-
-                BossFoundDialog bossDialog =
-                        new BossFoundDialog(game.getSkin());
-
-                bossDialog.setOnFight(() -> {
-                    AudioManager.getInstance().stopMusic();
-                    game.setScreen(new BossLoadingScreen(game));
-                });
-
-                bossDialog.setOnEscape(() -> {
-                    Logger.gameEvent("🏃 Player escaped Boss");
-                    // 👇 如果逃跑，才允许进结算
-                    gm.clearLevelCompletedFlag();
-                    goToSettlementScreen();
-                });
-
-                bossDialog.show(uiStage);
-                Gdx.input.setInputProcessor(uiStage);
-                return; // ⛔ 阻断本帧后续流程
-            }
 
             if (gm.isLevelCompletedPendingSettlement()) {
                 goToSettlementScreen();
@@ -660,7 +612,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         buttonTable.add(
                 bf.create("SAVE GAME", this::openManualSaveDialog)
         ).width(btnW).height(btnH).pad(padding);
-        
+
         root.add(buttonTable).expandY().center();
         pauseUIInitialized = true;
     }

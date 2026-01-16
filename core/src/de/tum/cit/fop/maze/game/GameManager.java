@@ -39,8 +39,6 @@ import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
-    // ===== Chapter Boss Trigger =====
-    private boolean pendingChapterBossFound = false;
 
     private boolean autoSaveEnabled = true;
 
@@ -401,6 +399,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 levelTransitionInProgress = false;
                 levelTransitionTimer = 0f;
                 currentExitDoor = null;
+                if (chapterContext != null) {
+                    chapterContext.clearActiveRelic();
+                }
                 nextLevel();
             }
             return;
@@ -783,30 +784,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.gameEvent("Level " + currentLevel + " completed");
         currentLevel++;
 
-        Logger.error("=== RELIC STATE DUMP BEFORE BOSS CHECK ===");
-        chapterContext.dumpRelicStates();
-        if (chapterContext.areAllRelicsRead()) {
-            chapterContext.markBossUnlocked();
-        }
-        // ===============================
-        // 🔥 Chapter 1：三 relic 全读 → Boss
-        // ===============================
-        if (chapterMode
-                && chapterContext != null
-                && chapterContext.getChapterId() == 1
-                && chapterContext.areAllRelicsRead()) {
 
-            if (chapterContext != null
-                    && chapterContext.getChapterId() == 1
-                    && chapterContext.areAllRelicsRead()) {
-
-//                chapterContext.markBossPending();
-
-                Logger.gameEvent("👁 Chapter 1 Boss marked pending");
-            }
-
-            Logger.gameEvent("👁 All Chapter 1 relics read — Boss will find player next floor");
-        }
 
 
 
@@ -817,13 +795,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         requestReset();
     }
-    public boolean consumeChapterBossFoundFlag() {
-        if (pendingChapterBossFound) {
-            pendingChapterBossFound = false;
-            return true;
-        }
-        return false;
-    }
+
 
     public void onKeyCollected() {
         player.setHasKey(true);
@@ -866,15 +838,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelCompletedPendingSettlement = false;
     }
 
-    public void proceedToNextLevel() {
-        currentLevel++;
-        if (currentLevel > GameConstants.MAX_LEVELS) {
-            Logger.gameEvent("Game completed!");
-            return;
-        }
-        levelCompletedPendingSettlement = false;
-        requestReset();
-    }
+
 
     public void requestReset() {
         pendingReset = true;
@@ -1782,12 +1746,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
     public void readChapter1Relic(Chapter1Relic relic) {
         relic.onRead();
+        chapterContext.markRelicRead(relic.getData().id);
         chapterRelics.remove(relic);
         chapter1Relic = null;
     }
 
     public void discardChapter1Relic(Chapter1Relic relic) {
         relic.onDiscard();
+        chapterContext.markRelicDiscarded(relic.getData().id);
         chapterRelics.remove(relic);
         chapter1Relic = null;
     }

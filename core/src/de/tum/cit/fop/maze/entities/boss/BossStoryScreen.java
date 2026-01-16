@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.game.story.StoryProgress;
 
 public class BossStoryScreen implements Screen {
 
@@ -42,6 +43,9 @@ public class BossStoryScreen implements Screen {
     @Override
     public void render(float delta) {
         if (Gdx.input.justTouched() || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+            StoryProgress sp = StoryProgress.load();
+            sp.markBossDefeated(1);
+            sp.save();
             game.setScreen(new CreditsScreen(game));
             return;
         }

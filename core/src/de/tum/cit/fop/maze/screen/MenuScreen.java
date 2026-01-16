@@ -22,8 +22,10 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.entities.boss.BossLoadingScreen;
 import de.tum.cit.fop.maze.game.Difficulty;
 import de.tum.cit.fop.maze.game.save.SaveListPanel;
+import de.tum.cit.fop.maze.game.story.StoryProgress;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 import de.tum.cit.fop.maze.tools.PerlinNoise;
 import de.tum.cit.fop.maze.game.save.StorageManager;
@@ -33,6 +35,13 @@ public class MenuScreen implements Screen {
 
     private final MazeRunnerGame game;
     private boolean changeEnabled = false;
+    // ===== Story End State =====
+    private boolean storyEnded = false;
+
+    // 鼠标静止检测
+    private float mouseIdleTimer = 0f;
+    private int lastMouseX = -1;
+    private int lastMouseY = -1;
 
     // ===== 渲染 =====
     private SpriteBatch batch;
@@ -174,10 +183,37 @@ public class MenuScreen implements Screen {
                 .padBottom(buttonPadding).row();
 
         // ===== 剧情模式（独立系统）=====
-        buttonTable.add(
-                        bf.create("RESET THE WORLD", game::startStoryWithLoading)
-                ).width(buttonWidth).height(BUTTON_HEIGHT)
-                .padBottom(20).row();
+        // ===== 剧情模式按钮（受 StoryProgress 控制）=====
+        StoryProgress progress = StoryProgress.load();
+
+// ❌ 如果第一章已经彻底完成 → 永久不显示
+        if (!progress.isChapterFinished(1)) {
+
+            buttonTable.add(
+                            bf.create("RESET THE WORLD", () -> {
+
+                                // ① 已经解锁 Boss（集齐三 relic，点过迎战）
+                                if (progress.isBossUnlocked(1)) {
+
+                                    // 👉 直接进 Boss Loading
+                                    game.setScreen(new BossLoadingScreen(game));
+                                    return;
+                                }
+
+                                // ② 看过 PV，但还没进 Boss
+                                if (progress.isPvWatched(1)) {
+
+                                    // 👉 直接进章节选择
+                                    game.setScreen(new ChapterSelectScreen(game));
+                                    return;
+                                }
+
+                                // ③ 什么都没发生过（第一次进剧情）
+                                game.startStoryWithLoading();
+                            })
+                    ).width(buttonWidth).height(BUTTON_HEIGHT)
+                    .padBottom(20).row();
+        }
 
 
         // ===== 难度选择（仍然是主模式入口）=====
@@ -214,6 +250,35 @@ public class MenuScreen implements Screen {
     public void render(float delta) {
         stage.getViewport().apply();
         batch.setProjectionMatrix(stage.getCamera().combined);
+
+        if (storyEnded) {
+
+            int mx = Gdx.input.getX();
+            int my = Gdx.input.getY();
+
+            if (mx == lastMouseX && my == lastMouseY) {
+                mouseIdleTimer += delta;
+
+                if (mouseIdleTimer >= 5f) {
+                    changeEnabled = true;
+                }
+            } else {
+                // 鼠标动了 → 重新计时
+                mouseIdleTimer = 0f;
+                lastMouseX = mx;
+                lastMouseY = my;
+                changeEnabled = false;
+            }
+        }
+
+
+
+
+
+
+
+
+
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.T)) {
             game.debugEnterTutorial();
@@ -322,11 +387,32 @@ public class MenuScreen implements Screen {
         batch.setProjectionMatrix(stage.getCamera().combined);
     }
 
-    @Override public void show() {
+    @Override
+    public void show() {
         Gdx.input.setInputProcessor(stage);
         rebuildButtons();
-        audioManager.playMusic(AudioType.MUSIC_MENU);
+
+        StoryProgress progress = StoryProgress.load();
+
+        storyEnded =
+                progress.isPvWatched(1)
+                        && progress.isBossUnlocked(1)
+                        && progress.isChapterFinished(1);
+
+        if (storyEnded) {
+            // 🎵 播放“结局 Menu BGM”
+            audioManager.playMusic(AudioType.MUSIC_MENU_END);
+
+            // 重置 idle 计时
+            mouseIdleTimer = 0f;
+            lastMouseX = Gdx.input.getX();
+            lastMouseY = Gdx.input.getY();
+            changeEnabled = false;
+        } else {
+            audioManager.playMusic(AudioType.MUSIC_MENU);
+        }
     }
+
     @Override public void hide() {}
     @Override public void pause() {}
     @Override public void resume() {}

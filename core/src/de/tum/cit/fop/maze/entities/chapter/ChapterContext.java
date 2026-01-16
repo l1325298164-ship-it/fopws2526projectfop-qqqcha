@@ -66,6 +66,10 @@ public class ChapterContext {
      * - 如果没有未读 relic → 返回 null
      */
     public RelicData requestRelic() {
+        Logger.error(
+                "📜 requestRelic activeRelic=" +
+                        (activeRelic == null ? "null" : activeRelic.id)
+        );
         if (activeRelic != null) return null;
 
         List<RelicData> pool = dropData.relics.stream()
@@ -84,7 +88,7 @@ public class ChapterContext {
 
     public void markRelicRead(String id) {
         relicStates.put(id, RelicState.READ);
-        Logger.error("✅ CONTEXT MARK READ id=" + id);
+        Logger.error("✅ Relic READ -> " + id + " | clear activeRelic");
         if (activeRelic != null && activeRelic.id.equals(id)) {
             activeRelic = null;
         }
@@ -136,47 +140,14 @@ public class ChapterContext {
             Logger.error("Relic " + e.getKey() + " -> " + e.getValue());
         }
     }
-    private boolean bossUnlocked = false;
 
-    public void markBossUnlocked() {
-        bossUnlocked = true;
-    }
 
-    public boolean consumeBossUnlocked() {
-        if (bossUnlocked) {
-            bossUnlocked = false;
-            return true;
+    public void clearActiveRelic() {
+        if (activeRelic != null) {
+            Logger.error("🧹 Clear active relic due to level transition: " + activeRelic.id);
         }
-        return false;
+        activeRelic = null;
     }
-
-    private boolean bossPending = false;
-
-    public void markBossPending() {
-        Logger.error("👁 BossPending SET");
-        bossPending = true;
-    }
-
-    public boolean consumeBossPending() {
-        Logger.error("👁 BossPending CONSUME = " + bossPending);
-        if (bossPending) {
-            bossPending = false;
-            return true;
-        }
-        return false;
-    }
-
-    public boolean areAllRelicsReadAfter(String justReadId) {
-        relicStates.put(justReadId, RelicState.READ);
-
-        for (RelicState s : relicStates.values()) {
-            if (s != RelicState.READ) {
-                return false;
-            }
-        }
-        return true;
-    }
-
 }
 
 

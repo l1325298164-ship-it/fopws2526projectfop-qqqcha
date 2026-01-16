@@ -77,7 +77,8 @@ public enum AudioType {
             0.7f,
             false,
             true
-    ), BOSS_BGM("sounds/music/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, false, false);
+    ), BOSS_BGM("sounds/music/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, false, false),
+    MUSIC_MENU_END("sounds/music/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, true, false);
 
 
 

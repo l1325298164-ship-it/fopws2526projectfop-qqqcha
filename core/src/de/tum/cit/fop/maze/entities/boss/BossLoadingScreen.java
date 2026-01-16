@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.TimeUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
@@ -81,6 +82,16 @@ public class BossLoadingScreen implements Screen {
     @Override
     public void render(float delta) {
 
+        // ⭐ 关键：重置为屏幕坐标
+        batch.setProjectionMatrix(
+                new Matrix4().setToOrtho2D(
+                        0, 0,
+                        Gdx.graphics.getWidth(),
+                        Gdx.graphics.getHeight()
+                )
+        );
+
+        font.getData().setScale(1f);
         blinkTime += delta;
         assets.update();
 
@@ -148,8 +159,10 @@ public class BossLoadingScreen implements Screen {
                 Align.center,
                 true
         );
+        Gdx.app.log("FONT", "scale=" + font.getData().scaleX);
 
         batch.end();
+        font.getData().setScale(1f);
     }
     private final Map<Integer, BossPhasePreloadData> phaseCache =
             Collections.synchronizedMap(new HashMap<>());

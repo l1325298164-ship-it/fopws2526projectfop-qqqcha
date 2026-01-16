@@ -13,7 +13,9 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.game.story.StoryProgress;
 import de.tum.cit.fop.maze.tools.ButtonFactory;
 
 public class IntroScreen implements Screen {
@@ -124,7 +126,14 @@ public class IntroScreen implements Screen {
 
         TextButton startButton = buttonFactory.createNavigationButton(
                 "Start Chapter",
-                () -> game.onPV4Choice(MazeRunnerGame.PV4Result.START)
+                () -> { // 🔒 永久剧情存档点①：PV4 已观看
+                        StoryProgress progress = StoryProgress.load();
+        progress.markPvWatched(1);
+        progress.save();
+
+        // 👉 继续原有流程
+        game.onPV4Choice(MazeRunnerGame.PV4Result.START);
+    }
         );
 
         float buttonWidth = 600f;
@@ -171,6 +180,11 @@ public class IntroScreen implements Screen {
             if (exitType == PVExit.PV4_CHOICE && !showPV4Buttons) {
                 showPV4Buttons = true;
                 Gdx.input.setInputProcessor(stage);
+                AudioManager.getInstance().stopMusic();
+                // ⭐ PV4 按钮出现时，隐藏 ESC
+                if (escButton != null) {
+                    escButton.setVisible(false);
+                }
                 // 显示所有 PV4 按钮
                 stage.getActors().forEach(actor -> {
                     if (actor != escButton) actor.setVisible(true);
