@@ -235,6 +235,7 @@ public class HUD {
     private static final float LV_PAD_RIGHT = 6f;       // 距离 icon 右边
     private static final float LV_PAD_BOTTOM = 18f;     // 距离 icon 底部（注意：是 baseline 位置）
 
+    private boolean uiHoverThisFrame = false;
 
     // =========================================================
 
@@ -304,6 +305,8 @@ public class HUD {
     // =========================================================
 
     public void renderInGameUI(SpriteBatch uiBatch) {
+        uiHoverThisFrame = false;
+
         if (hudMode == HUDMode.BOSS) {
             renderBossHUD(uiBatch);
         }
@@ -320,7 +323,7 @@ public class HUD {
 // ===== END OF UI FRAME =====
             lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
 
-
+        gameManager.setUIConsumesMouse(uiHoverThisFrame);
 
     }
 
@@ -1498,7 +1501,7 @@ public class HUD {
                 mx >= bx && mx <= bx + BTN_SIZE &&
                         my >= by && my <= by + BTN_SIZE;
         if (hover) {
-            gameManager.setUIConsumesMouse(true);
+            uiHoverThisFrame = true;
             Logger.error("UI CONSUME MOUSE");
         }
 

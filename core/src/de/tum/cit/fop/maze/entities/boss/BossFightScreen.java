@@ -28,6 +28,7 @@ import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.maze.BossMazeRenderer;
 import de.tum.cit.fop.maze.maze.MazeRenderer;
 import de.tum.cit.fop.maze.screen.MenuScreen;
+import de.tum.cit.fop.maze.utils.BlockingInputProcessor;
 import de.tum.cit.fop.maze.utils.BossCamera;
 import de.tum.cit.fop.maze.utils.BossMazeCamera;
 import de.tum.cit.fop.maze.utils.CameraManager;
@@ -41,7 +42,7 @@ public class BossFightScreen implements Screen {
 
     // ===== Intro Delay =====
     private float introDelayTimer = 0f;
-    private static final float INTRO_DELAY = 10f;
+    private static final float INTRO_DELAY =10f;
     private static final float INTRO_FADE_TIME = 1.0f;
 
     private enum BossRageState {
@@ -89,8 +90,7 @@ public class BossFightScreen implements Screen {
     private float bossTimelineTime = 0f;
 
 
-
-    // ===== Maze Rebuild Warning =====
+    //*-+=== Maze Rebuild Warning =====
     private boolean showMazeWarning = false;
     private float mazeWarningTimer = 0f;
     private static final float MAZE_WARNING_TIME = 10f;
@@ -228,6 +228,7 @@ public class BossFightScreen implements Screen {
 
     @Override
     public void show() {
+        Gdx.input.setInputProcessor(new BlockingInputProcessor());
         uiCamera = new OrthographicCamera();
         uiCamera.setToOrtho(
                 false,
@@ -292,21 +293,16 @@ public class BossFightScreen implements Screen {
         transitionState = PhaseTransitionState.NONE;
         transitionTimer = 0f;
         fadeAlpha = 0f;
-        // ===== HUD 初始化 =====
-        applyPhase(phaseSelector.getCurrent());
-
+        pendingInitialPhase = phaseSelector.getCurrent();
+        gameManager = null;
         aoeTimers.clear();
         aoeCycleTime = 0f;
 
 
-        gameManager.setEnemyKillListener(enemy -> {
-            // 🔥 魔法数字阶段
-            dealDamageToBoss(50f);
-        });
-        hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
-        hud.enableBossHUD(bossMaxHp);
-        hud.updateBossHp(bossHp);
+
     }
+    private BossMazeConfig.Phase pendingInitialPhase;
+    private boolean mazeStarted = false;
 
     @Override
     public void render(float delta) {
@@ -326,10 +322,13 @@ public class BossFightScreen implements Screen {
             hud.updateBossHp(bossHp);
         }
 
-        Gdx.app.log(
-                "MAZE_VIEWPORT",
-                "screen = " + mazeViewport.getScreenWidth() + " x " + mazeViewport.getScreenHeight()
-        );
+        if (mazeStarted && mazeViewport != null) {
+            Gdx.app.log(
+                    "MAZE_VIEWPORT",
+                    "screen = " + mazeViewport.getScreenWidth()
+                            + " x " + mazeViewport.getScreenHeight()
+            );
+        }
         boolean isMergingOrAfter =
                 bossDeathState == BossDeathState.TRIGGERED
                         || bossDeathState == BossDeathState.MERGING_SCREEN
@@ -351,10 +350,9 @@ public class BossFightScreen implements Screen {
 
         update(delta);
 
-        if (!isMazeFrozen()) {
+        if (mazeStarted && !isMazeFrozen()) {
             gameManager.update(delta);
         }
-
         // ===== 清屏 =====
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -421,9 +419,12 @@ public class BossFightScreen implements Screen {
 // =====================================
 
 
-        if (shouldRenderGameplay()&&
-                gameManager != null
-                && gameManager.getPlayer() != null) {
+        if (mazeStarted
+                && mazeViewport != null
+                && mazeCameraManager != null
+                && gameManager != null
+                && gameManager.getPlayer() != null
+                && shouldRenderGameplay()) {
 
             // ❗ 只 apply，不 update
             mazeViewport.apply();
@@ -688,14 +689,12 @@ public class BossFightScreen implements Screen {
     private void enterVictoryMode() {
         inVictoryHold = true;
 
-        // 冻结迷宫 & gameplay
+        // ⭐ 明确开始计时
+        victoryEndTimer = 0f;
+
         activeAOEs.clear();
         showMazeWarning = false;
         transitionState = PhaseTransitionState.NONE;
-
-        // ❌ 不 setScreen
-        // ❌ 不画 UI
-        // ✅ Boss 动画 & Timeline 继续
     }
 
 
@@ -747,66 +746,64 @@ public class BossFightScreen implements Screen {
         batch.end();
     }
 
+    // ===== BGM delay =====
+    private float pvTimer = 0f;
+    private static final float BGM_DELAY = 3f;
+    private boolean bossBgmStarted = false;
 
     private void update(float delta) {
+
+
+        // ===============================
+        // 1️⃣ BGM & Boss Timeline —— 永远跑
+        // ===============================
+        pvTimer += delta;
+        if (!bossBgmStarted && pvTimer >= BGM_DELAY) {
+            AudioManager.getInstance().playMusic(AudioType.BOSS_BGM);
+            bossBgmStarted = true;
+        }
+
+        bossTimelineTime += delta;
+        timelineRunner.update(bossTimelineTime, this);
+
+        // ===============================
+        // 2️⃣ 迷宫延迟生成（20s）
+        // ===============================
+        if (!mazeStarted) {
+            introDelayTimer += delta;
+
+            if (introDelayTimer >= INTRO_DELAY) {
+                mazeStarted = true;
+                applyPhase(pendingInitialPhase);
+            }
+            return; // ❗只挡迷宫，不挡 BGM
+        }
         if (inVictoryHold) {
             victoryEndTimer += delta;
+
             if (victoryEndTimer >= VICTORY_PV_TIME) {
                 AudioManager.getInstance().stopMusic();
                 game.setScreen(new BossStoryScreen(game));
             }
             return;
         }
-// ⏱ Intro 结束的一瞬间，启动 BGM
-        // 1️⃣ 推进 intro 计时
-        if (introDelayTimer < INTRO_DELAY) {
-            introDelayTimer += delta;
 
-            float remaining = INTRO_DELAY - introDelayTimer;
-            if (remaining <= INTRO_FADE_TIME) {
-                fadeAlpha = MathUtils.clamp(
-                        remaining / INTRO_FADE_TIME,
-                        0f,
-                        1f
-                );
-            } else {
-                fadeAlpha = 1f;
-            }
-        } else {
-            fadeAlpha = 0f;
+        // ===============================
+        // 3️⃣ 下面才是迷宫 update
+        // ===============================
+        Player player = gameManager.getPlayer();
+        if (checkPlayerDeath(player)) return;
+
+        if (!isMazeFrozen()) {
+            gameManager.update(delta);
         }
 
-// 2️⃣ 到点再播 BGM（只一次）
-        if (!bossBgmStarted && introDelayTimer >= INTRO_DELAY) {
-            AudioManager.getInstance().playMusic(AudioType.BOSS_BGM);
-            bossBgmStarted = true;
-        }
-
-// 3️⃣ Boss Timeline 永远跑
-        bossTimelineTime += delta;
-        timelineRunner.update(bossTimelineTime, this);
-
-        fadeAlpha = 0f;
-        if (inVictoryHold) {
-            return;
-        }
-        // =================================================
-        // 3️⃣ 正常游戏逻辑
-        // =================================================
-        boolean gameplayFrozen = introDelayTimer < INTRO_DELAY || inVictoryHold;
-
-        if (!gameplayFrozen) {
-            Player player = (gameManager != null) ? gameManager.getPlayer() : null;
-
-            if (checkPlayerDeath(player)) return;
-
-            updateCupShake(delta);
-            updateRagePunish(delta, player);
-            updateAoeTimeline(delta, player);
-            updatePhaseTransition(delta);
-            updateBossDeath(delta);
-            updateActiveAOEs(delta, player);
-        }
+        updateCupShake(delta);
+        updateRagePunish(delta, player);
+        updateAoeTimeline(delta, player);
+        updatePhaseTransition(delta);
+        updateBossDeath(delta);
+        updateActiveAOEs(delta, player);
     }
 
 
@@ -1046,7 +1043,7 @@ public class BossFightScreen implements Screen {
         if (gameManager != null) {
             gameManager.dispose();
         }
-
+        Gdx.input.setInputProcessor(null);
         gameManager = new GameManager(dc, false);
         gameManager.resetGame();
         Player newPlayer = gameManager.getPlayer();
@@ -1144,7 +1141,13 @@ public class BossFightScreen implements Screen {
 
         aoeCycleTime = 0f;
         aoeTimers.clear();
-
+        gameManager.setEnemyKillListener(enemy -> {
+            // 🔥 魔法数字阶段
+            dealDamageToBoss(50f);
+        });
+        hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
+        hud.enableBossHUD(bossMaxHp);
+        hud.updateBossHp(bossHp);
     }
 
     @Override
@@ -1394,9 +1397,8 @@ public class BossFightScreen implements Screen {
     private float victoryEndTimer = 0f;
     private static final float VICTORY_PV_TIME = 13.0f;
 
-    private boolean bossBgmStarted = false;
     private boolean shouldRenderGameplay() {
-        return introDelayTimer >= INTRO_DELAY && !inVictoryHold;
+        return mazeStarted && !inVictoryHold;
     }
 
     public void startCupShake(

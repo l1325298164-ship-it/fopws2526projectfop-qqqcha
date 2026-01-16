@@ -19,6 +19,7 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.screen.MenuScreen;
+import de.tum.cit.fop.maze.utils.BlockingInputProcessor;
 
 public class BossLoadingScreen implements Screen {
 
@@ -45,6 +46,8 @@ public class BossLoadingScreen implements Screen {
         showTime = TimeUtils.millis();
         font = game.getSkin().getFont("default-font");
         queueBossAssets();
+
+        Gdx.input.setInputProcessor(new BlockingInputProcessor());
     }
 
     private void queueBossAssets() {
