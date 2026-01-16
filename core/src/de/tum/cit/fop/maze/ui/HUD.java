@@ -108,6 +108,9 @@ public class HUD {
     // ===== Boss HUD 状态 =====
     private boolean bossFinalLocked = false;
     private final Color bossHpColor = new Color(0.85f, 0.15f, 0.15f, 1f);
+    // ===== Boss HUD 扩展状态 =====
+    private int bossPhaseIndex = -1;
+    private boolean bossRageWarning = false;
 
 
 
@@ -323,7 +326,7 @@ public class HUD {
 // ===== END OF UI FRAME =====
             lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
 
-        gameManager.setUIConsumesMouse(uiHoverThisFrame);
+
 
     }
 
@@ -387,18 +390,64 @@ public class HUD {
         font.setColor(Color.WHITE);
 
         String text = "BOSS  " + (int)bossHp + " / " + (int)bossMaxHp;
-        GlyphLayout layout = new GlyphLayout(font, text);
+        // ===== Phase Text =====
+        if (bossPhaseIndex >= 0) {
+            font.getData().setScale(1.1f);
+            font.setColor(0.85f, 0.85f, 0.85f, 0.9f);
 
-        font.draw(
-                batch,
-                text,
-                screenW / 2f - layout.width / 2f,
-                y + barHeight + 28
-        );
+            String phaseText = "PHASE " + (bossPhaseIndex + 1);
+
+            GlyphLayout phaseLayout = new GlyphLayout(font, phaseText);
+
+            font.draw(
+                    batch,
+                    phaseText,
+                    screenW / 2f - phaseLayout.width / 2f,
+                    y - 18
+            );
+        }
 
         // restore
         font.getData().setScale(1.2f);
         batch.setColor(1f, 1f, 1f, 1f);
+// ===== Rage / Lock Warning =====
+        if (bossRageWarning || bossFinalLocked) {
+
+            float blink =
+                    0.6f + 0.4f *
+                            MathUtils.sin(TimeUtils.nanoTime() * 0.00000001f);
+
+            font.getData().setScale(1.3f);
+
+            if (bossFinalLocked) {
+                font.setColor(0.85f, 0.65f, 0.25f, blink);
+            } else {
+                font.setColor(1.0f, 0.2f, 0.2f, blink);
+            }
+
+            String warn =
+                    bossFinalLocked
+                            ? "FINAL LOCK"
+                            : "RAGE";
+
+            GlyphLayout warnLayout = new GlyphLayout(font, warn);
+
+            font.draw(
+                    batch,
+                    warn,
+                    screenW / 2f - warnLayout.width / 2f,
+                    y + barHeight + 64
+            );
+
+            font.getData().setScale(1.2f);
+            font.setColor(Color.WHITE);
+        }
+
+
+        // restore
+        font.getData().setScale(1.2f);
+        batch.setColor(1f, 1f, 1f, 1f);
+
     }
 
 
@@ -1576,7 +1625,7 @@ public class HUD {
             long now = TimeUtils.millis();
             if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
                 lastUpgradeTime = now;
-                gameManager.setUIConsumesMouse(true);
+//                gameManager.setUIConsumesMouse(true);
                 boolean success =  gameManager
                         .getScoreManager()
                         .spendUpgradeScore(UpgradeCost.SCORE_PER_UPGRADE);
@@ -1636,8 +1685,10 @@ public class HUD {
     }
 
     // ===== DEBUG =====
-    private boolean debugUpgradeInput = true;
 
+    public boolean isHoveringInteractiveUI() {
+        return uiHoverThisFrame;
+    }
 
 
 
@@ -1676,4 +1727,12 @@ public class HUD {
     public void setBossFinalLocked(boolean locked) {
         this.bossFinalLocked = locked;
     }
+    public void setBossPhase(int phaseIndex) {
+        this.bossPhaseIndex = phaseIndex;
+    }
+
+    public void setBossRageWarning(boolean warning) {
+        this.bossRageWarning = warning;
+    }
+
 }

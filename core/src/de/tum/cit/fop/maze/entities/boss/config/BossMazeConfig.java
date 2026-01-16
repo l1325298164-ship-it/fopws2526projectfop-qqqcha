@@ -21,6 +21,7 @@ public class BossMazeConfig {
     }
 
     public static class Phase {
+        public int index;
         public float duration;
         public int mazeWidth;
         public int mazeHeight;

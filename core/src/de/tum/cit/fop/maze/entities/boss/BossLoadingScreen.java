@@ -18,8 +18,17 @@ import com.badlogic.gdx.utils.TimeUtils;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.entities.boss.config.BossDifficultyFactory;
+import de.tum.cit.fop.maze.entities.boss.config.BossMazeConfig;
+import de.tum.cit.fop.maze.entities.boss.config.BossMazeConfigLoader;
+import de.tum.cit.fop.maze.game.DifficultyConfig;
+import de.tum.cit.fop.maze.maze.MazeGenerator;
 import de.tum.cit.fop.maze.screen.MenuScreen;
 import de.tum.cit.fop.maze.utils.BlockingInputProcessor;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class BossLoadingScreen implements Screen {
 
@@ -46,7 +55,7 @@ public class BossLoadingScreen implements Screen {
         showTime = TimeUtils.millis();
         font = game.getSkin().getFont("default-font");
         queueBossAssets();
-
+        preloadAllPhasesAsync();
         Gdx.input.setInputProcessor(new BlockingInputProcessor());
     }
 
@@ -99,6 +108,16 @@ public class BossLoadingScreen implements Screen {
         // ===== 文本渲染 =====
         batch.begin();
 
+// 🔹 左上角 ESC 提示
+        font.setColor(1f, 1f, 1f, 0.65f);
+        font.getData().setScale(0.5f);
+        font.draw(
+                batch,
+                "ESC  —  Return to Menu",
+                18f,
+                Gdx.graphics.getHeight() - 18f
+        );
+
         float w = Gdx.graphics.getWidth();
         float h = Gdx.graphics.getHeight();
 
@@ -131,6 +150,46 @@ public class BossLoadingScreen implements Screen {
         );
 
         batch.end();
+    }
+    private final Map<Integer, BossPhasePreloadData> phaseCache =
+            Collections.synchronizedMap(new HashMap<>());
+
+
+    private void preloadAllPhasesAsync() {
+
+        new Thread(() -> {
+
+            BossMazeConfig config =
+                    BossMazeConfigLoader.loadOne("boss/boss_phases.json");
+
+            // ⭐ 每个线程一个独立 generator（安全）
+            MazeGenerator generator = new MazeGenerator();
+
+            for (int i = 0; i < 3; i++) {
+
+                BossMazeConfig.Phase phase = config.phases.get(i);
+
+                DifficultyConfig dc =
+                        BossDifficultyFactory.create(config.base, phase);
+
+                // ✅ 正确方法名（与你工程一致）
+                int[][] maze = generator.generateMaze(dc);
+
+                BossPhasePreloadData data = new BossPhasePreloadData();
+                data.maze = maze;
+                data.phase = phase;
+
+                phaseCache.put(i, data);
+
+                Gdx.app.log(
+                        "BOSS_PRELOAD",
+                        "Phase " + i + " maze ready (" +
+                                dc.mazeWidth + "x" + dc.mazeHeight + ")"
+                );
+            }
+
+        }, "BossPhasePreloader").start();
+
     }
 
     @Override public void resize(int w, int h) {}

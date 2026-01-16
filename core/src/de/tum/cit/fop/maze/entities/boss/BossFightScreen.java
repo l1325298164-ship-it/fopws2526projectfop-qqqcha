@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BossFightScreen implements Screen {
 
@@ -226,7 +227,9 @@ public class BossFightScreen implements Screen {
 
     @Override
     public void show() {
-        Gdx.input.setInputProcessor(new BlockingInputProcessor());
+        Gdx.input.setInputProcessor(null);
+
+
         uiCamera = new OrthographicCamera();
         uiCamera.setToOrtho(
                 false,
@@ -295,7 +298,8 @@ public class BossFightScreen implements Screen {
         aoeTimers.clear();
         aoeCycleTime = 0f;
 
-
+// ===== 🔥 预加载第一次迷宫（但先冻结）=====
+        preloadInitialMaze();
 
     }
     private BossMazeConfig.Phase pendingInitialPhase;
@@ -347,9 +351,7 @@ public class BossFightScreen implements Screen {
 
         update(delta);
 
-        if (mazeStarted && !isMazeFrozen()) {
-            gameManager.update(delta);
-        }
+
         // ===== 清屏 =====
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -745,12 +747,18 @@ public class BossFightScreen implements Screen {
 
     // ===== BGM delay =====
     private float pvTimer = 0f;
-    private static final float BGM_DELAY = 0.5f;
+    private static final float BGM_DELAY = 0.1f;
     private boolean bossBgmStarted = false;
 
     private void update(float delta) {
 
-
+        boolean uiConsume = false;
+        if (hud != null && hud.isHoveringInteractiveUI()) {
+            uiConsume = true;
+        }
+        if (gameManager != null) {
+            gameManager.setUIConsumesMouse(uiConsume);
+        }
         // ===============================
         // 1️⃣ BGM & Boss Timeline —— 永远跑
         // ===============================
@@ -766,14 +774,13 @@ public class BossFightScreen implements Screen {
         // ===============================
         // 2️⃣ 迷宫延迟生成（20s）
         // ===============================
-        if (!mazeStarted) {
+        if (mazePaused) {
             introDelayTimer += delta;
 
             if (introDelayTimer >= INTRO_DELAY) {
-                mazeStarted = true;
-                applyPhase(pendingInitialPhase);
+                mazePaused = false;   // ⭐ 解锁渲染 + update
             }
-            return; // ❗只挡迷宫，不挡 BGM
+            return; // 只挡迷宫逻辑，不挡 Boss
         }
         if (inVictoryHold) {
             victoryEndTimer += delta;
@@ -979,173 +986,344 @@ public class BossFightScreen implements Screen {
     }
 
 
+//    private void applyPhase(BossMazeConfig.Phase phase) {
+//        phaseTime = 0f;
+//        // ===============================
+//        // 1️⃣ 快照旧 Player（如果存在）
+//        // ===============================
+//        PlayerSnapshot snapshot = null;
+//
+//        if (gameManager != null && gameManager.getPlayer() != null) {
+//            Player p = gameManager.getPlayer();
+//            snapshot = new PlayerSnapshot();
+//
+//            snapshot.lives = p.getLives();
+//            snapshot.mana  = p.getMana();
+//
+//            // ===== 技能快照 =====
+//            AbilityManager am = p.getAbilityManager();
+//            AbilityManagerSnapshot amSnap = new AbilityManagerSnapshot();
+//
+//            int index = 0;
+//            Map<String, Ability> abilities = am.getAbilities();
+//            Map<Ability, Integer> abilityIndexMap = new HashMap<>();
+//
+//            for (Map.Entry<String, Ability> entry : abilities.entrySet()) {
+//                Ability a = entry.getValue();
+//
+//                AbilitySnapshot as = new AbilitySnapshot();
+//                as.abilityId = entry.getKey();
+//                as.level = a.getLevel();
+//
+//                amSnap.abilities.add(as);
+//                abilityIndexMap.put(a, index++);
+//            }
+//
+//            // 记录 slot 装备
+//            Ability[] slots = am.getAbilitySlots();
+//            for (int i = 0; i < slots.length; i++) {
+//                Ability slotAbility = slots[i];
+//                if (slotAbility != null) {
+//                    amSnap.equippedSlots[i] = abilityIndexMap.get(slotAbility);
+//                } else {
+//                    amSnap.equippedSlots[i] = -1;
+//                }
+//            }
+//
+//            snapshot.abilitySnapshot = amSnap;
+//        }
+//
+//        // ===============================
+//        // 2️⃣ 创建新的 GameManager
+//        // ===============================
+//        DifficultyConfig dc =
+//                BossDifficultyFactory.create(
+//                        currentBossConfig.base,
+//                        phase
+//                );
+//
+//        this.difficultyConfig = dc;
+//
+//        if (gameManager != null) {
+//            gameManager.dispose();
+//        }
+//        Gdx.input.setInputProcessor(null);
+//        gameManager = new GameManager(dc, false);
+//        gameManager.resetGame();
+//        Player newPlayer = gameManager.getPlayer();
+//
+//        // ===============================
+//        // 3️⃣ 恢复 Player 状态
+//        // ===============================
+//        if (snapshot != null) {
+//            newPlayer.setLives(snapshot.lives);
+//            newPlayer.setMana(snapshot.mana);
+//
+//            AbilityManager newAM = newPlayer.getAbilityManager();
+//            AbilityManagerSnapshot amSnap = snapshot.abilitySnapshot;
+//
+//            // 恢复技能等级
+//            for (AbilitySnapshot as : amSnap.abilities) {
+//                Ability a = newAM.getAbilities().get(as.abilityId);
+//                if (a != null) {
+//                    a.setLevel(as.level);
+//                }
+//            }
+//
+//            // 恢复 slot 装备
+//            Ability[] slots = newAM.getAbilitySlots();
+//            for (int i = 0; i < slots.length; i++) {
+//                int idx = amSnap.equippedSlots[i];
+//                if (idx >= 0) {
+//                    AbilitySnapshot as = amSnap.abilities.get(idx);
+//                    slots[i] = newAM.getAbilities().get(as.abilityId);
+//                } else {
+//                    slots[i] = null;
+//                }
+//            }
+//        }
+//
+//        // ===============================
+//        // 4️⃣ 相机 & Renderer - 关键修正：使用固定视野范围
+//        // ===============================
+//        mazeCameraManager = new CameraManager(dc);
+//        OrthographicCamera cam = mazeCameraManager.getCamera();
+//
+//        // ✅ 关键修正：设置固定的视野范围（不是缩放整个迷宫）
+//        // 计算固定视野的世界尺寸
+//        float viewWorldWidth = MAZE_VIEW_CELLS_WIDTH * GameConstants.CELL_SIZE;
+//        float viewWorldHeight = MAZE_VIEW_CELLS_HEIGHT * GameConstants.CELL_SIZE;
+//
+//        // 设置相机的固定视野
+//        cam.viewportWidth = viewWorldWidth;
+//        cam.viewportHeight = viewWorldHeight;
+//        cam.zoom = 1.0f; // 不使用缩放，用固定视野
+//
+//        // 先更新相机
+//        cam.update();
+//
+//        // 居中到玩家
+//        mazeCameraManager.centerOnPlayerImmediately(newPlayer);
+//
+//        // 创建Boss战相机控制器
+//        bossMazeCamera = new BossMazeCamera(cam, dc) {
+//            @Override
+//            public void update(float delta, Player player) {
+//                super.update(delta, player);
+//
+//                // ✅ 保持相机在迷宫边界内
+//                float halfViewW = cam.viewportWidth * cam.zoom / 2;
+//                float halfViewH = cam.viewportHeight * cam.zoom / 2;
+//                float mazeWidth = dc.mazeWidth * GameConstants.CELL_SIZE;
+//                float mazeHeight = dc.mazeHeight * GameConstants.CELL_SIZE;
+//
+//                cam.position.x = Math.max(halfViewW, Math.min(cam.position.x, mazeWidth - halfViewW));
+//                cam.position.y = Math.max(halfViewH, Math.min(cam.position.y, mazeHeight - halfViewH));
+//                cam.update();
+//            }
+//        };
+//
+//        mazeRenderer = new BossMazeRenderer(gameManager, dc);
+//        player = newPlayer;
+//
+//        // ✅ 关键：使用 ExtendViewport 而不是 FitViewport
+//        // ExtendViewport会扩展世界而不是缩放
+//
+//        // 使用 ExtendViewport，设置最小世界尺寸
+//        mazeViewport = new ExtendViewport(
+//                viewWorldWidth,  // 最小宽度
+//                viewWorldHeight, // 最小高度
+//                cam
+//        );
+//        mazeViewport.update(screenWidth, screenHeight, false);
+//
+//// ⭐ phase 切换后，强制对齐相机
+//        mazeCameraManager.centerOnPlayerImmediately(newPlayer);
+//
+//// ⭐ 确保 camera 的 combined 是最新的
+//        mazeCameraManager.getCamera().update();
+//
+//        aoeCycleTime = 0f;
+//        aoeTimers.clear();
+//        gameManager.setEnemyKillListener(enemy -> {
+//            // 🔥 魔法数字阶段
+//            dealDamageToBoss(50f);
+//        });
+//        hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
+//        hud.enableBossHUD(bossMaxHp);
+//        hud.updateBossHp(bossHp);
+//    }
+
+private boolean mazePreloaded = false;
+    private boolean mazePaused = true;
+
+//private void applyPhase(BossMazeConfig.Phase phase) {
+//
+//    phaseTime = 0f;
+//
+//    DifficultyConfig dc =
+//            BossDifficultyFactory.create(
+//                    currentBossConfig.base,
+//                    phase
+//            );
+//
+//    // ===== 第一次进入 Boss =====
+//    if (gameManager == null) {
+//
+//        gameManager = new GameManager(dc, false);
+//        gameManager.resetGame(); // ✅ 只允许第一次
+//
+//        player = gameManager.getPlayer();
+//
+//        hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
+//        hud.enableBossHUD(bossMaxHp);
+//        hud.updateBossHp(bossHp);
+//
+//    } else {
+//        // ===== Phase 切换：安全重建 =====
+//        gameManager.rebuildMazeForBoss(dc);
+//    }
+//
+//    difficultyConfig = dc;
+//
+//    // ===== 相机 / Renderer（你原来的逻辑）=====
+//    mazeCameraManager = new CameraManager(dc);
+//    OrthographicCamera cam = mazeCameraManager.getCamera();
+//
+//    float viewW = MAZE_VIEW_CELLS_WIDTH * GameConstants.CELL_SIZE;
+//    float viewH = MAZE_VIEW_CELLS_HEIGHT * GameConstants.CELL_SIZE;
+//
+//    cam.viewportWidth = viewW;
+//    cam.viewportHeight = viewH;
+//    cam.zoom = 1f;
+//    cam.update();
+//
+//    mazeCameraManager.centerOnPlayerImmediately(player);
+//
+//    bossMazeCamera = new BossMazeCamera(cam, dc);
+//    mazeRenderer = new BossMazeRenderer(gameManager, dc);
+//
+//    mazeViewport = new ExtendViewport(viewW, viewH, cam);
+//    mazeViewport.update(screenWidth, screenHeight, false);
+//
+//    aoeCycleTime = 0f;
+//    aoeTimers.clear();
+//    activeAOEs.clear();
+//
+//    gameManager.setEnemyKillListener(e -> dealDamageToBoss(50f));
+//}
+private final Map<Integer, BossPhasePreloadData> phaseCache =
+        new ConcurrentHashMap<>();
+
+    private void preloadInitialMaze() {
+
+    if (mazePreloaded) return;
+
+    DifficultyConfig dc =
+            BossDifficultyFactory.create(
+                    currentBossConfig.base,
+                    pendingInitialPhase
+            );
+
+    // 1️⃣ 创建 GameManager & 迷宫（只一次）
+    gameManager = new GameManager(dc, false);
+    gameManager.resetGame();
+
+    player = gameManager.getPlayer();
+
+    // 2️⃣ HUD 只建一次
+    hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
+    hud.enableBossHUD(bossMaxHp);
+    hud.updateBossHp(bossHp);
+
+    difficultyConfig = dc;
+
+    // 3️⃣ 相机 / Renderer / Viewport（完整建好）
+    mazeCameraManager = new CameraManager(dc);
+    OrthographicCamera cam = mazeCameraManager.getCamera();
+
+    float viewW = MAZE_VIEW_CELLS_WIDTH * GameConstants.CELL_SIZE;
+    float viewH = MAZE_VIEW_CELLS_HEIGHT * GameConstants.CELL_SIZE;
+
+    cam.viewportWidth = viewW;
+    cam.viewportHeight = viewH;
+    cam.zoom = 1f;
+    cam.update();
+
+    mazeCameraManager.centerOnPlayerImmediately(player);
+
+    bossMazeCamera = new BossMazeCamera(cam, dc);
+    mazeRenderer = new BossMazeRenderer(gameManager, dc);
+
+    mazeViewport = new ExtendViewport(viewW, viewH, cam);
+    mazeViewport.update(screenWidth, screenHeight, false);
+
+    // 4️⃣ 冻结状态
+    mazePaused = true;
+    mazeStarted = true;      // ⭐ 已经“存在”，只是 paused
+    mazePreloaded = true;
+
+    aoeCycleTime = 0f;
+    aoeTimers.clear();
+    activeAOEs.clear();
+
+    gameManager.setEnemyKillListener(e -> dealDamageToBoss(50f));
+}
     private void applyPhase(BossMazeConfig.Phase phase) {
+
         phaseTime = 0f;
-        // ===============================
-        // 1️⃣ 快照旧 Player（如果存在）
-        // ===============================
-        PlayerSnapshot snapshot = null;
+        hud.setBossPhase(phase.index);
 
-        if (gameManager != null && gameManager.getPlayer() != null) {
-            Player p = gameManager.getPlayer();
-            snapshot = new PlayerSnapshot();
-
-            snapshot.lives = p.getLives();
-            snapshot.mana  = p.getMana();
-
-            // ===== 技能快照 =====
-            AbilityManager am = p.getAbilityManager();
-            AbilityManagerSnapshot amSnap = new AbilityManagerSnapshot();
-
-            int index = 0;
-            Map<String, Ability> abilities = am.getAbilities();
-            Map<Ability, Integer> abilityIndexMap = new HashMap<>();
-
-            for (Map.Entry<String, Ability> entry : abilities.entrySet()) {
-                Ability a = entry.getValue();
-
-                AbilitySnapshot as = new AbilitySnapshot();
-                as.abilityId = entry.getKey();
-                as.level = a.getLevel();
-
-                amSnap.abilities.add(as);
-                abilityIndexMap.put(a, index++);
-            }
-
-            // 记录 slot 装备
-            Ability[] slots = am.getAbilitySlots();
-            for (int i = 0; i < slots.length; i++) {
-                Ability slotAbility = slots[i];
-                if (slotAbility != null) {
-                    amSnap.equippedSlots[i] = abilityIndexMap.get(slotAbility);
-                } else {
-                    amSnap.equippedSlots[i] = -1;
-                }
-            }
-
-            snapshot.abilitySnapshot = amSnap;
-        }
-
-        // ===============================
-        // 2️⃣ 创建新的 GameManager
-        // ===============================
         DifficultyConfig dc =
                 BossDifficultyFactory.create(
                         currentBossConfig.base,
                         phase
                 );
 
-        this.difficultyConfig = dc;
+        // ⭐ 用 phase.index
+        BossPhasePreloadData preload = phaseCache.get(phase.index);
 
-        if (gameManager != null) {
-            gameManager.dispose();
-        }
-        Gdx.input.setInputProcessor(null);
-        gameManager = new GameManager(dc, false);
-        gameManager.resetGame();
-        Player newPlayer = gameManager.getPlayer();
-
-        // ===============================
-        // 3️⃣ 恢复 Player 状态
-        // ===============================
-        if (snapshot != null) {
-            newPlayer.setLives(snapshot.lives);
-            newPlayer.setMana(snapshot.mana);
-
-            AbilityManager newAM = newPlayer.getAbilityManager();
-            AbilityManagerSnapshot amSnap = snapshot.abilitySnapshot;
-
-            // 恢复技能等级
-            for (AbilitySnapshot as : amSnap.abilities) {
-                Ability a = newAM.getAbilities().get(as.abilityId);
-                if (a != null) {
-                    a.setLevel(as.level);
-                }
-            }
-
-            // 恢复 slot 装备
-            Ability[] slots = newAM.getAbilitySlots();
-            for (int i = 0; i < slots.length; i++) {
-                int idx = amSnap.equippedSlots[i];
-                if (idx >= 0) {
-                    AbilitySnapshot as = amSnap.abilities.get(idx);
-                    slots[i] = newAM.getAbilities().get(as.abilityId);
-                } else {
-                    slots[i] = null;
-                }
-            }
+        if (preload != null) {
+            gameManager.rebuildMazeForBossWithPrebuilt(dc, preload.maze);
+        } else {
+            // 兜底（极少发生）
+            gameManager.rebuildMazeForBoss(dc);
         }
 
-        // ===============================
-        // 4️⃣ 相机 & Renderer - 关键修正：使用固定视野范围
-        // ===============================
-        mazeCameraManager = new CameraManager(dc);
-        OrthographicCamera cam = mazeCameraManager.getCamera();
+        difficultyConfig = dc;
 
-        // ✅ 关键修正：设置固定的视野范围（不是缩放整个迷宫）
-        // 计算固定视野的世界尺寸
-        float viewWorldWidth = MAZE_VIEW_CELLS_WIDTH * GameConstants.CELL_SIZE;
-        float viewWorldHeight = MAZE_VIEW_CELLS_HEIGHT * GameConstants.CELL_SIZE;
-
-        // 设置相机的固定视野
-        cam.viewportWidth = viewWorldWidth;
-        cam.viewportHeight = viewWorldHeight;
-        cam.zoom = 1.0f; // 不使用缩放，用固定视野
-
-        // 先更新相机
-        cam.update();
-
-        // 居中到玩家
-        mazeCameraManager.centerOnPlayerImmediately(newPlayer);
-
-        // 创建Boss战相机控制器
-        bossMazeCamera = new BossMazeCamera(cam, dc) {
-            @Override
-            public void update(float delta, Player player) {
-                super.update(delta, player);
-
-                // ✅ 保持相机在迷宫边界内
-                float halfViewW = cam.viewportWidth * cam.zoom / 2;
-                float halfViewH = cam.viewportHeight * cam.zoom / 2;
-                float mazeWidth = dc.mazeWidth * GameConstants.CELL_SIZE;
-                float mazeHeight = dc.mazeHeight * GameConstants.CELL_SIZE;
-
-                cam.position.x = Math.max(halfViewW, Math.min(cam.position.x, mazeWidth - halfViewW));
-                cam.position.y = Math.max(halfViewH, Math.min(cam.position.y, mazeHeight - halfViewH));
-                cam.update();
-            }
-        };
-
-        mazeRenderer = new BossMazeRenderer(gameManager, dc);
-        player = newPlayer;
-
-        // ✅ 关键：使用 ExtendViewport 而不是 FitViewport
-        // ExtendViewport会扩展世界而不是缩放
-
-        // 使用 ExtendViewport，设置最小世界尺寸
-        mazeViewport = new ExtendViewport(
-                viewWorldWidth,  // 最小宽度
-                viewWorldHeight, // 最小高度
-                cam
-        );
-        mazeViewport.update(screenWidth, screenHeight, false);
-
-// ⭐ phase 切换后，强制对齐相机
-        mazeCameraManager.centerOnPlayerImmediately(newPlayer);
-
-// ⭐ 确保 camera 的 combined 是最新的
-        mazeCameraManager.getCamera().update();
+        // ===== 相机 / Renderer =====
+        rebuildMazeCameraAndViewport(dc);
 
         aoeCycleTime = 0f;
         aoeTimers.clear();
-        gameManager.setEnemyKillListener(enemy -> {
-            // 🔥 魔法数字阶段
-            dealDamageToBoss(50f);
-        });
-        hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
-        hud.enableBossHUD(bossMaxHp);
-        hud.updateBossHp(bossHp);
+        activeAOEs.clear();
+
+        gameManager.setEnemyKillListener(e -> dealDamageToBoss(50f));
     }
+    private void rebuildMazeCameraAndViewport(DifficultyConfig dc) {
+
+        mazeCameraManager = new CameraManager(dc);
+        OrthographicCamera cam = mazeCameraManager.getCamera();
+
+        float viewW = MAZE_VIEW_CELLS_WIDTH * GameConstants.CELL_SIZE;
+        float viewH = MAZE_VIEW_CELLS_HEIGHT * GameConstants.CELL_SIZE;
+
+        cam.viewportWidth = viewW;
+        cam.viewportHeight = viewH;
+        cam.zoom = 1f;
+        cam.update();
+
+        mazeCameraManager.centerOnPlayerImmediately(player);
+
+        bossMazeCamera = new BossMazeCamera(cam, dc);
+        mazeRenderer = new BossMazeRenderer(gameManager, dc);
+
+        mazeViewport = new ExtendViewport(viewW, viewH, cam);
+        mazeViewport.update(screenWidth, screenHeight, false);
+    }
+
+
 
     @Override
     public void resize(int width, int height) {
@@ -1270,7 +1448,8 @@ public class BossFightScreen implements Screen {
     }
 
     private boolean isMazeFrozen() {
-        return bossDeathState != BossDeathState.NONE
+        return mazePaused
+                || bossDeathState != BossDeathState.NONE
                 || transitionState != PhaseTransitionState.NONE;
     }
 
@@ -1395,7 +1574,9 @@ public class BossFightScreen implements Screen {
     private static final float VICTORY_PV_TIME = 12f;
 
     private boolean shouldRenderGameplay() {
-        return mazeStarted && !inVictoryHold;
+        return mazeStarted
+                && !mazePaused   // ⭐ 新增
+                && !inVictoryHold;
     }
 
     public void startCupShake(

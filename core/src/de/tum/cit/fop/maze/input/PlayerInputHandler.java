@@ -25,16 +25,20 @@ public class PlayerInputHandler {
     }
 
     /**
-     * ⚠️ 这是 GameScreen 真正调用的方法
+     * ⚠️ 这是 GameScreen / BossFightScreen 真正调用的方法
      */
     public void update(
             float delta,
             InputHandlerCallback callback,
             Player.PlayerIndex index
     ) {
-        Logger.error("INPUT UPDATE CALLED");
-        if (callback.isUIConsumingMouse())
+        // ===============================
+        // 🔒 UI 吃输入 → 本帧彻底不处理任何 Gameplay Input
+        // ===============================
+        if (callback.isUIConsumingMouse()) {
             return;
+        }
+
         // ===== 移动 =====
         handleMovementInput(delta, callback, index);
 
@@ -43,8 +47,6 @@ public class PlayerInputHandler {
 
         // ===== 交互 =====
         handleActionInput(callback, index);
-
-
     }
 
     /* ================= 移动 ================= */
@@ -106,10 +108,6 @@ public class PlayerInputHandler {
             InputHandlerCallback callback,
             Player.PlayerIndex index
     ){
-        // 🔒 UI 吃鼠标 → 本帧不允许任何技能
-        if (callback.isUIConsumingMouse()) {
-            return;
-        }
         float cd = (index == Player.PlayerIndex.P1)
                 ? abilityCooldownP1
                 : abilityCooldownP2;
@@ -128,26 +126,22 @@ public class PlayerInputHandler {
 
         if (index == Player.PlayerIndex.P1) {
 
-            // P1：Space = 技能 / 近战
             if (km.isJustPressed(KeyBindingManager.GameAction.P1_USE_ABILITY)) {
                 used = callback.onAbilityInput(index, 0);
             }
 
-            // P1：Shift = Dash
             if (km.isJustPressed(KeyBindingManager.GameAction.P1_DASH)) {
-                used = callback.onAbilityInput(index,1);
+                used = callback.onAbilityInput(index, 1);
             }
 
         } else { // ===== P2 =====
 
-            // P2：鼠标左键 = 魔法技能
             if (km.isJustPressed(KeyBindingManager.GameAction.P2_USE_ABILITY)) {
                 used = callback.onAbilityInput(index, 0);
             }
 
-            // P2：鼠标右键 = Dash
             if (km.isJustPressed(KeyBindingManager.GameAction.P2_DASH)) {
-                used = callback.onAbilityInput(index,1);
+                used = callback.onAbilityInput(index, 1);
             }
         }
 

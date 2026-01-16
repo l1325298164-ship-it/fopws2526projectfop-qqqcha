@@ -38,7 +38,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     // ===== 延迟恢复用 =====
     private GameSaveData pendingRestoreData = null;
 
-    private final DifficultyConfig difficultyConfig;
+    private DifficultyConfig difficultyConfig;
     private float debugTimer = 0f;
 
     // ===== Endless Co-op Revive =====
@@ -359,12 +359,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return maze[y][x] == 1;
     }
     public void update(float delta) {
-        if (viewingChapterRelic) {
-            return;
-        }
-        inputHandler.update(delta, this, Player.PlayerIndex.P1);
-        if (twoPlayerMode) {
-            inputHandler.update(delta, this, Player.PlayerIndex.P2);
+        // ===== 输入 =====
+        if (!viewingChapterRelic) {
+            inputHandler.update(delta, this, Player.PlayerIndex.P1);
+            if (twoPlayerMode) {
+                inputHandler.update(delta, this, Player.PlayerIndex.P2);
+            }
         }
 
         if (playerSpawnPortal != null) {
@@ -1979,6 +1979,81 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             enemyKillListener.accept(enemy);
         }
     }
+    /**
+     * 🔥 Boss 专用：只重建迷宫与关卡内容
+     * ❗ 不创建 Player
+     * ❗ 不 reset 分数 / 技能 / Buff
+     */
+    public void rebuildMazeForBoss(DifficultyConfig dc) {
+
+        Logger.error("🔥 rebuildMazeForBoss CALLED");
+
+        this.difficultyConfig = dc;
+
+        // ===== 1️⃣ 重新生成 Maze =====
+        this.maze = generator.generateMaze(dc);
+
+        // ===== 2️⃣ 清空【环境实体】=====
+        enemies.clear();
+        traps.clear();
+        hearts.clear();
+        heartContainers.clear();
+        treasures.clear();
+        keys.clear();
+        obstacles.clear();
+        exitDoors.clear();
+        bullets.clear();
+
+        bobaBulletEffectManager.clearAllBullets(false);
+
+        // ===== 3️⃣ 重新生成关卡内容 =====
+        generateExitDoors();
+        generateEnemies();
+        generateTraps();
+        generateHearts();
+        generateTreasures();
+        generateKeys();
+        generateMovingWalls();
+
+        // ===== 4️⃣ 玩家重定位（不 new）=====
+        if (player != null) {
+            int[] spawn = randomEmptyCell();
+            player.teleportTo(spawn[0], spawn[1]);
+        }
+
+        // ===== 5️⃣ Boss 战中：禁止这些状态 =====
+        levelTransitionInProgress = false;
+        pendingReset = false;
+        justReset = false;
+
+        Logger.error("🔥 rebuildMazeForBoss DONE");
+    }
+
+    public void rebuildMazeForBossWithPrebuilt(
+            DifficultyConfig dc,
+            int[][] prebuiltMaze
+    ) {
+        this.difficultyConfig = dc;
+
+        this.maze = deepCopyMaze(prebuiltMaze);
+
+        enemies.clear();
+        traps.clear();
+        hearts.clear();
+        treasures.clear();
+        keys.clear();
+        obstacles.clear();
+        exitDoors.clear();
+
+        generateExitDoors();
+        generateEnemies();
+        generateTraps();
+        generateHearts();
+        generateTreasures();
+        generateKeys();
+        generateMovingWalls();
+    }
+
 
 
 }

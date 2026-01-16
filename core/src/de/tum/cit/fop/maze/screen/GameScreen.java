@@ -22,10 +22,13 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
+import de.tum.cit.fop.maze.entities.boss.BossFoundDialog;
+import de.tum.cit.fop.maze.entities.boss.BossLoadingScreen;
 import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
 import de.tum.cit.fop.maze.entities.chapter.Chapter1RelicDialog;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
@@ -77,7 +80,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
     @Override
     public void onChapter1RelicRequested(Chapter1Relic relic) {
 
-        // 1️⃣ 通知 GameManager：进入查看态（停游戏逻辑）
+        // ① 进入“查看遗物态”，暂停世界 update
         gm.enterChapterRelicView();
 
         Chapter1RelicDialog dialog =
@@ -86,27 +89,65 @@ public class GameScreen implements Screen, Chapter1RelicListener {
                         relic
                 );
 
+        // ===============================
+        // ✅ 读完遗物（推进剧情）
+        // ===============================
         dialog.setOnRead(() -> {
-            gm.exitChapterRelicView();
-            dialog.hide();
 
-            // ✅ 关闭后：把输入还给“游戏”
+            // 1️⃣ 通知 GameManager：遗物已阅读
+            gm.readChapter1Relic(relic);
+
+            // 2️⃣ 退出查看态
+            gm.exitChapterRelicView();
+
+            dialog.hide();
             Gdx.input.setInputProcessor(null);
+
+            // ===============================
+            // 🔥 接 Boss 遭遇 Dialog
+            // ===============================
+            BossFoundDialog bossDialog =
+                    new BossFoundDialog(game.getSkin());
+
+            bossDialog.setOnFight(() -> {
+                // 👉 这里放你之后的 Boss 战逻辑
+                Logger.gameEvent("⚔️ Player chose to fight Boss");
+                // ❗ 停止当前世界 BGM（如果有）
+                AudioManager.getInstance().stopMusic();
+
+                // 👉 进入 Boss Loading Screen
+                game.setScreen(
+                        new BossLoadingScreen(game)
+                );
+            });
+
+            bossDialog.setOnEscape(() -> {
+                Logger.gameEvent("🏃 Player escaped Boss");
+                // 什么都不做即可，继续游戏
+            });
+
+            bossDialog.show(uiStage);
+            Gdx.input.setInputProcessor(uiStage);
         });
 
+        // ===============================
+        // ❌ 丢弃遗物（ESC）
+        // ===============================
         dialog.setOnDiscard(() -> {
-            gm.exitChapterRelicView();
-            dialog.hide();
 
-            // ✅ 关闭后：把输入还给“游戏”
+            gm.discardChapter1Relic(relic);
+            gm.exitChapterRelicView();
+
+            dialog.hide();
             Gdx.input.setInputProcessor(null);
         });
 
         dialog.show(uiStage);
 
-        // 2️⃣ 打开 Dialog 时：输入只给 UI
+        // 打开遗物 Dialog 时：输入只给 UI
         Gdx.input.setInputProcessor(uiStage);
     }
+
     private final ChapterContext chapterContext;
     private BitmapFont worldHintFont;
 
@@ -167,6 +208,11 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         gm = game.getGameManager();
 
         gm.setChapter1RelicListener(this);
+        // ⭐⭐⭐ 关键修复：剧情模式下，确保世界被初始化
+        if (gm.getPlayers().isEmpty()) {
+            Logger.error("🧩 GameScreen.show(): players empty, calling resetGame()");
+            gm.resetGame();
+        }
 
         maze = new MazeRenderer(gm, difficultyConfig);
         cam  = new CameraManager(difficultyConfig);
