@@ -44,9 +44,14 @@ public class Treasure extends GameObject {
     private void open(Player player) {
         isOpened = true;
 
+        // 🔥 注意：如果你不想让每个宝箱都触发Relic逻辑（比如只在特定关卡触发），
+        // 请把下面这行注释掉，或者加 if 判断。
+        // player.requestChapter1RelicFromTreasure(this);
+
         // === 🎲 智能掉落逻辑 ===
-        // 只掉落玩家还没有的 Buff
-        player.requestChapter1RelicFromTreasure(this);
+        // 逻辑：只要玩家还没集齐3个Buff，就从缺少的Buff里随机给一个。
+        // 等玩家集齐了，dropPool 就会变空，自然就走 else 给 20HP。
+
         List<Integer> dropPool = new ArrayList<>();
 
         // 0. 检查是否已有 攻击 Buff
@@ -66,40 +71,55 @@ public class Treasure extends GameObject {
 
         // --- 抽取奖励 ---
         if (!dropPool.isEmpty()) {
+            // ✅ 情况 A: 玩家还没满Buff，随机给一个缺的
             int randomIndex = MathUtils.random(0, dropPool.size() - 1);
             int choice = dropPool.get(randomIndex);
 
             switch (choice) {
                 case 0:
-                    // 对应：本关攻击力加 50%
                     player.activateAttackBuff();
+                    if (player.getGameManager() != null && player.getGameManager().getCombatEffectManager() != null) {
+                        float tx = player.getWorldX() * GameConstants.CELL_SIZE;
+                        float ty = player.getWorldY() * GameConstants.CELL_SIZE + 40;
+                        player.getGameManager().getCombatEffectManager().spawnStatusText(tx, ty, "ATTACK UP", Color.RED);
+                    }
+                    Logger.gameEvent("宝箱奖励: 攻击力提升!");
                     break;
                 case 1:
-                    // 对应：本关每五秒自动回复五点 HP
                     player.activateRegenBuff();
+                    if (player.getGameManager() != null && player.getGameManager().getCombatEffectManager() != null) {
+                        float tx = player.getWorldX() * GameConstants.CELL_SIZE;
+                        float ty = player.getWorldY() * GameConstants.CELL_SIZE + 40;
+                        player.getGameManager().getCombatEffectManager().spawnStatusText(tx, ty, "REGEN ON", Color.GREEN);
+                    }
+                    Logger.gameEvent("宝箱奖励: 自动回血!");
                     break;
                 case 2:
-                    // 对应：本关内降低蓝耗 (50%)
                     player.activateManaBuff();
+                    if (player.getGameManager() != null && player.getGameManager().getCombatEffectManager() != null) {
+                        float tx = player.getWorldX() * GameConstants.CELL_SIZE;
+                        float ty = player.getWorldY() * GameConstants.CELL_SIZE + 40;
+                        player.getGameManager().getCombatEffectManager().spawnStatusText(tx, ty, "MANA UP", Color.CYAN);
+                    }
+                    Logger.gameEvent("宝箱奖励: 蓝耗减少!");
                     break;
             }
         } else {
-            // 保底奖励 (如果全齐了)
-            // 1. 回血 (自动飘绿色 +HP)
+            // ✅ 情况 B: 玩家Buff全满了，给保底奖励 (HP +20)
+
             player.heal(20);
 
-            // 2. 🔥 修复：显示蓝色小字 POTION，代替原来的黄色乱码通知
+            // 显示蓝色小字 POTION
             if (player.getGameManager() != null && player.getGameManager().getCombatEffectManager() != null) {
                 player.getGameManager().getCombatEffectManager().spawnStatusText(
                         player.getWorldX() * GameConstants.CELL_SIZE,
-                        player.getWorldY() * GameConstants.CELL_SIZE + 60, // 稍微高一点
-                        "POTION",
+                        player.getWorldY() * GameConstants.CELL_SIZE + 60,
+                        "POTION +20",
                         Color.BLUE
                 );
             }
+            Logger.gameEvent("宝箱奖励: 生命药水");
         }
-
-        Logger.gameEvent("宝箱打开了！获得了增幅！");
     }
 
     @Override
@@ -117,6 +137,7 @@ public class Treasure extends GameObject {
     private void updateTexture() {
         if (closedTexture == null || openTexture == null) {
             try {
+                // 确保你的路径是对的，如果有问题请检查 Assets 文件夹
                 closedTexture = new Texture(Gdx.files.internal("Items/chest_closed.png"));
                 openTexture = new Texture(Gdx.files.internal("Items/chest_open.png"));
             } catch (Exception e) {
