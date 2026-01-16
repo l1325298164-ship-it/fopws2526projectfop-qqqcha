@@ -259,10 +259,10 @@ public class BossFightScreen implements Screen {
 
         aoeFillTex = new Texture(Gdx.files.internal("effects/aoe_fill.png"));
         aoeRingTex = new Texture(Gdx.files.internal("effects/aoe_ring.png"));
-        bossTimeline = BossTimelineLoader.load("boss/boss_timeline.json");
+        bossTimeline = BossTimelineLoader.load("story_file/boss/boss_timeline.json");
         timelineRunner = new BossTimelineRunner(bossTimeline);
 
-        currentBossConfig = BossMazeConfigLoader.loadOne("story_file/boss/boss_timeline.json");
+        currentBossConfig = BossMazeConfigLoader.loadOne("story_file/boss/boss_phases.json");
         phaseSelector = new BossMazePhaseSelector(currentBossConfig.phases);
         if (currentBossConfig.aoeTimeline != null) {
             Gdx.app.log(
