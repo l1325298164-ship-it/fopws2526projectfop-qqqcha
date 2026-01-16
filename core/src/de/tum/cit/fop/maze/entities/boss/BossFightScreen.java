@@ -745,7 +745,7 @@ public class BossFightScreen implements Screen {
 
     // ===== BGM delay =====
     private float pvTimer = 0f;
-    private static final float BGM_DELAY = 3f;
+    private static final float BGM_DELAY = 0.5f;
     private boolean bossBgmStarted = false;
 
     private void update(float delta) {
@@ -1392,7 +1392,7 @@ public class BossFightScreen implements Screen {
         victoryEndTimer = 0f;
     }
     private float victoryEndTimer = 0f;
-    private static final float VICTORY_PV_TIME = 13.0f;
+    private static final float VICTORY_PV_TIME = 12f;
 
     private boolean shouldRenderGameplay() {
         return mazeStarted && !inVictoryHold;
