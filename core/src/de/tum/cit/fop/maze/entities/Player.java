@@ -90,7 +90,7 @@ public class Player extends GameObject {
 
     private boolean moving = false;
     private float moveTimer = 0f;
-    private static final float MOVE_COOLDOWN = 0.35f;
+    private static final float MOVE_COOLDOWN = 0.19f;
 
     private TextureAtlas frontAtkAtlas, backAtkAtlas, leftAtkAtlas, rightAtkAtlas;
     private Animation<TextureRegion> frontAtkAnim, backAtkAnim, leftAtkAnim, rightAtkAnim;

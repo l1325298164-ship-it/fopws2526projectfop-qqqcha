@@ -10,9 +10,8 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.game.ChapterContext;
+import de.tum.cit.fop.maze.entities.chapter.ChapterContext;
 import de.tum.cit.fop.maze.game.Difficulty;
-import de.tum.cit.fop.maze.game.DifficultyConfig;
 
 /**
  * Chapter Select Screen

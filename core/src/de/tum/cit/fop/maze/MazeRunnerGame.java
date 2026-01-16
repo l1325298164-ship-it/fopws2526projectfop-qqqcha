@@ -20,6 +20,7 @@ import de.tum.cit.fop.maze.audio.AudioConfig;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.boss.BossLoadingScreen;
+import de.tum.cit.fop.maze.entities.chapter.ChapterContext;
 import de.tum.cit.fop.maze.game.*;
 import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.screen.*;
@@ -136,9 +137,22 @@ public class MazeRunnerGame extends Game {
         gameManager = new GameManager(difficultyConfig, twoPlayerMode);
 
         spriteBatch = new SpriteBatch();
+        // 1️⃣ 先建空 Skin
+        this.skin = new Skin();
 
-        TextureAtlas uiAtlas = new TextureAtlas(Gdx.files.internal("ui/button.atlas"));
-        skin = new Skin(Gdx.files.internal("ui/skinbutton.json"), uiAtlas);
+// 2️⃣ 先 add 所有 atlas（不管 JSON 现在用不用）
+        TextureAtlas buttonAtlas = new TextureAtlas(
+                Gdx.files.internal("ui/button.atlas")
+        );
+        TextureAtlas windowAtlas = new TextureAtlas(
+                Gdx.files.internal("Skin/skin.atlas")
+        );
+
+        skin.addRegions(buttonAtlas);
+        skin.addRegions(windowAtlas);
+
+// 3️⃣ 再 load JSON（现在所有 drawable 都能被解析）
+        skin.load(Gdx.files.internal("ui/skinbutton.json"));
 
         // 1. 创建白色像素（用于后续默认背景）
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);

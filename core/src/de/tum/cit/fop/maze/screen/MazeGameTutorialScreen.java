@@ -370,7 +370,7 @@ public class MazeGameTutorialScreen implements Screen {
         renderHUD();
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            finishTutorial(MazeGameTutorialResult.EXIT_BY_PLAYER);
+            finishTutorial(MazeGameTutorialResult.SUCCESS);
         }
     }
     private boolean reachedGoal() {

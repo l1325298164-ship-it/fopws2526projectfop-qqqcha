@@ -5,25 +5,27 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.GameObject;
 import de.tum.cit.fop.maze.entities.Player;
-import de.tum.cit.fop.maze.game.ChapterContext;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
 
 public class Chapter1Relic extends GameObject {
 
+    private final RelicData data;
     private final ChapterContext chapterContext;
 
-    /** 本局是否移除（丢弃 or 阅读后） */
+    /** 本局是否移除（读/丢弃后立即从世界隐藏） */
     private boolean removedThisRun = false;
 
     private static Texture relicTexture;
 
-    public Chapter1Relic(int x, int y, ChapterContext chapterContext) {
+    public Chapter1Relic(int x, int y, RelicData data, ChapterContext chapterContext) {
         super(x, y);
+        this.data = data;
         this.chapterContext = chapterContext;
 
-        if (chapterContext.isChapter1RelicRead()) {
+        // ✅ 新系统：如果这个 id 已经处理过（READ/DISCARDED），永远不再显示
+        if (chapterContext != null && chapterContext.isRelicConsumed(data.id)) {
             removedThisRun = true;
             return;
         }
@@ -32,31 +34,63 @@ public class Chapter1Relic extends GameObject {
             relicTexture = new Texture("Items/chapter1_relic.png");
         }
 
-        Logger.gameEvent("📜 Chapter 1 Relic spawned at " + getPositionString());
+        Logger.gameEvent("📜 Relic spawned id=" + data.id + " at " + getPositionString());
     }
 
     @Override
     public void onInteract(Player player) {
-        if (removedThisRun) return;
+        if (removedThisRun) {
+            Logger.error("❌ onInteract called but relic already removed id=" + data.id);
+            return;
+        }
+        if (player == null) {
+            Logger.error("❌ onInteract called with null player id=" + data.id);
+            return;
+        }
 
-        // ⚠️ Entity 不直接创建 UI
-        // 只通知 Player / GameManager
+        Logger.error("👉 RELIC INTERACT id=" + data.id);
+
         player.requestChapter1Relic(this);
     }
 
     /* ================= 玩家选择结果 ================= */
 
-    /** 玩家选择【阅读】 → 永久消失 */
     public void onRead() {
-        chapterContext.markChapter1RelicRead();
+        if (removedThisRun) {
+            Logger.error("❌ onRead called but already removed id=" + data.id);
+            return;
+        }
+
+        Logger.error("📖 RELIC READ CLICKED id=" + data.id);
+
+        if (chapterContext != null) {
+            chapterContext.markRelicRead(data.id);
+        } else {
+            Logger.error("❌ chapterContext is NULL onRead id=" + data.id);
+        }
+
         removedThisRun = true;
-        Logger.gameEvent("📖 Chapter 1 Relic READ (permanent)");
     }
 
-    /** 玩家选择【丢弃】 → 本局消失，下次还会生成 */
     public void onDiscard() {
+        if (removedThisRun) {
+            Logger.error("❌ onDiscard called but already removed id=" + data.id);
+            return;
+        }
+
+        Logger.error("🗑 RELIC DISCARDED id=" + data.id);
+
+        if (chapterContext != null) {
+            chapterContext.markRelicDiscarded(data.id);
+        }
+
         removedThisRun = true;
-        Logger.gameEvent("🗑 Chapter 1 Relic DISCARDED (respawn next run)");
+    }
+
+    /* ================= 给 UI 取数据 ================= */
+
+    public RelicData getData() {
+        return data;
     }
 
     /* ================= GameObject ================= */
@@ -68,7 +102,7 @@ public class Chapter1Relic extends GameObject {
 
     @Override
     public boolean isPassable() {
-        return true; // 踩过去不阻挡
+        return true;
     }
 
     @Override
@@ -86,21 +120,15 @@ public class Chapter1Relic extends GameObject {
 
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
-        // 不需要 Shape fallback
+        // no-op
     }
 
     @Override
     public RenderType getRenderType() {
-        TextureManager.TextureMode mode =
-                TextureManager.getInstance().getCurrentMode();
-
-        if (mode == TextureManager.TextureMode.IMAGE
-                || mode == TextureManager.TextureMode.PIXEL) {
+        TextureManager.TextureMode mode = TextureManager.getInstance().getCurrentMode();
+        if (mode == TextureManager.TextureMode.IMAGE || mode == TextureManager.TextureMode.PIXEL) {
             return RenderType.SPRITE;
         }
-
         return RenderType.SHAPE;
     }
-
-
 }

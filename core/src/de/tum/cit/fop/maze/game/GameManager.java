@@ -14,6 +14,9 @@ import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
+import de.tum.cit.fop.maze.entities.chapter.ChapterContext;
+import de.tum.cit.fop.maze.entities.chapter.ChapterDropType;
+import de.tum.cit.fop.maze.entities.chapter.RelicData;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.entities.trap.*;
@@ -35,6 +38,17 @@ import static com.badlogic.gdx.math.MathUtils.random;
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
+
+    // ===== Chapter Boss Trigger =====
+    private boolean pendingChapterBossFound = false;
+
+    private boolean autoSaveEnabled = true;
+
+    public void setAutoSaveEnabled(boolean enabled) {
+        this.autoSaveEnabled = enabled;
+    }
+
+
     // ===== 延迟恢复用 =====
     private GameSaveData pendingRestoreData = null;
 
@@ -104,7 +118,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private int currentLevel = 1;
 
     private PortalEffectManager playerSpawnPortal;
-    private final ChapterContext  chapterContext;
+    private final ChapterContext chapterContext;
     private boolean chapterMode = false;
     private Chapter1Relic chapter1Relic;
     private final List<Chapter1Relic> chapterRelics = new ArrayList<>();
@@ -233,7 +247,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
 
             generateLevel();
-
 
 
         compass = new Compass(player);
@@ -487,6 +500,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         autoSaveTimer += delta;
         if (autoSaveTimer >= AUTO_SAVE_INTERVAL) {
             autoSaveTimer = 0f;
+            if (!autoSaveEnabled) {
+                Logger.error("⛔ AutoSave skipped (disabled)");
+                return;
+            }
             if (restoringFromSave) return;
             if (!levelTransitionInProgress && player != null && !player.isDead()) {
 
@@ -766,6 +783,33 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.gameEvent("Level " + currentLevel + " completed");
         currentLevel++;
 
+        Logger.error("=== RELIC STATE DUMP BEFORE BOSS CHECK ===");
+        chapterContext.dumpRelicStates();
+        if (chapterContext.areAllRelicsRead()) {
+            chapterContext.markBossUnlocked();
+        }
+        // ===============================
+        // 🔥 Chapter 1：三 relic 全读 → Boss
+        // ===============================
+        if (chapterMode
+                && chapterContext != null
+                && chapterContext.getChapterId() == 1
+                && chapterContext.areAllRelicsRead()) {
+
+            if (chapterContext != null
+                    && chapterContext.getChapterId() == 1
+                    && chapterContext.areAllRelicsRead()) {
+
+//                chapterContext.markBossPending();
+
+                Logger.gameEvent("👁 Chapter 1 Boss marked pending");
+            }
+
+            Logger.gameEvent("👁 All Chapter 1 relics read — Boss will find player next floor");
+        }
+
+
+
         if (currentLevel > GameConstants.MAX_LEVELS) {
             Logger.gameEvent("Game completed!");
             return;
@@ -773,6 +817,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         requestReset();
     }
+    public boolean consumeChapterBossFoundFlag() {
+        if (pendingChapterBossFound) {
+            pendingChapterBossFound = false;
+            return true;
+        }
+        return false;
+    }
+
     public void onKeyCollected() {
         player.setHasKey(true);
         unlockAllExitDoors();
@@ -934,7 +986,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                         itemEffectManager.spawnTreasure(fx, fy);
                     }
 
-                    t.onInteract(p);
+                    onTreasureOpened(p, t);
                     GameEventSource.getInstance().onItemCollected("TREASURE");
                     treasureIterator.remove();
 
@@ -1756,24 +1808,34 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
     public void onTreasureOpened(Player player, Treasure treasure) {
-        Logger.debug(
-                "onTreasureOpened | chapterContext=" + chapterContext
-        );
-        if (chapterMode && chapterContext.shouldSpawnChapter1Relic()){
 
-            Chapter1Relic relic = new Chapter1Relic(
-                    treasure.getX(),
-                    treasure.getY(),
-                    chapterContext
-            );
-
-            spawnChapter1Relic(relic);
+        // 非章节模式 → 普通宝箱
+        if (!chapterMode || chapterContext == null) {
+            applyTreasureBuff(player);
+            treasure.onInteract(player);
             return;
         }
 
-        // 否则走原 Buff 逻辑
-        applyTreasureBuff(player);
+        // 🔥 新逻辑：每次宝箱都“请求 relic”
+        RelicData data = chapterContext.requestRelic();
+
+        if (data != null) {
+            Chapter1Relic relic = new Chapter1Relic(
+                    treasure.getX(),
+                    treasure.getY(),
+                    data,
+                    chapterContext
+            );
+            spawnChapter1Relic(relic);
+        } else {
+            // 没有可用 relic → 普通奖励
+            applyTreasureBuff(player);
+        }
+
+        treasure.onInteract(player);
     }
+
+
     private void applyTreasureBuff(Player player) {
 
         // === 🎲 智能掉落逻辑 ===
