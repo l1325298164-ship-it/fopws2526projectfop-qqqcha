@@ -123,14 +123,14 @@ public class MazeGameTutorialScreen implements Screen {
 
 
         mazeTexture = new Texture(
-                Gdx.files.internal("ui/tutorial_bg.png")
+                Gdx.files.internal("story_file/tutorial_bg.png.png")
         );
 
         mazeMask = new Pixmap(
-                Gdx.files.internal("ui/tutorial_mask.png")
+                Gdx.files.internal("story_file/tutorial_mask.png")
         );
-        mazeMask = new Pixmap(Gdx.files.internal("ui/tutorial_mask.png"));
-        goalTexture = new Texture(Gdx.files.internal("ui/goal_icon.png"));
+        mazeMask = new Pixmap(Gdx.files.internal("story_file/tutorial_mask.png"));
+        goalTexture = new Texture(Gdx.files.internal("story_file/goal_icon.png"));
         findSpawnByCode(); // 注意：这里用的是「屏幕坐标」
 
         // === Tutorial 专用 GameManager（只给 Player 用）===
