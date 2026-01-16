@@ -245,10 +245,10 @@ public class BossFightScreen implements Screen {
         var assets = game.getAssets();
 
 // ===== 背景 & 茶杯 =====
-        teacupTex = assets.get("debug/teacup_top.png", Texture.class);
+        teacupTex = assets.get("story_file/boss/teacup_top.png", Texture.class);
 
 // ===== Boss Atlas Animation =====
-        bossAtlas = assets.get("bossFight/BOSS_PV.atlas", TextureAtlas.class);
+        bossAtlas = assets.get("story_file/boss/bossFight/BOSS_PV.atlas", TextureAtlas.class);
 
 // 因为只有一个动画，直接用全部 regions
         bossAnim = new Animation<>(
@@ -259,10 +259,10 @@ public class BossFightScreen implements Screen {
 
         aoeFillTex = new Texture(Gdx.files.internal("effects/aoe_fill.png"));
         aoeRingTex = new Texture(Gdx.files.internal("effects/aoe_ring.png"));
-        bossTimeline = BossTimelineLoader.load("boss/boss_timeline.json");
+        bossTimeline = BossTimelineLoader.load("story_file/boss/boss_timeline.json");
         timelineRunner = new BossTimelineRunner(bossTimeline);
 
-        currentBossConfig = BossMazeConfigLoader.loadOne("boss/boss_phases.json");
+        currentBossConfig = BossMazeConfigLoader.loadOne("story_file/boss/boss_phases.json");
         phaseSelector = new BossMazePhaseSelector(currentBossConfig.phases);
         if (currentBossConfig.aoeTimeline != null) {
             Gdx.app.log(
@@ -1196,61 +1196,6 @@ public class BossFightScreen implements Screen {
 private boolean mazePreloaded = false;
     private boolean mazePaused = true;
 
-//private void applyPhase(BossMazeConfig.Phase phase) {
-//
-//    phaseTime = 0f;
-//
-//    DifficultyConfig dc =
-//            BossDifficultyFactory.create(
-//                    currentBossConfig.base,
-//                    phase
-//            );
-//
-//    // ===== 第一次进入 Boss =====
-//    if (gameManager == null) {
-//
-//        gameManager = new GameManager(dc, false);
-//        gameManager.resetGame(); // ✅ 只允许第一次
-//
-//        player = gameManager.getPlayer();
-//
-//        hud = new de.tum.cit.fop.maze.ui.HUD(gameManager);
-//        hud.enableBossHUD(bossMaxHp);
-//        hud.updateBossHp(bossHp);
-//
-//    } else {
-//        // ===== Phase 切换：安全重建 =====
-//        gameManager.rebuildMazeForBoss(dc);
-//    }
-//
-//    difficultyConfig = dc;
-//
-//    // ===== 相机 / Renderer（你原来的逻辑）=====
-//    mazeCameraManager = new CameraManager(dc);
-//    OrthographicCamera cam = mazeCameraManager.getCamera();
-//
-//    float viewW = MAZE_VIEW_CELLS_WIDTH * GameConstants.CELL_SIZE;
-//    float viewH = MAZE_VIEW_CELLS_HEIGHT * GameConstants.CELL_SIZE;
-//
-//    cam.viewportWidth = viewW;
-//    cam.viewportHeight = viewH;
-//    cam.zoom = 1f;
-//    cam.update();
-//
-//    mazeCameraManager.centerOnPlayerImmediately(player);
-//
-//    bossMazeCamera = new BossMazeCamera(cam, dc);
-//    mazeRenderer = new BossMazeRenderer(gameManager, dc);
-//
-//    mazeViewport = new ExtendViewport(viewW, viewH, cam);
-//    mazeViewport.update(screenWidth, screenHeight, false);
-//
-//    aoeCycleTime = 0f;
-//    aoeTimers.clear();
-//    activeAOEs.clear();
-//
-//    gameManager.setEnemyKillListener(e -> dealDamageToBoss(50f));
-//}
 private final Map<Integer, BossPhasePreloadData> phaseCache =
         new ConcurrentHashMap<>();
 

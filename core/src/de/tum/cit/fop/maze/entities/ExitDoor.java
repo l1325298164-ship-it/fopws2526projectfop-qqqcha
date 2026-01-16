@@ -41,23 +41,23 @@ public class ExitDoor extends GameObject {
         try {
             // 只加载四个方向的锁定门贴图
             lockedTextures.put(DoorDirection.UP,
-                    new Texture(Gdx.files.internal("Items/door_up_locked.png")));
+                    new Texture(Gdx.files.internal("imgs/Items/door_up_locked.png")));
             lockedTextures.put(DoorDirection.DOWN,
-                    new Texture(Gdx.files.internal("Items/door_down_locked.png")));
+                    new Texture(Gdx.files.internal("imgs/Items/door_down_locked.png")));
             lockedTextures.put(DoorDirection.LEFT,
-                    new Texture(Gdx.files.internal("Items/door_left_locked.png")));
+                    new Texture(Gdx.files.internal("imgs/Items/door_left_locked.png")));
             lockedTextures.put(DoorDirection.RIGHT,
-                    new Texture(Gdx.files.internal("Items/door_right_locked.png")));
+                    new Texture(Gdx.files.internal("imgs/Items/door_right_locked.png")));
 
             // 解锁门贴图（如果存在的话）
             unlockedTextures.put(DoorDirection.UP,
-                    new Texture(Gdx.files.internal("Items/door_up_locked.png")));
+                    new Texture(Gdx.files.internal("imgs/Items/door_up_locked.png")));
             unlockedTextures.put(DoorDirection.DOWN,
-                    new Texture(Gdx.files.internal("Items/door_down_locked.png")));
+                    new Texture(Gdx.files.internal("imgs/Items/door_down_locked.png")));
             unlockedTextures.put(DoorDirection.LEFT,
-                    new Texture(Gdx.files.internal("Items/door_left_locked.png")));
+                    new Texture(Gdx.files.internal("imgs/Items/door_left_locked.png")));
             unlockedTextures.put(DoorDirection.RIGHT,
-                    new Texture(Gdx.files.internal("Items/door_right_locked.png")));
+                    new Texture(Gdx.files.internal("imgs/Items/door_right_locked.png")));
 
             Logger.debug("ExitDoor created at (" + x + ", " + y + ") facing " + direction);
         } catch (Exception e) {

@@ -79,7 +79,7 @@ public class HeartContainer extends GameObject {
             try {
                 // ⚠️ 确保 assets/Items/heart_container.png 存在！
                 // 如果没有图片，会捕获异常并显示为橙色方块
-                containerTexture = new Texture(Gdx.files.internal("Items/heart_container.png"));
+                containerTexture = new Texture(Gdx.files.internal("ani/Items/heart_container.png"));
             } catch (Exception e) {
                 Logger.error("HeartContainer texture missing, using fallback shape: " + e.getMessage());
             }

@@ -26,7 +26,7 @@ public class ChapterContext {
 
     public static ChapterContext chapter1() {
         ChapterContext ctx = new ChapterContext(1);
-        ctx.loadDropData("chapters/chapter1_relics.json");
+        ctx.loadDropData("story_file/chapters/chapter1_relics.json");
         return ctx;
     }
 

@@ -6,79 +6,53 @@ package de.tum.cit.fop.maze.audio;
  */
 public enum AudioType {
     // === 音乐 ===
-    MUSIC_MENU("sounds/music/menu-background.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MENU("sounds_file/BGM/maze_bgm.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MAZE_EASY("sounds_file/BGM/maze_easy.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MAZE_NORMAL("sounds_file/BGM/maze_normal.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MAZE_HARD("sounds_file/BGM/maze_hard.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
+    MUSIC_MAZE_ENDLESS("sounds_file/BGM/maze_endless.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
 
     // === 玩家音效 ===
-    PLAYER_MOVE("sounds/sfx/player/move01.wav", AudioCategory.PLAYER, false, 0.8f, true, false),
-    PLAYER_GET_KEY("sounds/sfx/player/get-key.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
-    PLAYER_HIT_WALL("sounds/sfx/player/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
-    PLAYER_ATTACKED("sounds/sfx/player/attacked01.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
+    PLAYER_MOVE("sounds_file/SFX/move01.wav", AudioCategory.PLAYER, false, 0.8f, true, false),
+    PLAYER_GET_KEY("sounds_file/SFX/get-key.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
+    PLAYER_HIT_WALL("sounds_file/SFX/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
+    PLAYER_ATTACKED("sounds_file/SFX/melee_1.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
     // === PV ===
-    PV_1("sounds/pv/PV1.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
-    PV_2("sounds/pv/PV2.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
-    PV_3("sounds/pv/PV3.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
-    PV_4("sounds/pv/PV4.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_1("sounds_file/BGM/pv/PV1.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_2("sounds_file/BGM/pv/PV2.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_3("sounds_file/BGM/pv/PV3.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
+    PV_4("sounds_file/BGM/pv/PV4.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
 
 
 
     // === 敌人音效 ===
-    ENEMY_ATTACKED("sounds/sfx/enemy/attacked01.wav", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACKED("sounds_file/SFX/attacked02.wav", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACKED_E01("sounds_file/SFX/attack_E01.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACKED_E02("sounds_file/SFX/attack_E02.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACKED_E03("sounds_file/SFX/attack_E03.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+
 
     // === UI音效 ===
-    UI_CLICK("sounds/sfx/ui/click01.wav", AudioCategory.UI, false, 0.6f, false, true),
-    UI_SUCCESS("sounds/sfx/ui/enter-next-level.ogg", AudioCategory.UI, false, 0.8f, false, true),
-    UI_FAILURE("sounds/sfx/ui/game-failure.wav", AudioCategory.UI, false, 0.8f, false, true),
-    UI_HIT_DAZZLE("sounds/sfx/ui/click02.wav", AudioCategory.UI, false, 1.0f, false, true),
-    UI_THROW_ATTACK("sounds/sfx/ui/throw-attack.wav", AudioCategory.UI, false, 1.0f, false, true),
-    SWORD_SWING("sounds/sfx/ui/throw-attack.wav", AudioCategory.UI, false, 1.0f, false, true),
+    UI_CLICK("sounds_file/SFX/click01.wav", AudioCategory.UI, false, 0.6f, false, true),
+    UI_SUCCESS("sounds_file/SFX/btn_3.mp3", AudioCategory.UI, false, 0.8f, false, true),
+    UI_FAILURE("sounds_file/SFX/btn_1.ogg", AudioCategory.UI, false, 0.8f, false, true),
+    UI_HIT_DAZZLE("sounds_file/SFX/click02.wav", AudioCategory.UI, false, 1.0f, false, true),
+    UI_THROW_ATTACK("sounds_file/SFX/btn_2.mp3", AudioCategory.UI, false, 1.0f, false, true),
 //revision |||| sword
 
 
     //Tutorial
     TUTORIAL_MAIN_BGM(
-            "sounds/pv/Crystal Sugarquake.mp3",
+            "sounds_file/BGM/tutorial_bgm.mp3",
             AudioCategory.MUSIC,
             true,   // isMusic
             0.6f,
             true,   // loop
             false
     ),
-    TUTORIAL_IDLE_HINT(
-            "sounds/temprorary/attacked03.wav",
-            AudioCategory.AMBIENT,
-            false,  // ❗ 不是 Music
-            0.7f,
-            false,
-            true
-    ),
-
-    TUTORIAL_SLOW_HINT(
-            "sounds/temprorary/attacked03.wav",
-            AudioCategory.AMBIENT,
-            false,
-            0.7f,
-            false,
-            true
-    ),
-
-    TUTORIAL_FAST_FEEDBACK(
-            "sounds/temprorary/attacked03.wav",
-            AudioCategory.AMBIENT,
-            false,
-            0.8f,
-            false,
-            true
-    ),
-
-    TUTORIAL_TARGET_HINT(
-            "sounds/temprorary/attacked03.wav",
-            AudioCategory.AMBIENT,
-            false,
-            0.7f,
-            false,
-            true
-    ), BOSS_BGM("sounds/music/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, false, false),
-    MUSIC_MENU_END("sounds/music/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, true, false);
+    BOSS_BGM("sounds_file/BGM/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, false, false),
+    MUSIC_MENU_END("sounds_file/BGM/menu_bgm2.mp3",AudioCategory.MUSIC, true, 0.7f, true, false),
+    BOSS_LOADING("sounds_file/BGM/BOSS_loading.wav",AudioCategory.MUSIC, true, 0.7f, true, false);
 
 
 

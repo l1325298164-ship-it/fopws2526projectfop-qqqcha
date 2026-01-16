@@ -67,7 +67,7 @@ public class AchievementPopup {
 
         float delta = Gdx.graphics.getDeltaTime();
         updateAnimation(delta);
-
+        if (state == State.HIDDEN || currentAchievement == null) return;
         // === 计算动画状态 ===
         float screenW = Gdx.graphics.getWidth();
         float screenH = Gdx.graphics.getHeight();

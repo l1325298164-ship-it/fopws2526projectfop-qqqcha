@@ -31,7 +31,7 @@ public class Chapter1Relic extends GameObject {
         }
 
         if (relicTexture == null) {
-            relicTexture = new Texture("Items/chapter1_relic.png");
+            relicTexture = new Texture("imgs/Items/chapter1_relic.png");
         }
 
         Logger.gameEvent("📜 Relic spawned id=" + data.id + " at " + getPositionString());

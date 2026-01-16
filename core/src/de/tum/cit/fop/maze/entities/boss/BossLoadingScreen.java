@@ -63,25 +63,24 @@ public class BossLoadingScreen implements Screen {
     private void queueBossAssets() {
 
         // ===== Atlas =====
-        assets.load("bossFight/BOSS_PV.atlas", TextureAtlas.class);
+        assets.load("story_file/boss/bossFight/BOSS_PV.atlas", TextureAtlas.class);
 
         // ===== Textures =====
-        assets.load("debug/boss_bg.jpg", Texture.class);
-        assets.load("debug/teacup_top.png", Texture.class);
+        assets.load("story_file/boss/teacup_top.png", Texture.class);
 
         assets.load("effects/aoe_fill.png", Texture.class);
         assets.load("effects/aoe_ring.png", Texture.class);
 
         // ===== BGM =====
-        assets.load("sounds/music/boss_bgm.mp3", Music.class);
+        assets.load("sounds_file/BGM/boss_bgm.mp3", Music.class);
 
         // ===== Voice =====
-        assets.load("voice/boss/boss_1.ogg", Sound.class);
+        assets.load("story_file/boss/voice/boss_1.ogg", Sound.class);
     }
 
     @Override
     public void render(float delta) {
-
+        AudioManager.getInstance().playMusic(AudioType.BOSS_LOADING);
         // ⭐ 关键：重置为屏幕坐标
         batch.setProjectionMatrix(
                 new Matrix4().setToOrtho2D(
@@ -159,7 +158,6 @@ public class BossLoadingScreen implements Screen {
                 Align.center,
                 true
         );
-        Gdx.app.log("FONT", "scale=" + font.getData().scaleX);
 
         batch.end();
         font.getData().setScale(1f);
@@ -173,7 +171,7 @@ public class BossLoadingScreen implements Screen {
         new Thread(() -> {
 
             BossMazeConfig config =
-                    BossMazeConfigLoader.loadOne("boss/boss_phases.json");
+                    BossMazeConfigLoader.loadOne("story_file/boss/boss_phases.json");
 
             // ⭐ 每个线程一个独立 generator（安全）
             MazeGenerator generator = new MazeGenerator();

@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -46,6 +48,7 @@ public class EnemyE01_CorruptedPearl extends Enemy {
     public void takeDamage(int dmg) {
         // 先调用父类的通用伤害处理
         super.takeDamage(dmg);
+        AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED_E01);
 
         // 如果有特殊逻辑，可以在这里添加
         // 例如：受到伤害时有一定概率反击

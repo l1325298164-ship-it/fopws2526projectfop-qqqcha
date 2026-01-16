@@ -140,24 +140,12 @@ public class TextureManager implements Disposable {
         // IMAGE 模式：映射到实际的图片文件
         Map<String, String> imageMode = new HashMap<>();
 
-        imageMode.put(FLOOR, "floor/780.jpg");
-        imageMode.put(WALL, "Walls/wall_2.png");
-        imageMode.put(DOOR, "Items/door.png");
-        imageMode.put(LOCKED_DOOR, "Items/locked-door.png");
-
-        imageMode.put(PLAYER, "Character/mainCharacter.png");
-        imageMode.put(ENEMY1, "Character/Enemy1.png");
-        imageMode.put(ENEMY2, "Character/Enemy2.png");
-        imageMode.put(ENEMY3, "Character/Enemy3.png");
-        imageMode.put(ENEMY3AOE, "Character/Enemy3AOE.png");
-        imageMode.put(TRAP, "qte/trap.png"); // 路径示例
-        imageMode.put(CAT, "Items/heart.png");
-        imageMode.put(KEY, "Items/key_1.png");
+        imageMode.put(FLOOR, "imgs/floor/780.jpg");
+        imageMode.put(KEY, "imgs/Items/key_1.png");
 
 
 
-// 心心如果你有图可以补，没有也没关系
-// imageMode.put(HEART, "Items/heart.png");
+
 
         textureFileMap.put(TextureMode.IMAGE, imageMode);
 
