@@ -54,7 +54,6 @@ public class BossLoadingScreen implements Screen {
     @Override
     public void show() {
         showTime = TimeUtils.millis();
-        AudioManager.getInstance().playMusic(AudioType.BOSS_LOADING);
         font = game.getSkin().getFont("default-font");
         queueBossAssets();
         preloadAllPhasesAsync();
@@ -81,7 +80,7 @@ public class BossLoadingScreen implements Screen {
 
     @Override
     public void render(float delta) {
-
+        AudioManager.getInstance().playMusic(AudioType.BOSS_LOADING);
         // ⭐ 关键：重置为屏幕坐标
         batch.setProjectionMatrix(
                 new Matrix4().setToOrtho2D(
