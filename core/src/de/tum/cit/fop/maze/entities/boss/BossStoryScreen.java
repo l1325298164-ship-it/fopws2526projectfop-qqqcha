@@ -18,11 +18,10 @@ public class BossStoryScreen implements Screen {
     private OrthographicCamera camera;
 
     private final String[] storyLines = {
-            "The tea has cooled.",
-            "The maze falls silent.",
-            "",
-            "But some echoes remain..."
+            "You have escaped this cage.",
+            "Yet a greater cage may still lie ahead."
     };
+
 
     public BossStoryScreen(MazeRunnerGame game) {
         this.game = game;

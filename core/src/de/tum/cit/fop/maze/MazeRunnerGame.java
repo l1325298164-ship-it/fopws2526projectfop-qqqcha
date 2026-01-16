@@ -245,6 +245,7 @@ public class MazeRunnerGame extends Game {
 
         storyPipeline.onFinished(() -> {
             stage = StoryStage.MAZE_GAME_TUTORIAL;
+            AudioManager.getInstance().playMusic(AudioType.TUTORIAL_MAIN_BGM);
             setScreen(new MazeGameTutorialScreen(this, difficultyConfig));
         });
     }
@@ -274,6 +275,7 @@ public class MazeRunnerGame extends Game {
             }
             case PV4 -> {
                 stage = StoryStage.MODE_MENU;
+                AudioManager.getInstance().playMusic(AudioType.TUTORIAL_MAIN_BGM);
                 setScreen(new ChapterSelectScreen(this));
             }
             case MODE_MENU -> {

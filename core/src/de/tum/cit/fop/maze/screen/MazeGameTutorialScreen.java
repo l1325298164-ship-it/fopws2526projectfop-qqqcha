@@ -110,10 +110,10 @@ public class MazeGameTutorialScreen implements Screen {
         System.out.println("=== TUTORIAL START ===");
         objectives.clear();
 
-        objectives.add(new ObjectiveItem("Move Up"));
-        objectives.add(new ObjectiveItem("Move Down"));
-        objectives.add(new ObjectiveItem("Move Left"));
-        objectives.add(new ObjectiveItem("Move Right"));
+        objectives.add(new ObjectiveItem("PRESS W"));
+        objectives.add(new ObjectiveItem("PRESS S"));
+        objectives.add(new ObjectiveItem("PRESS A"));
+        objectives.add(new ObjectiveItem("PRESS D"));
         objectives.add(new ObjectiveItem("SHIFT Sprint"));
         objectives.add(new ObjectiveItem("🎯 Reach Exit"));
 
@@ -645,7 +645,7 @@ public class MazeGameTutorialScreen implements Screen {
 
             // === 文字颜色 ===
             var font = game.getSkin().getFont("default-font");
-
+            font.getData().setScale(0.8f);
             if (obj.completed) {
                 font.setColor(0.4f, 0.85f, 1.0f, alpha); // 🔥 高亮文字
             } else {
@@ -659,7 +659,7 @@ public class MazeGameTutorialScreen implements Screen {
                     y + 18f
             );
             font.setColor(Color.WHITE);
-
+            font.getData().setScale(1.0f);
         }
 
         game.getSpriteBatch().end();

@@ -24,7 +24,7 @@ import de.tum.cit.fop.maze.tools.ButtonFactory;
 public class ChapterSelectScreen implements Screen {
 
     private static final String BG_PATH =
-            "menu_bg/bg_front.png";
+            "imgs/menu_bg/bg_front.png";
 
     private final MazeRunnerGame game;
     private Stage stage;

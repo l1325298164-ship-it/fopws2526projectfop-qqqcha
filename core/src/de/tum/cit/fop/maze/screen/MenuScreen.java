@@ -96,14 +96,14 @@ public class MenuScreen implements Screen {
 
         // 🔥 [修复] 背景图安全加载，防止文件丢失导致崩溃
         try {
-            if (Gdx.files.internal("menu_bg/bg_front.png").exists()) {
-                bgCandyTex = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+            if (Gdx.files.internal("imgs/menu_bg/bg_front.png").exists()) {
+                bgCandyTex = new Texture(Gdx.files.internal("imgs/menu_bg/bg_front.png"));
             } else {
                 throw new Exception("bg_front.png not found");
             }
 
-            if (Gdx.files.internal("menu_bg/bg_hell.png").exists()) {
-                bgHellTex  = new Texture(Gdx.files.internal("menu_bg/bg_hell.png"));
+            if (Gdx.files.internal("imgs/menu_bg/bg_hell.png").exists()) {
+                bgHellTex  = new Texture(Gdx.files.internal("imgs/menu_bg/bg_hell.png"));
             } else {
                 throw new Exception("bg_hell.png not found");
             }

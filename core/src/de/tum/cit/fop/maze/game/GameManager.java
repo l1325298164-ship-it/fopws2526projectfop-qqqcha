@@ -1859,7 +1859,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         } else {
             // 🎁 保底奖励
             player.heal(20);
-            player.showNotification("宝箱里只有一瓶药水 (HP +20)");
+            player.showNotification("HP +20");
             Logger.gameEvent("🧪 Treasure fallback: HP +20");
         }
     }

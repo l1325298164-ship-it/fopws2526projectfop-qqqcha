@@ -63,20 +63,19 @@ public class BossLoadingScreen implements Screen {
     private void queueBossAssets() {
 
         // ===== Atlas =====
-        assets.load("bossFight/BOSS_PV.atlas", TextureAtlas.class);
+        assets.load("story_file/boss/bossFight/BOSS_PV.atlas", TextureAtlas.class);
 
         // ===== Textures =====
-        assets.load("debug/boss_bg.jpg", Texture.class);
-        assets.load("debug/teacup_top.png", Texture.class);
+        assets.load("story_file/boss/teacup_top.png", Texture.class);
 
         assets.load("effects/aoe_fill.png", Texture.class);
         assets.load("effects/aoe_ring.png", Texture.class);
 
         // ===== BGM =====
-        assets.load("sounds/music/boss_bgm.mp3", Music.class);
+        assets.load("sounds_file/BGM/boss_bgm.mp3", Music.class);
 
         // ===== Voice =====
-        assets.load("voice/boss/boss_1.ogg", Sound.class);
+        assets.load("story_file/boss/voice/boss_1.ogg", Sound.class);
     }
 
     @Override

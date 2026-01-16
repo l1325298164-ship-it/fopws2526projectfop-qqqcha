@@ -7,6 +7,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -122,6 +124,7 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
         // 焦糖重装兵可能有护甲
         int armor = 0; // 减伤0点
         int actualDamage = Math.max(0, dmg - armor);
+        AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED_E03);
 
         super.takeDamage(actualDamage);
     }

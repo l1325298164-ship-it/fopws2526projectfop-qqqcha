@@ -268,37 +268,37 @@ public class HUD {
         sparkleFlower = sparkleAtlas.findRegion("flower");
 
         // Mana
-        manaBaseP1 = new Texture(Gdx.files.internal("HUD/manabar_base.png"));
+        manaBaseP1 = new Texture(Gdx.files.internal("ui/HUD/manabar_base.png"));
         manaBaseP2 = manaBaseP1;
 
-        manaFillP1 = new Texture(Gdx.files.internal("HUD/manabar_1_fill.png"));
-        manaGlowP1 = new Texture(Gdx.files.internal("HUD/manabar_1_grow.png"));
-        manadeco_1 = new Texture(Gdx.files.internal("HUD/bar_star1.png"));
+        manaFillP1 = new Texture(Gdx.files.internal("ui/HUD/manabar_1_fill.png"));
+        manaGlowP1 = new Texture(Gdx.files.internal("ui/HUD/manabar_1_grow.png"));
+        manadeco_1 = new Texture(Gdx.files.internal("ui/HUD/bar_star1.png"));
 
-        manaFillP2 = new Texture(Gdx.files.internal("HUD/manabar_2_fill.png"));
-        manaGlowP2 = new Texture(Gdx.files.internal("HUD/manabar_2_grow.png"));
-        manadeco_2 = new Texture(Gdx.files.internal("HUD/bar_star2.png"));
+        manaFillP2 = new Texture(Gdx.files.internal("ui/HUD/manabar_2_fill.png"));
+        manaGlowP2 = new Texture(Gdx.files.internal("ui/HUD/manabar_2_grow.png"));
+        manadeco_2 = new Texture(Gdx.files.internal("ui/HUD/bar_star2.png"));
 
         // Hearts
-        heartFull = new Texture(Gdx.files.internal("HUD/live_000.png"));
-        heartHalf = new Texture(Gdx.files.internal("HUD/live_001.png"));
+        heartFull = new Texture(Gdx.files.internal("ui/HUD/live_000.png"));
+        heartHalf = new Texture(Gdx.files.internal("ui/HUD/live_001.png"));
 
         // Dash / Melee / Magic
-        dashIconP1 = new Texture(Gdx.files.internal("HUD/icon_dash.png"));
-        dashIconP2 = new Texture(Gdx.files.internal("HUD/icon_dash_2.png"));
+        dashIconP1 = new Texture(Gdx.files.internal("ui/HUD/icon_dash.png"));
+        dashIconP2 = new Texture(Gdx.files.internal("ui/HUD/icon_dash_2.png"));
 
-        meleeIcon = new Texture(Gdx.files.internal("HUD/icon_melee.png"));
-        magicBg = new Texture(Gdx.files.internal("HUD/magicicon_bg.png"));
-        magicGrow = new Texture(Gdx.files.internal("HUD/magicicon_grow.png"));
-        magicIconTop = new Texture(Gdx.files.internal("HUD/icon_magic_base.png"));
+        meleeIcon = new Texture(Gdx.files.internal("ui/HUD/icon_melee.png"));
+        magicBg = new Texture(Gdx.files.internal("ui/HUD/magicicon_bg.png"));
+        magicGrow = new Texture(Gdx.files.internal("ui/HUD/magicicon_grow.png"));
+        magicIconTop = new Texture(Gdx.files.internal("ui/HUD/icon_magic_base.png"));
 
         // Buff
-        iconAtk = new Texture(Gdx.files.internal("Items/icon_atk.png"));
-        iconRegen = new Texture(Gdx.files.internal("Items/icon_regen.png"));
-        iconMana = new Texture(Gdx.files.internal("Items/icon_mana.png"));
+        iconAtk = new Texture(Gdx.files.internal("imgs/Items/icon_atk.png"));
+        iconRegen = new Texture(Gdx.files.internal("imgs/Items/icon_regen.png"));
+        iconMana = new Texture(Gdx.files.internal("imgs/Items/icon_mana.png"));
 
         // Cat
-        catAtlas = new TextureAtlas(Gdx.files.internal("Character/cat/cat.atlas"));
+        catAtlas = new TextureAtlas(Gdx.files.internal("ani/Character/cat/cat.atlas"));
         catNoKeyAnim = new Animation<>(0.25f, catAtlas.findRegions("cat_nokey"), Animation.PlayMode.LOOP);
         catHasKeyAnim = new Animation<>(0.25f, catAtlas.findRegions("cat_key"), Animation.PlayMode.LOOP);
 
