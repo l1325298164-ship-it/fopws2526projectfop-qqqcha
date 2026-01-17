@@ -180,8 +180,12 @@ public class CombatEffectManager {
         safeAddEffect(new SlashEffect(x, y, angle, type));
     }
 
-    public void spawnDash(float x, float y, float directionAngle) {
-        safeAddEffect(new DashEffect(x, y, directionAngle));
+    /**
+     * 生成冲刺特效 (带等级分级)
+     * @param level 技能等级 (1=基础白烟, 3=青色电光, 5=金色光辉)
+     */
+    public void spawnDash(float x, float y, float directionAngle, int level) {
+        safeAddEffect(new DashEffect(x, y, directionAngle, level));
     }
 
     public void spawnFireMagic(float x, float y) {

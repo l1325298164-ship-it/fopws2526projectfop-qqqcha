@@ -75,10 +75,12 @@ public class DashAbility extends Ability {
         }
 
         if (gameManager.getCombatEffectManager() != null) {
+            // 修改：传入 this.level 以触发分级特效
             gameManager.getCombatEffectManager().spawnDash(
                     player.getWorldX() * GameConstants.CELL_SIZE,
                     player.getWorldY() * GameConstants.CELL_SIZE,
-                    angle
+                    angle,
+                    this.level // <--- 新增参数
             );
         }
 

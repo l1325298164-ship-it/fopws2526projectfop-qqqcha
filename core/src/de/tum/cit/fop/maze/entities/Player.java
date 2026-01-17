@@ -874,4 +874,49 @@ public class Player extends GameObject {
     public float getDashDuration() {
         return DASH_DURATION + dashDurationBonus;
     }
+
+    /**
+     * 获取玩家当前时刻的动画帧
+     * 用于残影系统 (PlayerTrailManager) 获取图像数据
+     */
+    public TextureRegion getCurrentFrame() {
+        if (isDead) return null;
+
+        Animation<TextureRegion> anim;
+
+        // 1. 确定使用哪个动画集 (和 drawSprite 逻辑保持一致)
+        if (isCasting && playerIndex == PlayerIndex.P2) {
+            anim = switch (direction) {
+                case UP -> backCastAnim;
+                case LEFT -> leftCastAnim;
+                case RIGHT -> rightCastAnim;
+                default -> frontCastAnim;
+            };
+        } else if (isAttacking) {
+            anim = switch (direction) {
+                case UP -> backAtkAnim;
+                case LEFT -> leftAtkAnim;
+                case RIGHT -> rightAtkAnim;
+                default -> frontAtkAnim;
+            };
+        } else {
+            anim = switch (direction) {
+                case UP -> backAnim;
+                case LEFT -> leftAnim;
+                case RIGHT -> rightAnim;
+                default -> frontAnim;
+            };
+        }
+
+        // 2. 确定时间状态
+        float timeState = isCasting ? castAnimTimer :
+                isAttacking ? attackAnimTimer :
+                        stateTime;
+
+        // 3. 确定是否循环播放 (施法和攻击通常不循环)
+        boolean looping = !isCasting && !isAttacking;
+
+        // 4. 返回当前帧
+        return anim.getKeyFrame(timeState, looping);
+    }
 }

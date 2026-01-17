@@ -49,6 +49,7 @@ import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.game.save.StorageManager;
+import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager;
 
 import java.util.*;
 import java.util.List;
@@ -70,6 +71,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
     private PlayerInputHandler input;
     private DeveloperConsole console;
 
+    private PlayerTrailManager playerTrailManager;
     private Texture uiTop, uiBottom, uiLeft, uiRight;
     private ShapeRenderer shapeRenderer = new ShapeRenderer();
 
@@ -239,6 +241,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         uiStage = new Stage(new ScreenViewport(), batch);
         hud = new HUD(gm);
+        playerTrailManager = new PlayerTrailManager();
         gm.applyRestoreIfNeeded();
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
@@ -359,6 +362,22 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         if (!isGamePaused()) {
             gm.update(delta);
             if (fogSystem != null) fogSystem.update(delta);
+
+            // ↓↓↓↓↓ 新增：更新残影系统 ↓↓↓↓↓
+            if (playerTrailManager != null) {
+                for (Player p : gm.getPlayers()) {
+                    // 默认使用青色 (Color.CYAN) 作为冲刺残影颜色
+                    // 如果未来想做分级，可以在这里判断 Dash 等级并传入 GOLD 等颜色
+                    playerTrailManager.update(
+                            delta,
+                            p.getWorldX(),
+                            p.getWorldY(),
+                            p.isDashing(),      // 只有冲刺时才产生残影
+                            p.getCurrentFrame(),// 获取当前帧 (Step 1 添加的方法)
+                            Color.CYAN          // 残影颜色
+                    );
+                }
+            }
 
             if (gm.isLevelCompletedPendingSettlement()) {
                 goToSettlementScreen();
@@ -488,6 +507,10 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
         if (gm.getKeyEffectManager() != null) {
             gm.getKeyEffectManager().render(batch);
+        }
+        // ↓↓↓↓↓ 新增：绘制残影 ↓↓↓↓↓
+        if (playerTrailManager != null) {
+            playerTrailManager.render(batch);
         }
         gm.getBobaBulletEffectManager().render(batch);
         if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderSprites(batch);
@@ -770,5 +793,6 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         if (console != null) console.dispose();
         if (gameOverStage != null) gameOverStage.dispose();
         if (worldHintFont != null) worldHintFont.dispose();
+        if (playerTrailManager != null) playerTrailManager.dispose();
     }
 }
