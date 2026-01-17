@@ -781,7 +781,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelCompletedPendingSettlement = true;
         Logger.gameEvent("Level " + currentLevel + " completed");
         currentLevel++;
-
+        restoringFromSave = false;
         if (currentLevel > GameConstants.MAX_LEVELS) {
             Logger.gameEvent("Game completed!");
             return;
@@ -1218,7 +1218,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
 
         for (int i = 0; i < difficultyConfig.enemyE04ShellCount; i++) {
-            int[] p = randomEmptyCell();
+            int[] p = randomE04SpawnCell();
             enemies.add(new EnemyE04_CrystallizedCaramelShell(p[0], p[1]));
         }
     }
@@ -1290,11 +1290,58 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                         }
                     }
                 }
-                return new int[]{player.getX(), player.getY()};
+                return new int[]{maze[0].length / 2, maze.length / 2};
             }
         } while (!canPlayerMoveTo(x, y) || isOccupied(x, y));
 
         return new int[]{x, y};
+    }
+    /**
+     * 🔥 Boss 模式：把所有玩家刷在一起 / 附近
+     */
+    public void respawnPlayersTogetherForBoss() {
+        if (players.isEmpty()) return;
+
+        // 1️⃣ 找一个主出生点
+        int[] baseSpawn = randomEmptyCell();
+        int bx = baseSpawn[0];
+        int by = baseSpawn[1];
+
+        // 2️⃣ 第一个玩家直接放
+        Player leader = players.get(0);
+        leader.teleportTo(bx, by);
+
+        // 3️⃣ 其余玩家找附近
+        int[][] offsets = {
+                { 0,  0}, // 允许重叠
+                { 1,  0}, {-1,  0},
+                { 0,  1}, { 0, -1},
+                { 1,  1}, {-1, -1},
+                { 1, -1}, {-1,  1}
+        };
+
+        for (int i = 1; i < players.size(); i++) {
+            Player p = players.get(i);
+            boolean placed = false;
+
+            for (int[] o : offsets) {
+                int nx = bx + o[0];
+                int ny = by + o[1];
+
+                if (canPlayerMoveTo(nx, ny)) {
+                    p.teleportTo(nx, ny);
+                    placed = true;
+                    break;
+                }
+            }
+
+            // 4️⃣ 极端兜底：直接重叠
+            if (!placed) {
+                p.teleportTo(bx, by);
+            }
+        }
+
+        Logger.gameEvent("🔥 Boss spawn: players grouped at (" + bx + "," + by + ")");
     }
 
     public int getMazeCell(int x, int y) {
@@ -2010,13 +2057,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         generateMovingWalls();
 
         // ===== 4️⃣ 玩家重定位（Boss 战必须处理所有玩家）=====
-        for (Player p : players) {
-            if (p == null || p.isDead()) continue;
-
-            int[] spawn = randomEmptyCell();
-            p.teleportTo(spawn[0], spawn[1]);
-        }
-
+        respawnPlayersTogetherForBoss();
 
         // ===== 5️⃣ Boss 战中：禁止这些状态 =====
         levelTransitionInProgress = false;
@@ -2050,5 +2091,51 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         generateKeys();
         generateMovingWalls();
     }
+
+    /**
+     * 🔥 E04 专用出生点（2x2）
+     * - 必须是 2x2 全可走地面
+     * - 不能和玩家重叠
+     * - 可以和其他敌人重叠
+     */
+    private int[] randomE04SpawnCell() {
+        int width = maze[0].length;
+        int height = maze.length;
+
+        for (int attempt = 0; attempt < 500; attempt++) {
+            int x = random(1, width - 3);
+            int y = random(1, height - 3);
+
+            // 1️⃣ 2x2 地形检查
+            if (maze[y][x] != 1) continue;
+            if (maze[y + 1][x] != 1) continue;
+            if (maze[y][x + 1] != 1) continue;
+            if (maze[y + 1][x + 1] != 1) continue;
+
+            // 2️⃣ 不允许与玩家重叠（任何一格）
+            boolean overlapsPlayer = false;
+            for (Player p : players) {
+                if (p == null) continue;
+
+                int px = p.getX();
+                int py = p.getY();
+
+                if ((px == x || px == x + 1) &&
+                        (py == y || py == y + 1)) {
+                    overlapsPlayer = true;
+                    break;
+                }
+            }
+
+            if (overlapsPlayer) continue;
+
+            return new int[]{x, y};
+        }
+
+        // 🧯 极端兜底：用玩家附近（理论上很少触发）
+        Logger.warning("E04 spawn fallback used");
+        return new int[]{player.getX(), player.getY()};
+    }
+
 
 }

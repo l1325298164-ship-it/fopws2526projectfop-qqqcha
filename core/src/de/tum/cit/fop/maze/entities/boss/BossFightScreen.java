@@ -1212,7 +1212,7 @@ private final Map<Integer, BossPhasePreloadData> phaseCache =
     // 1️⃣ 创建 GameManager & 迷宫（只一次）
     gameManager = new GameManager(dc,game.isTwoPlayerMode());
     gameManager.resetGame();
-
+    gameManager.respawnPlayersTogetherForBoss();
     player = gameManager.getPlayer();
 
     // 2️⃣ HUD 只建一次
