@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -9,6 +10,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -122,11 +125,11 @@ public class EndlessScreen implements Screen {
     }
 
     @Override
-    public void show() {
+    public void show() {//TODO 更换贴纸
         uiTop = new Texture("Wallpaper/HUD_up.png");
         uiBottom = new Texture("Wallpaper/HUD_down.png");
         uiLeft = new Texture("Wallpaper/HUD_left.png");
-        uiRight = new Texture("Wallpaper/HUD_right.png");//TODO 之后放HUD里
+        uiRight = new Texture("Wallpaper/HUD_right.png");
 
         input = new PlayerInputHandler();
         batch = game.getSpriteBatch();
@@ -1066,7 +1069,16 @@ public class EndlessScreen implements Screen {
     }
 
     private void handleInput(float delta) {
+        // ===== ESC 暂停（最高优先级）=====
+        if (KeyBindingManager.getInstance()
+                .isJustPressed(KeyBindingManager.GameAction.PAUSE)) {
 
+            // GameOver 时不允许暂停
+            if (!endlessGameOver) {
+                togglePause();
+            }
+            return; // ⛔ 防止本帧继续处理输入
+        }
         // ===== 控制台 =====
         if (KeyBindingManager.getInstance().isJustPressed(KeyBindingManager.GameAction.CONSOLE)) {
             console.toggle();

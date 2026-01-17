@@ -38,7 +38,8 @@ public class KeyBindingManager {
         P2_INTERACT,
 
         // ===== SYSTEM =====
-        CONSOLE
+        CONSOLE,
+        PAUSE
     }
     private final Map<GameAction, Integer> keyBindings;
 
@@ -79,6 +80,8 @@ public class KeyBindingManager {
 
         // ===== SYSTEM =====
         loadBinding(GameAction.CONSOLE, Input.Keys.GRAVE);
+        loadBinding(GameAction.PAUSE, Input.Keys.ESCAPE);
+
     }
 
 
