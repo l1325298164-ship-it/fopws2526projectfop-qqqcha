@@ -56,9 +56,21 @@ public class HeartContainer extends GameObject {
         if (isInteractable()) {
             collect();
 
-            // 🔥 核心逻辑：调用 Player 的增加上限方法
-            // (请确保 Player.java 里实现了 increaseMaxLives 方法)
+            // 1. 核心逻辑：调用 Player 的增加上限方法
             player.increaseMaxLives(INCREASE_AMOUNT);
+
+            // 🔥 2. 新增：飘字效果
+            if (player.getGameManager() != null && player.getGameManager().getCombatEffectManager() != null) {
+                float tx = x * GameConstants.CELL_SIZE;
+                float ty = y * GameConstants.CELL_SIZE + 50; // 稍微高一点，避免挡住玩家
+
+                // 飘出橙色的提示字
+                player.getGameManager().getCombatEffectManager().spawnStatusText(
+                        tx, ty,
+                        "MAX HP +" + INCREASE_AMOUNT,
+                        Color.ORANGE
+                );
+            }
 
             Logger.gameEvent("玩家拾取了焦糖核心，生命上限 +10！");
         }
@@ -79,7 +91,7 @@ public class HeartContainer extends GameObject {
             try {
                 // ⚠️ 确保 assets/Items/heart_container.png 存在！
                 // 如果没有图片，会捕获异常并显示为橙色方块
-                containerTexture = new Texture(Gdx.files.internal("ani/Items/heart_container.png"));
+                containerTexture = new Texture(Gdx.files.internal("Items/heart_container.png"));
             } catch (Exception e) {
                 Logger.error("HeartContainer texture missing, using fallback shape: " + e.getMessage());
             }

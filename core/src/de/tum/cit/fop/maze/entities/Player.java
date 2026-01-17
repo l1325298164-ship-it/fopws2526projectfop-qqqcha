@@ -37,7 +37,7 @@ public class Player extends GameObject {
     }
 
     public void requestChapter1Relic(Chapter1Relic relic) {
-        if (isTutorial) return; // tutorial 不弹
+        if (isTutorial) return;
         gameManager.requestChapter1Relic(relic);
     }
 
@@ -131,7 +131,6 @@ public class Player extends GameObject {
 
     public static final float DASH_DURATION = 1f;
     public static final float DASH_SPEED_MULTIPLIER = 0.15f;
-    // === Dash runtime durations（每次 Dash 独立）===
     private float dashSpeedDuration = DASH_DURATION;
     private float dashInvincibleDuration = DASH_DURATION;
 
@@ -534,9 +533,6 @@ public class Player extends GameObject {
         slowTimer = Math.max(slowTimer, duration);
     }
 
-    // ==========================================
-    // 受伤 -> 小字 RED "HP -x"
-    // ==========================================
     public void takeDamage(int damage) {
         if (isDead || damageInvincible || dashInvincible) return;
         if (damage <= 0) return;
@@ -566,7 +562,7 @@ public class Player extends GameObject {
     }
 
     // ==========================================
-    // 回血 -> 小字 GREEN "HP +x"
+    // 回血 -> 逻辑保留，但注释掉飘字，防止和 Treasure 飘字冲突
     // ==========================================
     public void heal(int amount) {
         if (isDead) return;
@@ -577,8 +573,10 @@ public class Player extends GameObject {
             this.lives = this.maxLives;
         }
 
-        int actualHeal = this.lives - oldLives;
+        // int actualHeal = this.lives - oldLives;
 
+        // 🔥🔥🔥 注释掉了这里！防止重复飘字！ 🔥🔥🔥
+        /*
         if (actualHeal > 0 && gameManager != null && gameManager.getCombatEffectManager() != null) {
             gameManager.getCombatEffectManager().spawnStatusText(
                     this.worldX * GameConstants.CELL_SIZE,
@@ -587,6 +585,7 @@ public class Player extends GameObject {
                     Color.GREEN
             );
         }
+        */
 
         Logger.gameEvent("Player healed by " + amount + ". Current HP: " + lives + "/" + maxLives);
     }
@@ -726,47 +725,20 @@ public class Player extends GameObject {
         return dashInvincible;
     }
 
-    // ==========================================
-    // BUFF -> 小字 BLUE (已移除 showNotification)
-    // ==========================================
-
     public void activateAttackBuff() {
         if (!buffAttack) {
             buffAttack = true;
-
-            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
-                gameManager.getCombatEffectManager().spawnStatusText(
-                        this.worldX * GameConstants.CELL_SIZE,
-                        this.worldY * GameConstants.CELL_SIZE + 50,
-                        "ATK UP",
-                        Color.BLUE
-                );
-            }
-
             Logger.gameEvent("acquire ATK Buff");
         }
-
-        // ⭐ 副作用一定要在外面
         if (gameManager != null) {
             gameManager.setVariable("dmg_taken", 0.7f);
         }
     }
 
-
     public void activateRegenBuff() {
         if (!buffRegen) {
             buffRegen = true;
             regenTimer = 0f;
-
-            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
-                gameManager.getCombatEffectManager().spawnStatusText(
-                        worldX * GameConstants.CELL_SIZE,
-                        worldY * GameConstants.CELL_SIZE + 50,
-                        "REGEN UP",
-                        Color.BLUE
-                );
-            }
-
             Logger.gameEvent("acquire REGEN Buff");
         }
     }
@@ -774,19 +746,10 @@ public class Player extends GameObject {
     public void activateManaBuff() {
         if (!buffManaEfficiency) {
             buffManaEfficiency = true;
-
-            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
-                gameManager.getCombatEffectManager().spawnStatusText(
-                        worldX * GameConstants.CELL_SIZE,
-                        worldY * GameConstants.CELL_SIZE + 50,
-                        "MANA UP",
-                        Color.BLUE
-                );
-            }
-
             Logger.gameEvent("acquire MANA Buff");
         }
     }
+
     public void showNotification(String msg) {
         this.notificationMessage = msg;
         this.notificationTimer = 3.0f;
@@ -817,7 +780,6 @@ public class Player extends GameObject {
         castAnimTimer = 0f;
     }
 
-    // 🔥 新增接口：允许外部访问 GameManager (用于 Treasure 等实体调用特效)
     public GameManager getGameManager() {
         return gameManager;
     }
@@ -827,7 +789,7 @@ public class Player extends GameObject {
             boolean regen,
             boolean mana
     ) {
-        clearAllBuffEffects();   // 关键！！！
+        clearAllBuffEffects();
 
         if (atk) activateAttackBuff();
         if (regen) activateRegenBuff();
@@ -855,8 +817,4 @@ public class Player extends GameObject {
     public float getDashDuration() {
         return DASH_DURATION + dashDurationBonus;
     }
-
-
-
-
 }

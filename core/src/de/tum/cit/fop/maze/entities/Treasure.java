@@ -44,25 +44,18 @@ public class Treasure extends GameObject {
     private void open(Player player) {
         isOpened = true;
 
+        // 暂时注释掉剧情逻辑
+        // player.requestChapter1RelicFromTreasure(this);
+
         // === 🎲 智能掉落逻辑 ===
-        // 只掉落玩家还没有的 Buff
-        player.requestChapter1RelicFromTreasure(this);
         List<Integer> dropPool = new ArrayList<>();
 
-        // 0. 检查是否已有 攻击 Buff
-        if (!player.hasBuffAttack()) {
-            dropPool.add(0);
-        }
+        if (!player.hasBuffAttack()) dropPool.add(0);
+        if (!player.hasBuffRegen()) dropPool.add(1);
+        if (!player.hasBuffManaEfficiency()) dropPool.add(2);
 
-        // 1. 检查是否已有 回血 Buff
-        if (!player.hasBuffRegen()) {
-            dropPool.add(1);
-        }
-
-        // 2. 检查是否已有 蓝耗减半 Buff
-        if (!player.hasBuffManaEfficiency()) {
-            dropPool.add(2);
-        }
+        float tx = player.getWorldX() * GameConstants.CELL_SIZE;
+        float ty = player.getWorldY() * GameConstants.CELL_SIZE + 40;
 
         // --- 抽取奖励 ---
         if (!dropPool.isEmpty()) {
@@ -71,35 +64,36 @@ public class Treasure extends GameObject {
 
             switch (choice) {
                 case 0:
-                    // 对应：本关攻击力加 50%
                     player.activateAttackBuff();
+                    Logger.gameEvent("宝箱掉落: 攻击 Buff");
+                    spawnFloatingText(player, "ATTACK UP", Color.RED, tx, ty);
                     break;
                 case 1:
-                    // 对应：本关每五秒自动回复五点 HP
                     player.activateRegenBuff();
+                    Logger.gameEvent("宝箱掉落: 回血 Buff");
+                    spawnFloatingText(player, "REGEN ON", Color.GREEN, tx, ty);
                     break;
                 case 2:
-                    // 对应：本关内降低蓝耗 (50%)
                     player.activateManaBuff();
+                    Logger.gameEvent("宝箱掉落: 蓝耗减少 Buff");
+                    spawnFloatingText(player, "MANA UP", Color.CYAN, tx, ty);
                     break;
             }
         } else {
-            // 保底奖励 (如果全齐了)
-            // 1. 回血 (自动飘绿色 +HP)
+            // 🔥 修改点：Buff 满后，掉落 HP +20
             player.heal(20);
 
-            // 2. 🔥 修复：显示蓝色小字 POTION，代替原来的黄色乱码通知
-            if (player.getGameManager() != null && player.getGameManager().getCombatEffectManager() != null) {
-                player.getGameManager().getCombatEffectManager().spawnStatusText(
-                        player.getWorldX() * GameConstants.CELL_SIZE,
-                        player.getWorldY() * GameConstants.CELL_SIZE + 60, // 稍微高一点
-                        "POTION",
-                        Color.BLUE
-                );
-            }
-        }
+            Logger.gameEvent("宝箱掉落: 生命药水 (Buff已满)");
 
-        Logger.gameEvent("宝箱打开了！获得了增幅！");
+            // 把 "POTION" 改成了 "HP +20"，颜色设为绿色 (Color.GREEN)
+            spawnFloatingText(player, "HP +20", Color.GREEN, tx, ty);
+        }
+    }
+
+    private void spawnFloatingText(Player player, String text, Color color, float x, float y) {
+        if (player.getGameManager() != null && player.getGameManager().getCombatEffectManager() != null) {
+            player.getGameManager().getCombatEffectManager().spawnStatusText(x, y, text, color);
+        }
     }
 
     @Override
@@ -112,13 +106,11 @@ public class Treasure extends GameObject {
         return true;
     }
 
-    // ================= 纹理与渲染 =================
-
     private void updateTexture() {
         if (closedTexture == null || openTexture == null) {
             try {
-                closedTexture = new Texture(Gdx.files.internal("imgs/Items/chest_closed.png"));
-                openTexture = new Texture(Gdx.files.internal("imgs/Items/chest_open.png"));
+                closedTexture = new Texture(Gdx.files.internal("Items/chest_closed.png"));
+                openTexture = new Texture(Gdx.files.internal("Items/chest_open.png"));
             } catch (Exception e) {
                 Logger.error("Failed to load treasure textures: " + e.getMessage());
             }
@@ -134,31 +126,18 @@ public class Treasure extends GameObject {
     @Override
     public void drawSprite(SpriteBatch batch) {
         if (needsTextureUpdate) updateTexture();
-
         Texture currentTexture = isOpened ? openTexture : closedTexture;
-
         if (currentTexture != null) {
-            batch.draw(currentTexture,
-                    x * GameConstants.CELL_SIZE,
-                    y * GameConstants.CELL_SIZE,
-                    GameConstants.CELL_SIZE,
-                    GameConstants.CELL_SIZE
-            );
+            batch.draw(currentTexture, x * GameConstants.CELL_SIZE, y * GameConstants.CELL_SIZE, GameConstants.CELL_SIZE, GameConstants.CELL_SIZE);
         }
     }
 
     @Override
     public void drawShape(ShapeRenderer shapeRenderer) {
         if (closedTexture != null) return;
-
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(isOpened ? Color.GRAY : Color.GOLD);
-        shapeRenderer.rect(
-                x * GameConstants.CELL_SIZE + 4,
-                y * GameConstants.CELL_SIZE + 4,
-                GameConstants.CELL_SIZE - 8,
-                GameConstants.CELL_SIZE - 8
-        );
+        shapeRenderer.rect(x * GameConstants.CELL_SIZE + 4, y * GameConstants.CELL_SIZE + 4, GameConstants.CELL_SIZE - 8, GameConstants.CELL_SIZE - 8);
         shapeRenderer.end();
     }
 

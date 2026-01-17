@@ -39,13 +39,11 @@ import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 
 public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
-
     private boolean autoSaveEnabled = true;
 
     public void setAutoSaveEnabled(boolean enabled) {
         this.autoSaveEnabled = enabled;
     }
-
 
     // ===== 延迟恢复用 =====
     private GameSaveData pendingRestoreData = null;
@@ -82,7 +80,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private int mouseTileY = -1;
 
     private FogSystem fogSystem;
-
 
     private Compass compass;
     private final MazeGenerator generator = new MazeGenerator();
@@ -130,9 +127,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public void setEnemyKillListener(Consumer<Enemy> listener) {
         this.enemyKillListener = listener;
     }
-
-
-
 
     public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode,ChapterContext chapterContext)  {
         this.chapterContext = chapterContext;
@@ -197,7 +191,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         enemies.clear();
         traps.clear();
         hearts.clear();
-        heartContainers.clear();
+        heartContainers.clear(); // 确保清空
         treasures.clear();
         for (ExitDoor door : exitDoors) {
             if (door != null) {
@@ -229,7 +223,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             fogSystem = null;
         }
 
-
         if (player == null) {
             Logger.error("Player is null after resetGame");
             return;
@@ -242,10 +235,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         playerSpawnPortal.startPlayerSpawnEffect(px, py);
         obstacles = new ArrayList<>();
 
-
-
-            generateLevel();
-
+        generateLevel();
 
         compass = new Compass(player);
 
@@ -263,8 +253,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionTimer = 0f;
 
         Logger.gameEvent("Game reset complete");
-
     }
+
     private StorageManager.SaveTarget pendingRestoreSource;
     public void restoreFromSaveData(GameSaveData saveData, StorageManager.SaveTarget source) {
         Logger.error("🔥 RESTORE START source=" + source);
@@ -279,6 +269,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         this.currentLevel = saveData.currentLevel;
         this.twoPlayerMode = saveData.twoPlayerMode;
     }
+
     public void debugEnemiesAndBullets() {
         if (player == null) {
             Logger.debug("Player not initialized yet, skip debugEnemiesAndBullets");
@@ -342,7 +333,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             return false;
         }
 
-
         // 2️⃣ 检查2x2敌人
         for (Enemy enemy : enemies) {
             if (enemy instanceof EnemyE04_CrystallizedCaramelShell) {
@@ -372,12 +362,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         }
 
-
         // 3️⃣ 普通墙体
         return maze[y][x] == 1;
     }
+
     public void update(float delta) {
-        // ===== 输入 =====
         if (!viewingChapterRelic) {
             inputHandler.update(delta, this, Player.PlayerIndex.P1);
             if (twoPlayerMode) {
@@ -423,7 +412,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (fogOn) {
                 if (cat == null)
                     cat = new CatFollower(player, this);
-                cat.update(delta);   // ★ 必须添加
+                cat.update(delta);
             } else {
                 cat = null;
             }
@@ -454,6 +443,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     else if (e instanceof EnemyE04_CrystallizedCaramelShell) tier = EnemyTier.E04;
 
                     GameEventSource.getInstance().onEnemyKilled(tier, e.isHitByDash());
+
+                    // 🔥 [HP-UP] E04 击杀掉落判定
+                    if (e instanceof EnemyE04_CrystallizedCaramelShell) {
+                        handleEnemyDrop(e);
+                    }
                 }
                 enemyIterator.remove();
             }
@@ -643,9 +637,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                         GameEventSource.getInstance().onPlayerDamage(p.getLives(), source);
 
-                        // 🔴 移除：HUD 黄色提示 (p.showNotification)
-                        // p.showNotification("HIT!  SCORE -" + penalty);
-
                         // 保留：红色大字扣分
                         int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
                         if (combatEffectManager != null && penalty > 0) {
@@ -791,10 +782,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.gameEvent("Level " + currentLevel + " completed");
         currentLevel++;
 
-
-
-
-
         if (currentLevel > GameConstants.MAX_LEVELS) {
             Logger.gameEvent("Game completed!");
             return;
@@ -872,7 +859,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     // ==========================================
-    // 🔥 核心修复区域：checkAutoPickup
+    // 🔥 checkAutoPickup (修复版：加入 HeartContainer 拾取)
     // ==========================================
     private void checkAutoPickup() {
         if (levelTransitionInProgress) return;
@@ -900,9 +887,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     key.onInteract(p);
                     keyIterator.remove();
                     onKeyCollected();
-
-                    // 🔴 移除：HUD 黄色通知
-                    // p.showNotification("KEY ACQUIRED!  SCORE +" + ScoreConstants.SCORE_KEY);
 
                     if (combatEffectManager != null) {
                         // 1. 蓝色小字 "KEY ACQUIRED" (修改了内容)
@@ -932,14 +916,20 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     GameEventSource.getInstance().onItemCollected("HEART");
                     heartIterator.remove();
 
-                    // 🔴 移除：HUD 黄色通知
-                    // p.showNotification("HEAL +10  SCORE +" + ScoreConstants.SCORE_HEART);
+                    // 🚫 注释：不飘黄色分数，只让 Player.heal 显示绿色 HP+xx
+                    // if (combatEffectManager != null) {
+                    //     combatEffectManager.spawnScoreText(fx, fy + 20, ScoreConstants.SCORE_HEART);
+                    // }
+                }
+            }
 
-                    // 🔥 修复：删除手动 HP 飘字，完全交给 Player.heal() 处理
-                    if (combatEffectManager != null) {
-                        // 2. 黄色大字分数
-                        combatEffectManager.spawnScoreText(fx, fy + 20, ScoreConstants.SCORE_HEART);
-                    }
+            // ===== 🔥 [HP-UP] 新增：Heart Containers 自动拾取 =====
+            Iterator<HeartContainer> hcIterator = heartContainers.iterator();
+            while (hcIterator.hasNext()) {
+                HeartContainer hc = hcIterator.next();
+                if (hc.isActive() && hc.getX() == px && hc.getY() == py) {
+                    hc.onInteract(p);
+                    hcIterator.remove();
                 }
             }
 
@@ -961,9 +951,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     GameEventSource.getInstance().onItemCollected("TREASURE");
                     treasureIterator.remove();
 
-                    if (combatEffectManager != null) {
-                        combatEffectManager.spawnScoreText(fx, fy + 20, ScoreConstants.SCORE_TREASURE);
-                    }
+                    // 🚫 注释：不飘黄色分数，只保留 Treasure 自己的 HP/Buff 提示
+                    // if (combatEffectManager != null) {
+                    //     combatEffectManager.spawnScoreText(fx, fy + 20, ScoreConstants.SCORE_TREASURE);
+                    // }
                 }
             }
         }
@@ -1527,6 +1518,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return cat;
     }
 
+    // 🔥 彻底保留了原版 saveGameProgress
     public void saveGameProgress() {
         if (restoringFromSave) {
             Logger.error("🚫 SAVE BLOCKED (restoring)");
@@ -1602,6 +1594,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.info("Game progress saved: Level=" + currentLevel + ", Score=" + gameSaveData.score);
     }
 
+    // 🔥 彻底保留了原版 deepCopyMaze
     private int[][] deepCopyMaze(int[][] src) {
         if (src == null) return null;
         int[][] copy = new int[src.length][];
@@ -1652,6 +1645,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return achievementManager;
     }
 
+    // 🔥 彻底保留了原版 restorePlayers
     private void restorePlayers(GameSaveData saveData) {
         if (saveData == null) return;
 
@@ -1726,8 +1720,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return mouseTileY;
     }
 
+    // 🔥 [HP-UP] Helper: 掉落判定
     private void handleEnemyDrop(Enemy enemy) {
-        if (Math.random() < 0.33) {
+        if (Math.random() <= 1.00) {
             int x = enemy.getX();
             int y = enemy.getY();
 
@@ -1739,9 +1734,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
 
+    // 🔥 [HP-UP] Getter
     public List<HeartContainer> getHeartContainers() {
         return heartContainers;
     }
+
     public boolean isReviving() {
         return revivePending;
     }
@@ -1787,11 +1784,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             );
         }
     }
+
+    // 🔥 修改后的 onTreasureOpened (不调用 applyTreasureBuff，防止双重奖励)
     public void onTreasureOpened(Player player, Treasure treasure) {
 
-        // 非章节模式 → 普通宝箱
+        // 非章节模式 → 普通宝箱 (由 Treasure 内部逻辑决定奖励，GM 不干涉)
         if (!chapterMode || chapterContext == null) {
-            applyTreasureBuff(player);
+            // applyTreasureBuff(player); <--- ❌ 删除了这行
             treasure.onInteract(player);
             return;
         }
@@ -1808,61 +1807,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             );
             spawnChapter1Relic(relic);
         } else {
-            // 没有可用 relic → 普通奖励
-            applyTreasureBuff(player);
+            // 没有可用 relic → 普通奖励 (由 Treasure 内部逻辑决定)
+            // applyTreasureBuff(player); <--- ❌ 删除了这行
         }
 
         treasure.onInteract(player);
     }
 
-
-    private void applyTreasureBuff(Player player) {
-
-        // === 🎲 智能掉落逻辑 ===
-        // 只掉玩家当前没有的 Buff
-
-        List<Integer> dropPool = new ArrayList<>();
-
-        // 0️⃣ 攻击 Buff
-        if (!player.hasBuffAttack()) {
-            dropPool.add(0);
-        }
-
-        // 1️⃣ 回血 Buff
-        if (!player.hasBuffRegen()) {
-            dropPool.add(1);
-        }
-
-        // 2️⃣ 蓝耗减半 Buff
-        if (!player.hasBuffManaEfficiency()) {
-            dropPool.add(2);
-        }
-
-        // === 抽取奖励 ===
-        if (!dropPool.isEmpty()) {
-            int choice = dropPool.get((int)(Math.random() * dropPool.size()));
-
-            switch (choice) {
-                case 0 -> {
-                    player.activateAttackBuff();
-                    Logger.gameEvent("💥 Treasure Buff: Attack +50%");
-                }
-                case 1 -> {
-                    player.activateRegenBuff();
-                    Logger.gameEvent("❤️ Treasure Buff: Regeneration");
-                }
-                case 2 -> {
-                    player.activateManaBuff();
-                    Logger.gameEvent("🔮 Treasure Buff: Mana Efficiency");
-                }
-            }
-        } else {
-            // 🎁 保底奖励
-            player.heal(20);
-            player.showNotification("HP +20");
-            Logger.gameEvent("🧪 Treasure fallback: HP +20");
-        }
-    }
+    // ❌ 彻底删除了 applyTreasureBuff 方法
 
     private void spawnChapter1Relic(Chapter1Relic relic) {
         this.chapter1Relic = relic;
@@ -2098,7 +2050,5 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         generateKeys();
         generateMovingWalls();
     }
-
-
 
 }
