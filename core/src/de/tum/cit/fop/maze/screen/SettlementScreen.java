@@ -72,8 +72,8 @@ public class SettlementScreen implements Screen {
         this.leaderboardManager = new LeaderboardManager();
 
         this.displayedTotalScore = saveData.score;
-        this.saveData.score += result.finalScore;
-        this.targetTotalScore = this.saveData.score;
+        // 🔥 FIX: 构造时不再叠加分数，只计算目标值用于动画
+        this.targetTotalScore = this.saveData.score + result.finalScore;
 
         this.isHighScore = leaderboardManager.isHighScore(this.saveData.score);
 
@@ -115,9 +115,9 @@ public class SettlementScreen implements Screen {
         Label titleLabel = new Label("LEVEL COMPLETED", game.getSkin(), "title");
         titleLabel.setColor(Color.GOLD);
         titleLabel.setFontScale(1.2f);
-        // 进场动画
         titleLabel.getColor().a = 0f;
         titleLabel.addAction(Actions.fadeIn(1.0f));
+        // 🔥 修改：减小标题下间距 (30 -> 10)
         scrollContent.add(titleLabel).padBottom(10).row();
 
         // --- 2. Rank 印章 ---
@@ -126,7 +126,6 @@ public class SettlementScreen implements Screen {
         rankLabel.setAlignment(Align.center);
         setRankColor(rankLabel, result.rank);
 
-        // Rank 盖章动画
         rankLabel.setOrigin(Align.center);
         rankLabel.setColor(rankLabel.getColor().r, rankLabel.getColor().g, rankLabel.getColor().b, 0f);
         rankLabel.setScale(3.0f);
@@ -134,19 +133,21 @@ public class SettlementScreen implements Screen {
                 Actions.delay(0.3f),
                 Actions.parallel(Actions.fadeIn(0.2f), Actions.scaleTo(1f, 1f, 0.5f, Interpolation.bounceOut))
         ));
+        // 🔥 修改：减小 Rank 下间距 (10 -> 0)
         scrollContent.add(rankLabel).padBottom(0).row();
 
-        // S级评价文字
         if ("S".equals(result.rank)) {
             Label praise = new Label("PERFECT!", game.getSkin());
             praise.setColor(Color.GOLD);
             praise.setFontScale(1.2f);
+            // 🔥 修改：S级评价间距 (30 -> 20)
             scrollContent.add(praise).padBottom(20).row();
         } else {
+            // 🔥 修改：移除大占位符，仅留微小间隙 (10)
             scrollContent.add(new Label("", game.getSkin())).height(10).row();
         }
 
-        // --- 3. 分数详情 ---
+        // --- 3. 分数详情 (宽表格) ---
         Table scoreTable = new Table();
         float tableWidth = 500f;
 
@@ -157,7 +158,7 @@ public class SettlementScreen implements Screen {
         Label line = new Label("- - - - - - - - - -", game.getSkin());
         line.setColor(Color.GRAY);
         line.setAlignment(Align.center);
-        scoreTable.add(line).colspan(2).pad(10).row();
+        scoreTable.add(line).colspan(2).pad(10).row(); // pad 15 -> 10
 
         addScoreRow(scoreTable, "LEVEL SCORE", String.valueOf(result.finalScore), Color.GOLD);
 
@@ -166,18 +167,23 @@ public class SettlementScreen implements Screen {
         // 只有第一次进入界面且未滚动完时才使用动画，否则直接显示最终分数（避免刷新时重播滚动）
         String scoreText = isScoreRolling ? formatScore((int)displayedTotalScore) : formatScore((int)targetTotalScore);
         labelTotalScore = new Label(scoreText, game.getSkin());
+        scoreTable.add(new Label("TOTAL SCORE", game.getSkin())).align(Align.left).padTop(15);
+        labelTotalScore = new Label(formatScore((int)displayedTotalScore), game.getSkin());
         labelTotalScore.setColor(Color.ORANGE);
         labelTotalScore.setFontScale(1.5f);
         scoreTable.add(labelTotalScore).align(Align.right).padTop(15);
         scoreTable.row();
 
+        // 🔥 修改：表格下间距 (40 -> 30)
         scrollContent.add(scoreTable).width(tableWidth).padBottom(30).row();
 
         // --- 4. 统计与成就 ---
         Table statsTable = new Table();
         int totalKills = saveData.sessionKills.values().stream().mapToInt(Integer::intValue).sum();
+
         Label lKills = new Label("Kills: " + totalKills, game.getSkin());
         lKills.setColor(Color.LIGHT_GRAY);
+
         Label lDamage = new Label("Damage: " + saveData.sessionDamageTaken, game.getSkin());
         lDamage.setColor(Color.LIGHT_GRAY);
 
@@ -185,6 +191,7 @@ public class SettlementScreen implements Screen {
         statsTable.add(lDamage);
         scrollContent.add(statsTable).padBottom(30).row();
 
+        // 新解锁成就
         if (!saveData.newAchievements.isEmpty()) {
             Label achTitle = new Label("NEW UNLOCKS", game.getSkin());
             achTitle.setColor(Color.YELLOW);
@@ -202,8 +209,8 @@ public class SettlementScreen implements Screen {
             scrollContent.add(new Label("", game.getSkin())).padBottom(20).row();
         }
 
-        // --- 5. 新纪录输入框 (带状态切换) ---
-        if (isHighScore) {
+        // --- 5. 新纪录输入框 ---
+        if (isHighScore && !scoreSubmitted) {
             Table inputContainer = new Table();
             inputContainer.setBackground(createColorDrawable(new Color(1f, 1f, 1f, 0.05f)));
             inputContainer.pad(20);
@@ -257,7 +264,7 @@ public class SettlementScreen implements Screen {
             scrollContent.add(inputContainer).padBottom(30).row();
         }
 
-        // 底部留白
+        // 底部留白，防止内容被按钮挡住 (留出按钮高度 + 间隙)
         scrollContent.add(new Label("", game.getSkin())).height(150).row();
 
         // 放入 ScrollPane
@@ -350,11 +357,20 @@ public class SettlementScreen implements Screen {
         clearNewAchievements();
         StorageManager storage = StorageManager.getInstance();
 
-        if (toNextLevel) {
-            saveData.currentLevel++;
-            saveData.levelBaseScore = 0;
-            saveData.levelPenalty = 0;
+        // 🔥 FIX: 核心过关逻辑
+        // 1. 应用分数
+        saveData.score += result.finalScore;
 
+        // 2. 推进关卡
+        saveData.currentLevel++;
+        saveData.levelBaseScore = 0;
+        saveData.levelPenalty = 0;
+
+        // 3. 关键：置空 Maze 数据，强制 GameManager 生成新关卡
+        saveData.maze = null;
+
+        if (toNextLevel) {
+            // 如果 ScoreManager 存在，同步分数
             if (game.getGameManager() != null && game.getGameManager().getScoreManager() != null) {
                 GameSaveData tempData = new GameSaveData();
                 tempData.score = saveData.score;
@@ -362,6 +378,7 @@ public class SettlementScreen implements Screen {
                 tempData.levelPenalty = 0;
                 game.getGameManager().getScoreManager().restoreState(tempData);
             }
+
             storage.saveGameSync(saveData);
             game.loadGame();
         } else {
@@ -413,7 +430,6 @@ public class SettlementScreen implements Screen {
         Gdx.gl.glClearColor(0.08f, 0.08f, 0.12f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // 背景
         stage.getBatch().begin();
         if (backgroundTexture != null) {
             stage.getBatch().setColor(0.4f, 0.4f, 0.4f, 1f);

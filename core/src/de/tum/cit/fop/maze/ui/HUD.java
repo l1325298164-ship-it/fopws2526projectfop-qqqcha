@@ -323,6 +323,17 @@ public class HUD {
             renderScore(uiBatch);
         }
             renderBottomCenterHUD(uiBatch);
+    // 🔥 FIX: 增加参数 allowInteraction
+    public void renderInGameUI(SpriteBatch uiBatch, boolean allowInteraction) {
+        if (gameManager.isTwoPlayerMode()) {
+            renderTwoPlayerHUD(uiBatch, allowInteraction);
+        } else {
+            renderSinglePlayerHUD(uiBatch, allowInteraction);
+        }
+        // 分数渲染
+        renderScore(uiBatch);
+
+        renderBottomCenterHUD(uiBatch);
 
 // ===== END OF UI FRAME =====
             lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
@@ -473,8 +484,8 @@ public class HUD {
 
         renderCat(uiBatch);
         renderCompassAsUI(uiBatch);
-        renderDashIcon(uiBatch, player, false);
-        renderMeleeIcon(uiBatch, player, false);
+        renderDashIcon(uiBatch, player, false, allowInteraction);
+        renderMeleeIcon(uiBatch, player, false, allowInteraction);
         renderAchievementPopup(uiBatch);
 
         float startX = 20;
@@ -540,7 +551,7 @@ public class HUD {
     }
 
 
-    private void renderTwoPlayerHUD(SpriteBatch uiBatch) {
+    private void renderTwoPlayerHUD(SpriteBatch uiBatch, boolean allowInteraction) {
         var players = gameManager.getPlayers();
         if (players == null || players.isEmpty()) return;
 
@@ -604,13 +615,13 @@ public class HUD {
 
         // ===== 技能图标 =====
         // P1
-        renderDashIcon(uiBatch, players.get(0), false);
-        renderMeleeIcon(uiBatch, players.get(0), false);
+        renderDashIcon(uiBatch, players.get(0), false, allowInteraction);
+        renderMeleeIcon(uiBatch, players.get(0), false, allowInteraction);
 
         // P2
         if (players.size() > 1) {
-            renderDashIcon(uiBatch, players.get(1), true);
-            renderMagicIcon(uiBatch, players.get(1), true);
+            renderDashIcon(uiBatch, players.get(1), true, allowInteraction);
+            renderMagicIcon(uiBatch, players.get(1), true, allowInteraction);
         }
     }
 
@@ -1619,7 +1630,8 @@ public class HUD {
         // ===============================
         boolean mouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
 
-        if (hover && mouseDown) {
+        // 🔥 FIX: 只有在允许交互时才处理点击
+        if (allowInteraction && hover && mouseDown) {
             long now = TimeUtils.millis();
             if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
                 lastUpgradeTime = now;

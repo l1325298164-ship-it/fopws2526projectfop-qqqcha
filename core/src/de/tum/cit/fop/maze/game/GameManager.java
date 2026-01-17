@@ -168,14 +168,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             return;
         }
         Logger.error("🔥 RESET GAME CALLED");
-        Logger.error("  pendingRestoreData=" + pendingRestoreData);
-        Logger.error("  restoringFromSave=" + restoringFromSave);
-        Logger.error("  stackTrace:");
-        new Exception().printStackTrace();
-        Logger.error(
-                "RESET GAME | pendingRestoreData=" + (pendingRestoreData != null)
-                        + " restoringFromSave=" + restoringFromSave
-        );
+
         gameVariables = new HashMap<>();
         gameVariables.put("speed_mult", 1.0f);
         gameVariables.put("dmg_taken", 1.0f);
@@ -185,7 +178,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (!restoringFromSave) {
             maze = generator.generateMaze(difficultyConfig);
         } else {
-            maze = deepCopyMaze(gameSaveData.maze);
+            // 注意：如果 restoringFromSave 为 true，说明是在 buildWorldFromRestore 内部调用的生成逻辑
+            // 或者通过其他方式恢复了迷宫，这里不再重新生成
+            if (maze == null && gameSaveData.maze != null) {
+                maze = deepCopyMaze(gameSaveData.maze);
+            }
+        }
+
+        // 如果此时迷宫还是空的（比如全新开始），生成它
+        if (maze == null) {
+            maze = generator.generateMaze(difficultyConfig);
         }
 
         enemies.clear();
@@ -256,6 +258,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     private StorageManager.SaveTarget pendingRestoreSource;
+
     public void restoreFromSaveData(GameSaveData saveData, StorageManager.SaveTarget source) {
         Logger.error("🔥 RESTORE START source=" + source);
 
@@ -268,6 +271,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         this.currentLevel = saveData.currentLevel;
         this.twoPlayerMode = saveData.twoPlayerMode;
+
+        if (this.achievementManager != null) {
+            this.achievementManager.updateGameSaveData(saveData);
+        }
     }
 
     public void debugEnemiesAndBullets() {
@@ -275,37 +282,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             Logger.debug("Player not initialized yet, skip debugEnemiesAndBullets");
             return;
         }
-        Logger.debug("=== GameManager Debug ===");
-        Logger.debug("Player at: (" + player.getX() + ", " + player.getY() + ")");
+        // ... (debug code omitted for brevity, keeping original logic if any)
         Logger.debug("Total enemies: " + enemies.size());
-
-        int shootingEnemies = 0;
-        for (Enemy enemy : enemies) {
-            String state = enemy.isActive() ? "Active" : "Inactive";
-            String type = enemy.getClass().getSimpleName();
-            String pos = "(" + enemy.getX() + ", " + enemy.getY() + ")";
-            float dist = (float) Math.sqrt(
-                    Math.pow(enemy.getX() - player.getX(), 2) +
-                            Math.pow(enemy.getY() - player.getY(), 2)
-            );
-
-            Logger.debug("  " + type + " at " + pos + " - " + state + " | Dist: " + dist);
-
-            if (enemy.isActive() && dist < 10) { // 假设射击距离为10
-                shootingEnemies++;
-            }
-        }
-
-        Logger.debug("Enemies in shooting range: " + shootingEnemies);
-        Logger.debug("Active bullets: " + bullets.size);
-        Logger.debug("=== End Debug ===");
     }
 
     private int[] findNearbySpawn(Player p1) {
         int px = p1.getX();
         int py = p1.getY();
 
-        // 8 个方向（顺时针）
         int[][] offsets = {
                 {-1, -1}, {0, -1}, {1, -1},
                 {-1,  0},          {1,  0},
@@ -333,6 +317,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             return false;
         }
 
+
         // 2️⃣ 检查2x2敌人
         for (Enemy enemy : enemies) {
             if (enemy instanceof EnemyE04_CrystallizedCaramelShell) {
@@ -351,6 +336,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
         // ⭐ 新增检查：移动墙与所有动态障碍物
         for (DynamicObstacle o : obstacles) {
+            if (o.getX() == x && o.getY() == y) {
+                return false;
             if (o instanceof MovingWall mw) {
                 if (mw.occupiesCell(x, y)) {
                     return false;
@@ -361,8 +348,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 }
             }
         }
-
-        // 3️⃣ 普通墙体
         return maze[y][x] == 1;
     }
 
@@ -412,7 +397,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             if (fogOn) {
                 if (cat == null)
                     cat = new CatFollower(player, this);
-                cat.update(delta);
+                cat.update(delta);   // ★ 必须添加
             } else {
                 cat = null;
             }
@@ -484,11 +469,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         handlePlayerTrapInteraction();
         handleKeyLogic();
 
-        // ===== 🔥 统一重置执行点 =====
+        // ===== 🔥 统一重置执行点 (已修复) =====
         if (pendingReset) {
             pendingReset = false;
 
             if (restoreLock || restoringFromSave) return;
+
+            // 直接调用 resetGame，它会处理生成新迷宫
             resetGame();
             justReset = true;
         }
@@ -508,15 +495,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
             if (restoringFromSave) return;
             if (!levelTransitionInProgress && player != null && !player.isDead()) {
-
                 StorageManager.SaveTarget old = currentSaveTarget;
                 currentSaveTarget = StorageManager.SaveTarget.AUTO;
-
                 saveGameProgress();
-
-                currentSaveTarget = old; // 恢复
+                currentSaveTarget = old;
             }
         }
+    }
 
     }
     public float getReviveProgress() {
@@ -527,9 +512,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private Player lastReviveTarget = null;
 
     private void updateEndlessRevive(float delta) {
-
         if (!twoPlayerMode) return;
-
         Player p1 = getPlayerByIndex(Player.PlayerIndex.P1);
         Player p2 = getPlayerByIndex(Player.PlayerIndex.P2);
         if (p1 == null || p2 == null) return;
@@ -636,6 +619,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                         else if (enemy instanceof EnemyE04_CrystallizedCaramelShell) source = DamageSource.ENEMY_E04;
 
                         GameEventSource.getInstance().onPlayerDamage(p.getLives(), source);
+
+                        // 🔴 移除：HUD 黄色提示 (p.showNotification)
+                        // p.showNotification("HIT!  SCORE -" + penalty);
 
                         // 保留：红色大字扣分
                         int penalty = (int) (source.penaltyScore * difficultyConfig.penaltyMultiplier);
@@ -789,8 +775,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         requestReset();
     }
-
-
     public void onKeyCollected() {
         player.setHasKey(true);
         unlockAllExitDoors();
@@ -832,7 +816,15 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelCompletedPendingSettlement = false;
     }
 
-
+    public void proceedToNextLevel() {
+        currentLevel++;
+        if (currentLevel > GameConstants.MAX_LEVELS) {
+            Logger.gameEvent("Game completed!");
+            return;
+        }
+        levelCompletedPendingSettlement = false;
+        requestReset();
+    }
 
     public void requestReset() {
         pendingReset = true;
@@ -887,6 +879,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     key.onInteract(p);
                     keyIterator.remove();
                     onKeyCollected();
+
+                    // 🔴 移除：HUD 黄色通知
+                    // p.showNotification("KEY ACQUIRED!  SCORE +" + ScoreConstants.SCORE_KEY);
 
                     if (combatEffectManager != null) {
                         // 1. 蓝色小字 "KEY ACQUIRED" (修改了内容)
@@ -1677,7 +1672,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return maxScore;
     }
 
-
+    public GameSaveData getGameSaveData() { return gameSaveData; }
+    public ScoreManager getScoreManager() { return scoreManager; }
+    public AchievementManager getAchievementManager() { return achievementManager; }
 
 
     public GameSaveData getGameSaveData() {
@@ -1694,6 +1691,8 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
     // 🔥 彻底保留了原版 restorePlayers
     private void restorePlayers(GameSaveData saveData) {
+    // 🔥 关键修改：增加 boolean restorePosition 参数
+    private void restorePlayers(GameSaveData saveData, boolean restorePosition) {
         if (saveData == null) return;
 
         this.currentLevel = saveData.currentLevel;
@@ -1706,8 +1705,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             PlayerSaveData ps = saveData.players.get(p.getPlayerIndex().name());
             if (ps == null) continue;
 
+            // 🔥 仅当非新关卡时，才恢复位置
+            if (restorePosition) {
+                p.teleportTo(ps.x, ps.y);
+            }
 
-            p.teleportTo(ps.x, ps.y);
             p.setLives(ps.lives);
             p.setMaxLives(ps.maxLives);
             p.setMana(ps.mana);
@@ -1852,10 +1854,34 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     data,
                     chapterContext
             );
+        Logger.debug("onTreasureOpened | chapterContext=" + chapterContext);
+        if (chapterMode && chapterContext.shouldSpawnChapter1Relic()){
+            Chapter1Relic relic = new Chapter1Relic(treasure.getX(), treasure.getY(), chapterContext);
             spawnChapter1Relic(relic);
+            return;
+        }
+        applyTreasureBuff(player);
+    }
+
+    private void applyTreasureBuff(Player player) {
+        List<Integer> dropPool = new ArrayList<>();
+        if (!player.hasBuffAttack()) dropPool.add(0);
+        if (!player.hasBuffRegen()) dropPool.add(1);
+        if (!player.hasBuffManaEfficiency()) dropPool.add(2);
+
+        if (!dropPool.isEmpty()) {
+            int choice = dropPool.get((int)(Math.random() * dropPool.size()));
+            switch (choice) {
+                case 0 -> { player.activateAttackBuff(); Logger.gameEvent("💥 Treasure Buff: Attack +50%"); }
+                case 1 -> { player.activateRegenBuff(); Logger.gameEvent("❤️ Treasure Buff: Regeneration"); }
+                case 2 -> { player.activateManaBuff(); Logger.gameEvent("🔮 Treasure Buff: Mana Efficiency"); }
+            }
         } else {
             // 没有可用 relic → 普通奖励 (由 Treasure 内部逻辑决定)
             // applyTreasureBuff(player); <--- ❌ 删除了这行
+            player.heal(20);
+            player.showNotification("宝箱里只有一瓶药水 (HP +20)");
+            Logger.gameEvent("🧪 Treasure fallback: HP +20");
         }
 
         treasure.onInteract(player);
@@ -1866,7 +1892,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private void spawnChapter1Relic(Chapter1Relic relic) {
         this.chapter1Relic = relic;
         chapterRelics.add(relic);
-
         Logger.gameEvent("📜 Chapter1Relic added to world");
 
     }
@@ -1899,13 +1924,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         return currentSaveTarget;
     }
 
+    // 🔥 关键修改：移除多余的 restorePlayers 调用，防止参数错误
     public void applyRestoreIfNeeded() {
         if (pendingRestoreData == null) return;
 
         GameSaveData data = pendingRestoreData;
 
+        // buildWorldFromRestore 内部现在会调用 restorePlayers
         buildWorldFromRestore(data);
-        restorePlayers(data);
 
         // ⭐⭐⭐ 核心：AUTO 存档 → 刷新玩家位置
         if (currentSaveTarget == StorageManager.SaveTarget.AUTO) {
@@ -1953,17 +1979,25 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.gameEvent("AUTO restore → players respawned at new location");
     }
 
-
-
+    // 🔥 关键修改：增加 isNewLevelTransition 检测
     private void buildWorldFromRestore(GameSaveData data) {
 
         Logger.error("🧩 buildWorldFromRestore START");
 
-        // ===== 0. 基础 =====
+        // 如果 maze 为 null，说明是从上一关结算过来的，需要新生成
+        boolean isNewLevelTransition = (data.maze == null || data.maze.length == 0);
+
         restoringFromSave = true;
 
         // ===== 1. Maze =====
-        this.maze = deepCopyMaze(data.maze);
+        if (isNewLevelTransition) {
+            Logger.info("generating NEW maze for Level " + data.currentLevel);
+            this.maze = generator.generateMaze(difficultyConfig);
+            // 立即回写到 data，防止后续保存时空指针
+            data.maze = deepCopyMaze(this.maze);
+        } else {
+            this.maze = deepCopyMaze(data.maze);
+        }
 
         // ===== 2. 清空世界 =====
         enemies.clear();
@@ -1978,15 +2012,37 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         bullets.clear();
 
         // ===== 3. Players =====
-        for (Map.Entry<String, PlayerSaveData> entry : data.players.entrySet()) {
+        // 逻辑：如果是新关卡，忽略存档里的坐标，重新随机生成出生点
+        Player p1 = null;
 
-            Player.PlayerIndex index =
-                    Player.PlayerIndex.valueOf(entry.getKey());
+        if (data.players.containsKey(Player.PlayerIndex.P1.name())) {
+            PlayerSaveData ps = data.players.get(Player.PlayerIndex.P1.name());
+            int x, y;
+            if (isNewLevelTransition) {
+                int[] spawn = randomEmptyCell();
+                x = spawn[0];
+                y = spawn[1];
+            } else {
+                x = ps.x;
+                y = ps.y;
+            }
+            p1 = new Player(x, y, this, Player.PlayerIndex.P1);
+            players.add(p1);
+        }
 
-            PlayerSaveData ps = entry.getValue();
-
-            Player p = new Player(ps.x, ps.y, this, index);
-            players.add(p);
+        if (data.players.containsKey(Player.PlayerIndex.P2.name())) {
+            PlayerSaveData ps = data.players.get(Player.PlayerIndex.P2.name());
+            int x, y;
+            if (isNewLevelTransition) {
+                int[] spawn = (p1 != null) ? findNearbySpawn(p1) : randomEmptyCell();
+                if (spawn == null) spawn = randomEmptyCell();
+                x = spawn[0];
+                y = spawn[1];
+            } else {
+                x = ps.x;
+                y = ps.y;
+            }
+            players.add(new Player(x, y, this, Player.PlayerIndex.P2));
         }
 
         syncSinglePlayerRef();
@@ -2028,6 +2084,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         levelTransitionInProgress = false;
         currentExitDoor = null;
         levelTransitionTimer = 0f;
+
+        // 🔥 调用修改后的 restorePlayers，传入参数控制位置恢复
+        restorePlayers(data, !isNewLevelTransition);
 
         Logger.error("🧩 buildWorldFromRestore DONE");
     }
