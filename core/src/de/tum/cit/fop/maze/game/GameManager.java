@@ -2137,15 +2137,61 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
      * - 不能和玩家重叠
      * - 可以和其他敌人重叠
      */
+//    private int[] randomE04SpawnCell() {
+//        int width = maze[0].length;
+//        int height = maze.length;
+//
+//        for (int attempt = 0; attempt < 500; attempt++) {
+//            int x = random(1, width - 3);
+//            int y = random(1, height - 3);
+//
+//            // 1️⃣ 2x2 地形检查
+//            if (maze[y][x] != 1) continue;
+//            if (maze[y + 1][x] != 1) continue;
+//            if (maze[y][x + 1] != 1) continue;
+//            if (maze[y + 1][x + 1] != 1) continue;
+//
+//            // 2️⃣ 不允许与玩家重叠（任何一格）
+//            boolean overlapsPlayer = false;
+//            for (Player p : players) {
+//                if (p == null) continue;
+//
+//                int px = p.getX();
+//                int py = p.getY();
+//
+//                if ((px == x || px == x + 1) &&
+//                        (py == y || py == y + 1)) {
+//                    overlapsPlayer = true;
+//                    break;
+//                }
+//            }
+//
+//            if (overlapsPlayer) continue;
+//
+//            return new int[]{x, y};
+//        }
+//
+//        // 🧯 极端兜底：用玩家附近（理论上很少触发）
+//        Logger.warning("E04 spawn fallback used");
+//        return new int[]{player.getX(), player.getY()};
+//    }
     private int[] randomE04SpawnCell() {
         int width = maze[0].length;
         int height = maze.length;
 
-        for (int attempt = 0; attempt < 500; attempt++) {
-            int x = random(1, width - 3);
-            int y = random(1, height - 3);
+        // 🔥 优化：直接从 BORDER_THICKNESS 开始随机，避免在边界墙里浪费循环
+        // BORDER_THICKNESS 默认是 12，所以从 12 开始随
+        int minX = BORDER_THICKNESS;
+        int maxX = width - BORDER_THICKNESS - 2; // -2 是为了留出 2x2 的空间
+        int minY = BORDER_THICKNESS;
+        int maxY = height - BORDER_THICKNESS - 2;
 
-            // 1️⃣ 2x2 地形检查
+        for (int attempt = 0; attempt < 500; attempt++) {
+            // 确保 min < max，防止小地图崩溃
+            int x = (maxX > minX) ? random(minX, maxX) : random(1, width - 3);
+            int y = (maxY > minY) ? random(minY, maxY) : random(1, height - 3);
+
+            // 1️⃣ 2x2 地形检查 (确保 4 个格子都是路)
             if (maze[y][x] != 1) continue;
             if (maze[y + 1][x] != 1) continue;
             if (maze[y][x + 1] != 1) continue;
@@ -2155,26 +2201,21 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             boolean overlapsPlayer = false;
             for (Player p : players) {
                 if (p == null) continue;
-
                 int px = p.getX();
                 int py = p.getY();
-
-                if ((px == x || px == x + 1) &&
-                        (py == y || py == y + 1)) {
+                // 检查玩家是否在 E04 的 2x2 区域内
+                if (px >= x && px <= x + 1 && py >= y && py <= y + 1) {
                     overlapsPlayer = true;
                     break;
                 }
             }
-
             if (overlapsPlayer) continue;
 
             return new int[]{x, y};
         }
 
-        // 🧯 极端兜底：用玩家附近（理论上很少触发）
-        Logger.warning("E04 spawn fallback used");
-        return new int[]{player.getX(), player.getY()};
+        Logger.warning("E04 spawn fallback used (Map too crowded?)");
+        return new int[]{player.getX(), player.getY()}; // 实在找不到位置时的兜底
     }
-
 
 }
