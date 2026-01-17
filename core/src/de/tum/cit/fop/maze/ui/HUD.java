@@ -195,9 +195,9 @@ public class HUD {
 
 
     // =========================================================
-// UI TUNING (MAGIC NUMBERS ZONE)
-// 所有 HUD 微调只改这里，不要在下面散落写 +10f +18f
-// =========================================================
+    // UI TUNING (MAGIC NUMBERS ZONE)
+    // 所有 HUD 微调只改这里，不要在下面散落写 +10f +18f
+    // =========================================================
 
     // --- Upgrade Button ---
     private static final float UPG_BTN_SIZE = 36f;      // 按钮尺寸
@@ -287,25 +287,23 @@ public class HUD {
 
     // =========================================================
 
-    public void renderInGameUI(SpriteBatch uiBatch) {
-            if (gameManager.isTwoPlayerMode()) {
-                renderTwoPlayerHUD(uiBatch);
-            } else {
-                renderSinglePlayerHUD(uiBatch);
-            }
-            // 🔥 修复：将分数渲染移到这里，确保单人/双人都能显示，且根据模式自动调整位置
-            renderScore(uiBatch);
+    // 🔥 FIX: 增加参数 allowInteraction
+    public void renderInGameUI(SpriteBatch uiBatch, boolean allowInteraction) {
+        if (gameManager.isTwoPlayerMode()) {
+            renderTwoPlayerHUD(uiBatch, allowInteraction);
+        } else {
+            renderSinglePlayerHUD(uiBatch, allowInteraction);
+        }
+        // 分数渲染
+        renderScore(uiBatch);
 
-            renderBottomCenterHUD(uiBatch);
+        renderBottomCenterHUD(uiBatch);
 
-// ===== END OF UI FRAME =====
-            lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
-
-
-
+        // ===== END OF UI FRAME =====
+        lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
     }
 
-    private void renderSinglePlayerHUD(SpriteBatch uiBatch) {
+    private void renderSinglePlayerHUD(SpriteBatch uiBatch, boolean allowInteraction) {
         var player = gameManager.getPlayer();
         if (player == null) return;
 
@@ -329,8 +327,8 @@ public class HUD {
 
         renderCat(uiBatch);
         renderCompassAsUI(uiBatch);
-        renderDashIcon(uiBatch, player, false);
-        renderMeleeIcon(uiBatch, player, false);
+        renderDashIcon(uiBatch, player, false, allowInteraction);
+        renderMeleeIcon(uiBatch, player, false, allowInteraction);
         renderAchievementPopup(uiBatch);
 
         float startX = 20;
@@ -396,7 +394,7 @@ public class HUD {
     }
 
 
-    private void renderTwoPlayerHUD(SpriteBatch uiBatch) {
+    private void renderTwoPlayerHUD(SpriteBatch uiBatch, boolean allowInteraction) {
         var players = gameManager.getPlayers();
         if (players == null || players.isEmpty()) return;
 
@@ -460,20 +458,21 @@ public class HUD {
 
         // ===== 技能图标 =====
         // P1
-        renderDashIcon(uiBatch, players.get(0), false);
-        renderMeleeIcon(uiBatch, players.get(0), false);
+        renderDashIcon(uiBatch, players.get(0), false, allowInteraction);
+        renderMeleeIcon(uiBatch, players.get(0), false, allowInteraction);
 
         // P2
         if (players.size() > 1) {
-            renderDashIcon(uiBatch, players.get(1), true);
-            renderMagicIcon(uiBatch, players.get(1), true);
+            renderDashIcon(uiBatch, players.get(1), true, allowInteraction);
+            renderMagicIcon(uiBatch, players.get(1), true, allowInteraction);
         }
     }
 
     private void renderDashIcon(
             SpriteBatch uiBatch,
             Player player,
-            boolean mirror
+            boolean mirror,
+            boolean allowInteraction
     ) {
         if (player == null) return;
 
@@ -517,7 +516,8 @@ public class HUD {
                 dash,
                 x,
                 y,
-                DASH_ICON_SIZE, mirror
+                DASH_ICON_SIZE, mirror,
+                allowInteraction
         );
 
         if (dashCharges < 2) {
@@ -536,7 +536,8 @@ public class HUD {
     private void renderMeleeIcon(
             SpriteBatch uiBatch,
             Player player,
-            boolean mirror
+            boolean mirror,
+            boolean allowInteraction
     ) {
         if (meleeIcon == null || player == null) return;
 
@@ -576,7 +577,8 @@ public class HUD {
                 melee,
                 x,
                 y,
-                size, mirror
+                size, mirror,
+                allowInteraction
         );
 
         if (onCooldown) {
@@ -586,7 +588,8 @@ public class HUD {
     private void renderMagicIcon(
             SpriteBatch batch,
             Player player,
-            boolean mirror
+            boolean mirror,
+            boolean allowInteraction
     ) {
         if (player == null) return;
 
@@ -650,7 +653,8 @@ public class HUD {
                 magic,
                 x,
                 y,
-                size, mirror
+                size, mirror,
+                allowInteraction
         );
 
         // ================= Grow（呼吸光） =================
@@ -909,7 +913,6 @@ public class HUD {
                 GL_SRC_ALPHA,
                 GL_ONE_MINUS_SRC_ALPHA
         );
-        uiBatch.setColor(1f, 1f, 1f, 1f);
     }
 
     private void updateAndRenderLongTrail(
@@ -1367,7 +1370,8 @@ public class HUD {
             float iconX,
             float iconY,
             float iconSize,
-            boolean mirror
+            boolean mirror,
+            boolean allowInteraction
     ) {
 
         if (!canShowUpgrade(player, ability)) return;
@@ -1475,7 +1479,8 @@ public class HUD {
         // ===============================
         boolean mouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
 
-        if (hover && mouseDown) {
+        // 🔥 FIX: 只有在允许交互时才处理点击
+        if (allowInteraction && hover && mouseDown) {
             long now = TimeUtils.millis();
             if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
                 lastUpgradeTime = now;

@@ -239,35 +239,36 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         // ===== Input (如果 Game Over 显示了，禁止玩家操作) =====
         // 🔥 [修复] 添加 && !gameOverShown
-//        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !gameOverShown) {
-//
-//            input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
-//                @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
-//                @Override public float getMoveDelayMultiplier() { return 1f; }
-//                @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
-//                @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
-//                @Override public void onMenuInput() { togglePause();  }
-//                @Override
-//                public boolean isUIConsumingMouse() {
-//                    return gm.isUIConsumingMouse();
-//                }
-//            }, Player.PlayerIndex.P1);
-//
-//            if (gm.isTwoPlayerMode()) {
-//                input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
-//                    @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
-//                    @Override public float getMoveDelayMultiplier() { return 1f; }
-//                    @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
-//                    @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
-//                    @Override public void onMenuInput() {}
-//                    // ⭐ 同样必须有
-//                    @Override
-//                    public boolean isUIConsumingMouse() {
-//                        return gm.isUIConsumingMouse();
-//                    }
-//                }, Player.PlayerIndex.P2);
-//            }
-//        }
+        // ⚡ [恢复] 取消注释以启用输入
+        if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !gameOverShown) {
+
+            input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+                @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
+                @Override public float getMoveDelayMultiplier() { return 1f; }
+                @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
+                @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
+                @Override public void onMenuInput() { togglePause();  }
+                @Override
+                public boolean isUIConsumingMouse() {
+                    return gm.isUIConsumingMouse();
+                }
+            }, Player.PlayerIndex.P1);
+
+            if (gm.isTwoPlayerMode()) {
+                input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
+                    @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
+                    @Override public float getMoveDelayMultiplier() { return 1f; }
+                    @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
+                    @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
+                    @Override public void onMenuInput() {}
+                    // ⭐ 同样必须有
+                    @Override
+                    public boolean isUIConsumingMouse() {
+                        return gm.isUIConsumingMouse();
+                    }
+                }, Player.PlayerIndex.P2);
+            }
+        }
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
 
         // ===== Update (如果 Game Over 显示了，暂停游戏逻辑) =====
@@ -506,7 +507,11 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         batch.begin();
         renderMazeBorderDecorations(batch);
-        hud.renderInGameUI(batch);
+
+        // 🔥 FIX: 计算是否允许交互，并传递给 HUD
+        boolean allowInteraction = !paused && !gameOverShown;
+        hud.renderInGameUI(batch, allowInteraction);
+
         batch.end();
 
         uiStage.act(Gdx.graphics.getDeltaTime());
@@ -551,7 +556,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         buttonTable.add(
                 bf.create("SAVE GAME", this::openManualSaveDialog)
         ).width(btnW).height(btnH).pad(padding);
-        
+
         root.add(buttonTable).expandY().center();
         pauseUIInitialized = true;
     }

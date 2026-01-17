@@ -29,10 +29,6 @@ import de.tum.cit.fop.maze.game.save.StorageManager;
 
 /**
  * 结算界面 (Settlement Screen) - 布局优化版
- * <p>
- * 修改：
- * 1. 紧凑布局：大幅减少了评级上下方的空白间距。
- * 2. 按钮加大：底部按钮尺寸调整为 420x90。
  */
 public class SettlementScreen implements Screen {
 
@@ -44,17 +40,14 @@ public class SettlementScreen implements Screen {
 
     private Texture backgroundTexture;
 
-    // 交互状态
     private boolean isHighScore = false;
     private boolean scoreSubmitted = false;
     private TextField nameInput;
 
-    // 分数滚动动画
     private float displayedTotalScore;
     private final float targetTotalScore;
     private boolean isScoreRolling = true;
 
-    // UI 组件引用
     private Label labelTotalScore;
 
     public SettlementScreen(MazeRunnerGame game, LevelResult result, GameSaveData saveData) {
@@ -68,10 +61,10 @@ public class SettlementScreen implements Screen {
         this.leaderboardManager = new LeaderboardManager();
 
         this.displayedTotalScore = saveData.score;
-        this.saveData.score += result.finalScore;
-        this.targetTotalScore = this.saveData.score;
+        // 🔥 FIX: 构造时不再叠加分数，只计算目标值用于动画
+        this.targetTotalScore = this.saveData.score + result.finalScore;
 
-        this.isHighScore = leaderboardManager.isHighScore(this.saveData.score);
+        this.isHighScore = leaderboardManager.isHighScore((int)this.targetTotalScore);
 
         try {
             if (Gdx.files.internal("menu_bg/bg_front.png").exists()) {
@@ -107,10 +100,9 @@ public class SettlementScreen implements Screen {
         titleLabel.setFontScale(1.2f);
         titleLabel.getColor().a = 0f;
         titleLabel.addAction(Actions.fadeIn(1.0f));
-        // 🔥 修改：减小标题下间距 (30 -> 10)
         scrollContent.add(titleLabel).padBottom(10).row();
 
-        // --- 2. Rank 印章 (居中大图标) ---
+        // --- 2. Rank 印章 ---
         Label rankLabel = new Label(result.rank, game.getSkin(), "title");
         rankLabel.setFontScale(6.0f);
         rankLabel.setAlignment(Align.center);
@@ -123,21 +115,18 @@ public class SettlementScreen implements Screen {
                 Actions.delay(0.3f),
                 Actions.parallel(Actions.fadeIn(0.2f), Actions.scaleTo(1f, 1f, 0.5f, Interpolation.bounceOut))
         ));
-        // 🔥 修改：减小 Rank 下间距 (10 -> 0)
         scrollContent.add(rankLabel).padBottom(0).row();
 
         if ("S".equals(result.rank)) {
             Label praise = new Label("PERFECT!", game.getSkin());
             praise.setColor(Color.GOLD);
             praise.setFontScale(1.2f);
-            // 🔥 修改：S级评价间距 (30 -> 20)
             scrollContent.add(praise).padBottom(20).row();
         } else {
-            // 🔥 修改：移除大占位符，仅留微小间隙 (10)
             scrollContent.add(new Label("", game.getSkin())).height(10).row();
         }
 
-        // --- 3. 分数详情 (宽表格) ---
+        // --- 3. 分数详情 ---
         Table scoreTable = new Table();
         float tableWidth = 500f;
 
@@ -148,18 +137,17 @@ public class SettlementScreen implements Screen {
         Label line = new Label("- - - - - - - - - -", game.getSkin());
         line.setColor(Color.GRAY);
         line.setAlignment(Align.center);
-        scoreTable.add(line).colspan(2).pad(10).row(); // pad 15 -> 10
+        scoreTable.add(line).colspan(2).pad(10).row();
 
         addScoreRow(scoreTable, "LEVEL SCORE", String.valueOf(result.finalScore), Color.GOLD);
 
-        scoreTable.add(new Label("TOTAL SCORE", game.getSkin())).align(Align.left).padTop(15); // pad 20 -> 15
+        scoreTable.add(new Label("TOTAL SCORE", game.getSkin())).align(Align.left).padTop(15);
         labelTotalScore = new Label(formatScore((int)displayedTotalScore), game.getSkin());
         labelTotalScore.setColor(Color.ORANGE);
         labelTotalScore.setFontScale(1.5f);
         scoreTable.add(labelTotalScore).align(Align.right).padTop(15);
         scoreTable.row();
 
-        // 🔥 修改：表格下间距 (40 -> 30)
         scrollContent.add(scoreTable).width(tableWidth).padBottom(30).row();
 
         // --- 4. 统计与成就 ---
@@ -215,7 +203,8 @@ public class SettlementScreen implements Screen {
             inputRow.add(bf.create("SUBMIT", () -> {
                 String name = nameInput.getText();
                 if (name == null || name.trim().isEmpty()) name = "Traveler";
-                leaderboardManager.addScore(name, saveData.score);
+                // 使用预测的总分 (targetTotalScore) 提交
+                leaderboardManager.addScore(name, (int)targetTotalScore);
                 scoreSubmitted = true;
                 setupUI();
             })).width(120).height(50);
@@ -224,7 +213,7 @@ public class SettlementScreen implements Screen {
             scrollContent.add(inputContainer).padBottom(30).row();
         }
 
-        // 底部留白，防止内容被按钮挡住 (留出按钮高度 + 间隙)
+        // 底部留白
         scrollContent.add(new Label("", game.getSkin())).height(150).row();
 
         // 放入 ScrollPane
@@ -235,14 +224,12 @@ public class SettlementScreen implements Screen {
         mainRoot.add(scrollPane).expand().fill().row();
 
         // ==========================================
-        // 2. 底部按钮 (透明背景)
+        // 2. 底部按钮
         // ==========================================
         Table footer = new Table();
         footer.pad(20);
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
-
-        // 🔥 修改：按钮尺寸加大至 420x90
         float btnWidth = 420f;
         float btnHeight = 90f;
 
@@ -285,11 +272,20 @@ public class SettlementScreen implements Screen {
         clearNewAchievements();
         StorageManager storage = StorageManager.getInstance();
 
-        if (toNextLevel) {
-            saveData.currentLevel++;
-            saveData.levelBaseScore = 0;
-            saveData.levelPenalty = 0;
+        // 🔥 FIX: 核心过关逻辑
+        // 1. 应用分数
+        saveData.score += result.finalScore;
 
+        // 2. 推进关卡
+        saveData.currentLevel++;
+        saveData.levelBaseScore = 0;
+        saveData.levelPenalty = 0;
+
+        // 3. 关键：置空 Maze 数据，强制 GameManager 生成新关卡
+        saveData.maze = null;
+
+        if (toNextLevel) {
+            // 如果 ScoreManager 存在，同步分数
             if (game.getGameManager() != null && game.getGameManager().getScoreManager() != null) {
                 GameSaveData tempData = new GameSaveData();
                 tempData.score = saveData.score;
@@ -297,6 +293,7 @@ public class SettlementScreen implements Screen {
                 tempData.levelPenalty = 0;
                 game.getGameManager().getScoreManager().restoreState(tempData);
             }
+
             storage.saveGameSync(saveData);
             game.loadGame();
         } else {

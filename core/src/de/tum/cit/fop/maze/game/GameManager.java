@@ -225,7 +225,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
 
 
-            generateLevel();
+        generateLevel();
 
 
 
@@ -260,6 +260,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         this.currentLevel = saveData.currentLevel;
         this.twoPlayerMode = saveData.twoPlayerMode;
+
+        // 🔥 FIX 2: 修复读档后成就系统写入旧对象的问题
+        if (this.achievementManager != null) {
+            this.achievementManager.updateGameSaveData(saveData);
+        }
     }
     public void debugEnemiesAndBullets() {
         if (player == null) {
@@ -344,7 +349,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         // ⭐ 新增检查：移动墙与所有动态障碍物
         for (DynamicObstacle o : obstacles) {
             if (o.getX() == x && o.getY() == y) {
-                return false;  // 玩家不能走进移动的墙
+                return false;
             }
         }
 
@@ -467,7 +472,15 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             pendingReset = false;
 
             if (restoreLock || restoringFromSave) return;
-            resetGame();
+            // 🔥 FIX 1: 如果存档中没有迷宫数据（说明是关卡过渡存档），强制生成新迷宫
+            if (gameSaveData.maze == null || gameSaveData.maze.length == 0) {
+                Logger.info("Generating NEW maze (Reason: No save data or maze is null)");
+                resetGame();
+                // 确保新生成的迷宫在 saveData 中有记录，防止立即保存出错
+                gameSaveData.maze = deepCopyMaze(maze);
+            } else {
+                resetGame();
+            }
             justReset = true;
         }
 
@@ -1372,7 +1385,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
 
-
+    // 🔥 FIX: 实现接口新加的方法
+    @Override
+    public void onMenuInput() {
+        // GameManager 作为回调时，收到菜单/暂停输入（ESC）
+        // 实际的暂停逻辑主要由 GameScreen 负责，这里留空防止副作用，
+        // 或者可以加日志：
+        // Logger.info("onMenuInput received in GameManager (no-op)");
+    }
 
     public void setVariable(String key, float value) {
         if (gameVariables == null) gameVariables = new HashMap<>();
