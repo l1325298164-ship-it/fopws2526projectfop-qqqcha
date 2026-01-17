@@ -7,6 +7,7 @@ import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.Map;
 
@@ -118,6 +119,13 @@ public class MagicAbility extends Ability {
 
                 aimingTimer = 0f;
                 setPhase(Phase.AIMING);
+
+                // 🔥 [新增] 生成魔法阵特效
+                if (gm.getCombatEffectManager() != null) {
+                    float cx = (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE;
+                    float cy = (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE;
+                    gm.getCombatEffectManager().spawnMagicCircle(cx, cy, aoeVisualRadius, AIMING_TIMEOUT);
+                }
             }
 
             case AIMING -> {
@@ -182,13 +190,13 @@ public class MagicAbility extends Ability {
 
         if (phase == Phase.AIMING) {
             aimingTimer += delta;
-            aoeCenterX = gm.getMouseTileX();
-            aoeCenterY = gm.getMouseTileY();
 
+            // 只有当 UI 不遮挡时才跟随鼠标，否则锁定位置
             if (!gm.isUIConsumingMouse()) {
                 aoeCenterX = gm.getMouseTileX();
                 aoeCenterY = gm.getMouseTileY();
             }
+
             if (aimingTimer >= AIMING_TIMEOUT) {
                 setPhase(Phase.IDLE);
             }
@@ -227,6 +235,14 @@ public class MagicAbility extends Ability {
     private void castAOE(GameManager gm) {
         hitEnemyCount = 0;
 
+        float cx = (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE;
+        float cy = (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE;
+
+        // 🔥 [新增] 爆发光柱特效
+        if (gm.getCombatEffectManager() != null) {
+            gm.getCombatEffectManager().spawnMagicPillar(cx, cy, aoeVisualRadius);
+        }
+
         for (Enemy enemy : gm.getEnemies()) {
             if (enemy == null || enemy.isDead()) continue;
 
@@ -236,6 +252,19 @@ public class MagicAbility extends Ability {
             if (dx * dx + dy * dy <= aoeTileRadius * aoeTileRadius) {
                 enemy.takeDamage(20);
                 hitEnemyCount++;
+
+                // 🔥 [新增] 命中反馈：生成魔力精华飞向玩家
+                if (gm.getCombatEffectManager() != null) {
+                    float ex = enemy.getWorldX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                    float ey = enemy.getWorldY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+
+                    Player caster = gm.getPlayer(); // 获取当前主控玩家
+                    if (caster != null) {
+                        float px = caster.getWorldX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                        float py = caster.getWorldY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                        gm.getCombatEffectManager().spawnMagicEssence(ex, ey, px, py);
+                    }
+                }
             }
         }
     }
@@ -257,16 +286,9 @@ public class MagicAbility extends Ability {
 
     @Override
     public void draw(SpriteBatch batch, ShapeRenderer sr, Player player) {
-        if (phase != Phase.AIMING) return;
-
-        sr.begin(ShapeRenderer.ShapeType.Line);
-        sr.setColor(Color.PURPLE);
-        sr.circle(
-                (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE,
-                (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE,
-                aoeVisualRadius
-        );
-        sr.end();
+        // ❌ [修改] 清空旧的绘图代码
+        // 原本这里画紫色线条圆圈的代码全部删除。
+        // 现在视觉效果完全由 CombatEffectManager.spawnMagicCircle() 负责。
     }
 
     /* ================= HUD Getters ================= */
