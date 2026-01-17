@@ -36,6 +36,9 @@ import de.tum.cit.fop.maze.game.save.StorageManager;
  * 2. 按钮加大：底部按钮尺寸调整为 420x90。
  */
 public class SettlementScreen implements Screen {
+    // === Auto Scroll 控制 ===
+    private ScrollPane scrollPane;
+    private Label scrollHintLabel;
 
     private final MazeRunnerGame game;
     private final LevelResult result;
@@ -86,6 +89,7 @@ public class SettlementScreen implements Screen {
     @Override
     public void show() {
         AudioManager.getInstance().stopAll(); //TODO
+
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
         setupUI();
@@ -208,10 +212,14 @@ public class SettlementScreen implements Screen {
 
             Table inputRow = new Table();
             nameInput = new TextField("", createFallbackTextFieldStyle());
-            nameInput.setMessageText("Enter Name...");
-            nameInput.setMaxLength(10);
+            nameInput.setMessageText("Enter A Name...");
+            nameInput.setMaxLength(100);
             nameInput.setAlignment(Align.center);
-            inputRow.add(nameInput).width(200).height(50).padRight(15);
+
+            inputRow.add(nameInput)
+                    .width(260)     // 🔥 稍微加宽
+                    .height(50);
+
 
             ButtonFactory bf = new ButtonFactory(game.getSkin());
             inputRow.add(bf.create("SUBMIT", () -> {
@@ -220,7 +228,7 @@ public class SettlementScreen implements Screen {
                 leaderboardManager.addScore(name, saveData.score);
                 scoreSubmitted = true;
                 setupUI();
-            })).width(120).height(50);
+            })).width(200).height(50);
 
             inputContainer.add(inputRow);
             scrollContent.add(inputContainer).padBottom(30).row();
@@ -230,11 +238,47 @@ public class SettlementScreen implements Screen {
         scrollContent.add(new Label("", game.getSkin())).height(150).row();
 
         // 放入 ScrollPane
-        ScrollPane scrollPane = new ScrollPane(scrollContent, createScrollPaneStyle());
+        scrollPane = new ScrollPane(scrollContent, createScrollPaneStyle());
         scrollPane.setFadeScrollBars(false);
         scrollPane.setScrollingDisabled(true, false);
 
         mainRoot.add(scrollPane).expand().fill().row();
+        stage.setKeyboardFocus(scrollPane);
+        stage.setScrollFocus(scrollPane);
+        // ===== Scroll down 悬浮提示（固定显示 3 秒）=====
+        scrollHintLabel = new Label("Scroll down ↓", game.getSkin());
+        scrollHintLabel.setColor(1f, 1f, 1f, 0.6f);
+        scrollHintLabel.setAlignment(Align.center);
+
+// 放在屏幕下方居中
+        scrollHintLabel.setPosition(
+                Gdx.graphics.getWidth() / 2f,
+                120f,
+                Align.center
+        );
+
+// Action 组合：
+// 1️⃣ 浮动循环（并行执行）
+// 2️⃣ 3 秒后淡出
+// 3️⃣ 自动移除自己
+        scrollHintLabel.addAction(
+                Actions.sequence(
+                        Actions.parallel(
+                                Actions.forever(
+                                        Actions.sequence(
+                                                Actions.moveBy(0, 10, 0.8f, Interpolation.sine),
+                                                Actions.moveBy(0, -10, 0.8f, Interpolation.sine)
+                                        )
+                                )
+                        ),
+                        Actions.delay(3f),
+                        Actions.fadeOut(0.5f),
+                        Actions.removeActor()
+                )
+        );
+
+        stage.addActor(scrollHintLabel);
+
 
         // ==========================================
         // 2. 底部按钮 (透明背景)
@@ -252,6 +296,8 @@ public class SettlementScreen implements Screen {
         footer.add(bf.create("MENU", () -> performSaveAndExit(false))).width(btnWidth).height(btnHeight);
 
         mainRoot.add(footer).fillX().bottom();
+
+
     }
 
     // --- Helpers ---
@@ -350,14 +396,18 @@ public class SettlementScreen implements Screen {
         Gdx.gl.glClearColor(0.08f, 0.08f, 0.12f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
+        // 背景
         stage.getBatch().begin();
         if (backgroundTexture != null) {
             stage.getBatch().setColor(0.4f, 0.4f, 0.4f, 1f);
-            stage.getBatch().draw(backgroundTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            stage.getBatch().draw(backgroundTexture, 0, 0,
+                    Gdx.graphics.getWidth(),
+                    Gdx.graphics.getHeight());
             stage.getBatch().setColor(Color.WHITE);
         }
         stage.getBatch().end();
 
+        // 分数滚动
         if (isScoreRolling && labelTotalScore != null) {
             float diff = targetTotalScore - displayedTotalScore;
             if (Math.abs(diff) < 5) {
@@ -366,12 +416,16 @@ public class SettlementScreen implements Screen {
             } else {
                 displayedTotalScore += diff * 2.0f * delta;
             }
-            labelTotalScore.setText(formatScore((int)displayedTotalScore));
+            labelTotalScore.setText(formatScore((int) displayedTotalScore));
         }
 
+        // ===== Stage Update =====
         stage.act(delta);
+
+
         stage.draw();
     }
+
 
     @Override public void resize(int w, int h) { stage.getViewport().update(w, h, true); }
     @Override public void pause() {}
