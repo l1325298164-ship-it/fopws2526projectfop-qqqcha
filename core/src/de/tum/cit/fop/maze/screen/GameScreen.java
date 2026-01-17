@@ -225,6 +225,12 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         maze = new MazeRenderer(gm, difficultyConfig);
         cam  = new CameraManager(difficultyConfig);
 
+        // 🔥 [新增代码] 将 CameraManager 注入给 GameManager
+        // 这样 Player/Enemy 调用的 triggerHitFeedback() 才能触发屏幕震动
+        if (gm != null) {
+            gm.setCameraManager(cam);
+        }
+
         worldViewport = new FitViewport(
                 GameConstants.CAMERA_VIEW_WIDTH,
                 GameConstants.CAMERA_VIEW_HEIGHT,

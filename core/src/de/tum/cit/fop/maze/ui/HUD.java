@@ -14,7 +14,6 @@ import com.badlogic.gdx.utils.TimeUtils;
 import de.tum.cit.fop.maze.abilities.*;
 import de.tum.cit.fop.maze.entities.Compass;
 import de.tum.cit.fop.maze.entities.Player;
-import de.tum.cit.fop.maze.entities.boss.BossFightScreen;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.game.achievement.*;
@@ -214,9 +213,8 @@ public class HUD {
 
 
     // =========================================================
-// UI TUNING (MAGIC NUMBERS ZONE)
-// 所有 HUD 微调只改这里，不要在下面散落写 +10f +18f
-// =========================================================
+    // UI TUNING (MAGIC NUMBERS ZONE)
+    // =========================================================
 
     // --- Upgrade Button ---
     private static final float UPG_BTN_SIZE = 36f;      // 按钮尺寸
@@ -307,39 +305,29 @@ public class HUD {
 
     // =========================================================
 
-    public void renderInGameUI(SpriteBatch uiBatch) {
-        uiHoverThisFrame = false;
+    public void renderInGameUI(SpriteBatch uiBatch, boolean allowInteraction) {
+        uiHoverThisFrame = false; // 重置 Hover 状态
 
+        // 1. Boss 血条
         if (hudMode == HUDMode.BOSS) {
             renderBossHUD(uiBatch);
         }
-            if (gameManager.isTwoPlayerMode()) {
-                renderTwoPlayerHUD(uiBatch);
-            } else {
-                renderSinglePlayerHUD(uiBatch);
-            }
-            // 🔥 修复：将分数渲染移到这里，确保单人/双人都能显示，且根据模式自动调整位置
-        if (hudMode == HUDMode.BOSS) {
-            renderScore(uiBatch);
-        }
-            renderBottomCenterHUD(uiBatch);
-    // 🔥 FIX: 增加参数 allowInteraction
-    public void renderInGameUI(SpriteBatch uiBatch, boolean allowInteraction) {
+
+        // 2. 玩家 HUD
         if (gameManager.isTwoPlayerMode()) {
             renderTwoPlayerHUD(uiBatch, allowInteraction);
         } else {
             renderSinglePlayerHUD(uiBatch, allowInteraction);
         }
-        // 分数渲染
+
+        // 3. 分数
         renderScore(uiBatch);
 
+        // 4. 底部罗盘/猫
         renderBottomCenterHUD(uiBatch);
 
-// ===== END OF UI FRAME =====
-            lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
-
-
-
+        // 更新鼠标点击状态
+        lastMouseDown = Gdx.input.isButtonPressed(Input.Buttons.LEFT);
     }
 
     private void renderBossHUD(SpriteBatch batch) {
@@ -384,17 +372,17 @@ public class HUD {
             bossHpColor.set(0.85f, 0.15f, 0.15f, 1f);
         }
 
-// ⭐ 关键：这里才 setColor
+        // ⭐ 关键：这里才 setColor
         batch.setColor(bossHpColor);
 
-// ===== HP 条 =====
+        // ===== HP 条 =====
         batch.draw(
                 TextureManager.getInstance().getWhitePixel(),
                 x, y,
                 barWidth * ratio, barHeight
         );
 
-// ===== 立刻还原 =====
+        // ===== 立刻还原 =====
         batch.setColor(1f, 1f, 1f, 1f);
 
         // ===== 文本 =====
@@ -422,7 +410,7 @@ public class HUD {
         // restore
         font.getData().setScale(1.2f);
         batch.setColor(1f, 1f, 1f, 1f);
-// ===== Rage / Lock Warning =====
+        // ===== Rage / Lock Warning =====
         if (bossRageWarning || bossFinalLocked) {
 
             float blink =
@@ -463,7 +451,7 @@ public class HUD {
     }
 
 
-    private void renderSinglePlayerHUD(SpriteBatch uiBatch) {
+    private void renderSinglePlayerHUD(SpriteBatch uiBatch, boolean allowInteraction) {
         var player = gameManager.getPlayer();
         if (player == null) return;
 
@@ -484,8 +472,11 @@ public class HUD {
 
         renderCat(uiBatch);
         renderCompassAsUI(uiBatch);
+
+        // 🔥 传递 allowInteraction
         renderDashIcon(uiBatch, player, false, allowInteraction);
         renderMeleeIcon(uiBatch, player, false, allowInteraction);
+
         renderAchievementPopup(uiBatch);
 
         float startX = 20;
@@ -628,7 +619,8 @@ public class HUD {
     private void renderDashIcon(
             SpriteBatch uiBatch,
             Player player,
-            boolean mirror
+            boolean mirror,
+            boolean allowInteraction
     ) {
         if (player == null) return;
 
@@ -666,13 +658,15 @@ public class HUD {
 
         uiBatch.draw(icon, x, y, DASH_ICON_SIZE, DASH_ICON_SIZE);
         renderAbilityLevel(uiBatch, dash, x, y, DASH_ICON_SIZE, mirror);
+
+        // 🔥 传递 allowInteraction
         renderUpgradeButton(
                 uiBatch,
                 player,
                 dash,
                 x,
                 y,
-                DASH_ICON_SIZE, mirror
+                DASH_ICON_SIZE, mirror, allowInteraction
         );
 
         if (dashCharges < 2) {
@@ -691,7 +685,8 @@ public class HUD {
     private void renderMeleeIcon(
             SpriteBatch uiBatch,
             Player player,
-            boolean mirror
+            boolean mirror,
+            boolean allowInteraction
     ) {
         if (meleeIcon == null || player == null) return;
 
@@ -725,13 +720,15 @@ public class HUD {
 
         uiBatch.draw(meleeIcon, x, y, size, size);
         renderAbilityLevel(uiBatch, melee, x, y, size, mirror);
+
+        // 🔥 传递 allowInteraction
         renderUpgradeButton(
                 uiBatch,
                 player,
                 melee,
                 x,
                 y,
-                size, mirror
+                size, mirror, allowInteraction
         );
 
         if (onCooldown) {
@@ -741,7 +738,8 @@ public class HUD {
     private void renderMagicIcon(
             SpriteBatch batch,
             Player player,
-            boolean mirror
+            boolean mirror,
+            boolean allowInteraction
     ) {
         if (player == null) return;
 
@@ -799,13 +797,15 @@ public class HUD {
 
         }
         renderAbilityLevel(batch, magic, x, y, size, mirror);
+
+        // 🔥 传递 allowInteraction
         renderUpgradeButton(
                 batch,
                 player,
                 magic,
                 x,
                 y,
-                size, mirror
+                size, mirror, allowInteraction
         );
 
         // ================= Grow（呼吸光） =================
@@ -861,7 +861,7 @@ public class HUD {
     }
 
     // =========================================================
-    // Score (修复后)
+    // Score
     private void renderScore(SpriteBatch uiBatch) {
         int score = gameManager.getScore();
         String text = "SCORE: " + formatScore(score);
@@ -870,7 +870,7 @@ public class HUD {
         GlyphLayout layout = new GlyphLayout(font, text);
 
         float x;
-        // 🔥 如果是双人模式，分数居中显示；否则在右上角
+        // 如果是双人模式，分数居中显示；否则在右上角
         if (gameManager.isTwoPlayerMode()) {
             x = (Gdx.graphics.getWidth() - layout.width) / 2f;
         } else {
@@ -1522,30 +1522,26 @@ public class HUD {
             float iconX,
             float iconY,
             float iconSize,
-            boolean mirror
+            boolean mirror,
+            boolean allowInteraction
     ) {
 
         if (!canShowUpgrade(player, ability)) return;
 
-
-
-
-
-
         // ===============================
-// Button 布局（锚点 + 偏移）
-// ===============================
+        // Button 布局（锚点 + 偏移）
+        // ===============================
         final float BTN_SIZE = UPG_BTN_SIZE;
 
         float floatY = (float) Math.sin(TimeUtils.millis() * UPG_BTN_FLOAT_SPEED) * UPG_BTN_FLOAT_AMP;
 
-// 锚点：icon 的右侧中点
+        // 锚点：icon 的右侧中点
         float anchorX = mirror
                 ? iconX - UPG_BTN_OFF_X - BTN_SIZE   // P2：icon 左侧
                 : iconX + iconSize + UPG_BTN_OFF_X;  // P1：icon 右侧
         float anchorY = iconY + iconSize * 0.5f;
 
-// 左下角坐标（按钮是正方形）
+        // 左下角坐标（按钮是正方形）
         float bx = anchorX ;
         float by = anchorY - BTN_SIZE * 0.5f + UPG_BTN_OFF_Y + floatY;
 
@@ -1560,7 +1556,7 @@ public class HUD {
                         my >= by && my <= by + BTN_SIZE;
         if (hover) {
             uiHoverThisFrame = true;
-            Logger.error("UI CONSUME MOUSE");
+            // Logger.error("UI CONSUME MOUSE");
         }
 
 
@@ -1656,42 +1652,6 @@ public class HUD {
         font.setColor(Color.WHITE);
         font.getData().setScale(1.2f);
         batch.setColor(1f, 1f, 1f, 1f);
-        //debug
-
-//        if (debugUpgradeInput) {
-//
-//
-//            String debugText =
-//                    "MX=" + (int) mx +
-//                            " MY=" + (int) my +
-//                            "\nBTN x=" + (int) bx +
-//                            " y=" + (int) by +
-//                            " size=" + (int) BTN_SIZE +
-//                            "\nHOVER=" + hover +
-//                            "\nmouseDown=" + mouseDown +
-//                            "\nlastMouseDown=" + lastMouseDown +
-//                            "\nCLICK=" + (hover && mouseDown );
-//
-//            font.getData().setScale(1.0f);
-//            font.setColor(Color.RED);
-//
-//            font.draw(
-//                    batch,
-//                    debugText,
-//                    bx,
-//                    by + BTN_SIZE + 80
-//            );
-//
-//            font.setColor(Color.WHITE);
-//            font.getData().setScale(1.2f);
-//        }
-
-
-
-
-
-
-
     }
 
     // ===== DEBUG =====
@@ -1699,10 +1659,6 @@ public class HUD {
     public boolean isHoveringInteractiveUI() {
         return uiHoverThisFrame;
     }
-
-
-
-
 
     public void dispose() {
         font.dispose();
