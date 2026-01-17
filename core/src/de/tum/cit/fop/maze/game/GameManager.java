@@ -1907,13 +1907,52 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         buildWorldFromRestore(data);
         restorePlayers(data);
 
+        // ⭐⭐⭐ 核心：AUTO 存档 → 刷新玩家位置
+        if (currentSaveTarget == StorageManager.SaveTarget.AUTO) {
+            Logger.warning("AUTO restore detected → respawn players");
+
+            respawnPlayersAfterAutoRestore();
+        }
+
         pendingRestoreData = null;
         restoringFromSave = false;
         restoreLock = false;
-        pendingReset = false;
-
-        Logger.error("🔥 APPLY RESTORE DATA (FINAL)");
     }
+
+    /**
+     * 🔄 AUTO 存档后：重新刷新玩家位置
+     * - 不影响数值 / 技能 / Buff
+     * - 只改坐标
+     */
+    private void respawnPlayersAfterAutoRestore() {
+
+        int[] base = randomEmptyCell();
+        int bx = base[0];
+        int by = base[1];
+
+        boolean first = true;
+
+        for (Player p : players) {
+            if (p == null) continue;
+
+            if (first) {
+                p.teleportTo(bx, by);
+                first = false;
+            } else {
+                int[] near = findNearbySpawn(p);
+                if (near != null) {
+                    p.teleportTo(near[0], near[1]);
+                } else {
+                    p.teleportTo(bx, by);
+                }
+            }
+
+            p.setMovingAnim(false);
+        }
+
+        Logger.gameEvent("AUTO restore → players respawned at new location");
+    }
+
 
 
     private void buildWorldFromRestore(GameSaveData data) {
