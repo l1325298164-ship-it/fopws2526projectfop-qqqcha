@@ -19,6 +19,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.game.save.GameSaveData;
 import de.tum.cit.fop.maze.game.achievement.AchievementType;
 import de.tum.cit.fop.maze.game.score.LevelResult;
@@ -74,8 +75,8 @@ public class SettlementScreen implements Screen {
         this.isHighScore = leaderboardManager.isHighScore(this.saveData.score);
 
         try {
-            if (Gdx.files.internal("menu_bg/bg_front.png").exists()) {
-                backgroundTexture = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+            if (Gdx.files.internal("imgs/menu_bg/bg_front.png").exists()) {
+                backgroundTexture = new Texture(Gdx.files.internal("imgs/menu_bg/bg_front.png"));
             }
         } catch (Exception e) {
             Logger.warning("Failed to load settlement background: " + e.getMessage());
@@ -84,6 +85,7 @@ public class SettlementScreen implements Screen {
 
     @Override
     public void show() {
+        AudioManager.getInstance().stopAll(); //TODO
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
         setupUI();

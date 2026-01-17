@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -52,6 +54,7 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
     @Override
     public void takeDamage(int dmg) {
         int actualDamage = dmg;
+        AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED_E02);
 
         // 你可以在这里改伤害
         // actualDamage = dmg / 2;

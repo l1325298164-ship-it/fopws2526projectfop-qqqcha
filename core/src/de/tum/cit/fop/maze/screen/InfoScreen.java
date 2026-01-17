@@ -35,8 +35,8 @@ public class InfoScreen implements Screen {
 
         // 尝试加载背景图 (复用主菜单背景)
         try {
-            if (Gdx.files.internal("menu_bg/bg_front.png").exists()) {
-                backgroundTexture = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+            if (Gdx.files.internal("imgs/menu_bg/bg_front.png").exists()) {
+                backgroundTexture = new Texture(Gdx.files.internal("imgs/menu_bg/bg_front.png"));
             }
         } catch (Exception e) {
             Logger.error("Failed to load background: " + e.getMessage());

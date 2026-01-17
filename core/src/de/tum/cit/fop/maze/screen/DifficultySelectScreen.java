@@ -30,7 +30,7 @@ public class DifficultySelectScreen implements Screen {
         Gdx.input.setInputProcessor(stage);
 
 // ===== 背景 =====
-        backgroundTexture = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+        backgroundTexture = new Texture(Gdx.files.internal("imgs/menu_bg/bg_front.png"));
 // ↑ 你可以换成任意图片路径
 
         Image background = new Image(backgroundTexture);

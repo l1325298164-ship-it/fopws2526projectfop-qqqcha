@@ -35,8 +35,8 @@ public class LeaderboardScreen implements Screen {
 
         try {
             this.leaderboardManager = new LeaderboardManager();
-            if (Gdx.files.internal("menu_bg/bg_front.png").exists()) {
-                this.backgroundTexture = new Texture(Gdx.files.internal("menu_bg/bg_front.png"));
+            if (Gdx.files.internal("imgs/menu_bg/bg_front.png").exists()) {
+                this.backgroundTexture = new Texture(Gdx.files.internal("imgs/menu_bg/bg_front.png"));
             }
         } catch (Exception e) {
             Logger.error("Failed to init LeaderboardScreen: " + e.getMessage());
@@ -72,7 +72,7 @@ public class LeaderboardScreen implements Screen {
         scoreContainer.row();
 
         // 分割线
-        Label separator = new Label("-----------------------------------------------------------------------", game.getSkin());
+        Label separator = new Label("---------------------------------------------", game.getSkin());
         separator.setColor(new Color(1, 1, 1, 0.3f)); // 调淡
         scoreContainer.add(separator).colspan(3).pad(15).row();
 

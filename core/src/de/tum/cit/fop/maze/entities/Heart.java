@@ -63,7 +63,7 @@ public class Heart extends GameObject {
         if (heartTexture == null) {
             try {
                 // 🔥 修改点：路径指向 Assets/Items/heart.png
-                heartTexture = new Texture(Gdx.files.internal("Items/heart.png"));
+                heartTexture = new Texture(Gdx.files.internal("imgs/Items/heart.png"));
             } catch (Exception e) {
                 Logger.error("Could not load heart texture: " + e.getMessage());
             }

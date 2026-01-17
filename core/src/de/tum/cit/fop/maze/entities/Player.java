@@ -171,7 +171,7 @@ public class Player extends GameObject {
 
         if (playerIndex == PlayerIndex.P2) {
             loadPlayer2Animations();
-            castAtlas = new TextureAtlas("Character/magic/player2.atlas");
+            castAtlas = new TextureAtlas("ani/Character/magic/player2.atlas");
 
             frontCastAnim = new Animation<>(0.08f, castAtlas.findRegions("player2_front"), Animation.PlayMode.NORMAL);
             backCastAnim = new Animation<>(0.08f, castAtlas.findRegions("player2_back"), Animation.PlayMode.NORMAL);
@@ -186,13 +186,13 @@ public class Player extends GameObject {
         Logger.gameEvent("Player spawned at " + getPositionString());
 
         if (playerIndex == PlayerIndex.P1) {
-            TextureAtlas attackAtlas = new TextureAtlas("Character/melee/player1.atlas");
+            TextureAtlas attackAtlas = new TextureAtlas("ani/Character/melee/player1.atlas");
             backAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player1_back"), Animation.PlayMode.NORMAL);
             frontAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player1_front"), Animation.PlayMode.NORMAL);
             leftAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player1_left"), Animation.PlayMode.NORMAL);
             rightAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player1_right"), Animation.PlayMode.NORMAL);
         } else {
-            TextureAtlas attackAtlas = new TextureAtlas("Character/magic/player2.atlas");
+            TextureAtlas attackAtlas = new TextureAtlas("ani/Character/magic/player2.atlas");
             backAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player2_back"), Animation.PlayMode.NORMAL);
             frontAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player2_front"), Animation.PlayMode.NORMAL);
             leftAtkAnim = new Animation<>(0.08f, attackAtlas.findRegions("player2_left"), Animation.PlayMode.NORMAL);
@@ -216,10 +216,10 @@ public class Player extends GameObject {
     }
 
     private void loadPlayer1Animations() {
-        frontAtlas = new TextureAtlas("Character/player1/front.atlas");
-        backAtlas  = new TextureAtlas("Character/player1/back.atlas");
-        leftAtlas  = new TextureAtlas("Character/player1/left.atlas");
-        rightAtlas = new TextureAtlas("Character/player1/right.atlas");
+        frontAtlas = new TextureAtlas("ani/Character/player1/front.atlas");
+        backAtlas  = new TextureAtlas("ani/Character/player1/back.atlas");
+        leftAtlas  = new TextureAtlas("ani/Character/player1/left.atlas");
+        rightAtlas = new TextureAtlas("ani/Character/player1/right.atlas");
 
         frontAnim = new Animation<>(0.1f, frontAtlas.getRegions(), Animation.PlayMode.LOOP);
         backAnim  = new Animation<>(0.1f, backAtlas.getRegions(), Animation.PlayMode.LOOP);
@@ -228,7 +228,7 @@ public class Player extends GameObject {
     }
 
     private void loadPlayer2Animations() {
-        TextureAtlas atlas = new TextureAtlas("Character/player2/player2.atlas");
+        TextureAtlas atlas = new TextureAtlas("ani/Character/player2/player2.atlas");
         frontAnim = new Animation<>(0.1f, atlas.findRegions("player2_front"));
         backAnim  = new Animation<>(0.1f, atlas.findRegions("player2_back"));
         leftAnim  = new Animation<>(0.1f, atlas.findRegions("player2_left"));

@@ -26,8 +26,8 @@ public class Compass {
 
 
 
-        baseTexture = new Texture(Gdx.files.internal("compass_base.png"));
-        needleTexture = new Texture(Gdx.files.internal("compass_needle.png"));
+        baseTexture = new Texture(Gdx.files.internal("ui/HUD/compass_base.png"));
+        needleTexture = new Texture(Gdx.files.internal("ui/HUD/compass_needle.png"));
 
         baseSprite = new Sprite(baseTexture);
         needleSprite = new Sprite(needleTexture);

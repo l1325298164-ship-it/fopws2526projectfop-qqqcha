@@ -11,11 +11,10 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -23,6 +22,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
@@ -50,6 +50,7 @@ import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.game.save.StorageManager;
 
 import java.util.*;
+import java.util.List;
 
 public class GameScreen implements Screen, Chapter1RelicListener {
 
@@ -234,8 +235,31 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         gm.applyRestoreIfNeeded();
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
+        playMazeBGM();
 
     }
+    private void playMazeBGM() {
+        AudioManager audio = AudioManager.getInstance();
+
+        // 防止叠加
+        audio.stopMusic();
+
+        // Endless 模式（如果你有）
+        if (difficultyConfig.difficulty == Difficulty.ENDLESS) {
+            audio.play(AudioType.MUSIC_MAZE_ENDLESS);
+            return;
+        }
+
+        // 普通迷宫按难度
+        switch (difficultyConfig.difficulty) {
+            case EASY -> audio.play(AudioType.MUSIC_MAZE_EASY);
+            case NORMAL -> audio.play(AudioType.MUSIC_MAZE_NORMAL);
+            case HARD -> audio.play(AudioType.MUSIC_MAZE_HARD);
+            case ENDLESS ->  audio.play(AudioType.MUSIC_MAZE_ENDLESS);
+            default -> audio.play(AudioType.MUSIC_MAZE_NORMAL);
+        }
+    }
+
 
     @Override
     public void render(float delta) {
@@ -618,35 +642,61 @@ public class GameScreen implements Screen, Chapter1RelicListener {
     }
 
     private void openManualSaveDialog() {
-        Stage dialogStage = pauseStage; // 用 pause 的 stage
+        Stage dialogStage = pauseStage;
         Skin skin = game.getSkin();
 
-        Dialog dialog = new Dialog(" SAVE GAME ", skin) {
+        class ManualSaveDialog extends Dialog {
+            ManualSaveDialog() {
+                super(" SAVE GAME ", skin);
+            }
+
+            public void submitSlot(int slot) {
+                result(slot);
+                hide();
+            }
+
             @Override
             protected void result(Object object) {
                 if (object instanceof Integer slot) {
-                    // 1️⃣ 切 SaveTarget
-                    gm.setCurrentSaveTarget(
-                            StorageManager.SaveTarget.fromSlot(slot)
-                    );
-
-                    // 2️⃣ 立刻存一次
+                    gm.setCurrentSaveTarget(StorageManager.SaveTarget.fromSlot(slot));
                     gm.saveGameProgress();
-
                     Logger.info("Manual save to slot " + slot);
                 }
             }
-        };
+        }
 
+        ManualSaveDialog dialog = new ManualSaveDialog();
         dialog.text("\n  Choose a save slot:\n");
 
-        dialog.button(" SLOT 1 ", 1);
-        dialog.button(" SLOT 2 ", 2);
-        dialog.button(" SLOT 3 ", 3);
-        dialog.button(" CANCEL ", null);
+        Table listTable = new Table();
+        listTable.defaults().pad(6).width(220).height(50);
 
+        for (int i = 1; i <= 3; i++) {
+            final int slot = i;
+            TextButton btn = new TextButton(" SLOT " + i + " ", skin);
+
+            btn.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    dialog.submitSlot(slot); // ✅ 不再报错
+                }
+            });
+
+            listTable.add(btn).row();
+        }
+
+        ScrollPane scrollPane = new ScrollPane(listTable, skin);
+        scrollPane.setScrollingDisabled(true, false);
+        scrollPane.setFadeScrollBars(false);
+        scrollPane.setFlickScroll(true);
+
+        dialog.getContentTable().add(scrollPane).size(240, 200).pad(10).row();
+        dialog.button(" CANCEL ", null);
         dialog.show(dialogStage);
     }
+
+
+
 
 
     private void renderMazeBorderDecorations(SpriteBatch batch) {
