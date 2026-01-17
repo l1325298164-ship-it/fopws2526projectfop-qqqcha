@@ -15,7 +15,6 @@ import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
 import de.tum.cit.fop.maze.entities.Obstacle.MovingWall;
 import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
 import de.tum.cit.fop.maze.entities.chapter.ChapterContext;
-import de.tum.cit.fop.maze.entities.chapter.ChapterDropType;
 import de.tum.cit.fop.maze.entities.chapter.RelicData;
 import de.tum.cit.fop.maze.entities.enemy.*;
 import de.tum.cit.fop.maze.entities.enemy.EnemyBoba.BobaBullet;
@@ -28,7 +27,6 @@ import de.tum.cit.fop.maze.game.save.PlayerSaveData;
 import de.tum.cit.fop.maze.game.score.*;
 import de.tum.cit.fop.maze.input.PlayerInputHandler;
 import de.tum.cit.fop.maze.maze.MazeGenerator;
-import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.game.save.StorageManager;
 
@@ -43,10 +41,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private boolean autoSaveEnabled = true;
 
     // 🔥 [新增] 顿帧与震动控制
+    private de.tum.cit.fop.maze.utils.CameraManager cameraManager;
     private float hitStopTimer = 0f;
-    private CameraManager cameraManager;
 
-    public void setCameraManager(CameraManager cameraManager) {
+    public void setCameraManager(de.tum.cit.fop.maze.utils.CameraManager cameraManager) {
         this.cameraManager = cameraManager;
     }
 
@@ -358,7 +356,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void update(float delta) {
-        // 🔥 [新增] 顿帧逻辑：如果处于顿帧状态，跳过本帧的逻辑更新
+        // 🔥 [新增] 顿帧逻辑
         if (hitStopTimer > 0) {
             hitStopTimer -= delta;
             if (hitStopTimer > 0) return;
@@ -420,7 +418,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             fogSystem.update(delta);
         }
 
-        // ===== 🔥 更新陷阱 =====
         for (Trap trap : traps) {
             if (trap.isActive()) {
                 trap.update(delta);
@@ -465,18 +462,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         handleDashHitEnemies();
         checkAutoPickup();
 
-        if (keyEffectManager != null) {
-            keyEffectManager.update(delta);
-        }
-        if (itemEffectManager != null) {
-            itemEffectManager.update(delta);
-        }
-        if (trapEffectManager != null) {
-            trapEffectManager.update(delta);
-        }
-        if (combatEffectManager != null) {
-            combatEffectManager.update(delta);
-        }
+        if (keyEffectManager != null) keyEffectManager.update(delta);
+        if (itemEffectManager != null) itemEffectManager.update(delta);
+        if (trapEffectManager != null) trapEffectManager.update(delta);
+        if (combatEffectManager != null) combatEffectManager.update(delta);
+
         handlePlayerTrapInteraction();
         handleKeyLogic();
 
@@ -1259,6 +1249,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
     }
 
+    // 🔥 [修复] 实现接口缺失的方法
+    @Override
+    public void onMenuInput() {
+        Logger.info("Menu input received");
+        // 这里可以调用事件通知来切换到菜单屏幕，例如:
+        // GameEventSource.getInstance().onMenuRequested();
+    }
+
     private Player getPlayerByIndex(Player.PlayerIndex index) {
         for (Player p : players) {
             if (p.getPlayerIndex() == index) return p;
@@ -1445,6 +1443,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             case SLOT_1 -> storage.saveGameToSlot(1, gameSaveData);
             case SLOT_2 -> storage.saveGameToSlot(2, gameSaveData);
             case SLOT_3 -> storage.saveGameToSlot(3, gameSaveData);
+            // 🔥 [修复] 补全 AUTO 分支，并调用新的 saveAuto 方法
             case AUTO -> storage.saveAuto(gameSaveData);
         }
         Logger.info("Game progress saved: Level=" + currentLevel + ", Score=" + gameSaveData.score);
@@ -1574,7 +1573,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void onTreasureOpened(Player player, Treasure treasure) {
-        // 修正后的逻辑：合并了之前的冲突
         if (!chapterMode || chapterContext == null) {
             applyTreasureBuff(player);
             treasure.onInteract(player);
@@ -1583,7 +1581,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         RelicData data = chapterContext.requestRelic();
         if (data != null) {
-            // 修正：使用 RelicData 构造 Chapter1Relic
             Chapter1Relic relic = new Chapter1Relic(
                     treasure.getX(),
                     treasure.getY(),
@@ -1592,7 +1589,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             );
             spawnChapter1Relic(relic);
         } else {
-            // 如果没有 Relic，给予普通 Buff
             applyTreasureBuff(player);
             treasure.onInteract(player);
         }

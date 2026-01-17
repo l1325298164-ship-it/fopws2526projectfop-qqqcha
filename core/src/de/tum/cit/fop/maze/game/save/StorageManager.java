@@ -24,13 +24,6 @@ import java.util.zip.GZIPOutputStream;
  * 4. 线程安全，支持等待所有异步任务完成
  */
 public class StorageManager {
-    public void saveGameSync(GameSaveData data) {
-        if (data == null) return;
-
-        // 同步存：用于结算、退出、关键节点
-        writeJsonSafelySync(AUTO_SAVE_FILE, data, compressionEnabled);
-    }
-
 
     public enum SaveTarget {
         AUTO,
@@ -48,21 +41,16 @@ public class StorageManager {
         }
     }
 
-
     // ===== 主存档 Slot =====
     public static final int MAX_SAVE_SLOTS = 3;
     private static final String AUTO_SAVE_FILE = "save_auto.json.gz";
-
     private static final String SAVE_SLOT_PATTERN = "save_slot_%d.json.gz";
+
     // ==========================================
     // 单例模式实现
     // ==========================================
     private static StorageManager instance;
 
-    /**
-     * 获取单例实例
-     * @return StorageManager 单例对象
-     */
     public static StorageManager getInstance() {
         if (instance == null) {
             instance = new StorageManager();
@@ -83,32 +71,27 @@ public class StorageManager {
     // ==========================================
     private final ExecutorService saveExecutor;
     private final Json json;
-    
+
     // 用于跟踪异步任务
     private final ConcurrentLinkedQueue<Future<?>> pendingSaves = new ConcurrentLinkedQueue<>();
-    
+
     // 是否启用压缩（默认启用）
     private boolean compressionEnabled = true;
-    
+
     // 是否启用异步保存（默认启用）
     private boolean asyncEnabled = true;
 
-    /**
-     * 私有构造函数，防止外部直接实例化
-     */
     private StorageManager() {
         this.json = new Json();
         this.json.setOutputType(JsonWriter.OutputType.json);
         this.json.setUsePrototypes(false);
-        
-        // 创建单线程执行器，确保保存操作的顺序性
+
         this.saveExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "StorageManager-SaveThread");
             t.setDaemon(true);  // 守护线程，不会阻止JVM退出
             return t;
         });
-        
-        // 注册关闭钩子，确保退出时等待所有保存完成
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 waitForAllSaves(5, TimeUnit.SECONDS);
@@ -117,12 +100,14 @@ public class StorageManager {
             }
         }));
     }
+
     private String getSlotFileName(int slot) {
         if (slot < 1 || slot > MAX_SAVE_SLOTS) {
             throw new IllegalArgumentException("Invalid save slot: " + slot);
         }
         return String.format(SAVE_SLOT_PATTERN, slot);
     }
+
     public void saveGameToSlot(int slot, GameSaveData data) {
         if (data == null) return;
 
@@ -136,14 +121,38 @@ public class StorageManager {
             Logger.info("Game saved to slot " + slot);
         }
     }
+
+    // 🔥 [新增] 专门用于保存自动存档的方法
+    public void saveAuto(GameSaveData data) {
+        if (data == null) return;
+
+        if (asyncEnabled) {
+            writeJsonSafelyAsync(AUTO_SAVE_FILE, data, compressionEnabled);
+            // Logger.debug("Game auto-saved (async)");
+        } else {
+            writeJsonSafelySync(AUTO_SAVE_FILE, data, compressionEnabled);
+            // Logger.info("Game auto-saved (sync)");
+        }
+    }
+
+    // [修改] 修复了原有的 saveGameAuto 逻辑
+    public void saveGameAuto(SaveTarget target, GameSaveData data) {
+        if (target != SaveTarget.AUTO) {
+            return;
+        }
+        saveAuto(data);
+    }
+
     public GameSaveData loadGameFromSlot(int slot) {
         String fileName = getSlotFileName(slot);
         return loadGameInternal(fileName);
     }
+
     public boolean hasSaveInSlot(int slot) {
         String fileName = getSlotFileName(slot);
         return getFile(fileName).exists();
     }
+
     public boolean[] getSaveSlotStates() {
         boolean[] result = new boolean[MAX_SAVE_SLOTS + 1];
         for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
@@ -151,6 +160,7 @@ public class StorageManager {
         }
         return result;
     }
+
     private GameSaveData loadGameInternal(String fileName) {
         FileHandle file = getFile(fileName);
         boolean isCompressed = fileName.endsWith(".gz");
@@ -179,27 +189,14 @@ public class StorageManager {
         }
     }
 
-
-    /**
-     * ✨ [新增] 设置是否启用压缩
-     */
     public void setCompressionEnabled(boolean enabled) {
         this.compressionEnabled = enabled;
     }
-    
-    /**
-     * ✨ [新增] 设置是否启用异步保存
-     */
+
     public void setAsyncEnabled(boolean enabled) {
         this.asyncEnabled = enabled;
     }
-    
-    /**
-     * ✨ [新增] 等待所有异步保存任务完成
-     * @param timeout 超时时间
-     * @param unit 时间单位
-     * @return 是否所有任务都已完成
-     */
+
     public boolean waitForAllSaves(long timeout, TimeUnit unit) {
         long deadline = System.currentTimeMillis() + unit.toMillis(timeout);
         while (!pendingSaves.isEmpty() && System.currentTimeMillis() < deadline) {
@@ -214,23 +211,13 @@ public class StorageManager {
         }
         return pendingSaves.isEmpty();
     }
-    
-    /**
-     * ✨ [新增] 强制同步等待所有保存完成（用于游戏退出时）
-     */
+
     public void flushAllSaves() {
         Logger.info("Flushing all pending saves...");
         waitForAllSaves(10, TimeUnit.SECONDS);
         Logger.info("All saves flushed.");
     }
 
-    // ==========================================
-    // 压缩/解压工具方法
-    // ==========================================
-    
-    /**
-     * ✨ [新增] 压缩数据
-     */
     private byte[] compressData(String jsonStr) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (GZIPOutputStream gzos = new GZIPOutputStream(baos)) {
@@ -238,10 +225,7 @@ public class StorageManager {
         }
         return baos.toByteArray();
     }
-    
-    /**
-     * ✨ [新增] 解压数据
-     */
+
     private String decompressData(byte[] compressed) throws IOException {
         ByteArrayInputStream bais = new ByteArrayInputStream(compressed);
         try (GZIPInputStream gzis = new GZIPInputStream(bais)) {
@@ -254,15 +238,11 @@ public class StorageManager {
             return baos.toString("UTF-8");
         }
     }
-    
-    // ==========================================
-    // 通用原子写入方法（同步版本）
-    // ==========================================
+
     private void writeJsonSafelySync(String fileName, Object data, boolean useCompression) {
         if (data == null) return;
         FileHandle tmpFile = null;
         try {
-            // 1. 清理可能存在的旧临时文件
             FileHandle oldTmpFile = getFile(fileName + ".tmp");
             if (oldTmpFile.exists()) {
                 try {
@@ -271,11 +251,9 @@ public class StorageManager {
                     Logger.warning("Failed to delete old temp file: " + e.getMessage());
                 }
             }
-            
-            // 2. 序列化数据
+
             String jsonStr = json.toJson(data);
-            
-            // 3. 写入临时文件（压缩或原始）
+
             tmpFile = getFile(fileName + ".tmp");
             if (useCompression) {
                 byte[] compressed = compressData(jsonStr);
@@ -284,17 +262,15 @@ public class StorageManager {
                 tmpFile.writeString(jsonStr, false);
             }
 
-            // 4. 移动/重命名临时文件覆盖正式文件 (原子操作)
             FileHandle targetFile = getFile(fileName);
             tmpFile.moveTo(targetFile);
-            tmpFile = null; // 移动成功后，tmpFile 不再指向有效文件
+            tmpFile = null;
 
-            Logger.debug("Data saved safely to " + fileName + (useCompression ? " (compressed)" : ""));
+            // Logger.debug("Data saved safely to " + fileName + (useCompression ? " (compressed)" : ""));
         } catch (Exception e) {
             Logger.error("Failed to save data to " + fileName + ": " + e.getMessage());
             e.printStackTrace();
-            
-            // 清理失败的临时文件
+
             if (tmpFile != null && tmpFile.exists()) {
                 try {
                     tmpFile.delete();
@@ -304,23 +280,18 @@ public class StorageManager {
             }
         }
     }
-    
-    /**
-     * ✨ [新增] 异步写入方法
-     */
+
     private void writeJsonSafelyAsync(String fileName, Object data, boolean useCompression) {
         if (data == null) return;
-        
-        // 深拷贝数据，避免在异步保存时数据被修改
+
         Object dataCopy = deepCopy(data);
-        
+
         Future<?> future = saveExecutor.submit(() -> {
             writeJsonSafelySync(fileName, dataCopy, useCompression);
         });
-        
+
         pendingSaves.offer(future);
-        
-        // 清理已完成的任务（避免内存泄漏）
+
         while (!pendingSaves.isEmpty()) {
             Future<?> first = pendingSaves.peek();
             if (first.isDone()) {
@@ -330,10 +301,7 @@ public class StorageManager {
             }
         }
     }
-    
-    /**
-     * ✨ [新增] 深拷贝对象（通过JSON序列化/反序列化）
-     */
+
     @SuppressWarnings("unchecked")
     private <T> T deepCopy(T obj) {
         try {
@@ -341,36 +309,23 @@ public class StorageManager {
             return (T) json.fromJson(obj.getClass(), jsonStr);
         } catch (Exception e) {
             Logger.warning("Failed to deep copy object, using original: " + e.getMessage());
-            return obj;  // 如果拷贝失败，返回原对象（风险较低，因为通常保存很快）
+            return obj;
         }
     }
 
-    // ==========================================
-    // 1. 单局存档 (GameSaveData)
-    // ==========================================
-    
-
-
-    /**
-     * 加载游戏进度（支持压缩和旧格式）
-     */
     public GameSaveData loadGame() {
-
-        // 1️⃣ AUTO（真正的 continue）
         GameSaveData auto = loadAutoSave();
         if (auto != null) {
             Logger.info("Loaded auto save");
             return auto;
         }
 
-        // 2️⃣ Slot 1（手动存档）
         GameSaveData slot1 = loadGameFromSlot(1);
         if (slot1 != null) {
             Logger.info("Loaded save from slot 1");
             return slot1;
         }
 
-        // 3️⃣ legacy
         FileHandle legacy = getFile(SAVE_FILE_NAME);
         if (legacy.exists()) {
             Logger.warning("Legacy save detected");
@@ -381,16 +336,12 @@ public class StorageManager {
         return null;
     }
 
-
-
     public void deleteSave() {
-        // 删 Slot
         for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
             FileHandle slot = getFile(getSlotFileName(i));
             if (slot.exists()) slot.delete();
         }
 
-        // 删 legacy
         FileHandle legacy = getFile(SAVE_FILE_NAME);
         if (legacy.exists()) legacy.delete();
 
@@ -408,14 +359,6 @@ public class StorageManager {
         return getFile(SAVE_FILE_NAME).exists();
     }
 
-
-    // ==========================================
-    // 2. 生涯档案 (CareerData)
-    // ==========================================
-    
-    /**
-     * 保存生涯数据（异步，压缩）
-     */
     public void saveCareer(CareerData data) {
         if (asyncEnabled) {
             writeJsonSafelyAsync(CAREER_FILE_NAME, data, compressionEnabled);
@@ -424,74 +367,61 @@ public class StorageManager {
             writeJsonSafelySync(CAREER_FILE_NAME, data, compressionEnabled);
         }
     }
-    
-    /**
-     * ✨ [新增] 同步保存生涯数据（用于关键节点）
-     */
+
     public void saveCareerSync(CareerData data) {
         writeJsonSafelySync(CAREER_FILE_NAME, data, compressionEnabled);
     }
 
-    /**
-     * 加载生涯数据（支持压缩和旧格式）
-     */
     public CareerData loadCareer() {
-        // 优先尝试加载压缩文件
         FileHandle file = getFile(CAREER_FILE_NAME);
         boolean isCompressed = true;
-        
-        // 如果压缩文件不存在，尝试加载旧格式
+
         if (!file.exists()) {
             file = getFile(CAREER_FILE_NAME_LEGACY);
             isCompressed = false;
         }
-        
+
         if (!file.exists()) {
             Logger.info("No career data found, creating new profile.");
             return new CareerData();
         }
-        
+
         try {
             String jsonStr;
-            
+
             if (isCompressed) {
-                // 读取并解压
                 byte[] compressed = file.readBytes();
                 jsonStr = decompressData(compressed);
             } else {
-                // 读取原始JSON
                 jsonStr = file.readString();
             }
-            
+
             if (jsonStr == null || jsonStr.trim().isEmpty()) {
                 Logger.warning("Career file is empty, creating new profile.");
                 return new CareerData();
             }
-            
+
             CareerData data = json.fromJson(CareerData.class, jsonStr);
-            
-            // 数据验证
+
             if (data == null) {
                 Logger.warning("Failed to parse career data: data is null, creating new profile.");
                 return new CareerData();
             }
-            
-            // 验证数据的合理性（防止负数或异常大的值）
+
             if (data.totalKills_E01 < 0) data.totalKills_E01 = 0;
             if (data.totalKills_E02 < 0) data.totalKills_E02 = 0;
             if (data.totalKills_E03 < 0) data.totalKills_E03 = 0;
             if (data.totalDashKills_E04 < 0) data.totalDashKills_E04 = 0;
             if (data.totalKills_Global < 0) data.totalKills_Global = 0;
             if (data.totalHeartsCollected < 0) data.totalHeartsCollected = 0;
-            
-            // 确保 HashSet 不为 null
+
             if (data.collectedBuffTypes == null) {
                 data.collectedBuffTypes = new java.util.HashSet<>();
             }
             if (data.unlockedAchievements == null) {
                 data.unlockedAchievements = new java.util.HashSet<>();
             }
-            
+
             Logger.info("Career data loaded successfully (" + (isCompressed ? "compressed" : "legacy") + ").");
             return data;
         } catch (Exception e) {
@@ -505,11 +435,6 @@ public class StorageManager {
         return Gdx.files.local(fileName);
     }
 
-    /**
-     * 删除指定存档 Slot
-     * @param slot Slot 编号 (1 ~ MAX_SAVE_SLOTS)
-     * @return 是否成功删除（不存在也算 false）
-     */
     public boolean deleteSaveSlot(int slot) {
         if (slot < 1 || slot > MAX_SAVE_SLOTS) {
             Logger.warning("Attempted to delete invalid save slot: " + slot);
@@ -530,14 +455,6 @@ public class StorageManager {
         Logger.info("Save slot " + slot + " does not exist.");
         return false;
     }
-    public void saveGameAuto(SaveTarget target,GameSaveData data) {
-
-        if (target == SaveTarget.AUTO) {
-            Logger.warning("AUTO SAVE DISABLED - skipping");
-            return; // 🔥 直接取消
-        }
-        writeJsonSafelyAsync(AUTO_SAVE_FILE, data, compressionEnabled);
-    }
 
     public GameSaveData loadAutoSave() {
         return loadGameInternal(AUTO_SAVE_FILE);
@@ -552,4 +469,8 @@ public class StorageManager {
         if (f.exists()) f.delete();
     }
 
+    public void saveGameSync(GameSaveData data) {
+        if (data == null) return;
+        writeJsonSafelySync(AUTO_SAVE_FILE, data, compressionEnabled);
+    }
 }
