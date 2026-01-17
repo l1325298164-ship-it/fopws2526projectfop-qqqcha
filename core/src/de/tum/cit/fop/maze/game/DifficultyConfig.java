@@ -69,7 +69,7 @@ public class DifficultyConfig {
 
             case EASY -> new DifficultyConfig(
                     Difficulty.EASY, 40, 40, 1,
-                    4, 2, 0, 0,  // 敌人
+                    0, 0, 0, 10,  // 敌人
                     0, 0, 0, 0,  // 陷阱
                     200, 0.7f, 0.6f, 2, // 战斗
                     1.0f, 0.5f // 【新增】 scoreMultiplier, penaltyMultiplier
