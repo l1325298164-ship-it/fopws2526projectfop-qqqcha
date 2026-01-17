@@ -110,51 +110,53 @@ public abstract class Enemy extends GameObject {
     protected abstract void updateTexture();
     public abstract void update(float delta, GameManager gm);
 
-    /* ================= 受伤 ================= */
 
-//    public void takeDamage(int dmg) {
-//        if (!active) return;
-//
-//        hp -= dmg;
-//        AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED);
-//
-//        isHitFlash = true;
-//        hitFlashTimer = 0f;
-//
-//        if (hp <= 0) {
-//            active = false;
-//            //添加死亡效果
-//            onDeath();
-//        }
-//        Logger.debug(getClass().getSimpleName() + " took " + dmg + " damage, HP: " + hp);
-//    }
-
+    // 🔥 [修改] 受伤逻辑：加入打击感与反馈
     public void takeDamage(int dmg) {
         if (!active) return;
 
         hp -= dmg;
-        // AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED); // (受伤音效已有)
+
+        // ✅ 1. 播放受伤音效
+        AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED);
 
         isHitFlash = true;
         hitFlashTimer = 0f;
 
+        // ✅ 2. 视觉与手感反馈 (Juice)
+        if (gameManager != null) {
+            // 使用 worldX/Y 计算平滑的中心像素坐标
+            // worldX 是逻辑坐标 (格子)，需要乘以 CELL_SIZE
+            float cx = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+            float cy = this.worldY * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+
+            // A. 受击火花特效 (Hit Spark)
+            if (gameManager.getCombatEffectManager() != null) {
+                gameManager.getCombatEffectManager().spawnHitSpark(cx, cy);
+                // 如果需要显示伤害数字，可以取消下面这行的注释
+                // gameManager.getCombatEffectManager().spawnScoreText(cx, cy + 20, -dmg);
+            }
+
+            // B. 顿帧 + 震动 (Hit Stop & Shake)
+            // 增强打击力度感
+            gameManager.triggerHitFeedback(1.0f);
+        }
+
         if (hp <= 0) {
             active = false;
 
-            // ✅ 1. 播放死亡音效
+            // ✅ 3. 死亡音效
             AudioManager.getInstance().play(AudioType.ENEMY_DEATH);
 
-            // ✅ 2. 播放死亡特效
+            // ✅ 4. 死亡爆炸特效
             if (gameManager != null && gameManager.getCombatEffectManager() != null) {
-                // 计算中心坐标 (像素)
-                float effectX = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-                float effectY = this.worldY * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-
-                gameManager.getCombatEffectManager().spawnEnemyDeathEffect(effectX, effectY);
+                float cx = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                float cy = this.worldY * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                gameManager.getCombatEffectManager().spawnEnemyDeathEffect(cx, cy);
             }
 
-            // 执行原有死亡逻辑
-            onDeath(); // 👈 这里面可能有掉落逻辑，所以特效要在它之前或者独立
+            // 执行原有死亡逻辑 (如掉落)
+            onDeath();
         }
         Logger.debug(getClass().getSimpleName() + " took " + dmg + " damage, HP: " + hp);
     }
