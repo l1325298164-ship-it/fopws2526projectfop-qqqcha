@@ -49,8 +49,12 @@ public enum AudioType {
     BUFF_GAIN("sounds_file/SFX/buff_01.wav", AudioCategory.UI, false, 0.9f, false, false),
 
     // === 💀 新增：战斗反馈 ===
-    // 敌人死亡 (爆炸/消散声)
     ENEMY_DEATH("sounds_file/SFX/enemy_death.wav", AudioCategory.ENEMY, false, 0.9f, false, false),
+    // 敌人发现玩家的音效
+    ENEMY_ALERT("sounds_file/SFX/alert.wav", AudioCategory.ENEMY, false, 1.0f, false, false),
+    // 蓄力音效
+    ENEMY_CHARGE("sounds_file/SFX/charge.wav", AudioCategory.ENEMY, false, 0.8f, false, false),
+
 
     //Tutorial
     TUTORIAL_MAIN_BGM(

@@ -12,49 +12,52 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * 战斗特效管理器
+ * 负责管理所有的战斗相关视觉反馈 (VFX)，包括技能特效、打击感反馈、飘字等。
+ */
 public class CombatEffectManager {
-    private static final int MAX_EFFECTS = 200;
 
+    private static final int MAX_EFFECTS = 300; // 稍微调高上限，防止粒子太多挤掉重要特效
     private final List<CombatEffect> effects;
     private final CombatParticleSystem particleSystem;
 
-    // 分数专用字体 (Big Font, 0-9, + -)
+    // 字体资源
     private final BitmapFont scoreFont;
-    // 通用文本字体 (Small Font, A-Z, a-z, 0-9)
     private final BitmapFont textFont;
 
+    // 调试/性能统计
     private int maxEffectsInFrame = 0;
-    private int effectsRemovedByLimit = 0;
 
     public CombatEffectManager() {
         this.effects = new ArrayList<>();
         this.particleSystem = new CombatParticleSystem();
 
-        // 1. 加载分数大字体 (Big)
+        // --- 初始化字体 ---
         BitmapFont tmpScoreFont;
         try {
             if (Gdx.files.internal("ui/font.fnt").exists()) {
                 tmpScoreFont = new BitmapFont(Gdx.files.internal("ui/font.fnt"));
             } else {
-                Gdx.app.error("CombatEffectManager", "ui/font.fnt not found, using default.");
-                tmpScoreFont = new BitmapFont();
+                tmpScoreFont = new BitmapFont(); // fallback
             }
         } catch (Exception e) {
-            Gdx.app.error("CombatEffectManager", "Error loading score font: " + e.getMessage());
             tmpScoreFont = new BitmapFont();
         }
         this.scoreFont = tmpScoreFont;
         this.scoreFont.setUseIntegerPositions(false);
         this.scoreFont.getData().setScale(0.8f);
 
-        // 2. 加载通用小字体 (Small)
         this.textFont = new BitmapFont();
         this.textFont.setUseIntegerPositions(false);
         this.textFont.getData().setScale(1.0f);
     }
 
     public void update(float delta) {
+        // 1. 更新粒子系统
         particleSystem.update(delta);
+
+        // 2. 更新所有特效实体
         Iterator<CombatEffect> iterator = effects.iterator();
         while (iterator.hasNext()) {
             CombatEffect effect = iterator.next();
@@ -63,113 +66,115 @@ public class CombatEffectManager {
                 iterator.remove();
             }
         }
+
         maxEffectsInFrame = Math.max(maxEffectsInFrame, effects.size());
     }
 
     public void renderShapes(ShapeRenderer shapeRenderer) {
+        // 渲染特效的几何形状 (ShapeRenderer 必须在外部 begin/end)
         for (CombatEffect effect : effects) {
             effect.renderShape(shapeRenderer);
         }
+        // 渲染粒子
         particleSystem.render(shapeRenderer);
     }
 
     public void renderSprites(SpriteBatch batch) {
+        // 渲染特效的贴图 (如果有)
         for (CombatEffect effect : effects) {
             effect.renderSprite(batch);
         }
     }
 
+    /**
+     * 安全添加特效，防止列表无限膨胀
+     */
     private void safeAddEffect(CombatEffect effect) {
         if (effects.size() >= MAX_EFFECTS) {
-            CombatEffect oldestEffect = null;
-            float minRemainingTime = Float.MAX_VALUE;
-
-            for (CombatEffect e : effects) {
-                float remainingTime = e.maxDuration - e.timer;
-                if (remainingTime < minRemainingTime && remainingTime > 0) {
-                    minRemainingTime = remainingTime;
-                    oldestEffect = e;
-                }
-            }
-            if (oldestEffect != null) {
-                effects.remove(oldestEffect);
-            } else if (!effects.isEmpty()) {
-                effects.remove(0);
-            }
-            effectsRemovedByLimit++;
+            // 如果满了，移除最早的一个 (FIFO)
+            if (!effects.isEmpty()) effects.remove(0);
         }
         effects.add(effect);
     }
 
-    // ==========================================
-    // 🔥 核心修改：强制样式分离
-    // ==========================================
+    // =========================================================
+    // 🔥 战斗反馈 (Combat Feedback Juice)
+    // =========================================================
 
     /**
-     * 【大字专用】仅用于显示分数
-     * 自动处理颜色：正分金色，负分红色
-     * 自动处理前缀：+ / -
+     * 生成受击火花 (强化版 X 闪光 + 飞溅粒子)
+     * 用于增加打击感
      */
-    public void spawnScoreText(float x, float y, int score) {
-        if (score == 0) return;
-
-        String text = (score > 0 ? "+" : "") + score;
-        // 强制颜色：正分 GOLD，负分 RED
-        Color color = (score > 0) ? Color.GOLD : Color.RED;
-
-        safeAddEffect(new FloatingTextEffect(x, y, text, color, scoreFont));
+    public void spawnHitSpark(float x, float y) {
+        safeAddEffect(new HitSparkEffect(x, y));
     }
 
     /**
-     * 【小字专用】用于 HP, KEY, BUFF 等
-     * 使用默认字体，支持字母
+     * 生成杀意波动 (暗紫色扩散圆环)
+     * 用于敌人发现玩家时的警示
      */
-    public void spawnStatusText(float x, float y, String text, Color color) {
-        if (text == null || text.isEmpty()) return;
-        safeAddEffect(new FloatingTextEffect(x, y, text, color, textFont));
+    public void spawnAggroPulse(float x, float y) {
+        safeAddEffect(new AggroPulseEffect(x, y));
     }
 
     /**
-     * [保留兼容] 如果外部还在调用这个，我们进行严格清洗
+     * 生成 Buff 图标
+     * @param type 0=十字架(回血), 1=剑(攻击), 2=星星(回蓝)
      */
-    public void spawnFloatingText(float x, float y, String text, Color color) {
-        if (text == null) return;
-
-        // 强制清洗，防止 "SCORE" 或 "Key" 混入大字字体导致方框
-        String cleanText = text.replace("SCORE", "")
-                .replace("Score", "")
-                .replace("KEY", "")
-                .replace("Key", "")
-                .replace("key", "")
-                .replace(":", "")
-                .trim();
-
-        if (cleanText.isEmpty()) return;
-
-        safeAddEffect(new FloatingTextEffect(x, y, cleanText, color, scoreFont));
+    public void spawnBuffIcon(float x, float y, int type) {
+        safeAddEffect(new StatusIconEffect(x, y, type));
     }
 
-    // 🔥 新增：敌人死亡特效接口
-    // ==========================================
+    /**
+     * 敌人死亡爆炸特效 (灰色烟雾)
+     */
     public void spawnEnemyDeathEffect(float x, float y) {
-        // 生成一圈灰色的爆炸粒子 (8-10个)
-        for (int i = 0; i < 10; i++) {
-            // 参数: x, y, color, vx, vy, size, life, friction, gravity
+        // 直接生成一团灰色烟雾粒子
+        for (int i = 0; i < 12; i++) {
             particleSystem.spawn(
-                    x + MathUtils.random(-15, 15),       // 位置稍微随机一点
+                    x + MathUtils.random(-15, 15),
                     y + MathUtils.random(-15, 15),
-                    Color.GRAY,                          // 颜色：灰色烟雾
-                    MathUtils.random(-80, 80),           // X轴速度
-                    MathUtils.random(-80, 80),           // Y轴速度
-                    MathUtils.random(4, 8),              // 粒子大小
-                    MathUtils.random(0.4f, 0.7f),        // 存活时间
-                    true,                                // 开启阻力 (摩擦力)
-                    false                                // 关闭重力
+                    Color.GRAY,
+                    MathUtils.random(-60, 60),
+                    MathUtils.random(-60, 60),
+                    MathUtils.random(5, 10),     // 大小
+                    MathUtils.random(0.5f, 0.8f), // 寿命
+                    true,                        // 阻力
+                    false                        // 重力
             );
         }
     }
 
-    // ==========================================
+    // =========================================================
+    // 🔮 魔法技能特效 (Magic Ability)
+    // =========================================================
+
+    /**
+     * 生成动态魔法阵 (吟唱阶段)
+     * @param duration 持续时间 (通常等于吟唱时间)
+     */
+    public void spawnMagicCircle(float x, float y, float radius, float duration) {
+        safeAddEffect(new MagicCircleEffect(x, y, radius, duration));
+    }
+
+    /**
+     * 生成通天光柱 (AOE 爆发阶段)
+     */
+    public void spawnMagicPillar(float x, float y, float radius) {
+        safeAddEffect(new MagicPillarEffect(x, y, radius));
+    }
+
+    /**
+     * 生成魔力精华 (回能阶段)
+     * 从敌人位置飞向玩家位置
+     */
+    public void spawnMagicEssence(float startX, float startY, float targetX, float targetY) {
+        safeAddEffect(new MagicEssenceEffect(startX, startY, targetX, targetY));
+    }
+
+    // =========================================================
+    // ⚔️ 玩家技能与动作 (Player Actions)
+    // =========================================================
 
     public void spawnSlash(float x, float y, float angle, int type) {
         safeAddEffect(new SlashEffect(x, y, angle, type));
@@ -195,23 +200,36 @@ public class CombatEffectManager {
         safeAddEffect(new LaserEffect(startX, startY, endX, endY));
     }
 
-    public String getPerformanceStats() {
-        return String.format(
-                "CombatEffects - Count: %d, Max: %d, Removed: %d",
-                effects.size(),
-                maxEffectsInFrame,
-                effectsRemovedByLimit
-        );
+    // =========================================================
+    // 💬 UI 与 飘字 (Floating Text)
+    // =========================================================
+
+    /**
+     * 生成分数飘字 (金/红)
+     */
+    public void spawnScoreText(float x, float y, int score) {
+        if (score == 0) return;
+        String text = (score > 0 ? "+" : "") + score;
+        Color color = (score > 0) ? Color.GOLD : Color.RED;
+        safeAddEffect(new FloatingTextEffect(x, y, text, color, scoreFont));
     }
 
-    public void resetPerformanceStats() {
-        maxEffectsInFrame = 0;
-        effectsRemovedByLimit = 0;
+    /**
+     * 生成状态文字 (通用)
+     */
+    public void spawnStatusText(float x, float y, String text, Color color) {
+        if (text == null || text.isEmpty()) return;
+        safeAddEffect(new FloatingTextEffect(x, y, text, color, textFont));
     }
 
-    public int getActiveEffectCount() {
-        return effects.size();
+    // 兼容旧接口
+    public void spawnFloatingText(float x, float y, String text, Color color) {
+        spawnStatusText(x, y, text, color);
     }
+
+    // =========================================================
+    // 🗑️ 资源清理
+    // =========================================================
 
     public void dispose() {
         effects.clear();

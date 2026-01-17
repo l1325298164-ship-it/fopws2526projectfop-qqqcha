@@ -8,83 +8,41 @@ import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentParticleSystem;
 
 public class GeyserTrapEffect extends EnvironmentEffect {
-    // 蒸汽色：纯白带透
-    private final Color steamColor = new Color(1f, 1f, 1f, 0.4f);
-    // 水滴色：清澈蓝
-    private final Color waterColor = new Color(0.6f, 0.8f, 1.0f, 0.7f);
-    // 碎石色：深灰
-    private final Color rubbleColor = new Color(0.4f, 0.35f, 0.3f, 1f);
-
-    private static final float WARNING_TIME = 0.8f;
-    private static final float ERUPT_TIME = 1.2f;
+    // 蒸汽白
+    private static final Color STEAM_COLOR = new Color(1f, 1f, 1f, 0.5f);
 
     public GeyserTrapEffect(float x, float y) {
-        // 总时长 = 警告 + 喷发
-        super(x, y, WARNING_TIME + ERUPT_TIME);
+        // 持续冒烟 1 秒
+        super(x, y, 1.0f);
     }
 
     @Override
     protected void onUpdate(float delta, EnvironmentParticleSystem ps) {
-        if (timer < WARNING_TIME) {
-            // === 阶段1: 地表震颤 (Warning) ===
-            float progress = timer / WARNING_TIME;
-            if (MathUtils.random() < 0.05f + progress * 0.1f) {
-                ps.spawn(
-                        x + MathUtils.random(-15, 15),
-                        y - 10 + MathUtils.random(-5, 5),
-                        rubbleColor,
-                        0, MathUtils.random(20, 50),
-                        MathUtils.random(2, 4),
-                        0.3f,
-                        true, true
-                );
-            }
-        } else {
-            // === 阶段2: 喷发 (Eruption) ===
-            // 蒸汽
-            for (int i = 0; i < 2; i++) {
-                float angle = MathUtils.random(85, 95);
-                float speed = MathUtils.random(180, 350);
-
-                ps.spawn(
-                        x + MathUtils.random(-8, 8),
-                        y + 5,
-                        steamColor,
-                        MathUtils.cosDeg(angle) * speed,
-                        MathUtils.sinDeg(angle) * speed,
-                        MathUtils.random(8, 15),
-                        0.5f,
-                        false, true
-                );
-            }
-
-            // 水滴
-            if (MathUtils.randomBoolean(0.3f)) {
-                float angle = MathUtils.random(60, 120);
-                float speed = MathUtils.random(100, 200);
-
-                ps.spawn(
-                        x, y + 15,
-                        waterColor,
-                        MathUtils.cosDeg(angle) * speed,
-                        MathUtils.sinDeg(angle) * speed,
-                        MathUtils.random(3, 5),
-                        0.8f,
-                        true, false
-                );
-            }
+        // 持续生成蒸汽 (Continuous)
+        if (MathUtils.random() < 0.2f) { // 稍微控制一下频率，不用每帧都生
+            ps.spawn(
+                    x + MathUtils.random(-8, 8),
+                    y + MathUtils.random(0, 10),
+                    STEAM_COLOR,
+                    MathUtils.random(-10, 10),   // 横向飘动很小
+                    MathUtils.random(60, 100),   // 稳定向上
+                    MathUtils.random(6, 12),     // 蒸汽团较大
+                    0.8f,                        // 慢慢消散
+                    false,                       // 无阻力
+                    false                        // 无重力 (可以给一点负重力模拟热气上升，但在粒子系统里通常 gravity=false 就够了，或者靠 vy 实现)
+            );
         }
     }
 
-    // 🔴 修正点 1: 改名
     @Override
     public void renderShape(ShapeRenderer sr) {
-        // 移除几何绘制，全靠粒子
+        // 可以在这里画一个瞬间的淡红光晕表示“烫”，一闪而过
+        if (timer < 0.2f) {
+            sr.setColor(1f, 0.2f, 0.2f, (0.2f - timer) * 2f); // 淡红 -> 透明
+            sr.circle(x, y, 20);
+        }
     }
 
-    // 🔴 修正点 2: 新增空实现
     @Override
-    public void renderSprite(SpriteBatch batch) {
-        // 不需要贴图
-    }
+    public void renderSprite(SpriteBatch batch) {}
 }
