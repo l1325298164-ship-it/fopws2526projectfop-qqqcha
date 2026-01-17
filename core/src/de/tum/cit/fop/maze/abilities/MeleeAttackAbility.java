@@ -49,20 +49,52 @@ public class MeleeAttackAbility extends Ability {
         this.manaCost = 10; // 如果没有法力消耗，设为0
     }
 
+//    @Override
+//    protected void onActivate(Player player, GameManager gameManager) {
+//
+//        this.gameManager = gameManager;
+//
+//        attackTimer = 0f;
+//        damageDone = false;
+//
+//        calculateAttackTiles(player);
+//        player.startAttack();
+//
+//        AudioManager.getInstance().play(AudioType.UI_CLICK);
+//
+//    }
+
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
-
         this.gameManager = gameManager;
-
         attackTimer = 0f;
         damageDone = false;
 
         calculateAttackTiles(player);
         player.startAttack();
 
-        AudioManager.getInstance().play(AudioType.UI_CLICK);
+        // ✅ 1. 播放挥剑音效 (替换掉原来的 UI_CLICK)
+        AudioManager.getInstance().play(AudioType.SKILL_SLASH);
 
+        // ✅ 2. 播放挥剑特效
+        if (gameManager.getCombatEffectManager() != null) {
+            float angle = 0;
+            switch (player.getDirection()) {
+                case RIGHT -> angle = 0;
+                case UP -> angle = 90;
+                case LEFT -> angle = 180;
+                case DOWN -> angle = 270;
+            }
+            // type=0 表示普通挥砍
+            gameManager.getCombatEffectManager().spawnSlash(
+                    player.getWorldX() * GameConstants.CELL_SIZE,
+                    player.getWorldY() * GameConstants.CELL_SIZE,
+                    angle,
+                    0
+            );
+        }
     }
+
     @Override
     protected boolean shouldStartCooldown() {
         return true;

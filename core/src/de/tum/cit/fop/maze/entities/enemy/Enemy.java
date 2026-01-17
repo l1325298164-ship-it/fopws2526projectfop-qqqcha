@@ -112,22 +112,53 @@ public abstract class Enemy extends GameObject {
 
     /* ================= 受伤 ================= */
 
+//    public void takeDamage(int dmg) {
+//        if (!active) return;
+//
+//        hp -= dmg;
+//        AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED);
+//
+//        isHitFlash = true;
+//        hitFlashTimer = 0f;
+//
+//        if (hp <= 0) {
+//            active = false;
+//            //添加死亡效果
+//            onDeath();
+//        }
+//        Logger.debug(getClass().getSimpleName() + " took " + dmg + " damage, HP: " + hp);
+//    }
+
     public void takeDamage(int dmg) {
         if (!active) return;
 
         hp -= dmg;
-        AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED);
+        // AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED); // (受伤音效已有)
 
         isHitFlash = true;
         hitFlashTimer = 0f;
 
         if (hp <= 0) {
             active = false;
-            //添加死亡效果
-            onDeath();
+
+            // ✅ 1. 播放死亡音效
+            AudioManager.getInstance().play(AudioType.ENEMY_DEATH);
+
+            // ✅ 2. 播放死亡特效
+            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
+                // 计算中心坐标 (像素)
+                float effectX = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                float effectY = this.worldY * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+
+                gameManager.getCombatEffectManager().spawnEnemyDeathEffect(effectX, effectY);
+            }
+
+            // 执行原有死亡逻辑
+            onDeath(); // 👈 这里面可能有掉落逻辑，所以特效要在它之前或者独立
         }
         Logger.debug(getClass().getSimpleName() + " took " + dmg + " damage, HP: " + hp);
     }
+
     protected GameManager gameManager;
 
     private void onDeath() {

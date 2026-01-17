@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.effects.Player.combat.instances.*;
 
 import java.util.ArrayList;
@@ -146,6 +147,26 @@ public class CombatEffectManager {
         if (cleanText.isEmpty()) return;
 
         safeAddEffect(new FloatingTextEffect(x, y, cleanText, color, scoreFont));
+    }
+
+    // 🔥 新增：敌人死亡特效接口
+    // ==========================================
+    public void spawnEnemyDeathEffect(float x, float y) {
+        // 生成一圈灰色的爆炸粒子 (8-10个)
+        for (int i = 0; i < 10; i++) {
+            // 参数: x, y, color, vx, vy, size, life, friction, gravity
+            particleSystem.spawn(
+                    x + MathUtils.random(-15, 15),       // 位置稍微随机一点
+                    y + MathUtils.random(-15, 15),
+                    Color.GRAY,                          // 颜色：灰色烟雾
+                    MathUtils.random(-80, 80),           // X轴速度
+                    MathUtils.random(-80, 80),           // Y轴速度
+                    MathUtils.random(4, 8),              // 粒子大小
+                    MathUtils.random(0.4f, 0.7f),        // 存活时间
+                    true,                                // 开启阻力 (摩擦力)
+                    false                                // 关闭重力
+            );
+        }
     }
 
     // ==========================================

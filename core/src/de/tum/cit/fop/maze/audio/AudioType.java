@@ -40,6 +40,17 @@ public enum AudioType {
     UI_THROW_ATTACK("sounds_file/SFX/btn_2.mp3", AudioCategory.UI, false, 1.0f, false, true),
 //revision |||| sword
 
+    // === ✨ 新增：技能与动作 ===
+    // 冲刺音效 (Whoosh声)
+    SKILL_DASH("sounds_file/SFX/dash_01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
+    // 挥剑音效 (Slash声)
+    SKILL_SLASH("sounds_file/SFX/sword_swing.wav", AudioCategory.PLAYER, false, 0.8f, false, false),
+    // Buff获取音效 (强化声)
+    BUFF_GAIN("sounds_file/SFX/buff_01.wav", AudioCategory.UI, false, 0.9f, false, false),
+
+    // === 💀 新增：战斗反馈 ===
+    // 敌人死亡 (爆炸/消散声)
+    ENEMY_DEATH("sounds_file/SFX/enemy_death.wav", AudioCategory.ENEMY, false, 0.9f, false, false),
 
     //Tutorial
     TUTORIAL_MAIN_BGM(
