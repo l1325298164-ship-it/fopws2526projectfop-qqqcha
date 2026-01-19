@@ -9,6 +9,7 @@ import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.utils.CameraManager; // <--- 必须导入这个
 import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.ArrayList;
@@ -38,31 +39,14 @@ public class MeleeAttackAbility extends Ability {
     private static final Color DEBUG_COLOR = new Color(1f, 0.9f, 0f, 0.5f);
 
     public MeleeAttackAbility() {
-        // 使用正确的冷却时间（原版是0.4f）
         super(
                 "Sword Slash",
                 "Slash enemies in front of you",
                 0.8f,      // cooldown
                 HIT_TIME   // duration = 命中窗口
         );
-
-        this.manaCost = 10; // 如果没有法力消耗，设为0
+        this.manaCost = 10;
     }
-
-//    @Override
-//    protected void onActivate(Player player, GameManager gameManager) {
-//
-//        this.gameManager = gameManager;
-//
-//        attackTimer = 0f;
-//        damageDone = false;
-//
-//        calculateAttackTiles(player);
-//        player.startAttack();
-//
-//        AudioManager.getInstance().play(AudioType.UI_CLICK);
-//
-//    }
 
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
@@ -73,7 +57,7 @@ public class MeleeAttackAbility extends Ability {
         calculateAttackTiles(player);
         player.startAttack();
 
-        // ✅ 1. 播放挥剑音效 (替换掉原来的 UI_CLICK)
+        // ✅ 1. 播放挥剑音效
         AudioManager.getInstance().play(AudioType.SKILL_SLASH);
 
         // ✅ 2. 播放挥剑特效
@@ -85,12 +69,14 @@ public class MeleeAttackAbility extends Ability {
                 case LEFT -> angle = 180;
                 case DOWN -> angle = 270;
             }
-            // type=0 表示普通挥砍
+
+            // 🔥 修改重点：传入 this.level 而不是 0
+            // 这样才能触发 SlashEffect 中写好的 Lv2(火焰) 和 Lv3(霓虹) 效果！
             gameManager.getCombatEffectManager().spawnSlash(
                     player.getWorldX() * GameConstants.CELL_SIZE,
                     player.getWorldY() * GameConstants.CELL_SIZE,
                     angle,
-                    0
+                    this.level // <--- 这里使用了当前技能等级
             );
         }
     }
@@ -100,13 +86,10 @@ public class MeleeAttackAbility extends Ability {
         return true;
     }
 
-
     @Override
     protected boolean shouldConsumeMana() {
-        return manaCost > 0; // 只有有法力消耗时才消耗法力
+        return manaCost > 0;
     }
-
-
 
     @Override
     public void update(float delta, Player player, GameManager gameManager) {
@@ -116,20 +99,16 @@ public class MeleeAttackAbility extends Ability {
 
         attackTimer += delta;
 
-        if (!damageDone && attackTimer >= HIT_TIME- hitTimeOffset) {
+        if (!damageDone && attackTimer >= HIT_TIME - hitTimeOffset) {
             dealDamage(gameManager);
             damageDone = true;
         }
     }
 
-
-
-
     @Override
     protected boolean shouldBecomeActive() {
-        return false;   // ❗ 不进入 active 生命周期
+        return false;   // 瞬发技能，不保持 Active 状态
     }
-
 
     private void calculateAttackTiles(Player player) {
         attackTiles.clear();
@@ -174,6 +153,19 @@ public class MeleeAttackAbility extends Ability {
                 }
             }
         }
+
+        // 🔥 新增：如果击中了任何敌人，触发屏幕震动 (Juice!)
+        if (!hitEnemies.isEmpty()) {
+            // 震动时间：0.15秒 (短促有力)
+            // 震动强度：基础 2.0，每级增加 0.5 (Lv1=2.5, Lv5=4.5)
+            float shakeStrength = 2.0f + (level * 0.5f);
+
+            // 调用我们刚刚在 CameraManager 中修复的单例方法
+            CameraManager.getInstance().shake(0.15f, shakeStrength);
+
+            // 可以在这里加一点顿帧逻辑 (HitStop) 的预留位置
+            // gameManager.triggerHitStop(0.05f);
+        }
     }
 
     /* ================= 绘制 ================= */
@@ -201,22 +193,17 @@ public class MeleeAttackAbility extends Ability {
 
     @Override
     protected void onUpgrade() {
-
         switch (level) {
-
             case 2 -> {
                 baseDamage += 2;
             }
-
             case 3 -> {
                 damagePerLevel += 1;
             }
-
             case 4 -> {
                 // ⭐ 出伤提前 0.03 秒
                 hitTimeOffset += 0.03f;
             }
-
             case 5 -> {
                 baseDamage += 5;
             }

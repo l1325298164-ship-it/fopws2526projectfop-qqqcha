@@ -1,4 +1,3 @@
-// CameraManager.java
 package de.tum.cit.fop.maze.utils;
 
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -8,6 +7,9 @@ import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 
 public class CameraManager {
+    // 🔥 新增：单例实例
+    private static CameraManager instance;
+
     private OrthographicCamera camera;
     private float targetX, targetY;
     private float smoothSpeed = 5.0f; // 相机跟随的平滑度
@@ -25,22 +27,21 @@ public class CameraManager {
     private float shakeDuration = 0f;
     private float shakeStrength = 0f;
 
-    public void setDebugZoom(float zoom) {
-        debugForcedZoom = zoom;
-        debugForceZoomEnabled = true;
+    // 🔥 新增：获取单例的方法
+    public static CameraManager getInstance() {
+        return instance;
     }
-
-    public void clearDebugZoom() {
-        debugForceZoomEnabled = false;
-    }
-
 
     public CameraManager(DifficultyConfig difficultyConfig) {
+        // 🔥 新增：赋值单例
+        instance = this;
+
         this.difficultyConfig = difficultyConfig;
         camera = new OrthographicCamera();
         Logger.debug("CameraManager initialized");
         this.baseZoom = camera.zoom;
     }
+
     //for tutorial
     private boolean clampToMap = true;
     private boolean tutorialMode = false;
@@ -102,6 +103,20 @@ public class CameraManager {
         float newX = currentX + (targetX - currentX) * smoothSpeed * deltaTime;
         float newY = currentY + (targetY - currentY) * smoothSpeed * deltaTime;
 
+        // 🔥 新增：应用震动偏移 (从 QTE update 方法中移植过来的)
+        if (shakeTime > 0f) {
+            shakeTime -= deltaTime;
+            // 计算震动衰减 (progress 1.0 -> 0.0)
+            float progress = shakeTime / shakeDuration;
+
+            // 生成随机偏移
+            float offsetX = (float)(Math.random() * 2 - 1) * shakeStrength * progress;
+            float offsetY = (float)(Math.random() * 2 - 1) * shakeStrength * progress;
+
+            newX += offsetX;
+            newY += offsetY;
+        }
+
         camera.position.set(newX, newY, 0);
         camera.update();
     }
@@ -147,14 +162,25 @@ public class CameraManager {
 
         camera.update();
         Logger.debug(String.format("Camera resized to: %.0fx%.0f",
-            camera.viewportWidth, camera.viewportHeight));
+                camera.viewportWidth, camera.viewportHeight));
     }
+
+    public void setDebugZoom(float zoom) {
+        debugForcedZoom = zoom;
+        debugForceZoomEnabled = true;
+    }
+
+    public void clearDebugZoom() {
+        debugForceZoomEnabled = false;
+    }
+
     // 给 QTE 用：直接指定相机目标点
     public void setTarget(float x, float y) {
         this.freeTargetX = x;
         this.freeTargetY = y;
         this.useFreeTarget = true;
     }
+
     // QTE 用的 update（没有 Player）
     public void update(float deltaTime) {
         if (!useFreeTarget) return;
@@ -173,6 +199,7 @@ public class CameraManager {
 
         float newX = currentX + (targetX - currentX) * smoothSpeed * deltaTime;
         float newY = currentY + (targetY - currentY) * smoothSpeed * deltaTime;
+
         if (shakeTime > 0f) {
             shakeTime -= deltaTime;
             float progress = shakeTime / shakeDuration;
@@ -191,18 +218,18 @@ public class CameraManager {
         useFreeTarget = false;
     }
 
-
-
-
     public boolean isDebugZoom() {
         return debugForceZoomEnabled;
     }
 
+    /**
+     * 触发屏幕震动
+     * @param duration 持续时间 (秒)
+     * @param strength 震动强度 (像素)
+     */
     public void shake(float duration, float strength) {
         shakeDuration = duration;
         shakeTime = duration;
         shakeStrength = strength;
     }
-
-
 }
