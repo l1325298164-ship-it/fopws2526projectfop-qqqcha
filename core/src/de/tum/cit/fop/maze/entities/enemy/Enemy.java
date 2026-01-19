@@ -13,30 +13,29 @@ import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.utils.TextureManager;
+// 🔥 [新增] 导入 EnemyState
+import de.tum.cit.fop.maze.entities.enemy.EnemyState;
 
 public abstract class Enemy extends GameObject {
 
     /* ================= 坐标 ================= */
-
-    // 逻辑格子坐标：用于碰撞 & 地图判断（x, y 在 GameObject 里）
     protected float worldX;
     protected float worldY;
 
     /* ================= 属性 ================= */
     protected float stateTime = 0f;
-
     protected int hp;
     public int attack;
     protected int collisionDamage;
     protected float moveSpeed;
     protected float detectRange;
 
-    // 行为节奏（实例级）
+    // 🔥 [新增] 状态管理 (供 AggroPulse 使用)
+    protected EnemyState state = EnemyState.IDLE;
+    protected EnemyState lastState = EnemyState.IDLE;
+
     protected float moveInterval = 0.35f;
     protected float changeDirInterval = 1.5f;
-    /* ================= 尺寸 ================= */
-
-    // 敌人占用的“格子大小比例”（1.0 = 正好一格）
     protected float size = 1.0f;
 
     /* ================= 移动状态 ================= */
@@ -44,9 +43,8 @@ public abstract class Enemy extends GameObject {
     protected Animation<TextureRegion> backAnim;
     protected Animation<TextureRegion> leftAnim;
     protected Animation<TextureRegion> rightAnim;
-    protected Animation<TextureRegion> singleAnim;  // 用于单动画敌人
-    protected float animTime = 0f;  // 动画时间
-
+    protected Animation<TextureRegion> singleAnim;
+    protected float animTime = 0f;
 
     protected Direction direction = Direction.DOWN;
     protected boolean isMoving = false;
@@ -55,45 +53,26 @@ public abstract class Enemy extends GameObject {
 
     protected float moveCooldown = 0f;
     protected float dirCooldown = 0f;
-
     protected int dirX = 0;
     protected int dirY = 0;
 
     /* ================= 渲染 ================= */
-
     protected TextureManager textureManager;
     protected Texture texture;
     protected boolean needsTextureUpdate = true;
 
     /* ================= 受击闪烁 ================= */
-
     protected boolean isHitFlash = false;
     protected float hitFlashTimer = 0f;
     protected static final float HIT_FLASH_TIME = 0.25f;
-    //dash 相关
+
     private boolean hitByDash = false;
 
-    public boolean isHitByDash() {
-        return hitByDash;
-    }
-
-    public void markHitByDash() {
-        hitByDash = true;
-    }
-
-    public void resetDashHit() {
-        hitByDash = false;
-    }
-    /* ================= 方向（只允许上下左右） ================= */
-
     protected static final int[][] CARDINAL_DIRS = {
-            { 1, 0 },   // 右
-            {-1, 0 },   // 左
-            { 0, 1 },   // 上
-            { 0,-1 }    // 下
+            { 1, 0 }, {-1, 0 }, { 0, 1 }, { 0,-1 }
     };
 
-    /* ================= 构造 ================= */
+    protected GameManager gameManager;
 
     public Enemy(int x, int y) {
         super(x, y);
@@ -101,72 +80,68 @@ public abstract class Enemy extends GameObject {
         this.worldY = y;
         textureManager = TextureManager.getInstance();
         needsTextureUpdate = true;
-        texture = null; // ⬅️ 非常重要
-
+        texture = null;
     }
 
-    /* ================= 抽象 ================= */
-
     protected abstract void updateTexture();
+
+    // 基类的 update 是 abstract 的，所以我们不能在这里写 Aggro 逻辑。
+    // 但是我们提供了辅助方法 updateAggroPulse 供子类使用。
     public abstract void update(float delta, GameManager gm);
 
+    /**
+     * 🔥 [新增] 辅助方法：检查状态变化并触发仇恨波动
+     * 请在子类的 update() 方法中调用此方法
+     */
+    protected void updateAggroPulse(GameManager gm) {
+        if (state == EnemyState.CHASING && lastState != EnemyState.CHASING) {
+            // 只有当存活一段时间后才触发 (避免初始化时触发)
+            if (stateTime > 1.0f && gm.getCombatEffectManager() != null) {
+                float cx = this.getWorldX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                float cy = this.getWorldY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
+                gm.getCombatEffectManager().spawnAggroPulse(cx, cy);
+            }
+        }
+        lastState = state;
+    }
 
-    // 🔥 [修改] 受伤逻辑：加入打击感与反馈
     public void takeDamage(int dmg) {
         if (!active) return;
 
         hp -= dmg;
-
-        // ✅ 1. 播放受伤音效
         AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED);
 
         isHitFlash = true;
         hitFlashTimer = 0f;
 
-        // ✅ 2. 视觉与手感反馈 (Juice)
         if (gameManager != null) {
-            // 使用 worldX/Y 计算平滑的中心像素坐标
-            // worldX 是逻辑坐标 (格子)，需要乘以 CELL_SIZE
             float cx = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
             float cy = this.worldY * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
 
-            // A. 受击火花特效 (Hit Spark)
+            // Hit Spark
             if (gameManager.getCombatEffectManager() != null) {
                 gameManager.getCombatEffectManager().spawnHitSpark(cx, cy);
-                // 如果需要显示伤害数字，可以取消下面这行的注释
-                // gameManager.getCombatEffectManager().spawnScoreText(cx, cy + 20, -dmg);
             }
-
-            // B. 顿帧 + 震动 (Hit Stop & Shake)
-            // 增强打击力度感
+            // Hit Stop
             gameManager.triggerHitFeedback(1.0f);
         }
 
         if (hp <= 0) {
             active = false;
-
-            // ✅ 3. 死亡音效
             AudioManager.getInstance().play(AudioType.ENEMY_DEATH);
 
-            // ✅ 4. 死亡爆炸特效
             if (gameManager != null && gameManager.getCombatEffectManager() != null) {
                 float cx = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
                 float cy = this.worldY * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
                 gameManager.getCombatEffectManager().spawnEnemyDeathEffect(cx, cy);
             }
-
-            // 执行原有死亡逻辑 (如掉落)
             onDeath();
         }
         Logger.debug(getClass().getSimpleName() + " took " + dmg + " damage, HP: " + hp);
     }
 
-    protected GameManager gameManager;
-
     private void onDeath() {
         Logger.debug(getClass().getSimpleName() + " died");
-
-        // 通知 GameManager（如果存在）
         if (gameManager != null) {
             gameManager.onEnemyKilled(this);
         }
@@ -174,7 +149,6 @@ public abstract class Enemy extends GameObject {
 
     protected void updateHitFlash(float delta) {
         if (!isHitFlash) return;
-
         hitFlashTimer += delta;
         if (hitFlashTimer >= HIT_FLASH_TIME) {
             isHitFlash = false;
@@ -186,81 +160,60 @@ public abstract class Enemy extends GameObject {
         this.gameManager = gm;
     }
 
-    /* ================= 渲染 ================= */
-    public enum Direction {
-        UP, DOWN, LEFT, RIGHT
-    }
+    public enum Direction { UP, DOWN, LEFT, RIGHT }
+
     @Override
     public void drawSprite(SpriteBatch batch) {
         if (!active) return;
 
-        // 🔥 优先级：单动画 > 四方向动画 > 静态贴图
         if (hasSingleAnimation()) {
             drawSingleAnimation(batch);
             return;
         }
-
         if (hasFourDirectionAnimation()) {
             drawAnimated(batch);
             return;
         }
-
-        // 否则回退到旧贴图（兼容老怪）
         drawStatic(batch);
     }
 
-    boolean hasSingleAnimation() {
-        return singleAnim != null;
-    }
+    boolean hasSingleAnimation() { return singleAnim != null; }
 
     protected boolean hasFourDirectionAnimation() {
-        return leftAnim != null || rightAnim != null
-                || frontAnim != null || backAnim != null;
+        return leftAnim != null || rightAnim != null || frontAnim != null || backAnim != null;
     }
+
     protected void drawSingleAnimation(SpriteBatch batch) {
         if (singleAnim == null) {
-            Logger.error("单动画为空，回退静态渲染");
             drawStatic(batch);
             return;
         }
-
         TextureRegion frame = singleAnim.getKeyFrame(animTime, true);
-
         if (frame == null) {
-            Logger.error("单动画帧为空");
             drawStatic(batch);
             return;
         }
 
         float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
-        float scale = baseScale * size;  // 使用敌人的 size 属性
+        float scale = baseScale * size;
 
         float drawW = frame.getRegionWidth() * scale;
         float drawH = frame.getRegionHeight() * scale;
+        float drawX = x * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f - drawW / 2f;
+        float drawY = y * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f - drawH / 2f;
 
-        // 🔥 居中绘制（对于小尺寸敌人很重要）
-        float drawX = x * GameConstants.CELL_SIZE +
-                GameConstants.CELL_SIZE / 2f - drawW / 2f;
-        float drawY = y * GameConstants.CELL_SIZE +
-                GameConstants.CELL_SIZE / 2f - drawH / 2f;
-
-        // 🔥 受击闪烁效果
         if (isHitFlash) {
             float flashAlpha = 0.5f + 0.5f * (float) Math.sin(hitFlashTimer * 20f);
             batch.setColor(1, 1, 1, flashAlpha);
         }
-
         batch.draw(frame, drawX, drawY, drawW, drawH);
-
-        // 恢复颜色
         if (isHitFlash) {
             batch.setColor(1, 1, 1, 1);
         }
     }
+
     protected void drawAnimated(SpriteBatch batch) {
-
         Animation<TextureRegion> anim;
-
         switch (direction) {
             case LEFT -> anim = leftAnim;
             case RIGHT -> anim = rightAnim;
@@ -269,39 +222,22 @@ public abstract class Enemy extends GameObject {
             default -> anim = rightAnim;
         }
 
-        // 增加容错：如果动画为空，回退到静态图
-        if (anim == null) {
-            Logger.error("Current animation is NULL! Falling back to static.");
-            drawStatic(batch);
-            return;
-        }
+        if (anim == null) { drawStatic(batch); return; }
 
         TextureRegion frame = anim.getKeyFrame(stateTime, true);
-
-        // 防止空帧导致崩溃
-        if (frame == null) return;
-
         float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
-        float scale = baseScale * 2.5f; // 保持你原有的 2.5 倍缩放
+        float scale = baseScale * 2.5f;
 
         float drawW = frame.getRegionWidth() * scale;
         float drawH = frame.getRegionHeight() * scale;
-
-        // 居中计算
-        float drawX = x * GameConstants.CELL_SIZE
-                + GameConstants.CELL_SIZE / 2f - drawW / 2f;
+        float drawX = x * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f - drawW / 2f;
         float drawY = y * GameConstants.CELL_SIZE;
 
-        // 🔥 [新增] 补全受击反馈逻辑 (与 drawSingleAnimation 保持一致)
         if (isHitFlash) {
-            // 使用正弦波计算透明度，产生忽隐忽现的闪烁感
             float flashAlpha = 0.5f + 0.5f * (float) Math.sin(hitFlashTimer * 20f);
             batch.setColor(1, 1, 1, flashAlpha);
         }
-
         batch.draw(frame, drawX, drawY, drawW, drawH);
-
-        // ✅ [重要] 绘制完必须立即恢复颜色，否则整个游戏画面都会受影响
         if (isHitFlash) {
             batch.setColor(1, 1, 1, 1);
         }
@@ -309,24 +245,14 @@ public abstract class Enemy extends GameObject {
 
     protected void drawStatic(SpriteBatch batch) {
         if (texture == null) return;
-
         float size = GameConstants.CELL_SIZE;
-        batch.draw(texture,
-                x * size,
-                y * size,
-                size,
-                size
-        );
+        batch.draw(texture, x * size, y * size, size, size);
     }
-
-    /* ================= 连续移动（安全版） ================= */
 
     protected void moveContinuously(float delta) {
         if (!isMoving) return;
-
         float dx = targetX - worldX;
         float dy = targetY - worldY;
-
         float dist = (float) Math.sqrt(dx * dx + dy * dy);
         if (dist < 1e-4f) {
             worldX = targetX;
@@ -334,11 +260,8 @@ public abstract class Enemy extends GameObject {
             isMoving = false;
             return;
         }
-
-        // ⭐ 用 moveInterval 反推速度
-        float speed = 1f / moveInterval; // 格 / 秒
+        float speed = 1f / moveInterval;
         float step = speed * delta;
-
         if (step >= dist) {
             worldX = targetX;
             worldY = targetY;
@@ -349,7 +272,6 @@ public abstract class Enemy extends GameObject {
         }
     }
 
-
     protected void startMoveTo(int nx, int ny) {
         x = nx;
         y = ny;
@@ -358,97 +280,53 @@ public abstract class Enemy extends GameObject {
         isMoving = true;
     }
 
-    /* ================= 随机移动（最终稳定版） ================= */
-
     protected void tryMoveRandom(float delta, GameManager gm) {
-
         if (isMoving) return;
-
-        // 只在这里统一减少冷却
         moveCooldown -= delta;
         dirCooldown -= delta;
 
-        // 到时间才换方向（一次）
         if (dirCooldown <= 0f) {
             pickRandomDir();
             dirCooldown = changeDirInterval;
         }
-
-        // 还在移动冷却中，直接返回
         if (moveCooldown > 0f) return;
 
-        // 尝试当前方向 + 最多 3 次备用方向
         for (int i = 0; i < 4; i++) {
-
             int nx = x + dirX;
             int ny = y + dirY;
-
             if (gm.isEnemyValidMove(nx, ny)) {
                 startMoveTo(nx, ny);
-
-                // ✅ 只有成功移动才进入 cooldown
                 moveCooldown = moveInterval;
                 return;
             }
-
-            // 当前方向不通 → 换方向再试
             pickRandomDir();
         }
-
-        // ❗ 4 次都失败：什么都不做
-        // 不进 moveCooldown，不重置 dirCooldown
     }
-
 
     protected void pickRandomDir() {
         int[] dir = CARDINAL_DIRS[MathUtils.random(0, CARDINAL_DIRS.length - 1)];
         dirX = dir[0];
         dirY = dir[1];
     }
-    // ==================判断是不是可以交互或者可以通过
-    @Override
-    public boolean isInteractable() {
-        // 敌人通常不可交互（除非有特殊设计）
-        return false;
-    }
 
     @Override
-    public boolean isPassable() {
-        // 敌人不可通过
-        return true;
-    }
-    /* ================= Getter ================= */
+    public boolean isInteractable() { return false; }
 
-    public int getCollisionDamage() {
-        return collisionDamage;
-    }
+    @Override
+    public boolean isPassable() { return true; }
 
-    public int getAttackDamage() {
-        return attack;
-    }
+    public int getCollisionDamage() { return collisionDamage; }
+    public int getAttackDamage() { return attack; }
+    public boolean isDead() { return !active; }
 
-    public boolean isDead() {
-        return !active;
-    }
+    public float getWorldX() { return worldX; }
+    public float getWorldY() { return worldY; }
 
-
-    // 🔥 添加获取世界坐标的方法
-    public float getWorldX() {
-        return worldX;
-    }
-
-    public float getWorldY() {
-        return worldY;
-    }
-    protected boolean hasAnimation() {
-        return hasSingleAnimation() || hasFourDirectionAnimation();
-    }
+    public boolean isHitByDash() { return hitByDash; }
+    public void markHitByDash() { hitByDash = true; }
+    public void resetDashHit() { hitByDash = false; }
 
     public boolean occupiesCell(int cellX, int cellY) {
-        // 默认1x1敌人只占据一个格子
         return active && cellX == x && cellY == y;
     }
-
-
-
 }

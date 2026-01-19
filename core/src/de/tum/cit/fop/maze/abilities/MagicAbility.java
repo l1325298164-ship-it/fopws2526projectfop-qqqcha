@@ -1,13 +1,12 @@
 package de.tum.cit.fop.maze.abilities;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
-import de.tum.cit.fop.maze.utils.Logger;
+import com.badlogic.gdx.graphics.Color; // 补全颜色引用
 
 import java.util.Map;
 
@@ -15,13 +14,10 @@ public class MagicAbility extends Ability {
 
     private GameManager gameManager;
 
-    /* ================= Phase ================= */
-
-    // ✅ 必须是 public，HUD 才能读
     public enum Phase {
         IDLE,
-        AIMING,      // AOE 预警
-        EXECUTED,    // AOE 已释放，等待二段
+        AIMING,
+        EXECUTED,
         COOLDOWN
     }
 
@@ -29,17 +25,14 @@ public class MagicAbility extends Ability {
     private float phaseTimer = 0f;
 
     /* ================= Timers ================= */
-
     private float aimingTimer = 0f;
-    private float waitTimer   = 0f;
+    private float effectWaitTimer = 0f;
 
-    private static final float AIMING_TIMEOUT    = 2.0f;
-    private static final float WAIT_SECOND_TIME  = 1.0f;
-    private static final float COOLDOWN_FAIL     = 0.5f;
-    private static final float COOLDOWN_SUCCESS  = 5.0f;
+    private static final float AIMING_TIMEOUT    = 5.0f;
+    private static final float EFFECT_DURATION   = 0.6f;
+    private static final float COOLDOWN_DURATION = 5.0f;
 
-    /* ================= AOE ================= */
-
+    /* ================= AOE Stats ================= */
     private int aoeTileRadius = 2;
     private float aoeVisualRadius = 2.5f * GameConstants.CELL_SIZE;
     private boolean inputConsumedThisFrame = false;
@@ -49,31 +42,25 @@ public class MagicAbility extends Ability {
 
     private int hitEnemyCount = 0;
 
-    /* ================= Heal ================= */
-
+    /* ================= Heal Stats ================= */
     private float baseHealPercent = 0.10f;
-    private float extraPerEnemy   = 0.01f;
+    private float extraPerEnemy   = 0.02f;
 
-    /* ================= Cooldown ================= */
-
-    private float currentCooldown = 0f;
+    private float currentCooldown = COOLDOWN_DURATION;
 
     public MagicAbility() {
         super(
-                "Magic",
-                "AOE damage, then heal based on enemies hit",
+                "Magic Strike",
+                "Aim -> Pillar Damage -> Absorb Essence",
                 0f,
                 0f
         );
         this.manaCost = 20;
-        this.currentCooldown = COOLDOWN_SUCCESS;
     }
-
-    /* ================= Ability Hooks ================= */
 
     @Override
     protected boolean shouldConsumeMana() {
-        return phase == Phase.IDLE;
+        return phase == Phase.AIMING;
     }
 
     @Override
@@ -88,139 +75,72 @@ public class MagicAbility extends Ability {
 
     @Override
     public boolean canActivate(Player player) {
-
-        if (player.getMana() < manaCost) return false;
-
-        return switch (phase) {
-            case IDLE, AIMING, EXECUTED -> true;
-            case COOLDOWN -> false;
-        };
+        if (phase == Phase.COOLDOWN || phase == Phase.EXECUTED) return false;
+        return player.getMana() >= manaCost;
     }
-
-
-    /* ================= Activate ================= */
 
     @Override
     protected void onActivate(Player player, GameManager gm) {
-        if (gm.isUIConsumingMouse()) {
-            return;
-        }
-        // 🔒 同一帧内，Magic 只能推进一次状态
+        if (gm.isUIConsumingMouse()) return;
         if (inputConsumedThisFrame) return;
         inputConsumedThisFrame = true;
         this.gameManager = gm;
 
         switch (phase) {
-
             case IDLE -> {
-                player.startCasting();
                 aoeCenterX = gm.getMouseTileX();
                 aoeCenterY = gm.getMouseTileY();
-
                 aimingTimer = 0f;
                 setPhase(Phase.AIMING);
 
-                // 🔥 [新增] 生成魔法阵特效
-                if (gm.getCombatEffectManager() != null) {
-                    float cx = (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE;
-                    float cy = (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE;
-                    gm.getCombatEffectManager().spawnMagicCircle(cx, cy, aoeVisualRadius, AIMING_TIMEOUT);
-                }
+                // 播放音效提示进入瞄准
+                // de.tum.cit.fop.maze.audio.AudioManager.getInstance().play(de.tum.cit.fop.maze.audio.AudioType.UI_CLICK);
             }
 
             case AIMING -> {
                 if (phaseTimer < 0.1f) return;
                 castAOE(gm);
-                waitTimer = 0f;
+                effectWaitTimer = 0f;
                 setPhase(Phase.EXECUTED);
             }
-
-            case EXECUTED -> {
-                player.startCasting();
-                castHeal(gm);
-                startInternalCooldown(COOLDOWN_SUCCESS);
-            }
         }
     }
-
-    @Override
-    protected void onUpgrade() {
-
-        switch (level) {
-
-            case 2 -> {
-                // AOE 半径 +1
-                aoeTileRadius += 1;
-                aoeVisualRadius = (aoeTileRadius + 0.5f) * GameConstants.CELL_SIZE;
-            }
-
-            case 3 -> {
-                // 基础治疗提升
-                baseHealPercent += 0.05f;
-            }
-
-            case 4 -> {
-                // 每命中一个敌人的额外治疗
-                extraPerEnemy += 0.01f;
-            }
-
-            case 5 -> {
-                // 再一次扩大范围（后期爽点）
-                aoeTileRadius += 1;
-                aoeVisualRadius = (aoeTileRadius + 0.5f) * GameConstants.CELL_SIZE;
-                currentCooldown = Math.max(3.5f, currentCooldown  - 0.5f);
-            }
-
-        }
-    }
-
-
-    /* ================= Update ================= */
 
     @Override
     public void update(float delta, Player player, GameManager gm) {
         super.update(delta, player, gm);
         inputConsumedThisFrame = false;
-
         phaseTimer += delta;
 
-        if (phase == Phase.COOLDOWN && ready) {
-            setPhase(Phase.IDLE);
-        }
-
-        if (phase == Phase.AIMING) {
-            aimingTimer += delta;
-
-            // 只有当 UI 不遮挡时才跟随鼠标，否则锁定位置
-            if (!gm.isUIConsumingMouse()) {
-                aoeCenterX = gm.getMouseTileX();
-                aoeCenterY = gm.getMouseTileY();
+        switch (phase) {
+            case COOLDOWN -> {
+                if (ready) setPhase(Phase.IDLE);
             }
 
-            if (aimingTimer >= AIMING_TIMEOUT) {
-                setPhase(Phase.IDLE);
+            case AIMING -> {
+                aimingTimer += delta;
+                if (!gm.isUIConsumingMouse()) {
+                    aoeCenterX = gm.getMouseTileX();
+                    aoeCenterY = gm.getMouseTileY();
+                }
+                if (aimingTimer >= AIMING_TIMEOUT) {
+                    setPhase(Phase.IDLE);
+                }
             }
-        }
 
-        if (phase == Phase.EXECUTED) {
-            waitTimer += delta;
-            if (waitTimer >= WAIT_SECOND_TIME) {
-                startInternalCooldown(COOLDOWN_FAIL);
+            case EXECUTED -> {
+                effectWaitTimer += delta;
+                if (effectWaitTimer >= EFFECT_DURATION) {
+                    castHeal(gm);
+                    startInternalCooldown(currentCooldown);
+                }
             }
         }
     }
 
-
-    /* ================= Phase Helper ================= */
-
-    // ✅ 所有 phase 切换都走这里
     private void setPhase(Phase newPhase) {
-        if (phase != newPhase) {
-            phase = newPhase;
-            phaseTimer = 0f;
-            aimingTimer = 0f;
-            waitTimer = 0f;
-        }
+        phase = newPhase;
+        phaseTimer = 0f;
     }
 
     private void startInternalCooldown(float cd) {
@@ -230,17 +150,19 @@ public class MagicAbility extends Ability {
         setPhase(Phase.COOLDOWN);
     }
 
-    /* ================= AOE ================= */
-
     private void castAOE(GameManager gm) {
         hitEnemyCount = 0;
 
-        float cx = (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE;
-        float cy = (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE;
-
-        // 🔥 [新增] 爆发光柱特效
         if (gm.getCombatEffectManager() != null) {
+            float cx = (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE;
+            float cy = (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE;
+
+            // 1. 魔法阵
+            gm.getCombatEffectManager().spawnMagicCircle(cx, cy, aoeVisualRadius, 0.5f);
+            // 2. 通天光柱 (🔥 修复参数错误)
             gm.getCombatEffectManager().spawnMagicPillar(cx, cy, aoeVisualRadius);
+
+            de.tum.cit.fop.maze.utils.CameraManager.getInstance().shake(0.2f, 3.0f);
         }
 
         for (Enemy enemy : gm.getEnemies()) {
@@ -250,78 +172,95 @@ public class MagicAbility extends Ability {
             int dy = enemy.getY() - aoeCenterY;
 
             if (dx * dx + dy * dy <= aoeTileRadius * aoeTileRadius) {
-                enemy.takeDamage(20);
+                enemy.takeDamage(20 + (level * 5));
                 hitEnemyCount++;
-
-                // 🔥 [新增] 命中反馈：生成魔力精华飞向玩家
                 if (gm.getCombatEffectManager() != null) {
-                    float ex = enemy.getWorldX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-                    float ey = enemy.getWorldY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-
-                    Player caster = gm.getPlayer(); // 获取当前主控玩家
-                    if (caster != null) {
-                        float px = caster.getWorldX() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-                        float py = caster.getWorldY() * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-                        gm.getCombatEffectManager().spawnMagicEssence(ex, ey, px, py);
-                    }
+                    gm.getCombatEffectManager().spawnHitSpark(
+                            (enemy.getX() + 0.5f) * GameConstants.CELL_SIZE,
+                            (enemy.getY() + 0.5f) * GameConstants.CELL_SIZE
+                    );
                 }
             }
         }
     }
 
-    /* ================= Heal ================= */
-
     private void castHeal(GameManager gm) {
         float healPercent = baseHealPercent + hitEnemyCount * extraPerEnemy;
+        healPercent = Math.min(healPercent, 0.5f);
 
         for (Player p : gm.getPlayers()) {
             if (p == null || p.isDead()) continue;
+
+            if (gm.getCombatEffectManager() != null) {
+                float px = (p.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                float py = (p.getY() + 0.5f) * GameConstants.CELL_SIZE;
+                // 吸能特效：从四周飞向玩家
+                gm.getCombatEffectManager().spawnMagicEssence(px - 50, py, px, py);
+                gm.getCombatEffectManager().spawnMagicEssence(px + 50, py, px, py);
+
+                if (hitEnemyCount > 0) {
+                    gm.getCombatEffectManager().spawnStatusText(px, py + 40, "ABSORB", Color.CYAN);
+                }
+            }
 
             int heal = Math.max(1, Math.round(p.getMaxLives() * healPercent));
             p.heal(heal);
         }
     }
 
-    /* ================= Draw ================= */
-
     @Override
     public void draw(SpriteBatch batch, ShapeRenderer sr, Player player) {
-        // ❌ [修改] 清空旧的绘图代码
-        // 原本这里画紫色线条圆圈的代码全部删除。
-        // 现在视觉效果完全由 CombatEffectManager.spawnMagicCircle() 负责。
+        if (phase != Phase.AIMING) return;
+
+        sr.begin(ShapeRenderer.ShapeType.Line);
+        float alpha = 0.5f + 0.5f * (float) Math.sin(phaseTimer * 5f);
+        sr.setColor(0.5f, 0f, 1f, alpha);
+        sr.circle(
+                (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE,
+                (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE,
+                aoeVisualRadius
+        );
+        sr.end();
     }
 
-    /* ================= HUD Getters ================= */
-
-    public Phase getPhase() {
-        return phase;
+    @Override
+    protected void onUpgrade() {
+        switch (level) {
+            case 2 -> {
+                aoeTileRadius += 1;
+                aoeVisualRadius = (aoeTileRadius + 0.5f) * GameConstants.CELL_SIZE;
+            }
+            case 3 -> baseHealPercent += 0.05f;
+            case 4 -> extraPerEnemy += 0.02f;
+            case 5 -> {
+                aoeTileRadius += 1;
+                aoeVisualRadius = (aoeTileRadius + 0.5f) * GameConstants.CELL_SIZE;
+                currentCooldown = 3.0f;
+            }
+        }
     }
 
-    public float getPhaseTime() {
-        return phaseTimer;
+    @Override
+    public String getId() {
+        return "magic";
     }
 
     @Override
     public AbilityInputType getInputType() {
-        return AbilityInputType.CONTINUOUS;
-    }
-    public String getId() {
-        return "magic";
+        // 🔥 修复：使用 INSTANT，因为 Ability 类没有 CLICK
+        return AbilityInputType.INSTANT;
     }
 
     @Override
     public Map<String, Object> saveState() {
         Map<String, Object> m = super.saveState();
         m.put("phase", phase.name());
-        m.put("currentCooldown", currentCooldown);
         return m;
     }
 
     @Override
     public void loadState(Map<String, Object> m) {
         super.loadState(m);
-        phase = Phase.valueOf((String)m.getOrDefault("phase", Phase.IDLE.name()));
-        currentCooldown = ((Number)m.getOrDefault("currentCooldown", 0f)).floatValue();
+        phase = Phase.valueOf((String) m.getOrDefault("phase", Phase.IDLE.name()));
     }
-
 }
