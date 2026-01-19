@@ -197,7 +197,6 @@ public class CombatEffectManager {
     }
 
 
-
     public void spawnLaser(float startX, float startY, float endX, float endY) {
         safeAddEffect(new LaserEffect(startX, startY, endX, endY));
     }

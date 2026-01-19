@@ -1,62 +1,70 @@
 package de.tum.cit.fop.maze.effects.Player.combat.instances;
 
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.fop.maze.effects.Player.combat.CombatEffect;
-import de.tum.cit.fop.maze.effects.Player.combat.CombatParticleSystem;
+import de.tum.cit.fop.maze.entities.GameObject;
+import de.tum.cit.fop.maze.game.GameConstants;
 
+/**
+ * 通用的头顶状态图标特效
+ * 功能：跟随目标、倒计时销毁、结束前闪烁
+ */
 public class StatusIconEffect extends CombatEffect {
-    private final int type;
 
-    // Type 0: 十字架 (+) - 回血/治疗
-    // Type 1: 剑 (†) - 攻击力提升
-    // Type 2: 星星/菱形 (◆) - 回蓝/法力
+    private final GameObject target;
+    private final TextureRegion icon;
+    private float duration;
+    private final float offsetY; // 头顶高度偏移
+    private float blinkTimer = 0f;
 
-    public StatusIconEffect(float x, float y, int type) {
-        super(x, y, 1.5f); // 持续 1.5秒
-        this.type = type;
-        this.y = y; // 确保初始Y正确
+    public StatusIconEffect(GameObject target, TextureRegion icon, float duration) {
+        super(target.getWorldX(), target.getWorldY());
+        this.target = target;
+        this.icon = icon;
+        this.duration = duration;
+
+        // 默认悬浮在头顶上方 (约 0.8 格的位置)
+        this.offsetY = GameConstants.CELL_SIZE * 0.8f;
     }
 
     @Override
-    public void update(float delta, CombatParticleSystem particleSystem) {
-        super.update(delta, particleSystem);
-        // 缓慢向上飘
-        this.y += 25f * delta;
-    }
-
-    @Override
-    public void renderShape(ShapeRenderer sr) {
-        float progress = timer / maxDuration;
-        float alpha = 1.0f;
-
-        // 淡出
-        if (progress > 0.7f) {
-            alpha = 1f - (progress - 0.7f) / 0.3f;
+    public void update(float delta) {
+        // 1. 如果目标没了，图标也没了
+        if (target == null || !target.isActive()) {
+            isFinished = true;
+            return;
         }
 
-        float size = 10f; // 图标大小
+        // 2. 倒计时
+        duration -= delta;
+        if (duration <= 0) {
+            isFinished = true;
+            return;
+        }
 
-        // 简单的绘制逻辑
-        switch (type) {
-            case 0: // Green Cross
-                sr.setColor(0, 1, 0, alpha);
-                sr.rect(x - 2, y - size, 4, size * 2);
-                sr.rect(x - size, y - 2, size * 2, 4);
-                break;
-            case 1: // Red Sword-like shape
-                sr.setColor(1, 0.3f, 0.3f, alpha);
-                sr.rect(x - 2, y - size, 4, size * 2.5f);
-                sr.rect(x - 8, y - 4, 16, 4);
-                break;
-            case 2: // Cyan Diamond
-                sr.setColor(0, 1, 1, alpha);
-                sr.rect(x - 5, y - 5, 10, 10); // 简化为方块，旋转比较麻烦先不搞
-                break;
+        // 3. 核心：实时更新坐标跟随目标
+        this.x = target.getWorldX() + GameConstants.CELL_SIZE / 2f;
+        this.y = target.getWorldY() + offsetY;
+
+        // 4. 快结束时闪烁计时
+        if (duration < 2.0f) {
+            blinkTimer += delta;
         }
     }
 
     @Override
-    public void renderSprite(SpriteBatch batch) {}
+    public void render(SpriteBatch batch) {
+        if (isFinished || icon == null) return;
+
+        // 闪烁逻辑：最后2秒，每0.2秒隐藏一次
+        if (duration < 2.0f && (blinkTimer % 0.2f) > 0.1f) {
+            return;
+        }
+
+        float w = 24f; // 图标大小
+        float h = 24f;
+
+        batch.draw(icon, x - w / 2f, y, w, h);
+    }
 }
