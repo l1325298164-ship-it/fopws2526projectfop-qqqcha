@@ -44,6 +44,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private de.tum.cit.fop.maze.utils.CameraManager cameraManager;
     private float hitStopTimer = 0f;
 
+    /**
+     * 必须在 GameScreen 初始化时调用此方法传入 CameraManager
+     */
     public void setCameraManager(de.tum.cit.fop.maze.utils.CameraManager cameraManager) {
         this.cameraManager = cameraManager;
     }
@@ -53,7 +56,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
      * @param intensity 震动强度 (建议 1.0f - 5.0f)
      */
     public void triggerHitFeedback(float intensity) {
-        // 1. 顿帧：世界暂停 0.06 秒
+        // 1. 顿帧：世界暂停 0.06 秒 (约 3-4 帧)
         this.hitStopTimer = 0.06f;
 
         // 2. 震动：让相机晃动
@@ -356,10 +359,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     }
 
     public void update(float delta) {
-        // 🔥 [新增] 顿帧逻辑
+        // 🔥 [修正] 顿帧逻辑：允许特效播放
         if (hitStopTimer > 0) {
             hitStopTimer -= delta;
-            if (hitStopTimer > 0) return;
+
+            // 关键：在顿帧期间，允许战斗特效（粒子）继续更新，但暂停其他逻辑
+            if (combatEffectManager != null) {
+                combatEffectManager.update(delta);
+            }
+
+            if (hitStopTimer > 0) return; // 冻结核心逻辑（实体移动、AI等）
         }
 
         if (!viewingChapterRelic) {
@@ -1443,7 +1452,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             case SLOT_1 -> storage.saveGameToSlot(1, gameSaveData);
             case SLOT_2 -> storage.saveGameToSlot(2, gameSaveData);
             case SLOT_3 -> storage.saveGameToSlot(3, gameSaveData);
-            // 🔥 [修复] 补全 AUTO 分支，并调用新的 saveAuto 方法
             case AUTO -> storage.saveAuto(gameSaveData);
         }
         Logger.info("Game progress saved: Level=" + currentLevel + ", Score=" + gameSaveData.score);
