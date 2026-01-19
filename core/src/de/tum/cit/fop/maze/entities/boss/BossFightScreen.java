@@ -629,7 +629,7 @@ public class BossFightScreen implements Screen {
 // =====================================
             batch.setProjectionMatrix(uiCamera.combined);
             batch.begin();
-            hud.renderInGameUI(batch);
+            hud.renderInGameUI(batch, true);
             batch.end();
 
 

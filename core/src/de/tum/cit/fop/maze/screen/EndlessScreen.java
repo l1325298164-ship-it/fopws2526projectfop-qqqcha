@@ -125,7 +125,7 @@ public class EndlessScreen implements Screen {
     }
 
     @Override
-    public void show() {//TODO 更换贴纸
+    public void show() {
         uiTop = new Texture("Wallpaper/HUD_up.png");
         uiBottom = new Texture("Wallpaper/HUD_down.png");
         uiLeft = new Texture("Wallpaper/HUD_left.png");
@@ -154,7 +154,6 @@ public class EndlessScreen implements Screen {
             initializeEndlessMode();
         }
 
-
         // 🔥 关键修复：确保相机正确初始化并居中于玩家
         if (gm != null && gm.getPlayer() != null) {
             Player player = gm.getPlayer();
@@ -169,7 +168,6 @@ public class EndlessScreen implements Screen {
         System.out.println("相机位置: " + cam.getCamera().position);
         System.out.println("相机缩放: " + cam.getCamera().zoom);
         System.out.println("相机视口: " + cam.getCamera().viewportWidth + "x" + cam.getCamera().viewportHeight);
-
     }
 
     private void trySetActiveGameScreen() {
@@ -252,7 +250,7 @@ public class EndlessScreen implements Screen {
                 it.entity.drawSprite(batch);
             }
         }
-//TODO
+
         if (gm.getKeyEffectManager() != null) {
             gm.getKeyEffectManager().render(batch);
         }
@@ -265,7 +263,6 @@ public class EndlessScreen implements Screen {
         if (gm.getCombatEffectManager() != null) gm.getCombatEffectManager().renderSprites(batch);
 
         batch.end();
-
 
         // ===== Ability AOE / Targeting=====
         shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
@@ -292,6 +289,7 @@ public class EndlessScreen implements Screen {
         if (endlessGameOver && endlessGameOverStage != null) renderGameOverScreen(delta);
 
     }
+
     private void renderGameOverScreen(float delta) {
         if (!endlessGameOverUIInitialized) {
             showEndlessGameOverScreen();
@@ -301,6 +299,7 @@ public class EndlessScreen implements Screen {
         endlessGameOverStage.act(delta);
         endlessGameOverStage.draw();
     }
+
     private void renderUI() {
         // ===== 保存 batch 状态 =====
         Matrix4 oldProjection = batch.getProjectionMatrix().cpy();
@@ -316,7 +315,8 @@ public class EndlessScreen implements Screen {
 
         batch.begin();
         renderMazeBorderDecorations(batch);
-        hud.renderInGameUI(batch);
+        // 🔥 [修复] 传入参数，解决编译错误
+        hud.renderInGameUI(batch, !paused && !console.isVisible());
         batch.end();
         if (console != null) {
             console.render();
@@ -324,9 +324,8 @@ public class EndlessScreen implements Screen {
         // ===== 🔥 恢复 batch 状态（关键）=====
         batch.setColor(oldColor);
         batch.setProjectionMatrix(oldProjection);
-
-
     }
+
     // 🔥 修改：使用与GameScreen一致的装饰渲染
     private void renderMazeBorderDecorations(SpriteBatch batch) {
         int w = Gdx.graphics.getWidth();
@@ -1119,6 +1118,12 @@ public class EndlessScreen implements Screen {
                 return gm.isUIConsumingMouse();
             }
 
+            // 🔥 [修复] 实现缺失方法
+            @Override
+            public void onMenuInput() {
+                togglePause();
+            }
+
         }, Player.PlayerIndex.P1);
 
         // =========================
@@ -1151,6 +1156,12 @@ public class EndlessScreen implements Screen {
                 @Override
                 public boolean isUIConsumingMouse() {
                     return gm.isUIConsumingMouse();
+                }
+
+                // 🔥 [修复] 实现缺失方法
+                @Override
+                public void onMenuInput() {
+                    togglePause();
                 }
 
             }, Player.PlayerIndex.P2);
@@ -1306,4 +1317,3 @@ public class EndlessScreen implements Screen {
         heartCreationTimes.clear();
     }
 }
-

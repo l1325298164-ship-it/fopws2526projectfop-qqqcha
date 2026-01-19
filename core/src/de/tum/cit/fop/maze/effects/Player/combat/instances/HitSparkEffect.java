@@ -12,27 +12,24 @@ public class HitSparkEffect extends CombatEffect {
     private boolean particlesSpawned = false;
 
     public HitSparkEffect(float x, float y) {
-        super(x, y, 0.15f); // 极短的生存时间
+        super(x, y, 0.15f);
         this.size = 20f;
     }
 
     @Override
-    public void update(float delta, CombatParticleSystem particleSystem) {
-        super.update(delta, particleSystem);
-
-        // 只在第一帧生成粒子
+    protected void onUpdate(float delta, CombatParticleSystem particleSystem) {
         if (!particlesSpawned) {
             particlesSpawned = true;
             for (int i = 0; i < 5; i++) {
                 particleSystem.spawn(
                         x, y,
-                        new Color(1f, MathUtils.random(0.5f, 1f), 0f, 1f), // 黄色到橙色
-                        MathUtils.random(-150, 150), // 速度
+                        new Color(1f, MathUtils.random(0.5f, 1f), 0f, 1f),
                         MathUtils.random(-150, 150),
-                        MathUtils.random(3, 6), // 大小
-                        MathUtils.random(0.2f, 0.4f), // 寿命
-                        true, // 阻力
-                        false // 重力
+                        MathUtils.random(-150, 150),
+                        MathUtils.random(3, 6),
+                        MathUtils.random(0.2f, 0.4f),
+                        true,
+                        false
                 );
             }
         }
@@ -41,16 +38,10 @@ public class HitSparkEffect extends CombatEffect {
     @Override
     public void renderShape(ShapeRenderer sr) {
         float alpha = 1.0f - (timer / maxDuration);
-        sr.setColor(1f, 1f, 0.7f, alpha); // 亮黄色
-
+        sr.setColor(1f, 1f, 0.7f, alpha);
         float s = size * (0.8f + 0.2f * (timer / maxDuration));
-
-        // 绘制 X 形光
-        // 线宽通过多次绘制模拟 (ShapeRenderer 默认线宽可能不支持直接改)
         sr.line(x - s, y + s, x + s, y - s);
         sr.line(x - s, y - s, x + s, y + s);
-
-        // 中心高亮
         sr.setColor(1f, 1f, 1f, alpha);
         sr.circle(x, y, s * 0.3f);
     }
