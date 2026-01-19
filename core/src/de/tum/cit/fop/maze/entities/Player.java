@@ -755,13 +755,6 @@ public class Player extends GameObject {
             // ✅ 音效
             AudioManager.getInstance().play(AudioType.BUFF_GAIN);
 
-            // ✅ 图标
-            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
-                float px = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-                float py = this.worldY * GameConstants.CELL_SIZE + 50;
-                gameManager.getCombatEffectManager().spawnBuffIcon(px, py, 1);
-                gameManager.getCombatEffectManager().spawnStatusText(px, py + 20, "ATK UP", Color.ORANGE);
-            }
         }
         if (gameManager != null) {
             gameManager.setVariable("dmg_taken", 0.7f);
@@ -778,13 +771,6 @@ public class Player extends GameObject {
             // ✅ 音效
             AudioManager.getInstance().play(AudioType.BUFF_GAIN);
 
-            // ✅ 图标
-            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
-                float px = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-                float py = this.worldY * GameConstants.CELL_SIZE + 50;
-                gameManager.getCombatEffectManager().spawnBuffIcon(px, py, 0);
-                gameManager.getCombatEffectManager().spawnStatusText(px, py + 20, "REGEN", Color.GREEN);
-            }
         }
     }
 
@@ -797,13 +783,6 @@ public class Player extends GameObject {
             // ✅ 音效
             AudioManager.getInstance().play(AudioType.BUFF_GAIN);
 
-            // ✅ 图标
-            if (gameManager != null && gameManager.getCombatEffectManager() != null) {
-                float px = this.worldX * GameConstants.CELL_SIZE + GameConstants.CELL_SIZE / 2f;
-                float py = this.worldY * GameConstants.CELL_SIZE + 50;
-                gameManager.getCombatEffectManager().spawnBuffIcon(px, py, 2);
-                gameManager.getCombatEffectManager().spawnStatusText(px, py + 20, "MANA UP", Color.CYAN);
-            }
         }
     }
 

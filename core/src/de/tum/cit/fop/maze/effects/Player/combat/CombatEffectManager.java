@@ -18,16 +18,13 @@ import java.util.List;
  */
 public class CombatEffectManager {
 
-    private static final int MAX_EFFECTS = 300; // 稍微调高上限，防止粒子太多挤掉重要特效
+    private static final int MAX_EFFECTS = 300;
     private final List<CombatEffect> effects;
     private final CombatParticleSystem particleSystem;
 
     // 字体资源
     private final BitmapFont scoreFont;
     private final BitmapFont textFont;
-
-    // 调试/性能统计
-    private int maxEffectsInFrame = 0;
 
     public CombatEffectManager() {
         this.effects = new ArrayList<>();
@@ -61,17 +58,18 @@ public class CombatEffectManager {
         Iterator<CombatEffect> iterator = effects.iterator();
         while (iterator.hasNext()) {
             CombatEffect effect = iterator.next();
+
+            // ✅ [修复] 必须传入 particleSystem，解决基类方法签名不匹配的问题
             effect.update(delta, particleSystem);
+
             if (effect.isFinished()) {
                 iterator.remove();
             }
         }
-
-        maxEffectsInFrame = Math.max(maxEffectsInFrame, effects.size());
     }
 
     public void renderShapes(ShapeRenderer shapeRenderer) {
-        // 渲染特效的几何形状 (ShapeRenderer 必须在外部 begin/end)
+        // 渲染特效的几何形状
         for (CombatEffect effect : effects) {
             effect.renderShape(shapeRenderer);
         }
@@ -80,7 +78,7 @@ public class CombatEffectManager {
     }
 
     public void renderSprites(SpriteBatch batch) {
-        // 渲染特效的贴图 (如果有)
+        // 渲染特效的贴图
         for (CombatEffect effect : effects) {
             effect.renderSprite(batch);
         }
@@ -91,7 +89,6 @@ public class CombatEffectManager {
      */
     private void safeAddEffect(CombatEffect effect) {
         if (effects.size() >= MAX_EFFECTS) {
-            // 如果满了，移除最早的一个 (FIFO)
             if (!effects.isEmpty()) effects.remove(0);
         }
         effects.add(effect);
@@ -102,34 +99,23 @@ public class CombatEffectManager {
     // =========================================================
 
     /**
-     * 生成受击火花 (强化版 X 闪光 + 飞溅粒子)
-     * 用于增加打击感
+     * 生成受击火花
      */
     public void spawnHitSpark(float x, float y) {
         safeAddEffect(new HitSparkEffect(x, y));
     }
 
     /**
-     * 生成杀意波动 (暗紫色扩散圆环)
-     * 用于敌人发现玩家时的警示
+     * 生成杀意波动
      */
     public void spawnAggroPulse(float x, float y) {
         safeAddEffect(new AggroPulseEffect(x, y));
     }
 
     /**
-     * 生成 Buff 图标
-     * @param type 0=十字架(回血), 1=剑(攻击), 2=星星(回蓝)
-     */
-    public void spawnBuffIcon(float x, float y, int type) {
-        safeAddEffect(new StatusIconEffect(x, y, type));
-    }
-
-    /**
-     * 敌人死亡爆炸特效 (灰色烟雾)
+     * 敌人死亡爆炸特效
      */
     public void spawnEnemyDeathEffect(float x, float y) {
-        // 直接生成一团灰色烟雾粒子
         for (int i = 0; i < 12; i++) {
             particleSystem.spawn(
                     x + MathUtils.random(-15, 15),
@@ -137,10 +123,10 @@ public class CombatEffectManager {
                     Color.GRAY,
                     MathUtils.random(-60, 60),
                     MathUtils.random(-60, 60),
-                    MathUtils.random(5, 10),     // 大小
-                    MathUtils.random(0.5f, 0.8f), // 寿命
-                    true,                        // 阻力
-                    false                        // 重力
+                    MathUtils.random(5, 10),
+                    MathUtils.random(0.5f, 0.8f),
+                    true,
+                    false
             );
         }
     }
@@ -149,27 +135,33 @@ public class CombatEffectManager {
     // 🔮 魔法技能特效 (Magic Ability)
     // =========================================================
 
-    /**
-     * 生成动态魔法阵 (吟唱阶段)
-     * @param duration 持续时间 (通常等于吟唱时间)
-     */
     public void spawnMagicCircle(float x, float y, float radius, float duration) {
         safeAddEffect(new MagicCircleEffect(x, y, radius, duration));
     }
 
-    /**
-     * 生成通天光柱 (AOE 爆发阶段)
-     */
+    // 兼容接口
+    public void spawnMagicCircle(float x, float y) {
+        spawnMagicCircle(x, y, 64f, 1.0f);
+    }
+
     public void spawnMagicPillar(float x, float y, float radius) {
         safeAddEffect(new MagicPillarEffect(x, y, radius));
     }
 
-    /**
-     * 生成魔力精华 (回能阶段)
-     * 从敌人位置飞向玩家位置
-     */
+    // 兼容接口
+    public void spawnMagicPillar(float x, float y) {
+        spawnMagicPillar(x, y, 64f);
+    }
+
     public void spawnMagicEssence(float startX, float startY, float targetX, float targetY) {
         safeAddEffect(new MagicEssenceEffect(startX, startY, targetX, targetY));
+    }
+
+    // 兼容接口
+    public void spawnMagicEssence(float targetX, float targetY) {
+        float startX = targetX + MathUtils.random(-100, 100);
+        float startY = targetY + MathUtils.random(-100, 100);
+        spawnMagicEssence(startX, startY, targetX, targetY);
     }
 
     // =========================================================
@@ -180,12 +172,9 @@ public class CombatEffectManager {
         safeAddEffect(new SlashEffect(x, y, angle, type));
     }
 
-    /**
-     * 生成冲刺特效 (带等级分级)
-     * @param level 技能等级 (1=基础白烟, 3=青色电光, 5=金色光辉)
-     */
-    public void spawnDash(float x, float y, float directionAngle, int level) {
-        safeAddEffect(new DashEffect(x, y, directionAngle, level));
+    // ✅ [修复] 这里的调用需要配合 DashEffect 的新构造函数
+    public void spawnDash(float x, float y, float directionAngle) {
+        safeAddEffect(new DashEffect(x, y, directionAngle));
     }
 
     public void spawnFireMagic(float x, float y) {
@@ -196,7 +185,6 @@ public class CombatEffectManager {
         safeAddEffect(new HealEffect(x, y));
     }
 
-
     public void spawnLaser(float startX, float startY, float endX, float endY) {
         safeAddEffect(new LaserEffect(startX, startY, endX, endY));
     }
@@ -205,9 +193,6 @@ public class CombatEffectManager {
     // 💬 UI 与 飘字 (Floating Text)
     // =========================================================
 
-    /**
-     * 生成分数飘字 (金/红)
-     */
     public void spawnScoreText(float x, float y, int score) {
         if (score == 0) return;
         String text = (score > 0 ? "+" : "") + score;
@@ -215,17 +200,19 @@ public class CombatEffectManager {
         safeAddEffect(new FloatingTextEffect(x, y, text, color, scoreFont));
     }
 
-    /**
-     * 生成状态文字 (通用)
-     */
     public void spawnStatusText(float x, float y, String text, Color color) {
         if (text == null || text.isEmpty()) return;
         safeAddEffect(new FloatingTextEffect(x, y, text, color, textFont));
     }
 
-    // 兼容旧接口
+    // 兼容接口
     public void spawnFloatingText(float x, float y, String text, Color color) {
         spawnStatusText(x, y, text, color);
+    }
+
+    public void spawnFloatingText(float x, float y, int value, boolean isCrit) {
+        Color c = isCrit ? Color.GOLD : Color.RED;
+        spawnStatusText(x, y, String.valueOf(value), c);
     }
 
     // =========================================================
