@@ -196,9 +196,7 @@ public class CombatEffectManager {
         safeAddEffect(new HealEffect(x, y));
     }
 
-    public void spawnDebuff(float x, float y) {
-        safeAddEffect(new DebuffEffect(x, y));
-    }
+
 
     public void spawnLaser(float startX, float startY, float endX, float endY) {
         safeAddEffect(new LaserEffect(startX, startY, endX, endY));
