@@ -188,10 +188,30 @@ public abstract class Ability {
     public void loadState(Map<String, Object> m) {
         if (m == null) return;
 
-        level = (int) m.getOrDefault("level", level);
-        ready = (boolean) m.getOrDefault("ready", true);
-        active = (boolean) m.getOrDefault("active", false);
-        cooldownTimer = ((Number)m.getOrDefault("cooldownTimer", 0f)).floatValue();
-        durationTimer = ((Number)m.getOrDefault("durationTimer", 0f)).floatValue();
+        // 安全的类型转换
+        Object levelObj = m.get("level");
+        if (levelObj instanceof Number) {
+            level = ((Number) levelObj).intValue();
+        }
+        
+        Object readyObj = m.get("ready");
+        if (readyObj instanceof Boolean) {
+            ready = (Boolean) readyObj;
+        }
+        
+        Object activeObj = m.get("active");
+        if (activeObj instanceof Boolean) {
+            active = (Boolean) activeObj;
+        }
+        
+        Object cooldownObj = m.get("cooldownTimer");
+        if (cooldownObj instanceof Number) {
+            cooldownTimer = ((Number) cooldownObj).floatValue();
+        }
+        
+        Object durationObj = m.get("durationTimer");
+        if (durationObj instanceof Number) {
+            durationTimer = ((Number) durationObj).floatValue();
+        }
     }
 }

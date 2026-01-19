@@ -180,6 +180,19 @@ public class StorageManager {
             if (jsonStr == null || jsonStr.isBlank()) return null;
 
             GameSaveData data = json.fromJson(GameSaveData.class, jsonStr);
+            
+            // 验证数据有效性
+            if (data != null) {
+                if (data.currentLevel < 1) {
+                    Logger.warning("Invalid level in save: " + data.currentLevel + ", setting to 1");
+                    data.currentLevel = 1;
+                }
+                if (data.score < 0) {
+                    Logger.warning("Invalid score in save: " + data.score + ", setting to 0");
+                    data.score = 0;
+                }
+            }
+            
             return data;
 
         } catch (Exception e) {

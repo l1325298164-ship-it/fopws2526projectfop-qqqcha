@@ -167,8 +167,6 @@ public class SettlementScreen implements Screen {
         // 只有第一次进入界面且未滚动完时才使用动画，否则直接显示最终分数（避免刷新时重播滚动）
         String scoreText = isScoreRolling ? formatScore((int)displayedTotalScore) : formatScore((int)targetTotalScore);
         labelTotalScore = new Label(scoreText, game.getSkin());
-        scoreTable.add(new Label("TOTAL SCORE", game.getSkin())).align(Align.left).padTop(15);
-        labelTotalScore = new Label(formatScore((int)displayedTotalScore), game.getSkin());
         labelTotalScore.setColor(Color.ORANGE);
         labelTotalScore.setFontScale(1.5f);
         scoreTable.add(labelTotalScore).align(Align.right).padTop(15);
@@ -243,7 +241,11 @@ public class SettlementScreen implements Screen {
                     leaderboardManager.addScore(name, saveData.score);
 
                     scoreSubmitted = true;
-                    game.getGameManager().saveGameProgress(); // 顺便保存一下状态
+                    if (game.getGameManager() != null) {
+                        game.getGameManager().saveGameProgress(); // 顺便保存一下状态
+                    } else {
+                        Logger.warning("GameManager is null, cannot save progress");
+                    }
                     setupUI(); // 重新绘制界面，进入状态 B
                 })).width(160).height(50);
 

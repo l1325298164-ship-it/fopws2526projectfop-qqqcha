@@ -421,6 +421,10 @@ public class Player extends GameObject {
     }
 
     public boolean onPushedBy(PushSource source, int dx, int dy, GameManager gm) {
+        if (source == null || gm == null) {
+            Logger.warning("onPushedBy called with null parameters");
+            return false;
+        }
         int strength = source.getPushStrength();
         int targetX = x + dx * strength;
         int targetY = y + dy * strength;

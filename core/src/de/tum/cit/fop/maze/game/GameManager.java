@@ -378,7 +378,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         }
 
-        if (playerSpawnPortal != null) {
+        if (playerSpawnPortal != null && player != null) {
             float cx = (player.getX() + 0.5f) * GameConstants.CELL_SIZE;
             float cy = (player.getY() + 0.15f) * GameConstants.CELL_SIZE;
             playerSpawnPortal.setCenter(cx, cy);
@@ -1441,10 +1441,21 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         if (scoreManager != null) {
             scoreManager.saveState(gameSaveData);
+            
+            // 分数计算逻辑说明：
+            // 1. 计算当前关卡进行中的分数（未完成关卡，不保存到累计分数）
             int currentRaw = Math.max(0, gameSaveData.levelBaseScore - gameSaveData.levelPenalty);
             int currentFinal = (int) (currentRaw * difficultyConfig.scoreMultiplier);
+            
+            // 2. 获取当前总分（包含已完成关卡分数 + 当前关卡进行中的分数）
+            //    getCurrentScore() = accumulatedScore + currentLevelFinal
             int currentTotal = scoreManager.getCurrentScore();
+            
+            // 3. 保存已完成关卡的累计分数（总分减去当前关卡进行中的分数）
+            //    saved score = accumulatedScore + currentLevelFinal - currentLevelFinal = accumulatedScore
             gameSaveData.score = Math.max(0, currentTotal - currentFinal);
+            
+            Logger.debug("Save progress: total=" + currentTotal + ", currentLevel=" + currentFinal + ", saved=" + gameSaveData.score);
         }
 
         StorageManager storage = StorageManager.getInstance();
@@ -1497,6 +1508,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             scoreManager.restoreState(saveData);
         }
         for (Player p : players) {
+            if (p == null) continue; // 添加空值检查
             PlayerSaveData ps = saveData.players.get(p.getPlayerIndex().name());
             if (ps == null) continue;
             if (restorePosition) {

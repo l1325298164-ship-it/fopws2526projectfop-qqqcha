@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentEffect;
 import de.tum.cit.fop.maze.effects.environment.EnvironmentParticleSystem;
+import de.tum.cit.fop.maze.utils.Logger;
 import java.util.Iterator;
 
 public class TrapEffectManager {
@@ -55,6 +56,10 @@ public class TrapEffectManager {
      * 在 GameScreen 中，应在 batch.end() 之后调用
      */
     public void renderShapes(ShapeRenderer sr) {
+        if (sr == null) {
+            Logger.warning("ShapeRenderer is null, cannot render trap effect shapes");
+            return;
+        }
         // 开启混合模式以支持透明度和光效
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
@@ -78,6 +83,10 @@ public class TrapEffectManager {
      * (虽然目前的陷阱子类里这个方法是空的，但必须调用以保证接口完整)
      */
     public void renderSprites(SpriteBatch batch) {
+        if (batch == null) {
+            Logger.warning("SpriteBatch is null, cannot render trap effect sprites");
+            return;
+        }
         for (EnvironmentEffect effect : effects) {
             effect.renderSprite(batch);
         }

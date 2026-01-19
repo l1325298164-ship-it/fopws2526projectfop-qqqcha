@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.effects.Player.combat.instances.*;
+import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -69,6 +70,10 @@ public class CombatEffectManager {
     }
 
     public void renderShapes(ShapeRenderer shapeRenderer) {
+        if (shapeRenderer == null) {
+            Logger.warning("ShapeRenderer is null, cannot render combat effect shapes");
+            return;
+        }
         // 渲染特效的几何形状
         for (CombatEffect effect : effects) {
             effect.renderShape(shapeRenderer);
@@ -78,6 +83,10 @@ public class CombatEffectManager {
     }
 
     public void renderSprites(SpriteBatch batch) {
+        if (batch == null) {
+            Logger.warning("SpriteBatch is null, cannot render combat effect sprites");
+            return;
+        }
         // 渲染特效的贴图
         for (CombatEffect effect : effects) {
             effect.renderSprite(batch);
