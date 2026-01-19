@@ -269,21 +269,42 @@ public abstract class Enemy extends GameObject {
             default -> anim = rightAnim;
         }
 
-        if (anim == null){  Logger.error("Current animation is NULL! Falling back to static.");return;};
+        // 增加容错：如果动画为空，回退到静态图
+        if (anim == null) {
+            Logger.error("Current animation is NULL! Falling back to static.");
+            drawStatic(batch);
+            return;
+        }
 
         TextureRegion frame = anim.getKeyFrame(stateTime, true);
 
+        // 防止空帧导致崩溃
+        if (frame == null) return;
+
         float baseScale = (float) GameConstants.CELL_SIZE / frame.getRegionHeight();
-        float scale = baseScale * 2.5f;
+        float scale = baseScale * 2.5f; // 保持你原有的 2.5 倍缩放
 
         float drawW = frame.getRegionWidth() * scale;
         float drawH = frame.getRegionHeight() * scale;
 
+        // 居中计算
         float drawX = x * GameConstants.CELL_SIZE
                 + GameConstants.CELL_SIZE / 2f - drawW / 2f;
         float drawY = y * GameConstants.CELL_SIZE;
 
+        // 🔥 [新增] 补全受击反馈逻辑 (与 drawSingleAnimation 保持一致)
+        if (isHitFlash) {
+            // 使用正弦波计算透明度，产生忽隐忽现的闪烁感
+            float flashAlpha = 0.5f + 0.5f * (float) Math.sin(hitFlashTimer * 20f);
+            batch.setColor(1, 1, 1, flashAlpha);
+        }
+
         batch.draw(frame, drawX, drawY, drawW, drawH);
+
+        // ✅ [重要] 绘制完必须立即恢复颜色，否则整个游戏画面都会受影响
+        if (isHitFlash) {
+            batch.setColor(1, 1, 1, 1);
+        }
     }
 
     protected void drawStatic(SpriteBatch batch) {
