@@ -12,7 +12,6 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
@@ -24,6 +23,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager;
 import de.tum.cit.fop.maze.effects.fog.FogSystem;
 import de.tum.cit.fop.maze.entities.*;
 import de.tum.cit.fop.maze.entities.Obstacle.DynamicObstacle;
@@ -49,7 +49,6 @@ import de.tum.cit.fop.maze.ui.HUD;
 import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.game.save.StorageManager;
-import de.tum.cit.fop.maze.effects.Player.PlayerTrailManager;
 
 import java.util.*;
 import java.util.List;
@@ -88,29 +87,21 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
     @Override
     public void onChapter1RelicRequested(Chapter1Relic relic) {
-
         gm.enterChapterRelicView();
         chapterPaused = true;
         Gdx.input.setInputProcessor(uiStage);
         new ChapterTextDialog(
                 uiStage,
                 game.getSkin(),
-                relic.getData(),   // ⭐ 来自 RelicData
+                relic.getData(),
                 new ChapterDialogCallback() {
 
                     @Override
                     public void onRead() {
-
                         gm.readChapter1Relic(relic);
-
-                        // ⭐ 立刻检查是否全部已读
-                        if (chapterContext != null
-                                && chapterContext.areAllRelicsRead()) {
-
+                        if (chapterContext != null && chapterContext.areAllRelicsRead()) {
                             Logger.gameEvent("👁 All relics read — Boss found immediately");
-
-                            BossFoundDialog bossDialog =
-                                    new BossFoundDialog(game.getSkin());
+                            BossFoundDialog bossDialog = new BossFoundDialog(game.getSkin());
 
                             bossDialog.setOnFight(() -> {
                                 StoryProgress sp = StoryProgress.load();
@@ -134,20 +125,15 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
                             bossDialog.show(uiStage);
                             Gdx.input.setInputProcessor(uiStage);
-
-                            return; // ⛔ 不往下走
+                            return;
                         }
-
-                        // 普通情况
                         gm.exitChapterRelicView();
                         chapterPaused = false;
                         Gdx.input.setInputProcessor(null);
                     }
 
-
                     @Override
                     public void onDiscard() {
-
                         gm.discardChapter1Relic(relic);
                         gm.exitChapterRelicView();
                         chapterPaused = false;
@@ -156,7 +142,6 @@ public class GameScreen implements Screen, Chapter1RelicListener {
                 }
         );
     }
-
 
     private final ChapterContext chapterContext;
     private BitmapFont worldHintFont;
@@ -183,15 +168,15 @@ public class GameScreen implements Screen, Chapter1RelicListener {
             type = Type.ENTITY;
         }
     }
+
     public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig) {
         this(game, difficultyConfig, null);
     }
-    public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig,ChapterContext chapterContext) {
+
+    public GameScreen(MazeRunnerGame game, DifficultyConfig difficultyConfig, ChapterContext chapterContext) {
         this.game = game;
         this.difficultyConfig = difficultyConfig;
         this.chapterContext = chapterContext;
-        // HARD 才有雾
-        // ⭐ 所有规则只写在这里
         if (difficultyConfig.difficulty == Difficulty.HARD
                 || (chapterContext != null && chapterContext.enableFogOverride())) {
             fogSystem = new FogSystem();
@@ -202,10 +187,9 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
     @Override
     public void show() {
-        worldHintFont = new BitmapFont(); // LibGDX 默认字体
+        worldHintFont = new BitmapFont();
         worldHintFont.setColor(Color.GOLD);
         worldHintFont.getData().setScale(0.9f);
-
 
         uiTop    = new Texture("Wallpaper/HUD_up.png");
         uiBottom = new Texture("Wallpaper/HUD_down.png");
@@ -216,9 +200,8 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         batch = game.getSpriteBatch();
 
         gm = game.getGameManager();
-
         gm.setChapter1RelicListener(this);
-        // ⭐⭐⭐ 关键修复：剧情模式下，确保世界被初始化
+
         if (gm.getPlayers().isEmpty()) {
             Logger.error("🧩 GameScreen.show(): players empty, calling resetGame()");
             gm.resetGame();
@@ -227,8 +210,6 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         maze = new MazeRenderer(gm, difficultyConfig);
         cam  = new CameraManager(difficultyConfig);
 
-        // 🔥 [新增代码] 将 CameraManager 注入给 GameManager
-        // 这样 Player/Enemy 调用的 triggerHitFeedback() 才能触发屏幕震动
         if (gm != null) {
             gm.setCameraManager(cam);
         }
@@ -246,21 +227,15 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         cam.centerOnPlayerImmediately(gm.getPlayer());
         console = new DeveloperConsole(gm, game.getSkin());
         playMazeBGM();
-
     }
+
     private void playMazeBGM() {
         AudioManager audio = AudioManager.getInstance();
-
-        // 防止叠加
         audio.stopMusic();
-
-        // Endless 模式（如果你有）
         if (difficultyConfig.difficulty == Difficulty.ENDLESS) {
             audio.play(AudioType.MUSIC_MAZE_ENDLESS);
             return;
         }
-
-        // 普通迷宫按难度
         switch (difficultyConfig.difficulty) {
             case EASY -> audio.play(AudioType.MUSIC_MAZE_EASY);
             case NORMAL -> audio.play(AudioType.MUSIC_MAZE_NORMAL);
@@ -270,33 +245,23 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         }
     }
 
-
     @Override
     public void render(float delta) {
-
-        // ✅ 必须在处理输入之前先算好 UI 是否吃鼠标
         gm.setUIConsumesMouse(hud.isMouseOverInteractiveUI());
 
-
-
-// ===== Global Menu / Pause Input =====
+        // ===== Global Menu / Pause Input =====
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-
-            // ⚠️ Chapter Relic 期间，ESC 交给 Dialog
             if (gm.isViewingChapterRelic()) {
                 return;
             }
-
             if (!gameOverShown) {
                 togglePause();
                 return;
             }
         }
 
-        // ===== Mouse → Tile (Ability Targeting) =====
-        Vector3 world = cam.getCamera().unproject(
-                new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0)
-        );
+        // ===== Mouse → Tile =====
+        Vector3 world = cam.getCamera().unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
         gm.setMouseTargetTile(
                 (int)(world.x / GameConstants.CELL_SIZE),
                 (int)(world.y / GameConstants.CELL_SIZE)
@@ -316,28 +281,19 @@ public class GameScreen implements Screen, Chapter1RelicListener {
             if (!cam.isDebugZoom()) cam.setDebugZoom(5f);
             else cam.clearDebugZoom();
         }
-
-        // ===== Console Toggle =====
-        if (KeyBindingManager.getInstance()
-                .isJustPressed(KeyBindingManager.GameAction.CONSOLE)) {
+        if (KeyBindingManager.getInstance().isJustPressed(KeyBindingManager.GameAction.CONSOLE)) {
             console.toggle();
         }
 
-        // ===== Input (如果 Game Over 显示了，禁止玩家操作) =====
-        // 🔥 [修复] 添加 && !gameOverShown
-        // ⚡ [恢复] 取消注释以启用输入
+        // ===== Input =====
         if (!paused && !console.isVisible() && !gm.isLevelTransitionInProgress() && !gameOverShown) {
-
             input.update(delta, new PlayerInputHandler.InputHandlerCallback() {
                 @Override public void onMoveInput(Player.PlayerIndex i, int dx, int dy) { gm.onMoveInput(i, dx, dy); }
                 @Override public float getMoveDelayMultiplier() { return 1f; }
                 @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
                 @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
                 @Override public void onMenuInput() { togglePause();  }
-                @Override
-                public boolean isUIConsumingMouse() {
-                    return gm.isUIConsumingMouse();
-                }
+                @Override public boolean isUIConsumingMouse() { return gm.isUIConsumingMouse(); }
             }, Player.PlayerIndex.P1);
 
             if (gm.isTwoPlayerMode()) {
@@ -347,34 +303,26 @@ public class GameScreen implements Screen, Chapter1RelicListener {
                     @Override public boolean onAbilityInput(Player.PlayerIndex i, int s) { return gm.onAbilityInput(i, s); }
                     @Override public void onInteractInput(Player.PlayerIndex i) { gm.onInteractInput(i); }
                     @Override public void onMenuInput() {}
-                    // ⭐ 同样必须有
-                    @Override
-                    public boolean isUIConsumingMouse() {
-                        return gm.isUIConsumingMouse();
-                    }
+                    @Override public boolean isUIConsumingMouse() { return gm.isUIConsumingMouse(); }
                 }, Player.PlayerIndex.P2);
             }
         }
         ScreenUtils.clear(0.1f, 0.1f, 0.1f, 1f);
 
-        // ===== Update (如果 Game Over 显示了，暂停游戏逻辑) =====
-        // 🔥 [修复] 添加 && !gameOverShown
+        // ===== Update =====
         if (!isGamePaused()) {
             gm.update(delta);
             if (fogSystem != null) fogSystem.update(delta);
 
-            // ↓↓↓↓↓ 新增：更新残影系统 ↓↓↓↓↓
             if (playerTrailManager != null) {
                 for (Player p : gm.getPlayers()) {
-                    // 默认使用青色 (Color.CYAN) 作为冲刺残影颜色
-                    // 如果未来想做分级，可以在这里判断 Dash 等级并传入 GOLD 等颜色
                     playerTrailManager.update(
                             delta,
                             p.getWorldX(),
                             p.getWorldY(),
-                            p.isDashing(),      // 只有冲刺时才产生残影
-                            p.getCurrentFrame(),// 获取当前帧 (Step 1 添加的方法)
-                            Color.CYAN          // 残影颜色
+                            p.isDashing(),
+                            p.getCurrentFrame(),
+                            Color.CYAN // 残影颜色
                     );
                 }
             }
@@ -395,7 +343,6 @@ public class GameScreen implements Screen, Chapter1RelicListener {
             }
         }
 
-
         // ===== World Render =====
         worldViewport.apply();
         batch.setProjectionMatrix(cam.getCamera().combined);
@@ -404,6 +351,9 @@ public class GameScreen implements Screen, Chapter1RelicListener {
            ① 地板 + 门背后呼吸光
            ========================================================= */
         batch.begin();
+        // ✅ [Fix 1] 强制重置颜色为白色！防止上一帧的残影/特效颜色污染地板
+        batch.setColor(Color.WHITE);
+
         maze.renderFloor(batch);
         List<ExitDoor> exitDoorsCopy = new ArrayList<>(gm.getExitDoors());
         exitDoorsCopy.forEach(d -> d.renderPortalBack(batch));
@@ -413,48 +363,28 @@ public class GameScreen implements Screen, Chapter1RelicListener {
            ② 世界实体排序渲染
            ========================================================= */
         List<Item> items = new ArrayList<>();
-
+        // ... (Item sorting logic unchanged)
         for (var wg : maze.getWallGroups()) {
             boolean front = maze.isWallInFrontOfAnyEntity(wg.startX, wg.startY);
             items.add(new Item(wg, front ? Type.WALL_FRONT : Type.WALL_BEHIND));
         }
-
-        for (Player p : gm.getPlayers()) {
-            items.add(new Item(p, 100));
-        }
-        if (gm.getCat() != null) {
-            items.add(new Item(gm.getCat(), 95));
-        }
-
+        for (Player p : gm.getPlayers()) items.add(new Item(p, 100));
+        if (gm.getCat() != null) items.add(new Item(gm.getCat(), 95));
         List<Enemy> enemiesCopy = new ArrayList<>(gm.getEnemies());
         enemiesCopy.forEach(e -> items.add(new Item(e, 50)));
-
         List<Trap> trapsCopy = new ArrayList<>(gm.getTraps());
-        trapsCopy.forEach(t -> {
-            if (t.isActive() && t instanceof GameObject) {
-                items.add(new Item((GameObject)t, 45));
-            }
-        });
-
+        trapsCopy.forEach(t -> { if (t.isActive() && t instanceof GameObject) items.add(new Item((GameObject)t, 45)); });
         exitDoorsCopy.forEach(d -> items.add(new Item(d, 45)));
-
         List<Heart> heartsCopy = new ArrayList<>(gm.getHearts());
         heartsCopy.forEach(h -> { if (h.isActive()) items.add(new Item(h, 30)); });
-
         List<Treasure> treasuresCopy = new ArrayList<>(gm.getTreasures());
         treasuresCopy.forEach(t -> items.add(new Item(t, 20)));
-        List<Chapter1Relic> relicsCopy =
-                new ArrayList<>(gm.getChapterRelics());
-
-        relicsCopy.forEach(r -> {
-            items.add(new Item(r, 25)); // 层级：比宝箱高一点
-        });
+        List<Chapter1Relic> relicsCopy = new ArrayList<>(gm.getChapterRelics());
+        relicsCopy.forEach(r -> items.add(new Item(r, 25)));
         List<HeartContainer> containersCopy = new ArrayList<>(gm.getHeartContainers());
         containersCopy.forEach(hc -> { if (hc.isActive()) items.add(new Item(hc, 30)); });
-
         List<DynamicObstacle> obstaclesCopy = new ArrayList<>(gm.getObstacles());
         obstaclesCopy.forEach(o -> items.add(new Item(o, 40)));
-
         List<Key> keysCopy = new ArrayList<>(gm.getKeys());
         keysCopy.forEach(k -> { if (k.isActive()) items.add(new Item(k, 35)); });
 
@@ -471,47 +401,34 @@ public class GameScreen implements Screen, Chapter1RelicListener {
             }
         }
         batch.end();
+
         batch.begin();
-
         Player player = gm.getPlayer();
-
         for (Chapter1Relic relic : gm.getChapterRelics()) {
             if (!relic.isInteractable()) continue;
-
-            // 只在玩家靠近时显示（1.5 格）
             int dx = relic.getX() - player.getX();
             int dy = relic.getY() - player.getY();
             if (dx * dx + dy * dy > 2) continue;
-
             float wx = (relic.getX() + 0.5f) * GameConstants.CELL_SIZE;
             float wy = (relic.getY() + 0.5f) * GameConstants.CELL_SIZE;
-
-            // 轻微上下浮动
             float bob = (float)Math.sin(Gdx.graphics.getFrameId() * 0.1f) * 4f;
-
-            worldHintFont.draw(
-                    batch,
-                    "Press E",
-                    wx - 20,
-                    wy + GameConstants.CELL_SIZE + 10 + bob
-            );
+            worldHintFont.draw(batch, "Press E", wx - 20, wy + GameConstants.CELL_SIZE + 10 + bob);
         }
-
         batch.end();
-
 
         /* =========================================================
            ③ 门前龙卷风粒子 + 特效
            ========================================================= */
         batch.begin();
         exitDoorsCopy.forEach(d -> d.renderPortalFront(batch));
-        if (gm.getKeyEffectManager() != null) {
-            gm.getKeyEffectManager().render(batch);
-        }
-        // ↓↓↓↓↓ 新增：绘制残影 ↓↓↓↓↓
+        if (gm.getKeyEffectManager() != null) gm.getKeyEffectManager().render(batch);
+
         if (playerTrailManager != null) {
             playerTrailManager.render(batch);
+            // ✅ [Fix 2] 残影绘制完后，立即重置颜色为白色，防止影响后续特效
+            batch.setColor(Color.WHITE);
         }
+
         gm.getBobaBulletEffectManager().render(batch);
         if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderSprites(batch);
         if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderSprites(batch);
@@ -522,9 +439,12 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
         if (gm.getItemEffectManager() != null) gm.getItemEffectManager().renderShapes(shapeRenderer);
         if (gm.getTrapEffectManager() != null) gm.getTrapEffectManager().renderShapes(shapeRenderer);
+
         if (gm.getCombatEffectManager() != null) {
             Gdx.gl.glEnable(Gdx.gl.GL_BLEND);
             Gdx.gl.glBlendFunc(Gdx.gl.GL_SRC_ALPHA, Gdx.gl.GL_ONE_MINUS_SRC_ALPHA);
+
+            // 确保使用 Filled 模式，避免 DashEffect 的潜在 Line 模式残留
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             gm.getCombatEffectManager().renderShapes(shapeRenderer);
             shapeRenderer.end();
@@ -532,6 +452,8 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         // 玩家脚下传送阵
         batch.begin();
+        // ✅ [Fix 3] 再次保险重置颜色
+        batch.setColor(Color.WHITE);
         if (gm.getPlayerSpawnPortal() != null) {
             float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
             float py = (gm.getPlayer().getY() + 0.5f) * GameConstants.CELL_SIZE;
@@ -564,6 +486,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         if (Logger.isDebugEnabled()) {
             shapeRenderer.setProjectionMatrix(cam.getCamera().combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+            // ... (Debug lines logic unchanged)
             float cs = GameConstants.CELL_SIZE;
             int mazeWidth  = difficultyConfig.mazeWidth;
             int mazeHeight = difficultyConfig.mazeHeight;
@@ -583,12 +506,8 @@ public class GameScreen implements Screen, Chapter1RelicListener {
             shapeRenderer.end();
         }
 
-        /* =========================================================
-           ④ UI（正交相机）
-           ========================================================= */
         renderUI();
 
-        // ===== Pause Logic =====
         if (paused) {
             if (!pauseUIInitialized) initPauseUI();
             pauseScoreLabel.setText("SCORE: " + gm.getScore());
@@ -598,7 +517,6 @@ public class GameScreen implements Screen, Chapter1RelicListener {
             return;
         }
 
-        // 🔥 [修复] Game Over Logic (补上绘制)
         if (gameOverShown) {
             gameOverStage.act(delta);
             gameOverStage.draw();
@@ -606,12 +524,8 @@ public class GameScreen implements Screen, Chapter1RelicListener {
     }
 
     private boolean isGamePaused() {
-        return paused              // ESC 暂停
-                || chapterPaused       // 📜 Chapter 阅读
-                || console.isVisible()
-                || gameOverShown;
+        return paused || chapterPaused || console.isVisible() || gameOverShown;
     }
-
 
     private void renderUI() {
         Matrix4 oldProjection = batch.getProjectionMatrix().cpy();
@@ -622,11 +536,8 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         batch.begin();
         renderMazeBorderDecorations(batch);
-
-        // 🔥 FIX: 计算是否允许交互，并传递给 HUD
         boolean allowInteraction = !paused && !gameOverShown;
         hud.renderInGameUI(batch, allowInteraction);
-
         batch.end();
 
         uiStage.act(Gdx.graphics.getDeltaTime());
@@ -668,9 +579,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         buttonTable.add(bf.create("RESET MAZE", () -> game.resetMaze(difficultyConfig.difficulty))).width(btnW).height(btnH).pad(padding);
         buttonTable.add(bf.create("SETTINGS", () -> game.setScreen(new SettingsScreen(game, SettingsScreen.SettingsSource.PAUSE_MENU, game.getScreen())))).width(btnW).height(btnH).pad(padding);
         buttonTable.add(bf.create("MENU", game::goToMenu)).width(btnW).height(btnH).pad(padding);
-        buttonTable.add(
-                bf.create("SAVE GAME", this::openManualSaveDialog)
-        ).width(btnW).height(btnH).pad(padding);
+        buttonTable.add(bf.create("SAVE GAME", this::openManualSaveDialog)).width(btnW).height(btnH).pad(padding);
 
         root.add(buttonTable).expandY().center();
         pauseUIInitialized = true;
@@ -681,17 +590,9 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         Skin skin = game.getSkin();
 
         class ManualSaveDialog extends Dialog {
-            ManualSaveDialog() {
-                super(" SAVE GAME ", skin);
-            }
-
-            public void submitSlot(int slot) {
-                result(slot);
-                hide();
-            }
-
-            @Override
-            protected void result(Object object) {
+            ManualSaveDialog() { super(" SAVE GAME ", skin); }
+            public void submitSlot(int slot) { result(slot); hide(); }
+            @Override protected void result(Object object) {
                 if (object instanceof Integer slot) {
                     gm.setCurrentSaveTarget(StorageManager.SaveTarget.fromSlot(slot));
                     gm.saveGameProgress();
@@ -702,37 +603,24 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         ManualSaveDialog dialog = new ManualSaveDialog();
         dialog.text("\n  Choose a save slot:\n");
-
         Table listTable = new Table();
         listTable.defaults().pad(6).width(220).height(50);
-
         for (int i = 1; i <= 3; i++) {
             final int slot = i;
             TextButton btn = new TextButton(" SLOT " + i + " ", skin);
-
             btn.addListener(new ClickListener() {
-                @Override
-                public void clicked(InputEvent event, float x, float y) {
-                    dialog.submitSlot(slot); // ✅ 不再报错
-                }
+                @Override public void clicked(InputEvent event, float x, float y) { dialog.submitSlot(slot); }
             });
-
             listTable.add(btn).row();
         }
-
         ScrollPane scrollPane = new ScrollPane(listTable, skin);
         scrollPane.setScrollingDisabled(true, false);
         scrollPane.setFadeScrollBars(false);
         scrollPane.setFlickScroll(true);
-
         dialog.getContentTable().add(scrollPane).size(240, 200).pad(10).row();
         dialog.button(" CANCEL ", null);
         dialog.show(dialogStage);
     }
-
-
-
-
 
     private void renderMazeBorderDecorations(SpriteBatch batch) {
         int w = Gdx.graphics.getWidth();
