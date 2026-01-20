@@ -9,12 +9,14 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -29,7 +31,8 @@ import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.game.save.StorageManager;
 
 /**
- * 结算界面 (Settlement Screen) - 修复版
+ * 结算界面 (Settlement Screen) - 完整修复版
+ * 包含：UI美化、输入框修复、AutoSave逻辑
  */
 public class SettlementScreen implements Screen {
     // === Auto Scroll 控制 ===
@@ -71,7 +74,7 @@ public class SettlementScreen implements Screen {
         // 计算本关结束后的理论总分
         this.targetTotalScore = this.saveData.score + result.finalScore;
 
-        // ✅ FIX 1: 使用【新总分】(targetTotalScore) 来判断是否打破纪录，而不是旧存档分
+        // 判断是否打破纪录
         this.isHighScore = leaderboardManager.isHighScore((int) targetTotalScore);
 
         try {
@@ -89,7 +92,42 @@ public class SettlementScreen implements Screen {
 
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+
+        // ✅ 1. 执行自动存档 (逻辑已修正，不会影响当前显示)
+        performAutoSave();
+
+        // ✅ 2. 构建 UI
         setupUI();
+
+        // ✅ 3. 强制清除焦点，防止 WASD 自动输入
+        stage.setKeyboardFocus(null);
+    }
+
+    /**
+     * 自动保存当前进度到 save_auto.json
+     */
+    private void performAutoSave() {
+        try {
+            // 1. 深度拷贝当前存档数据 (使用 Turn 4 中添加的拷贝构造函数)
+            GameSaveData autoSaveData = new GameSaveData(saveData);
+
+            // 2. 应用本关得分 (因为 autoSaveData 代表"下一关开始时的状态")
+            autoSaveData.score += result.finalScore;
+
+            // 3. 推进关卡
+            autoSaveData.currentLevel++;
+
+            // 4. 重置临时状态
+            autoSaveData.resetSessionStats();
+            autoSaveData.maze = null; // 确保下次生成新迷宫
+
+            // 5. 保存到 Auto Slot
+            StorageManager.getInstance().saveAuto(autoSaveData);
+
+            Logger.info("Auto save created: Level " + autoSaveData.currentLevel + ", Score " + autoSaveData.score);
+        } catch (Exception e) {
+            Logger.error("Failed to perform auto save: " + e.getMessage());
+        }
     }
 
     private void setupUI() {
@@ -199,7 +237,8 @@ public class SettlementScreen implements Screen {
         // --- 5. 新纪录输入框 ---
         if (isHighScore && !scoreSubmitted) {
             Table inputContainer = new Table();
-            inputContainer.setBackground(createColorDrawable(new Color(1f, 1f, 1f, 0.05f)));
+            // 使用淡色背景包裹
+            inputContainer.setBackground(createColorDrawable(new Color(0f, 0f, 0f, 0.3f)));
             inputContainer.pad(20);
 
             if (!scoreSubmitted) {
@@ -209,7 +248,9 @@ public class SettlementScreen implements Screen {
                 inputContainer.add(newRecLabel).padBottom(15).row();
 
                 Table inputRow = new Table();
-                nameInput = new TextField("", createFallbackTextFieldStyle());
+
+                // ✅ 美化输入框样式
+                nameInput = new TextField("", createModernTextFieldStyle());
                 nameInput.setMessageText("Enter Name");
                 nameInput.setMaxLength(12);
                 nameInput.setAlignment(Align.center);
@@ -217,32 +258,34 @@ public class SettlementScreen implements Screen {
                         Character.isLetterOrDigit(c) || c == '_' || c == ' '
                 );
 
-                inputRow.add(nameInput).width(300).height(50).padRight(10);
+                // ✅ 添加点击监听：只有点击时才获取焦点
+                nameInput.addListener(new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        stage.setKeyboardFocus(nameInput);
+                    }
+                });
+
+                inputRow.add(nameInput).width(300).height(50).padRight(15);
 
                 ButtonFactory bf = new ButtonFactory(game.getSkin());
+                // ✅ 增加按钮宽度，防止 Submit 字样溢出
                 inputRow.add(bf.create("SUBMIT", () -> {
                     String name = nameInput.getText();
                     if (name == null || name.trim().isEmpty()) name = "Traveler";
 
-                    // ✅ FIX 2: 提交【新总分】(targetTotalScore)，而不是旧分
                     leaderboardManager.addScore(name, (int) targetTotalScore);
 
                     scoreSubmitted = true;
                     if (game.getGameManager() != null) {
                         game.getGameManager().saveGameProgress();
-                    } else {
-                        Logger.warning("GameManager is null, cannot save progress");
                     }
 
-                    // ✅ FIX 3: 使用 postRunnable 避免在事件回调中直接清空 Stage 导致异常
                     Gdx.app.postRunnable(this::setupUI);
 
-                })).width(160).height(50);
+                })).width(200).height(50);
 
                 inputContainer.add(inputRow);
-
-                // ✅ FIX 4: 自动将键盘焦点设置到输入框，方便直接输入
-                stage.setKeyboardFocus(nameInput);
 
             } else {
                 // === 状态 B: 提交成功 (显示反馈) ===
@@ -266,7 +309,7 @@ public class SettlementScreen implements Screen {
         scrollPane = new ScrollPane(scrollContent, createScrollPaneStyle());
         scrollPane.setFadeScrollBars(false);
         scrollPane.setScrollingDisabled(true, false);
-        // ✅ FIX 5: 防止 ScrollPane 拦截输入框的点击焦点
+        // ✅ 防止 ScrollPane 拦截输入框的点击焦点
         scrollPane.setCancelTouchFocus(false);
 
         mainRoot.add(scrollPane).expand().fill().row();
@@ -318,7 +361,7 @@ public class SettlementScreen implements Screen {
         mainRoot.add(footer).fillX().bottom();
     }
 
-    // --- Helpers (保持不变) ---
+    // --- Helpers ---
 
     private ScrollPane.ScrollPaneStyle createScrollPaneStyle() {
         ScrollPane.ScrollPaneStyle style = new ScrollPane.ScrollPaneStyle();
@@ -326,16 +369,58 @@ public class SettlementScreen implements Screen {
         return style;
     }
 
-    private TextField.TextFieldStyle createFallbackTextFieldStyle() {
+    /**
+     * ✅ 新增：创建更现代、带有边框的输入框样式
+     */
+    private TextField.TextFieldStyle createModernTextFieldStyle() {
         TextField.TextFieldStyle style = new TextField.TextFieldStyle();
         style.font = game.getSkin().getFont("default-font");
         if (style.font == null) style.font = new BitmapFont();
         style.fontColor = Color.WHITE;
+
+        // 光标
         style.cursor = createColorDrawable(Color.WHITE);
         style.cursor.setMinWidth(2);
-        style.selection = createColorDrawable(new Color(0, 0, 1, 0.5f));
-        style.background = createColorDrawable(new Color(0.2f, 0.2f, 0.2f, 1f));
+
+        // 选区
+        style.selection = createColorDrawable(new Color(0, 0.5f, 1f, 0.5f));
+
+        // 背景：深灰底色 + 浅灰边框
+        style.background = createBorderedDrawable(
+                new Color(0.15f, 0.15f, 0.18f, 1f), // Bg
+                new Color(0.5f, 0.5f, 0.5f, 1f)     // Border
+        );
+
+        // 聚焦时背景：稍微亮一点
+        style.focusedBackground = createBorderedDrawable(
+                new Color(0.2f, 0.2f, 0.25f, 1f),
+                new Color(0.9f, 0.8f, 0.2f, 1f)     // Gold Border
+        );
+
         return style;
+    }
+
+    /**
+     * ✅ 新增：用代码生成带边框的 Drawable
+     */
+    private TextureRegionDrawable createBorderedDrawable(Color bgColor, Color borderColor) {
+        int w = 64;
+        int h = 64;
+        int border = 2;
+
+        Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
+
+        // 填充边框色
+        pixmap.setColor(borderColor);
+        pixmap.fill();
+
+        // 填充内部背景色
+        pixmap.setColor(bgColor);
+        pixmap.fillRectangle(border, border, w - 2*border, h - 2*border);
+
+        Texture texture = new Texture(pixmap);
+        pixmap.dispose();
+        return new TextureRegionDrawable(new TextureRegion(texture));
     }
 
     private TextureRegionDrawable createColorDrawable(Color color) {
@@ -371,10 +456,12 @@ public class SettlementScreen implements Screen {
                 game.getGameManager().getScoreManager().restoreState(tempData);
             }
 
-            storage.saveGameSync(saveData);
+            // 更新 AutoSave 保持一致
+            storage.saveAuto(saveData);
             game.loadGame();
         } else {
-            storage.saveGameSync(saveData);
+            // 更新 AutoSave 保持一致
+            storage.saveAuto(saveData);
             game.goToMenu();
         }
     }

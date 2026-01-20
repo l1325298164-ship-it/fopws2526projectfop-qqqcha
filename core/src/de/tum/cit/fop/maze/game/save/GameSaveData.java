@@ -15,6 +15,7 @@ import java.util.Map;
  * 改进：
  * 1. 移除了 resetSessionStats 中对 score 的清零，确保分数跨关卡继承。
  * 2. 增加了 levelBaseScore/levelPenalty 字段，支持关卡内中断存档恢复。
+ * 3. [Fix] 添加了拷贝构造函数，修复编译错误。
  */
 public class GameSaveData {
 
@@ -29,7 +30,7 @@ public class GameSaveData {
      * 注意：跨关卡时会累加，不要在单关重置时清零。
      */
     public int score = 0;
-    
+
     /** ✨ [新增] 游戏难度（用于恢复存档时使用正确的难度配置） */
     public String difficulty = "NORMAL";
 
@@ -71,7 +72,55 @@ public class GameSaveData {
     public int sessionDamageTaken = 0;
 
     // ==========================================
-    // 4. 辅助方法
+    // 4. 构造函数
+    // ==========================================
+
+    /**
+     * 默认无参构造函数 (Json 序列化必需)
+     */
+    public GameSaveData() {
+    }
+
+    /**
+     * 拷贝构造函数 (用于创建存档快照)
+     * @param other 被拷贝的源数据
+     */
+    public GameSaveData(GameSaveData other) {
+        if (other == null) return;
+
+        this.currentLevel = other.currentLevel;
+        this.score = other.score;
+        this.difficulty = other.difficulty;
+        this.twoPlayerMode = other.twoPlayerMode;
+
+        this.levelBaseScore = other.levelBaseScore;
+        this.levelPenalty = other.levelPenalty;
+        this.sessionDamageTaken = other.sessionDamageTaken;
+
+        // 深度拷贝迷宫数组
+        if (other.maze != null) {
+            this.maze = new int[other.maze.length][];
+            for (int i = 0; i < other.maze.length; i++) {
+                this.maze[i] = other.maze[i].clone();
+            }
+        }
+
+        // 深度拷贝集合 (防止原集合被 clear 后影响快照)
+        if (other.players != null) {
+            this.players = new HashMap<>(other.players);
+        }
+
+        if (other.sessionKills != null) {
+            this.sessionKills = new HashMap<>(other.sessionKills);
+        }
+
+        if (other.newAchievements != null) {
+            this.newAchievements = new HashSet<>(other.newAchievements);
+        }
+    }
+
+    // ==========================================
+    // 5. 辅助方法
     // ==========================================
 
     public void addSessionKill(String enemyType) {
