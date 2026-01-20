@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.abilities;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import de.tum.cit.fop.maze.audio.AudioManager;
 import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.Player;
@@ -54,9 +55,20 @@ public class MeleeAttackAbility extends Ability {
                 case LEFT -> angle = 180;
                 case DOWN -> angle = 270;
             }
+
+            // ✅ [修复] 坐标居中 + 向前偏移
+            // 之前直接用 getWorldX() 会导致特效生成在格子左下角
+            float centerX = (player.getWorldX() + 0.5f) * GameConstants.CELL_SIZE;
+            float centerY = (player.getWorldY() + 0.5f) * GameConstants.CELL_SIZE;
+
+            // 向攻击方向稍微偏移 20 像素，增加打击感
+            float offsetDist = 20f;
+            float spawnX = centerX + MathUtils.cosDeg(angle) * offsetDist;
+            float spawnY = centerY + MathUtils.sinDeg(angle) * offsetDist;
+
             gameManager.getCombatEffectManager().spawnSlash(
-                    player.getWorldX() * GameConstants.CELL_SIZE,
-                    player.getWorldY() * GameConstants.CELL_SIZE,
+                    spawnX,
+                    spawnY,
                     angle,
                     this.level
             );
@@ -109,7 +121,7 @@ public class MeleeAttackAbility extends Ability {
                     if (enemy != null && !enemy.isDead() && hitEnemies.add(enemy)) {
                         enemy.takeDamage(damage);
 
-                        // 🔥 [新增] 生成受击火花 (HitSpark)
+                        // 受击火花
                         if (gameManager.getCombatEffectManager() != null) {
                             float ex = (enemy.getX() + 0.5f) * GameConstants.CELL_SIZE;
                             float ey = (enemy.getY() + 0.5f) * GameConstants.CELL_SIZE;
