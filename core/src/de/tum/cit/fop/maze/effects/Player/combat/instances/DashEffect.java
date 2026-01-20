@@ -77,7 +77,6 @@ public class DashEffect extends CombatEffect {
         }
     }
 
-    // ✅ [核心修复] 实现 onUpdate 而不是 override update
     @Override
     protected void onUpdate(float delta, CombatParticleSystem ps) {
         // 更新粒子位置
@@ -98,8 +97,9 @@ public class DashEffect extends CombatEffect {
 
     @Override
     public void renderShape(ShapeRenderer sr) {
-        sr.set(ShapeRenderer.ShapeType.Filled);
+        // 渲染时不切换 ShapeType，始终保持 Filled 模式，防止闪退和渲染污染
 
+        // 1. 绘制粒子（冲刺尾迹）
         for (int i = 0; i < particleCount; i++) {
             if (particlesLife[i] > 0) {
                 float lifeRatio = particlesLife[i] / 0.5f;
@@ -110,13 +110,21 @@ public class DashEffect extends CombatEffect {
             }
         }
 
+        // 2. 绘制冲击波（气流/能量爆发）
         if (hasShockwave && shockwaveRadius < maxShockwaveRadius) {
-            sr.set(ShapeRenderer.ShapeType.Line);
             float waveAlpha = 1.0f - (shockwaveRadius / maxShockwaveRadius);
+
             if (waveAlpha > 0) {
-                sr.setColor(effectColor.r, effectColor.g, effectColor.b, waveAlpha);
+                // 使用极低透明度(0.3)的实心圆模拟气流场
+                // 这样看起来像是一团瞬间扩散的能量，符合 Dash 的快速位移感
+                sr.setColor(effectColor.r, effectColor.g, effectColor.b, waveAlpha * 0.3f);
                 sr.circle(x, y, shockwaveRadius);
-                sr.circle(x, y, shockwaveRadius * 0.9f);
+
+                // (可选) 增加第二层更小的核心，增加层次感
+                if (waveAlpha > 0.2f) {
+                    sr.setColor(effectColor.r, effectColor.g, effectColor.b, waveAlpha * 0.5f);
+                    sr.circle(x, y, shockwaveRadius * 0.7f);
+                }
             }
         }
     }

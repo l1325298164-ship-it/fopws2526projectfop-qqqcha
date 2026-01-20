@@ -150,6 +150,10 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public void setEnemyKillListener(Consumer<Enemy> listener) {
         this.enemyKillListener = listener;
     }
+    /**✅ [修复] 注册游戏事件监听器 (供 EndlessScreen 等使用)*/
+    public void setGameListener(de.tum.cit.fop.maze.game.event.GameListener listener) {
+        GameEventSource.getInstance().addListener(listener);
+    }
 
     public GameManager(DifficultyConfig difficultyConfig, boolean twoPlayerMode, ChapterContext chapterContext)  {
         this.chapterContext = chapterContext;

@@ -32,13 +32,19 @@ import de.tum.cit.fop.maze.utils.CameraManager;
 import de.tum.cit.fop.maze.tools.DeveloperConsole;
 import de.tum.cit.fop.maze.input.KeyBindingManager;
 
+// ✅ 新增导入：事件监听相关
+import de.tum.cit.fop.maze.game.event.GameListener;
+import de.tum.cit.fop.maze.game.score.DamageSource;
+import de.tum.cit.fop.maze.game.EnemyTier;
+
 import java.lang.reflect.Method;
 import java.util.*;
 
 import static de.tum.cit.fop.maze.maze.MazeGenerator.BORDER_THICKNESS;
 import static com.badlogic.gdx.math.MathUtils.random;
 
-public class EndlessScreen implements Screen {
+// ✅ 修改：实现 GameListener 接口
+public class EndlessScreen implements Screen, GameListener {
 
     private final MazeRunnerGame game;
     private final DifficultyConfig difficultyConfig;
@@ -64,6 +70,10 @@ public class EndlessScreen implements Screen {
     private int endlessWave = 1;
     private int endlessKills = 0;
     private int endlessScore = 0;
+
+    // ✅ 新增：受伤统计
+    private int endlessDamageTaken = 0;
+
     private float endlessSpawnTimer = 0f;
     private float endlessSpawnInterval = 4f;
     private boolean endlessGameOver = false;
@@ -136,6 +146,10 @@ public class EndlessScreen implements Screen {
         shapeRenderer = new ShapeRenderer();
 
         gm = game.getGameManager();
+
+        // ✅ 关键修复：注册事件监听器，让EndlessScreen能接收到击杀/受伤事件
+        gm.setGameListener(this);
+
         cam = new CameraManager(difficultyConfig);
         cam.resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
@@ -183,6 +197,10 @@ public class EndlessScreen implements Screen {
         endlessWave = 1;
         endlessKills = 0;
         endlessScore = 0;
+
+        // ✅ 重置统计
+        endlessDamageTaken = 0;
+
         endlessSpawnTimer = 0f;
         heartSpawnTimer = 0f;
         powerupSpawnTimer = 0f;
@@ -197,6 +215,26 @@ public class EndlessScreen implements Screen {
 
         spawnInitialEndlessEnemies();
     }
+
+    // ✅ 实现接口：处理敌人死亡事件
+    @Override
+    public void onEnemyKilled(EnemyTier tier, boolean isDashKill) {
+        endlessKills++;
+        // 如果需要，这里可以根据 EnemyTier 增加额外分数
+    }
+
+    // ✅ 实现接口：处理玩家受伤事件
+    @Override
+    public void onPlayerDamage(int currentHp, DamageSource source) {
+        endlessDamageTaken++;
+    }
+
+    // 接口必须实现的方法（无尽模式暂时不需要具体逻辑，留空即可）
+    @Override
+    public void onItemCollected(String itemType) {}
+
+    @Override
+    public void onLevelFinished(int levelNumber) {}
 
     @Override
     public void render(float delta) {
@@ -998,6 +1036,8 @@ public class EndlessScreen implements Screen {
             }
         }
     }
+
+    // 原有的 onEnemyKilledInEndless 方法保留，但不再使用
     public void onEnemyKilledInEndless() {
         endlessKills++;
     }
@@ -1037,6 +1077,12 @@ public class EndlessScreen implements Screen {
 
         root.add(new Label(
                 String.format("ENEMY KILLED: %d", endlessKills),
+                game.getSkin()
+        )).padBottom(10).row();
+
+        // ✅ 新增：在结算界面显示受伤统计
+        root.add(new Label(
+                String.format("DAMAGE TAKEN: %d", endlessDamageTaken),
                 game.getSkin()
         )).padBottom(10).row();
 
