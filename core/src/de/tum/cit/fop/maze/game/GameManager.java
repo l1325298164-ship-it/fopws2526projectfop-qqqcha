@@ -863,7 +863,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             int px = p.getX();
             int py = p.getY();
 
-            // ===== Keys =====
+            // ================== 🔑 KEYS ==================
             Iterator<Key> keyIterator = keys.iterator();
             while (keyIterator.hasNext()) {
                 Key key = keyIterator.next();
@@ -883,13 +883,14 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                     if (combatEffectManager != null) {
                         combatEffectManager.spawnStatusText(fx, fy + 50, "KEY ACQUIRED", Color.CYAN);
+                        // 🔥 统一调用：钥匙分数 (SCORE_KEY = 50)
                         combatEffectManager.spawnScoreText(fx, fy + 20, ScoreConstants.SCORE_KEY);
                     }
                     break;
                 }
             }
 
-            // ===== Hearts =====
+            // ================== ❤️ HEARTS ==================
             Iterator<Heart> heartIterator = hearts.iterator();
             while (heartIterator.hasNext()) {
                 Heart h = heartIterator.next();
@@ -905,21 +906,36 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                     h.onInteract(p);
                     GameEventSource.getInstance().onItemCollected("HEART");
+
+                    if (combatEffectManager != null) {
+                        // 🔥 统一调用：红心分数 (SCORE_HEART = 50)
+                        combatEffectManager.spawnScoreText(fx, fy + 30, ScoreConstants.SCORE_HEART);
+                        // 移除 HP 文字，保持清爽
+                    }
+
                     heartIterator.remove();
                 }
             }
 
-            // ===== Heart Containers =====
+            // ================== 🧡 HEART CONTAINERS ==================
             Iterator<HeartContainer> hcIterator = heartContainers.iterator();
             while (hcIterator.hasNext()) {
                 HeartContainer hc = hcIterator.next();
                 if (hc.isActive() && hc.getX() == px && hc.getY() == py) {
+                    float fx = (hc.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                    float fy = (hc.getY() + 0.5f) * GameConstants.CELL_SIZE;
+
                     hc.onInteract(p);
+
+                    if (combatEffectManager != null) {
+                        combatEffectManager.spawnStatusText(fx, fy + 60, "MAX HP UP", Color.GREEN);
+                    }
+
                     hcIterator.remove();
                 }
             }
 
-            // ===== Treasures =====
+            // ================== 📦 TREASURES ==================
             Iterator<Treasure> treasureIterator = treasures.iterator();
             while (treasureIterator.hasNext()) {
                 Treasure t = treasureIterator.next();
@@ -935,6 +951,12 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                     onTreasureOpened(p, t);
                     GameEventSource.getInstance().onItemCollected("TREASURE");
+
+                    if (combatEffectManager != null) {
+                        // 🔥 统一调用：宝箱分数 (SCORE_TREASURE = 800)
+                        combatEffectManager.spawnScoreText(fx, fy + 30, ScoreConstants.SCORE_TREASURE);
+                    }
+
                     treasureIterator.remove();
                 }
             }
@@ -1633,7 +1655,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
         } else {
             player.heal(20);
-            player.showNotification("宝箱里只有一瓶药水 (HP +20)");
             Logger.gameEvent("🧪 Treasure fallback: HP +20");
         }
     }

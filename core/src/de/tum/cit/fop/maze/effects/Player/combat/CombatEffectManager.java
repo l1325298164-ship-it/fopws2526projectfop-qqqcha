@@ -153,11 +153,19 @@ public class CombatEffectManager {
         safeAddEffect(new LaserEffect(startX, startY, endX, endY));
     }
 
+
+    // 🔥 [核心修改] 统一的分数飘字方法
     public void spawnScoreText(float x, float y, int score) {
         if (score == 0) return;
         String text = (score > 0 ? "+" : "") + score;
         Color color = (score > 0) ? Color.GOLD : Color.RED;
-        safeAddEffect(new FloatingTextEffect(x, y, text, color, scoreFont));
+
+        FloatingTextEffect effect = new FloatingTextEffect(x, y, text, color, scoreFont);
+
+        // 🔥 [关键] 统一设为 0.55f (让所有分数飘字都变成统一的小尺寸)
+        effect.setTargetScale(0.55f);
+
+        safeAddEffect(effect);
     }
 
     public void spawnStatusText(float x, float y, String text, Color color) {
