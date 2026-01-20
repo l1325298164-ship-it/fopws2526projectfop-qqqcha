@@ -158,65 +158,65 @@ public class MenuScreen implements Screen {
         buttonTable.clear();
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
+        // 检查是否有存档 (StorageManager 已更新支持 5 槽位检测)
         boolean hasSave = storage.hasAnySave();
 
         float buttonWidth = getButtonWidth();
         float buttonPadding = Gdx.graphics.getWidth() > 1920 ? 18f : 15f;
 
-        // ===== CONTINUE：只在有主存档时出现 =====
+        // ============================================================
+        // 1. CONTINUE (仅当有存档时显示)
+        // ============================================================
         if (hasSave) {
             buttonTable.add(
                             bf.create("CONTINUE", () -> {
-                                SaveListPanel panel = new SaveListPanel(game, game.getSkin());
-                                stage.addActor(panel);
+                                // ✅ 修改点：跳转到新的全屏存档选择界面
+                                game.setScreen(new SaveSelectScreen(game, this));
                             })
                     ).width(buttonWidth).height(BUTTON_HEIGHT)
                     .padBottom(buttonPadding).row();
         }
 
-
-        // ===== 剧情模式（独立系统）=====
-        // ===== 剧情模式按钮（受 StoryProgress 控制）=====
+        // ============================================================
+        // 2. 剧情模式入口 (RESET THE WORLD) - 保持原有逻辑
+        // ============================================================
         StoryProgress progress = StoryProgress.load();
 
-// ❌ 如果第一章已经彻底完成 → 永久不显示
+        // 如果第一章未彻底完成，显示剧情入口
         if (!progress.isChapterFinished(1)) {
-
             buttonTable.add(
                             bf.create("RESET THE WORLD", () -> {
-
-                                // ① 已经解锁 Boss（集齐三 relic，点过迎战）
+                                // ① 已经解锁 Boss -> Boss Loading
                                 if (progress.isBossUnlocked(1)) {
-
-                                    // 👉 直接进 Boss Loading
                                     game.setScreen(new BossLoadingScreen(game));
                                     return;
                                 }
-
-                                // ② 看过 PV，但还没进 Boss
+                                // ② 看过 PV -> 章节选择
                                 if (progress.isPvWatched(1)) {
-
-                                    // 👉 直接进章节选择
                                     game.setScreen(new ChapterSelectScreen(game));
                                     return;
                                 }
-
-                                // ③ 什么都没发生过（第一次进剧情）
+                                // ③ 第一次 -> 播放 PV 并开始
+                                // (底层 GameManager.resetGame() 会自动处理存档槽位绑定)
                                 game.startStoryWithLoading();
                             })
                     ).width(buttonWidth).height(BUTTON_HEIGHT)
                     .padBottom(20).row();
         }
 
-
-        // ===== 难度选择（仍然是主模式入口）=====
+        // ============================================================
+        // 3. 标准模式入口 (DIFFICULTY) - 主模式入口
+        // ============================================================
         buttonTable.add(
                         bf.create("DIFFICULTY", () ->
+                                // 进入难度选择 -> 选择后开始游戏 -> GameManager 自动绑定槽位
                                 game.setScreen(new DifficultySelectScreen(game, this)))
                 ).width(buttonWidth).height(BUTTON_HEIGHT)
                 .padBottom(20).row();
 
-
+        // ============================================================
+        // 4. 通用功能 (INFO, SETTINGS, EXIT)
+        // ============================================================
         buttonTable.add(
                         bf.create("INFO", () -> game.setScreen(new InfoScreen(game, this)))
                 ).width(buttonWidth).height(BUTTON_HEIGHT)

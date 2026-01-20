@@ -585,6 +585,63 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         pauseUIInitialized = true;
     }
 
+    // =================================================================
+    // 修改方法: initPauseUI (添加 SAVE GAME 按钮)
+    // =================================================================
+//    private void initPauseUI() {
+//        pauseStage = new Stage(new ScreenViewport());
+//        Table root = new Table();
+//        root.setFillParent(true);
+//        pauseStage.addActor(root);
+//
+//        // 标题 (兼作状态提示)
+//        pauseScoreLabel = new Label("GAME PAUSED", game.getSkin(), "title");
+//        pauseScoreLabel.setColor(Color.GOLD);
+//        root.add(pauseScoreLabel).padBottom(40).row();
+//
+//        Table btns = new Table();
+//        ButtonFactory bf = new ButtonFactory(game.getSkin());
+//        float w = 350, h = 90, pad = 15;
+//
+//        // 1. CONTINUE
+//        btns.add(bf.create("CONTINUE", this::togglePause)).size(w,h).pad(pad);
+//
+//        // 2. RESET MAZE
+//        btns.add(bf.create("RESET MAZE", () -> game.resetMaze(difficultyConfig.difficulty))).size(w,h).pad(pad);
+//
+//        // 3. SETTINGS
+//        btns.add(bf.create("SETTINGS", () -> game.setScreen(
+//                new SettingsScreen(game, SettingsScreen.SettingsSource.PAUSE_MENU, game.getScreen())
+//        ))).size(w,h).pad(pad);
+//
+//        // 4. MENU (返回主菜单)
+//        btns.add(bf.create("MENU", game::goToMenu)).size(w,h).pad(pad);
+//
+//        // ============================================================
+//        // 🔥 5. SAVE GAME (一键保存)
+//        // ============================================================
+//        btns.add(bf.create("SAVE GAME", () -> {
+//            // 调用 GameManager 的定向保存逻辑
+//            gm.saveGameProgress();
+//
+//            // UI 反馈：修改标题颜色提示保存成功
+//            String oldText = pauseScoreLabel.getText().toString();
+//            pauseScoreLabel.setText("GAME SAVED!");
+//            pauseScoreLabel.setColor(Color.GREEN);
+//
+//            // 1秒后恢复原状
+//            com.badlogic.gdx.utils.Timer.schedule(new com.badlogic.gdx.utils.Timer.Task() {
+//                @Override public void run() {
+//                    pauseScoreLabel.setText(oldText);
+//                    pauseScoreLabel.setColor(Color.GOLD);
+//                }
+//            }, 1f);
+//        })).size(w,h).pad(pad);
+//
+//        root.add(btns);
+//        pauseUIInitialized = true;
+//    }
+
     private void openManualSaveDialog() {
         Stage dialogStage = pauseStage;
         Skin skin = game.getSkin();

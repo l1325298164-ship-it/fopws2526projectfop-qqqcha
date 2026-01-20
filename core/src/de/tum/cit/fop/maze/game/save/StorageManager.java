@@ -10,6 +10,8 @@ import de.tum.cit.fop.maze.utils.Logger;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.*;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -22,27 +24,45 @@ import java.util.zip.GZIPOutputStream;
  * 2. 存档压缩（GZIP压缩JSON，减少文件大小）
  * 3. 原子写入机制（Write-to-temp -> Move），防止存档损坏
  * 4. 线程安全，支持等待所有异步任务完成
+ * 5. 智能槽位管理（最大5个，支持智能覆盖）
  */
 public class StorageManager {
 
+    /**
+     * 存档目标枚举，包含槽位索引信息
+     */
     public enum SaveTarget {
-        AUTO,
-        SLOT_1,
-        SLOT_2,
-        SLOT_3;
+        AUTO(-1),
+        SLOT_1(1),
+        SLOT_2(2),
+        SLOT_3(3),
+        SLOT_4(4),
+        SLOT_5(5);
+
+        private final int slotIndex;
+
+        SaveTarget(int slotIndex) {
+            this.slotIndex = slotIndex;
+        }
+
+        public int getSlotIndex() {
+            return slotIndex;
+        }
+
+        public boolean isSlot() {
+            return slotIndex > 0;
+        }
 
         public static SaveTarget fromSlot(int slot) {
-            return switch (slot) {
-                case 1 -> SLOT_1;
-                case 2 -> SLOT_2;
-                case 3 -> SLOT_3;
-                default -> AUTO;
-            };
+            for (SaveTarget t : values()) {
+                if (t.slotIndex == slot) return t;
+            }
+            return AUTO;
         }
     }
 
     // ===== 主存档 Slot =====
-    public static final int MAX_SAVE_SLOTS = 3;
+    public static final int MAX_SAVE_SLOTS = 5; // ✅ 改为 5 个槽位
     private static final String AUTO_SAVE_FILE = "save_auto.json.gz";
     private static final String SAVE_SLOT_PATTERN = "save_slot_%d.json.gz";
 
@@ -107,6 +127,79 @@ public class StorageManager {
         }
         return String.format(SAVE_SLOT_PATTERN, slot);
     }
+
+    private FileHandle getSaveSlotFile(int slot) {
+        return getFile(getSlotFileName(slot));
+    }
+
+    private FileHandle getAutoSaveFile() {
+        return getFile(AUTO_SAVE_FILE);
+    }
+
+    // ==========================================
+    // 🔥 [核心逻辑] 智能选择新游戏槽位
+    // ==========================================
+
+    /**
+     * 为新游戏寻找最佳存档槽位。
+     * 策略：
+     * 1. 优先寻找空槽位。
+     * 2. 如果全满，寻找"最弱"的存档进行覆盖 (关卡最低 > 时间最久)。
+     * @return 目标槽位ID (1-5)
+     */
+    public int getBestSlotForNewGame() {
+        // 1. 优先：找空位
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            if (!getSaveSlotFile(i).exists()) {
+                return i;
+            }
+        }
+
+        // 2. 备选：找需要"献祭"的旧存档
+        int bestSlot = 1;
+        int minLevel = Integer.MAX_VALUE;
+        long oldestTime = Long.MAX_VALUE;
+
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            GameSaveData data = loadGameFromSlot(i);
+            FileHandle file = getSaveSlotFile(i);
+
+            // 如果读取失败（坏档），直接覆盖它
+            if (data == null) return i;
+
+            // 比较逻辑：关卡进度越低越容易被覆盖
+            if (data.currentLevel < minLevel) {
+                minLevel = data.currentLevel;
+                oldestTime = file.lastModified();
+                bestSlot = i;
+            } else if (data.currentLevel == minLevel) {
+                // 关卡一样，覆盖时间更早的 (Oldest)
+                if (file.lastModified() < oldestTime) {
+                    oldestTime = file.lastModified();
+                    bestSlot = i;
+                }
+            }
+        }
+
+        Logger.info("Slots full. Auto-selecting Slot " + bestSlot + " (Level " + minLevel + ") for overwrite.");
+        return bestSlot;
+    }
+
+    /**
+     * 获取存档文件的最后修改时间字符串 (用于UI显示)
+     */
+    public String getSlotLastModifiedTime(int slotIndex) {
+        FileHandle file = (slotIndex == -1) ? getAutoSaveFile() : getSaveSlotFile(slotIndex);
+        if (!file.exists()) return "Unknown";
+
+        long lastModified = file.lastModified();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        return sdf.format(new Date(lastModified));
+    }
+
+    // ==========================================
+    // 常规存储 API
+    // ==========================================
 
     public void saveGameToSlot(int slot, GameSaveData data) {
         if (data == null) return;
@@ -180,7 +273,7 @@ public class StorageManager {
             if (jsonStr == null || jsonStr.isBlank()) return null;
 
             GameSaveData data = json.fromJson(GameSaveData.class, jsonStr);
-            
+
             // 验证数据有效性
             if (data != null) {
                 if (data.currentLevel < 1) {
@@ -192,7 +285,7 @@ public class StorageManager {
                     data.score = 0;
                 }
             }
-            
+
             return data;
 
         } catch (Exception e) {
@@ -485,5 +578,12 @@ public class StorageManager {
     public void saveGameSync(GameSaveData data) {
         if (data == null) return;
         writeJsonSafelySync(AUTO_SAVE_FILE, data, compressionEnabled);
+    }
+
+    public int getFirstEmptySlot() {
+        for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            if (!hasSaveInSlot(i)) return i;
+        }
+        return -1;
     }
 }
