@@ -43,6 +43,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     // 🔥 [新增] 顿帧与震动控制
     private de.tum.cit.fop.maze.utils.CameraManager cameraManager;
     private float hitStopTimer = 0f;
+    private StorageManager.SaveTarget currentSaveTarget;
 
     /**
      * 必须在 GameScreen 初始化时调用此方法传入 CameraManager
@@ -144,7 +145,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     private boolean viewingChapterRelic = false;
     private boolean restoreLock = false;
 
-    private StorageManager.SaveTarget currentSaveTarget;
     private Consumer<Enemy> enemyKillListener;
 
     public void setEnemyKillListener(Consumer<Enemy> listener) {
@@ -197,11 +197,26 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         }
         Logger.error("🔥 RESET GAME CALLED");
 
+        // 1. 初始化游戏变量
         gameVariables = new HashMap<>();
         gameVariables.put("speed_mult", 1.0f);
         gameVariables.put("dmg_taken", 1.0f);
         gameVariables.put("cam_zoom", 1.0f);
         gameVariables.put("time_scale", 1.0f);
+
+        // ============================================================
+        // 🔥 [核心逻辑] New Game 自动槽位绑定 (Strategy A)
+        // ============================================================
+        if (!restoringFromSave) {
+            // 策略：优先找空位，没有空位则覆盖最旧/最弱的存档
+            int targetSlot = StorageManager.getInstance().getBestSlotForNewGame();
+
+            // 绑定身份！后续的所有存档（暂停/结算）都会存入这里
+            this.currentSaveTarget = StorageManager.SaveTarget.fromSlot(targetSlot);
+
+            Logger.info("🆕 New Game Strategy: Auto-Assigned to " + this.currentSaveTarget);
+        }
+        // ============================================================
 
         if (!restoringFromSave) {
             maze = generator.generateMaze(difficultyConfig);
@@ -228,18 +243,22 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         keys.clear();
         players.clear();
 
-        int[] spawn1 = randomEmptyCell();
-        Player p1 = new Player(spawn1[0], spawn1[1], this, Player.PlayerIndex.P1);
-        players.add(p1);
+        if (!restoringFromSave) {
+            int[] spawn1 = randomEmptyCell();
+            Player p1 = new Player(spawn1[0], spawn1[1], this, Player.PlayerIndex.P1);
+            players.add(p1);
 
-        if (twoPlayerMode) {
-            int[] spawn2 = findNearbySpawn(p1);
-            if (spawn2 == null) spawn2 = spawn1;
-            Player p2 = new Player(spawn2[0], spawn2[1], this, Player.PlayerIndex.P2);
-            players.add(p2);
-
+            if (twoPlayerMode) {
+                int[] spawn2 = findNearbySpawn(p1);
+                if (spawn2 == null) spawn2 = spawn1;
+                Player p2 = new Player(spawn2[0], spawn2[1], this, Player.PlayerIndex.P2);
+                players.add(p2);
+            }
             revivePending = false;
             reviveTimer = 0f;
+        } else {
+            // 读档：从数据恢复
+            restorePlayersFromSaveData();
         }
 
         syncSinglePlayerRef();
@@ -248,6 +267,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             fogSystem = new FogSystem();
         } else {
             fogSystem = null;
+        }
+
+        // 确保 player 引用正确 (单人模式)
+        if (!players.isEmpty()) {
+            player = players.get(0);
         }
 
         if (player == null) {
@@ -262,7 +286,11 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         playerSpawnPortal.startPlayerSpawnEffect(px, py);
         obstacles = new ArrayList<>();
 
-        generateLevel();
+        if (!restoringFromSave) {
+            generateLevel();
+        } else {
+            // 如果是读档，已经在 buildWorldFromRestore 中生成了环境，这里只需确保状态一致
+        }
 
         compass = new Compass(player);
 
@@ -1430,35 +1458,37 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     public List<DynamicObstacle> getObstacles() { return obstacles; }
     public CatFollower getCat() { return cat; }
 
+    // =================================================================
+    // 🔥 修改方法 2: saveGameProgress (实现定向保存)
+    // =================================================================
     public void saveGameProgress() {
         if (restoringFromSave) {
             Logger.error("🚫 SAVE BLOCKED (restoring)");
             return;
         }
+
+        // 1. 准备数据对象
         if (gameSaveData == null) {
             gameSaveData = new GameSaveData();
         }
+
+        // 2. 打包核心数据 (保持原有逻辑)
         gameSaveData.maze = deepCopyMaze(maze);
         gameSaveData.currentLevel = currentLevel;
         gameSaveData.difficulty = difficultyConfig.difficulty.name();
         gameSaveData.twoPlayerMode = twoPlayerMode;
-        gameSaveData.players.clear();
 
+        gameSaveData.players.clear();
         for (Player p : players) {
             if (p == null) continue;
             PlayerSaveData ps = new PlayerSaveData();
-            ps.x = p.getX();
-            ps.y = p.getY();
-            ps.lives = p.getLives();
-            ps.maxLives = p.getMaxLives();
-            ps.mana = (int) p.getMana();
-            ps.hasKey = p.hasKey();
-            ps.buffAttack = p.hasBuffAttack();
-            ps.buffRegen = p.hasBuffRegen();
+            ps.x = p.getX(); ps.y = p.getY();
+            ps.lives = p.getLives(); ps.maxLives = p.getMaxLives();
+            ps.mana = (int)p.getMana(); ps.hasKey = p.hasKey();
+            ps.buffAttack = p.hasBuffAttack(); ps.buffRegen = p.hasBuffRegen();
             ps.buffManaEfficiency = p.hasBuffManaEfficiency();
-
-            if (p.getAbilityManager() != null) {
-                for (Ability a : p.getAbilityManager().getAbilities().values()) {
+            if(p.getAbilityManager()!=null) {
+                for(de.tum.cit.fop.maze.abilities.Ability a : p.getAbilityManager().getAbilities().values()) {
                     ps.abilityStates.put(a.getId(), a.saveState());
                 }
             }
@@ -1467,31 +1497,32 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
         if (scoreManager != null) {
             scoreManager.saveState(gameSaveData);
-            
-            // 分数计算逻辑说明：
-            // 1. 计算当前关卡进行中的分数（未完成关卡，不保存到累计分数）
+            // 计算当前总分
             int currentRaw = Math.max(0, gameSaveData.levelBaseScore - gameSaveData.levelPenalty);
             int currentFinal = (int) (currentRaw * difficultyConfig.scoreMultiplier);
-            
-            // 2. 获取当前总分（包含已完成关卡分数 + 当前关卡进行中的分数）
-            //    getCurrentScore() = accumulatedScore + currentLevelFinal
             int currentTotal = scoreManager.getCurrentScore();
-            
-            // 3. 保存已完成关卡的累计分数（总分减去当前关卡进行中的分数）
-            //    saved score = accumulatedScore + currentLevelFinal - currentLevelFinal = accumulatedScore
             gameSaveData.score = Math.max(0, currentTotal - currentFinal);
-            
-            Logger.debug("Save progress: total=" + currentTotal + ", currentLevel=" + currentFinal + ", saved=" + gameSaveData.score);
         }
 
+        // ============================================================
+        // 🔥 [核心逻辑] 定向保存到绑定槽位
+        // ============================================================
         StorageManager storage = StorageManager.getInstance();
-        switch (currentSaveTarget) {
-            case SLOT_1 -> storage.saveGameToSlot(1, gameSaveData);
-            case SLOT_2 -> storage.saveGameToSlot(2, gameSaveData);
-            case SLOT_3 -> storage.saveGameToSlot(3, gameSaveData);
-            case AUTO -> storage.saveAuto(gameSaveData);
+
+        if (currentSaveTarget != null) {
+            // 如果是 Auto (满槽临时模式)，存入 Auto 文件
+            if (currentSaveTarget == StorageManager.SaveTarget.AUTO) {
+                storage.saveAuto(gameSaveData);
+                Logger.info("⚠️ Saved to TEMP/AUTO (Slots full)");
+            }
+            // 正常情况：存入 Slot 1-5
+            else {
+                storage.saveGameToSlot(currentSaveTarget.getSlotIndex(), gameSaveData);
+                Logger.info("✅ Game saved to: " + currentSaveTarget);
+            }
+        } else {
+            Logger.error("⚠️ Save Failed: No target slot bound!");
         }
-        Logger.info("Game progress saved: Level=" + currentLevel + ", Score=" + gameSaveData.score);
     }
 
     private int[][] deepCopyMaze(int[][] src) {
@@ -1555,6 +1586,32 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
             }
             p.setMovingAnim(false);
         }
+    }
+
+    // ============================================================
+    // 🔥 [新增] 根据存档数据重建玩家对象
+    // ============================================================
+    private void restorePlayersFromSaveData() {
+        if (gameSaveData == null) return;
+
+        // 重建 P1
+        if (gameSaveData.players.containsKey(Player.PlayerIndex.P1.name())) {
+            PlayerSaveData ps = gameSaveData.players.get(Player.PlayerIndex.P1.name());
+            Player p1 = new Player(ps.x, ps.y, this, Player.PlayerIndex.P1);
+            players.add(p1);
+        }
+
+        // 重建 P2
+        if (gameSaveData.players.containsKey(Player.PlayerIndex.P2.name())) {
+            PlayerSaveData ps = gameSaveData.players.get(Player.PlayerIndex.P2.name());
+            Player p2 = new Player(ps.x, ps.y, this, Player.PlayerIndex.P2);
+            players.add(p2);
+        }
+
+        syncSinglePlayerRef();
+
+        // 恢复属性
+        restorePlayers(gameSaveData, true);
     }
 
     public ItemEffectManager getItemEffectManager() { return itemEffectManager; }
@@ -1907,168 +1964,4 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         Logger.warning("E04 spawn fallback used (Map too crowded?)");
         return new int[]{player.getX(), player.getY()};
     }
-
-//    public void setCurrentSaveTarget(StorageManager.SaveTarget target) {
-//        this.currentSaveTarget = target;
-//    }
-//
-//    public StorageManager.SaveTarget getCurrentSaveTarget() {
-//        return currentSaveTarget;
-//    }
-//
-//    // =================================================================
-//    // 修改方法 1: resetGame (实现新游戏自动绑定槽位)
-//    // =================================================================
-//    public void resetGame() {
-//        if (restoreLock) {
-//            Logger.error("⛔ resetGame blocked during restore");
-//            return;
-//        }
-//        Logger.error("🔥 RESET GAME CALLED");
-//
-//        // 1. 初始化游戏变量
-//        gameVariables = new HashMap<>();
-//        gameVariables.put("speed_mult", 1.0f);
-//        gameVariables.put("dmg_taken", 1.0f);
-//        gameVariables.put("cam_zoom", 1.0f);
-//        gameVariables.put("time_scale", 1.0f);
-//
-//        // ============================================================
-//        // 🔥 [核心逻辑] New Game 自动槽位绑定 (Strategy A)
-//        // ============================================================
-//        if (!restoringFromSave) {
-//            // 策略：优先找空位，没有空位则覆盖最旧/最弱的存档
-//            int targetSlot = StorageManager.getInstance().getBestSlotForNewGame();
-//
-//            // 绑定身份！后续的所有存档（暂停/结算）都会存入这里
-//            this.currentSaveTarget = StorageManager.SaveTarget.fromSlot(targetSlot);
-//
-//            Logger.info("🆕 New Game Strategy: Auto-Assigned to " + this.currentSaveTarget);
-//        }
-//        // 注意：如果是读档(restoringFromSave=true)，身份绑定会在 restoreFromSaveData 中处理，这里跳过
-//        // ============================================================
-//
-//        // 2. 地图生成
-//        if (!restoringFromSave) {
-//            maze = generator.generateMaze(difficultyConfig);
-//        } else {
-//            if (maze == null && gameSaveData.maze != null) {
-//                maze = deepCopyMaze(gameSaveData.maze);
-//            }
-//        }
-//
-//        // 3. 清理旧实体
-//        enemies.clear();
-//        items.clear();
-//        traps.clear();
-//        playerProjectiles.clear();
-//        enemyProjectiles.clear();
-//        particles.clear();
-//
-//        // 4. 重置玩家 (保持原有逻辑)
-//        players.clear();
-//        if (!restoringFromSave) {
-//            // 新游戏：创建新玩家
-//            Player p1 = new Player(
-//                    maze.getStartCell()[0] * GameConstants.CELL_SIZE,
-//                    maze.getStartCell()[1] * GameConstants.CELL_SIZE,
-//                    1
-//            );
-//            players.add(p1);
-//
-//            if (twoPlayerMode) {
-//                Player p2 = new Player(
-//                        maze.getStartCell()[0] * GameConstants.CELL_SIZE,
-//                        maze.getStartCell()[1] * GameConstants.CELL_SIZE,
-//                        2
-//                );
-//                players.add(p2);
-//            }
-//        } else {
-//            // 读档：从数据恢复
-//            restorePlayersFromSaveData();
-//        }
-//
-//        // 5. 生成环境
-//        spawnEnemies();
-//        spawnTraps();
-//        spawnItems();
-//
-//        // 6. 启动系统
-//        AudioManager.getInstance().playMusic(AudioType.BGM_GAME);
-//        if (hud != null) {
-//            hud.update(0);
-//        }
-//
-//        Logger.gameEvent("Game reset complete");
-//    }
-//
-//    // =================================================================
-//    // 修改方法 2: saveGameProgress (实现定向保存)
-//    // =================================================================
-//    public void saveGameProgress() {
-//        if (restoringFromSave) {
-//            Logger.error("🚫 SAVE BLOCKED (restoring)");
-//            return;
-//        }
-//
-//        // 1. 准备数据对象
-//        if (gameSaveData == null) {
-//            gameSaveData = new GameSaveData();
-//        }
-//
-//        // 2. 打包核心数据 (保持原有逻辑)
-//        gameSaveData.maze = deepCopyMaze(maze);
-//        gameSaveData.currentLevel = currentLevel;
-//        gameSaveData.difficulty = difficultyConfig.difficulty.name();
-//        gameSaveData.twoPlayerMode = twoPlayerMode;
-//
-//        gameSaveData.players.clear();
-//        for (Player p : players) {
-//            if (p == null) continue;
-//            // 使用 Player 内部的 createSaveData 方法 (如果你有封装的话)，或者保留原来的手动赋值代码
-//            // 这里为了稳妥，我把原本手动赋值的逻辑保留在这里：
-//            PlayerSaveData ps = new PlayerSaveData();
-//            ps.x = p.getX(); ps.y = p.getY();
-//            ps.lives = p.getLives(); ps.maxLives = p.getMaxLives();
-//            ps.mana = (int)p.getMana(); ps.hasKey = p.hasKey();
-//            ps.buffAttack = p.hasBuffAttack(); ps.buffRegen = p.hasBuffRegen();
-//            ps.buffManaEfficiency = p.hasBuffManaEfficiency();
-//            if(p.getAbilityManager()!=null) {
-//                for(de.tum.cit.fop.maze.abilities.Ability a : p.getAbilityManager().getAbilities().values()) {
-//                    ps.abilityStates.put(a.getId(), a.saveState());
-//                }
-//            }
-//            gameSaveData.players.put(p.getPlayerIndex().name(), ps);
-//        }
-//
-//        if (scoreManager != null) {
-//            scoreManager.saveState(gameSaveData);
-//            // 计算当前总分
-//            int currentRaw = Math.max(0, gameSaveData.levelBaseScore - gameSaveData.levelPenalty);
-//            int currentFinal = (int) (currentRaw * difficultyConfig.scoreMultiplier);
-//            int currentTotal = scoreManager.getCurrentScore();
-//            gameSaveData.score = Math.max(0, currentTotal - currentFinal);
-//        }
-//
-//        // ============================================================
-//        // 🔥 [核心逻辑] 定向保存到绑定槽位
-//        // ============================================================
-//        StorageManager storage = StorageManager.getInstance();
-//
-//        if (currentSaveTarget != null) {
-//            // 如果是 Auto (满槽临时模式)，存入 Auto 文件
-//            if (currentSaveTarget == StorageManager.SaveTarget.AUTO) {
-//                storage.saveAuto(gameSaveData);
-//                Logger.info("⚠️ Saved to TEMP/AUTO (Slots full)");
-//            }
-//            // 正常情况：存入 Slot 1-5
-//            else {
-//                storage.saveGameToSlot(currentSaveTarget.getSlotIndex(), gameSaveData);
-//                Logger.info("✅ Game saved to: " + currentSaveTarget);
-//            }
-//        } else {
-//            Logger.error("⚠️ Save Failed: No target slot bound!");
-//        }
-//    }
 }

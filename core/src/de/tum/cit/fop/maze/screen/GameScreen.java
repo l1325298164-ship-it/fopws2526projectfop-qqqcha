@@ -351,7 +351,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
            ① 地板 + 门背后呼吸光
            ========================================================= */
         batch.begin();
-        // ✅ [Fix 1] 强制重置颜色为白色！防止上一帧的残影/特效颜色污染地板
+        // 强制重置颜色为白色！防止上一帧的残影/特效颜色污染地板
         batch.setColor(Color.WHITE);
 
         maze.renderFloor(batch);
@@ -425,7 +425,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         if (playerTrailManager != null) {
             playerTrailManager.render(batch);
-            // ✅ [Fix 2] 残影绘制完后，立即重置颜色为白色，防止影响后续特效
+            // 残影绘制完后，立即重置颜色为白色，防止影响后续特效
             batch.setColor(Color.WHITE);
         }
 
@@ -452,7 +452,7 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         // 玩家脚下传送阵
         batch.begin();
-        // ✅ [Fix 3] 再次保险重置颜色
+        // 再次保险重置颜色
         batch.setColor(Color.WHITE);
         if (gm.getPlayerSpawnPortal() != null) {
             float px = (gm.getPlayer().getX() + 0.5f) * GameConstants.CELL_SIZE;
@@ -510,7 +510,13 @@ public class GameScreen implements Screen, Chapter1RelicListener {
 
         if (paused) {
             if (!pauseUIInitialized) initPauseUI();
-            pauseScoreLabel.setText("SCORE: " + gm.getScore());
+
+            // 只有当不是在显示 "GAME SAVED!" 反馈时，才显示 "GAME PAUSED"
+            // (通过颜色判断，如果是金色则说明是默认状态，如果是绿色则是在显示Saved)
+            if (pauseScoreLabel.getColor().equals(Color.GOLD)) {
+                pauseScoreLabel.setText("GAME PAUSED");
+            }
+
             Gdx.input.setInputProcessor(pauseStage);
             pauseStage.act(delta);
             pauseStage.draw();
@@ -561,122 +567,61 @@ public class GameScreen implements Screen, Chapter1RelicListener {
         }
     }
 
+    // =================================================================
+    // 🔥 修复方法: initPauseUI (实现 Strategy A 一键保存)
+    // =================================================================
     private void initPauseUI() {
         pauseStage = new Stage(new ScreenViewport());
         Table root = new Table();
         root.setFillParent(true);
         pauseStage.addActor(root);
 
-        pauseScoreLabel = new Label("", game.getSkin(), "title");
+        // 标题 (兼作状态提示)
+        pauseScoreLabel = new Label("GAME PAUSED", game.getSkin(), "title");
         pauseScoreLabel.setColor(Color.GOLD);
         root.add(pauseScoreLabel).padBottom(40).row();
 
-        Table buttonTable = new Table();
+        Table btns = new Table();
         ButtonFactory bf = new ButtonFactory(game.getSkin());
-        float btnW = 350; float btnH = 90; float padding = 15;
+        float w = 350, h = 90, pad = 15;
 
-        buttonTable.add(bf.create("CONTINUE", this::togglePause)).width(btnW).height(btnH).pad(padding);
-        buttonTable.add(bf.create("RESET MAZE", () -> game.resetMaze(difficultyConfig.difficulty))).width(btnW).height(btnH).pad(padding);
-        buttonTable.add(bf.create("SETTINGS", () -> game.setScreen(new SettingsScreen(game, SettingsScreen.SettingsSource.PAUSE_MENU, game.getScreen())))).width(btnW).height(btnH).pad(padding);
-        buttonTable.add(bf.create("MENU", game::goToMenu)).width(btnW).height(btnH).pad(padding);
-        buttonTable.add(bf.create("SAVE GAME", this::openManualSaveDialog)).width(btnW).height(btnH).pad(padding);
+        // 1. CONTINUE
+        btns.add(bf.create("CONTINUE", this::togglePause)).size(w,h).pad(pad);
 
-        root.add(buttonTable).expandY().center();
-        pauseUIInitialized = true;
-    }
+        // 2. RESET MAZE
+        btns.add(bf.create("RESET MAZE", () -> game.resetMaze(difficultyConfig.difficulty))).size(w,h).pad(pad);
 
-    // =================================================================
-    // 修改方法: initPauseUI (添加 SAVE GAME 按钮)
-    // =================================================================
-//    private void initPauseUI() {
-//        pauseStage = new Stage(new ScreenViewport());
-//        Table root = new Table();
-//        root.setFillParent(true);
-//        pauseStage.addActor(root);
-//
-//        // 标题 (兼作状态提示)
-//        pauseScoreLabel = new Label("GAME PAUSED", game.getSkin(), "title");
-//        pauseScoreLabel.setColor(Color.GOLD);
-//        root.add(pauseScoreLabel).padBottom(40).row();
-//
-//        Table btns = new Table();
-//        ButtonFactory bf = new ButtonFactory(game.getSkin());
-//        float w = 350, h = 90, pad = 15;
-//
-//        // 1. CONTINUE
-//        btns.add(bf.create("CONTINUE", this::togglePause)).size(w,h).pad(pad);
-//
-//        // 2. RESET MAZE
-//        btns.add(bf.create("RESET MAZE", () -> game.resetMaze(difficultyConfig.difficulty))).size(w,h).pad(pad);
-//
-//        // 3. SETTINGS
-//        btns.add(bf.create("SETTINGS", () -> game.setScreen(
-//                new SettingsScreen(game, SettingsScreen.SettingsSource.PAUSE_MENU, game.getScreen())
-//        ))).size(w,h).pad(pad);
-//
-//        // 4. MENU (返回主菜单)
-//        btns.add(bf.create("MENU", game::goToMenu)).size(w,h).pad(pad);
-//
-//        // ============================================================
-//        // 🔥 5. SAVE GAME (一键保存)
-//        // ============================================================
-//        btns.add(bf.create("SAVE GAME", () -> {
-//            // 调用 GameManager 的定向保存逻辑
-//            gm.saveGameProgress();
-//
-//            // UI 反馈：修改标题颜色提示保存成功
-//            String oldText = pauseScoreLabel.getText().toString();
-//            pauseScoreLabel.setText("GAME SAVED!");
-//            pauseScoreLabel.setColor(Color.GREEN);
-//
-//            // 1秒后恢复原状
-//            com.badlogic.gdx.utils.Timer.schedule(new com.badlogic.gdx.utils.Timer.Task() {
-//                @Override public void run() {
-//                    pauseScoreLabel.setText(oldText);
-//                    pauseScoreLabel.setColor(Color.GOLD);
-//                }
-//            }, 1f);
-//        })).size(w,h).pad(pad);
-//
-//        root.add(btns);
-//        pauseUIInitialized = true;
-//    }
+        // 3. SETTINGS
+        btns.add(bf.create("SETTINGS", () -> game.setScreen(
+                new SettingsScreen(game, SettingsScreen.SettingsSource.PAUSE_MENU, game.getScreen())
+        ))).size(w,h).pad(pad);
 
-    private void openManualSaveDialog() {
-        Stage dialogStage = pauseStage;
-        Skin skin = game.getSkin();
+        // 4. MENU (返回主菜单)
+        btns.add(bf.create("MENU", game::goToMenu)).size(w,h).pad(pad);
 
-        class ManualSaveDialog extends Dialog {
-            ManualSaveDialog() { super(" SAVE GAME ", skin); }
-            public void submitSlot(int slot) { result(slot); hide(); }
-            @Override protected void result(Object object) {
-                if (object instanceof Integer slot) {
-                    gm.setCurrentSaveTarget(StorageManager.SaveTarget.fromSlot(slot));
-                    gm.saveGameProgress();
-                    Logger.info("Manual save to slot " + slot);
+        // ============================================================
+        // 🔥 5. SAVE GAME (一键保存)
+        // ============================================================
+        btns.add(bf.create("SAVE GAME", () -> {
+            // 调用 GameManager 的定向保存逻辑
+            gm.saveGameProgress();
+
+            // UI 反馈：修改标题颜色提示保存成功
+            String oldText = pauseScoreLabel.getText().toString();
+            pauseScoreLabel.setText("GAME SAVED!");
+            pauseScoreLabel.setColor(Color.GREEN);
+
+            // 1秒后恢复原状
+            com.badlogic.gdx.utils.Timer.schedule(new com.badlogic.gdx.utils.Timer.Task() {
+                @Override public void run() {
+                    pauseScoreLabel.setText("GAME PAUSED");
+                    pauseScoreLabel.setColor(Color.GOLD);
                 }
-            }
-        }
+            }, 1f);
+        })).size(w,h).pad(pad);
 
-        ManualSaveDialog dialog = new ManualSaveDialog();
-        dialog.text("\n  Choose a save slot:\n");
-        Table listTable = new Table();
-        listTable.defaults().pad(6).width(220).height(50);
-        for (int i = 1; i <= 3; i++) {
-            final int slot = i;
-            TextButton btn = new TextButton(" SLOT " + i + " ", skin);
-            btn.addListener(new ClickListener() {
-                @Override public void clicked(InputEvent event, float x, float y) { dialog.submitSlot(slot); }
-            });
-            listTable.add(btn).row();
-        }
-        ScrollPane scrollPane = new ScrollPane(listTable, skin);
-        scrollPane.setScrollingDisabled(true, false);
-        scrollPane.setFadeScrollBars(false);
-        scrollPane.setFlickScroll(true);
-        dialog.getContentTable().add(scrollPane).size(240, 200).pad(10).row();
-        dialog.button(" CANCEL ", null);
-        dialog.show(dialogStage);
+        root.add(btns);
+        pauseUIInitialized = true;
     }
 
     private void renderMazeBorderDecorations(SpriteBatch batch) {
