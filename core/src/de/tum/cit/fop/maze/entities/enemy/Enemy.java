@@ -215,6 +215,10 @@ public abstract class Enemy extends GameObject {
             worldY += (dy / dist) * step;
         }
     }
+    // Enemy.java
+    protected AudioType getAttackSound() {
+        return AudioType.ENEMY_ATTACK_DEFAULT;
+    }
 
     protected void startMoveTo(int nx, int ny) {
         x = nx;

@@ -31,6 +31,10 @@ public class EnemyE02_SmallCoffeeBean extends Enemy {
     public int getCollisionDamage() {
         return collisionDamage;
     }
+    @Override
+    protected AudioType getAttackSound() {
+        return AudioType.ENEMY_ATTACK_E02;
+    }
 
     private Animation<TextureRegion> anim;
     private float animTime = 0f;

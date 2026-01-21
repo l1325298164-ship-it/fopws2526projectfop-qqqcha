@@ -13,10 +13,21 @@ public enum AudioType {
     MUSIC_MAZE_ENDLESS("sounds_file/BGM/maze_endless.mp3", AudioCategory.MUSIC, true, 0.7f, true, false),
 
     // === 玩家音效 ===
-    PLAYER_MOVE("sounds_file/SFX/move01.wav", AudioCategory.PLAYER, false, 0.8f, true, false),
-    PLAYER_GET_KEY("sounds_file/SFX/get-key.wav", AudioCategory.PLAYER, false, 1.0f, false, false),
-    PLAYER_HIT_WALL("sounds_file/SFX/hit-wall01.wav", AudioCategory.PLAYER, false, 0.9f, false, false),
-    PLAYER_ATTACKED("sounds_file/SFX/melee_1.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
+    PLAYER_MOVE("sounds_file/ogg/melee_2_01.ogg", AudioCategory.PLAYER, false, 0.3f, true, false),
+    PLAYER_GET_KEY("sounds_file/ogg/treasure_01.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
+    PLAYER_ATTACKED("sounds_file/ogg/E01_01.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
+    PLAYER1_ATTACK("sounds_file/ogg/melee_1.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
+    PLAYER2_ATTACK("sounds_file/SFX/magic_set.mp3", AudioCategory.PLAYER, false, 1.0f, false, false),
+    MAGIC_EXECUTE_LV1("sounds_file/ogg/magic_1_01.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
+    MAGIC_EXECUTE_LV3("sounds_file/ogg/magic_3_01.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
+    MAGIC_EXECUTE_LV5("sounds_file/ogg/magic_5_01.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
+    ABILITY_UPGRADE_COMMON("sounds_file/ogg/levelup_2_01.ogg", AudioCategory.PLAYER, false, 1.0f, false, false),
+
+
+
+
+
+
     // === PV ===
     PV_1("sounds_file/BGM/pv/PV1.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
     PV_2("sounds_file/BGM/pv/PV2.mp3", AudioCategory.MUSIC, true, 0.7f, false, false),
@@ -26,39 +37,36 @@ public enum AudioType {
 
 
     // === 敌人音效 ===
-    ENEMY_ATTACKED("sounds_file/SFX/attacked02.wav", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACKED("sounds_file/ogg/E_damage_01.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
     ENEMY_ATTACKED_E01("sounds_file/SFX/attack_E01.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
-    ENEMY_ATTACKED_E02("sounds_file/SFX/attack_E02.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACKED_E02("sounds_file/ogg/E_damage_01.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
     ENEMY_ATTACKED_E03("sounds_file/SFX/attack_E03.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACK_DEFAULT("sounds_file/SFX/attack_E03.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACK_E01("sounds_file/ogg/E01_01.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACK_E02("sounds_file/ogg/E02_01.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACK_E03("sounds_file/ogg/E03_01.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_ATTACK_E04("sounds_file/ogg/E04_01.ogg", AudioCategory.ENEMY, false, 0.8f, false, false),
 
 
     // === UI音效 ===
-    UI_CLICK("sounds_file/SFX/click01.wav", AudioCategory.UI, false, 0.6f, false, true),
+    UI_CLICK("sounds_file/SFX/btn_3.mp3", AudioCategory.UI, false, 0.6f, false, true),
     UI_SUCCESS("sounds_file/SFX/btn_3.mp3", AudioCategory.UI, false, 0.8f, false, true),
-    UI_FAILURE("sounds_file/SFX/btn_1.ogg", AudioCategory.UI, false, 0.8f, false, true),
-    UI_HIT_DAZZLE("sounds_file/SFX/click02.wav", AudioCategory.UI, false, 1.0f, false, true),
+    UI_FAILURE("sounds_file/ogg/magic_1_01.ogg", AudioCategory.UI, false, 0.8f, false, true),
+    UI_HIT_DAZZLE("sounds_file/SFX/btn_2.mp3", AudioCategory.UI, false, 1.0f, false, true),
     UI_THROW_ATTACK("sounds_file/SFX/btn_2.mp3", AudioCategory.UI, false, 1.0f, false, true),
 //revision |||| sword
 
     // === ✨ 新增：技能与动作 ===
     // 冲刺音效 (Whoosh声)
-    SKILL_DASH("sounds_file/SFX/dash_01.ogg", AudioCategory.PLAYER, false, 0.9f, false, false),
+    SKILL_DASH("sounds_file/ogg/DASH_01.ogg", AudioCategory.PLAYER, false, 0.9f, false, false),
     // 挥剑音效 (Slash声)
-    SKILL_SLASH("sounds_file/SFX/sword_swing.wav", AudioCategory.PLAYER, false, 0.8f, false, false),
+    SKILL_SLASH("sounds_file/ogg/melee_1.ogg", AudioCategory.PLAYER, false, 0.8f, false, false),
     // Buff获取音效 (强化声)
-    BUFF_GAIN("sounds_file/SFX/buff_01.wav", AudioCategory.UI, false, 0.9f, false, false),
+    BUFF_GAIN("sounds_file/ogg/treasure_01.ogg", AudioCategory.UI, false, 0.9f, false, false),
 
     // === 💀 新增：战斗反馈 ===
-    ENEMY_DEATH("sounds_file/SFX/enemy_death.wav", AudioCategory.ENEMY, false, 0.9f, false, false),
-    // 敌人发现玩家的音效
-    ENEMY_ALERT("sounds_file/SFX/alert.wav", AudioCategory.ENEMY, false, 1.0f, false, false),
-    // 蓄力音效
-    ENEMY_CHARGE("sounds_file/SFX/charge.wav", AudioCategory.ENEMY, false, 0.8f, false, false),
+    ENEMY_DEATH("sounds_file/ogg/E03_damage_01.ogg", AudioCategory.ENEMY, false, 0.6f, false, false),
 
-    // === 物品拾取 ===
-    ITEM_HEAL("sounds_file/SFX/item_heart.wav", AudioCategory.UI, false, 0.9f, false, false),     // 拾取红心
-    ITEM_TREASURE("sounds_file/SFX/item_treasure.wav", AudioCategory.UI, false, 0.9f, false, false), // 拾取宝箱
-    ITEM_POWERUP("sounds_file/SFX/item_powerup.wav", AudioCategory.UI, false, 1.0f, false, false),   // 无尽模式强化道具
 
     //Tutorial
     TUTORIAL_MAIN_BGM(
@@ -69,9 +77,10 @@ public enum AudioType {
             true,   // loop
             false
     ),
-    BOSS_BGM("sounds_file/BGM/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, false, false),
+    BOSS_BGM("sounds_file/BGM/boss_bgm.mp3",AudioCategory.MUSIC, true, 1f, false, false),
     MUSIC_MENU_END("sounds_file/BGM/menu_bgm2.mp3",AudioCategory.MUSIC, true, 0.7f, true, false),
-    BOSS_LOADING("sounds_file/BGM/BOSS_loading.mp3",AudioCategory.MUSIC, true, 0.7f, true, false);
+    BOSS_LOADING("sounds_file/BGM/BOSS_loading.mp3",AudioCategory.MUSIC, true, 0.7f, true, false),
+    BOSS_AOE_WARNING("sounds_file/ogg/boss_hit_01.ogg",AudioCategory.PLAYER, false, 0.3f, false, false);
 
 
 

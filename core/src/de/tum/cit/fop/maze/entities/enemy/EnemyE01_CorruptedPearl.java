@@ -28,6 +28,10 @@ public class EnemyE01_CorruptedPearl extends Enemy {
     // 攻击节奏（远程怪推荐）
     private static final float ATTACK_WINDUP = 0.25f;   // 蓄力
     private static final float ATTACK_FLASH = 0.08f;    // 开火瞬间
+    @Override
+    protected AudioType getAttackSound() {
+        return AudioType.ENEMY_ATTACK_E01;
+    }
 
     public EnemyE01_CorruptedPearl(int x, int y) {
         super(x, y);
@@ -153,6 +157,7 @@ public class EnemyE01_CorruptedPearl extends Enemy {
 
             if (attackTimer >= ATTACK_WINDUP) {
                 shootAt(target, gm);
+                AudioManager.getInstance().play(AudioType.ENEMY_ATTACK_E01);
                 shootCooldown = SHOOT_INTERVAL;
                 attackTimer = -ATTACK_FLASH;
             }

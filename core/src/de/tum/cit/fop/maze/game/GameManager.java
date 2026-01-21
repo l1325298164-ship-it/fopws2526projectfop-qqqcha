@@ -3,6 +3,8 @@ package de.tum.cit.fop.maze.game;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.graphics.Color;
 import de.tum.cit.fop.maze.abilities.Ability;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager;
@@ -656,7 +658,9 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     int livesBefore = p.getLives();
                     p.takeDamage(enemy.getCollisionDamage());
                     int damage = livesBefore - p.getLives();
-
+                    if (hit && enemy instanceof EnemyE02_SmallCoffeeBean) {
+                        AudioManager.getInstance().play(AudioType.ENEMY_ATTACK_E02);
+                    }
                     if (damage > 0) {
                         DamageSource source = DamageSource.UNKNOWN;
                         if (enemy instanceof EnemyE01_CorruptedPearl) source = DamageSource.ENEMY_E01;
@@ -954,6 +958,7 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                     }
 
                     h.onInteract(p);
+                    p.heal(10);
                     GameEventSource.getInstance().onItemCollected("HEART");
 
                     if (combatEffectManager != null) {

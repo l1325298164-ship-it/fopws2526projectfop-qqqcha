@@ -75,7 +75,9 @@ public class BossLoadingScreen implements Screen {
         assets.load("sounds_file/BGM/boss_bgm.mp3", Music.class);
 
         // ===== Voice =====
-        assets.load("story_file/boss/voice/boss_1.ogg", Sound.class);
+        assets.load("story_file/boss/voice/boss_1.mp3", Sound.class);
+        assets.load("story_file/boss/voice/boss_2.mp3", Sound.class);
+        assets.load("story_file/boss/voice/boss_3.mp3", Sound.class);
     }
 
     @Override

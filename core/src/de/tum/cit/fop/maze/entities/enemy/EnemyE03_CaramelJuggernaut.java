@@ -17,6 +17,7 @@ import de.tum.cit.fop.maze.utils.Logger;
 public class EnemyE03_CaramelJuggernaut extends Enemy {
 
     private EnemyState state = EnemyState.IDLE;
+    private EnemyState lastState = EnemyState.IDLE;
 
     // =========== [新增] 气浪特效控制变量 ===========
     // 状态标记：是否已经触发过怒气特效（防止每帧重复触发）
@@ -29,6 +30,10 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
     private float aoeCooldown = 0f;
     private static final float AOE_INTERVAL = 1.5f;
     private static final int AOE_DAMAGE = 10;
+    @Override
+    protected AudioType getAttackSound() {
+        return AudioType.ENEMY_ATTACK_E03;
+    }
 
     private Texture aoeTexture;
     private Texture redCircleTexture;
@@ -254,6 +259,7 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
         Player target = gm.getNearestAlivePlayer(x, y);
         if (target == null) {
             state = EnemyState.IDLE;
+            lastState = EnemyState.IDLE;
             moveContinuously(delta);
             return;
         }
@@ -294,6 +300,13 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
         } else {
             state = EnemyState.IDLE;
         }
+// 🔥 只在「第一次进入 ATTACK 状态」播放音效
+        if (state == EnemyState.ATTACK && lastState != EnemyState.ATTACK) {
+            AudioManager.getInstance().play(getAttackSound());
+        }
+
+// 记录上一帧状态
+        lastState = state;
 
         if (state == EnemyState.ATTACK) {
             chasePlayer(delta, gm, target);

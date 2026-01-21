@@ -25,7 +25,7 @@ public class DifficultyConfig {
     public final float enemyDamageMultiplier;
     public final int keyCount;
 
-    /* ===== 【新增】 分数与惩罚倍率 ===== */
+    /* =====  分数与惩罚倍率 ===== */
     public final float scoreMultiplier;
     public final float penaltyMultiplier;
 
@@ -34,7 +34,6 @@ public class DifficultyConfig {
             int enemyE01PearlCount, int enemyE02CoffeeBeanCount, int enemyE03CaramelCount, int enemyE04ShellCount,
             int trapT01GeyserCount, int trapT02PearlMineCount, int trapT03TeaShardCount, int trapT04MudTileCount,
             int initialLives, float enemyHpMultiplier, float enemyDamageMultiplier, int keyCount,
-            // 【新增】 构造参数
             float scoreMultiplier, float penaltyMultiplier
 
     ) {
@@ -126,7 +125,7 @@ public class DifficultyConfig {
                     5, 3, 0, 0,   // enemies
                     0, 0, 0, 0,   // traps
 
-                    50,
+                    9999,
                     2.0f,
                     1.3f,
                     0,0.4f,1

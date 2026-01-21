@@ -2,6 +2,8 @@ package de.tum.cit.fop.maze.abilities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
@@ -88,6 +90,8 @@ public class MagicAbility extends Ability {
 
                 aimingTimer = 0f;
                 setPhase(Phase.AIMING);
+
+                AudioManager.getInstance().play(AudioType.PLAYER2_ATTACK);
                 Logger.debug("MagicAbility: Aiming Started at " + aoeCenterX + "," + aoeCenterY);
             }
             case AIMING -> {
@@ -102,10 +106,22 @@ public class MagicAbility extends Ability {
                 castAOE(gm);
                 effectWaitTimer = 0f;
                 setPhase(Phase.EXECUTED);
+                AudioManager.getInstance().play(getExecuteSoundByLevel());
                 Logger.debug("MagicAbility: FIRED!");
             }
         }
     }
+
+    private AudioType getExecuteSoundByLevel() {
+        if (level >= 5) {
+            return AudioType.MAGIC_EXECUTE_LV5;
+        } else if (level >= 3) {
+            return AudioType.MAGIC_EXECUTE_LV3;
+        } else {
+            return AudioType.MAGIC_EXECUTE_LV1;
+        }
+    }
+
 
     @Override
     public void update(float delta, Player player, GameManager gm) {

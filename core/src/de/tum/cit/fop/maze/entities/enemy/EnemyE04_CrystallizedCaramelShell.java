@@ -7,6 +7,8 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
@@ -20,6 +22,7 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
     private static final float SHELL_SHAKE_DURATION = 0.5f;
     private float shellBreakTimer = 0f;
     private static final float SHELL_BREAK_DURATION = 0.8f;
+    private boolean hasEnteredAttack = false;
 
     /* ================== 2x2格子属性 ================== */
     private static final int GRID_SIZE = 2;
@@ -29,6 +32,10 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
     private float crystalGlowTimer = 0f;
     private float crystalRotation = 0f;
     private static final float CRYSTAL_ROTATION_SPEED = 45f;
+    @Override
+    protected AudioType getAttackSound() {
+        return AudioType.ENEMY_ATTACK_E04;
+    }
 
     /* ================== 构造 ================== */
 
@@ -149,8 +156,13 @@ public class EnemyE04_CrystallizedCaramelShell extends Enemy {
         if (target != null) {
             float dist = distanceTo(target);
             if (dist <= detectRange) {
+                if (!hasEnteredAttack) {
+                    hasEnteredAttack = true;
+                    AudioManager.getInstance().play(AudioType.ENEMY_ATTACK_E04);
+                }
                 chaseTarget(gm, target);
             } else {
+                hasEnteredAttack = false;
                 tryMoveRandom(delta, gm);
             }
         } else {

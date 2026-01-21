@@ -5,6 +5,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
@@ -46,7 +48,7 @@ public class Key extends GameObject {
         if (!active) return;
 
         collect();
-
+        AudioManager.getInstance().play(AudioType.PLAYER_GET_KEY);
         // 🔥 唯一正确的钥匙逻辑入口
         gm.onKeyCollected();
         playerCollectedKey = true;

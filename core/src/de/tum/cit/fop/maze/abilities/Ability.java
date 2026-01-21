@@ -2,6 +2,8 @@ package de.tum.cit.fop.maze.abilities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameManager;
 
@@ -151,8 +153,20 @@ public abstract class Ability {
         if (level < maxLevel) {
             level++;
             onUpgrade();
+            playUpgradeSound();
         }
     }
+
+    protected void playUpgradeSound() {
+        AudioManager.getInstance().play(getUpgradeSoundForLevel(level));
+    }
+
+    protected AudioType getUpgradeSoundForLevel(int level) {
+        // 默认：通用升级音效
+        return AudioType.ABILITY_UPGRADE_COMMON;
+    }
+
+
     public boolean canUpgrade() {
         return level < maxLevel;
     }

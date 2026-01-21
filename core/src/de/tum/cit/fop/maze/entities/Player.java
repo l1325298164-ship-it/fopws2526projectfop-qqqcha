@@ -33,9 +33,6 @@ public class Player extends GameObject {
 
     }
 
-    public void requestChapter1RelicFromTreasure(Treasure treasure) {
-        gameManager.onTreasureOpened(this, treasure);
-    }
 
     public void requestChapter1Relic(Chapter1Relic relic) {
         if (isTutorial) return;
@@ -546,6 +543,11 @@ public class Player extends GameObject {
         if (isDead) return;
         isAttacking = true;
         attackAnimTimer = 0f;
+
+        // ✅ 根据玩家区分攻击音效
+        if (playerIndex == PlayerIndex.P1) {
+            AudioManager.getInstance().play(AudioType.PLAYER1_ATTACK);
+        }
     }
 
     public void applySlow(float duration) {
@@ -598,7 +600,6 @@ public class Player extends GameObject {
     public void heal(int amount) {
         if (isDead) return;
 
-        int oldLives = this.lives;
         this.lives += amount;
         if (this.lives > this.maxLives) {
             this.lives = this.maxLives;
