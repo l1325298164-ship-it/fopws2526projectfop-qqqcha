@@ -7,6 +7,7 @@ import de.tum.cit.fop.maze.entities.enemy.Enemy;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import com.badlogic.gdx.graphics.Color;
+import de.tum.cit.fop.maze.utils.Logger; // 导入 Logger
 
 import java.util.Map;
 
@@ -24,7 +25,6 @@ public class MagicAbility extends Ability {
     private Phase phase = Phase.IDLE;
     private float phaseTimer = 0f;
 
-    // ... (Variables omitted for brevity) ...
     private float aimingTimer = 0f;
     private float effectWaitTimer = 0f;
     private static final float AIMING_TIMEOUT    = 5.0f;
@@ -45,29 +45,17 @@ public class MagicAbility extends Ability {
         this.manaCost = 20;
     }
 
-    // 🔥 [修复] 添加 Getter 供 HUD 使用
-    public Phase getPhase() {
-        return phase;
-    }
-
-    public float getPhaseTime() {
-        return phaseTimer;
-    }
+    public Phase getPhase() { return phase; }
+    public float getPhaseTime() { return phaseTimer; }
 
     @Override
-    protected boolean shouldConsumeMana() {
-        return phase == Phase.AIMING;
-    }
+    protected boolean shouldConsumeMana() { return phase == Phase.AIMING; }
 
     @Override
-    protected boolean shouldStartCooldown() {
-        return phase == Phase.COOLDOWN;
-    }
+    protected boolean shouldStartCooldown() { return phase == Phase.COOLDOWN; }
 
     @Override
-    protected float getCooldownDuration() {
-        return currentCooldown;
-    }
+    protected float getCooldownDuration() { return currentCooldown; }
 
     @Override
     public boolean canActivate(Player player) {
@@ -75,26 +63,46 @@ public class MagicAbility extends Ability {
         return player.getMana() >= manaCost;
     }
 
-    // ... (rest of the file content remains the same as provided in prompt) ...
     @Override
     protected void onActivate(Player player, GameManager gm) {
-        if (gm.isUIConsumingMouse()) return;
+        // 🔥 [修复] 移除这里的 isUIConsumingMouse 强硬检查
+        // 防止因为 UI 遮挡导致无法进入任何状态
+
         if (inputConsumedThisFrame) return;
         inputConsumedThisFrame = true;
         this.gameManager = gm;
 
         switch (phase) {
             case IDLE -> {
-                aoeCenterX = gm.getMouseTileX();
-                aoeCenterY = gm.getMouseTileY();
+                // 🔥 [修复] 智能瞄准：如果鼠标无效(如键盘玩家)，默认瞄准自己脚下
+                int mx = gm.getMouseTileX();
+                int my = gm.getMouseTileY();
+
+                if (mx < 0 || my < 0) {
+                    aoeCenterX = player.getX();
+                    aoeCenterY = player.getY();
+                } else {
+                    aoeCenterX = mx;
+                    aoeCenterY = my;
+                }
+
                 aimingTimer = 0f;
                 setPhase(Phase.AIMING);
+                Logger.debug("MagicAbility: Aiming Started at " + aoeCenterX + "," + aoeCenterY);
             }
             case AIMING -> {
-                if (phaseTimer < 0.1f) return;
+                if (phaseTimer < 0.1f) return; // 防抖动
+
+                // 再次确认是否有致命 UI 遮挡 (可选，这里放宽限制以确保能放出来)
+                if (gm.isUIConsumingMouse()) {
+                    Logger.debug("MagicAbility: Fire blocked by UI");
+                    return;
+                }
+
                 castAOE(gm);
                 effectWaitTimer = 0f;
                 setPhase(Phase.EXECUTED);
+                Logger.debug("MagicAbility: FIRED!");
             }
         }
     }
@@ -111,10 +119,18 @@ public class MagicAbility extends Ability {
             }
             case AIMING -> {
                 aimingTimer += delta;
+
+                // 🔥 [修复] 只在鼠标有效且未被 UI 遮挡时更新瞄准位置
+                // 这样如果不动鼠标，光标会停留在上一次有效位置，而不是跳到 0,0
                 if (!gm.isUIConsumingMouse()) {
-                    aoeCenterX = gm.getMouseTileX();
-                    aoeCenterY = gm.getMouseTileY();
+                    int mx = gm.getMouseTileX();
+                    int my = gm.getMouseTileY();
+                    if (mx >= 0 && my >= 0) {
+                        aoeCenterX = mx;
+                        aoeCenterY = my;
+                    }
                 }
+
                 if (aimingTimer >= AIMING_TIMEOUT) {
                     setPhase(Phase.IDLE);
                 }
@@ -143,13 +159,22 @@ public class MagicAbility extends Ability {
 
     private void castAOE(GameManager gm) {
         hitEnemyCount = 0;
+
+        // 🔥 [Debug] 确保特效管理器存在
         if (gm.getCombatEffectManager() != null) {
             float cx = (aoeCenterX + 0.5f) * GameConstants.CELL_SIZE;
             float cy = (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE;
+
             gm.getCombatEffectManager().spawnMagicCircle(cx, cy, aoeVisualRadius, 0.5f);
             gm.getCombatEffectManager().spawnMagicPillar(cx, cy, aoeVisualRadius);
-            de.tum.cit.fop.maze.utils.CameraManager.getInstance().shake(0.2f, 3.0f);
+
+            if (de.tum.cit.fop.maze.utils.CameraManager.getInstance() != null) {
+                de.tum.cit.fop.maze.utils.CameraManager.getInstance().shake(0.2f, 3.0f);
+            }
+        } else {
+            Logger.error("MagicAbility: CombatEffectManager is NULL!");
         }
+
         for (Enemy enemy : gm.getEnemies()) {
             if (enemy == null || enemy.isDead()) continue;
             int dx = enemy.getX() - aoeCenterX;
@@ -192,6 +217,7 @@ public class MagicAbility extends Ability {
         sr.begin(ShapeRenderer.ShapeType.Line);
         float alpha = 0.5f + 0.5f * (float) Math.sin(phaseTimer * 5f);
         sr.setColor(0.5f, 0f, 1f, alpha);
+        // 绘制瞄准圈
         sr.circle((aoeCenterX + 0.5f) * GameConstants.CELL_SIZE, (aoeCenterY + 0.5f) * GameConstants.CELL_SIZE, aoeVisualRadius);
         sr.end();
     }
