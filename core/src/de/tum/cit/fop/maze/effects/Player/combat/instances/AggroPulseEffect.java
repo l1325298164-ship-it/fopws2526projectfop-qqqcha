@@ -8,15 +8,15 @@ import de.tum.cit.fop.maze.effects.Player.combat.CombatEffect;
 import de.tum.cit.fop.maze.effects.Player.combat.CombatParticleSystem;
 
 /**
- * 怪物发现玩家时的“气浪爆发”特效。
- * 表现为一圈向四周急剧扩散的透明气浪 (白色/淡灰色)。
+ * 怪物发现玩家时的“气浪冲击”特效。
+ * 修正版：高速向外扩散的圆环，去除摩擦力，避免像雾气一样堆积。
  */
 public class AggroPulseEffect extends CombatEffect {
 
     private boolean spawned = false;
 
     public AggroPulseEffect(float x, float y) {
-        super(x, y, 0.6f); // 气浪扩散很快，0.6秒就够了，更有爆发感
+        super(x, y, 0.5f); // 冲击波速度很快，0.5秒就扩散出去了
     }
 
     @Override
@@ -24,28 +24,36 @@ public class AggroPulseEffect extends CombatEffect {
         if (!spawned) {
             spawned = true;
 
-            // 增加粒子数量到 32 个，让气浪这一圈更密实
-            int particleCount = 32;
-            for (int i = 0; i < particleCount; i++) {
-                float angle = MathUtils.random(0, 360);
-                // 速度加快 (80-140)，模拟冲击波的爆发速度
-                float speed = MathUtils.random(80, 140);
+            // 增加粒子数量以形成连续的圆环
+            int particleCount = 40;
+            float angleStep = 360f / particleCount;
 
-                // 🎨 颜色调整：极淡的青白色 (模拟空气扰动)
-                // RGB: 0.9, 0.95, 1.0 (接近纯白但带一点冷色调)
-                // Alpha: 0.25 (高透明，像气流)
-                Color waveColor = new Color(0.9f, 0.95f, 1.0f, 0.25f);
+            for (int i = 0; i < particleCount; i++) {
+                // 角度均匀分布 + 少量随机抖动，保证圆环完整
+                float angle = i * angleStep + MathUtils.random(-5f, 5f);
+
+                // 🚀 [修改1] 极高的初速度，模拟空气爆破
+                float speed = MathUtils.random(280, 350);
+
+                // 🎨 颜色：亮青白色，透明度适中
+                Color waveColor = new Color(0.85f, 0.95f, 1.0f, 0.5f);
+
+                // ⭕ [修改2] 初始位置偏移：直接从一个小圆圈开始，而不是从一个点
+                // 这样中间是空的，不会糊在一起
+                float startOffset = 15f;
+                float startX = x + MathUtils.cosDeg(angle) * startOffset;
+                float startY = y + MathUtils.sinDeg(angle) * startOffset;
 
                 ps.spawn(
-                        x, // 从中心点爆发，不要随机偏移太多，这样更像一个整圆扩散
-                        y,
+                        startX,
+                        startY,
                         waveColor,
                         MathUtils.cosDeg(angle) * speed,
                         MathUtils.sinDeg(angle) * speed,
-                        MathUtils.random(25, 50),      // 粒子很大，形成连片的气浪感
-                        MathUtils.random(0.3f, 0.5f),  // 寿命短，瞬间消失
+                        MathUtils.random(15, 25),      // 粒子稍微调小一点，显得更锐利
+                        0.4f,  // 寿命短
                         false, // 无重力
-                        true   // 有摩擦力 (快速喷出后减速)
+                        false  // 🔥 [修改3] 关键：关闭摩擦力！让它一直向外飞！
                 );
             }
         }

@@ -18,6 +18,12 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
 
     private EnemyState state = EnemyState.IDLE;
 
+    // =========== [新增] 气浪特效控制变量 ===========
+    // 状态标记：是否已经触发过怒气特效（防止每帧重复触发）
+    private boolean isAggroed = false;
+    // 触发特效的距离 (5格)
+    private static final float AGGRO_TRIGGER_RANGE = 5.0f;
+
     /* ================== AOE ================== */
 
     private float aoeCooldown = 0f;
@@ -253,6 +259,29 @@ public class EnemyE03_CaramelJuggernaut extends Enemy {
         }
 
         float dist = distanceTo(target);
+
+        // =========== [开始插入] 气浪特效触发逻辑 ===========
+        // 1. 进入 5 格范围内
+        if (dist <= AGGRO_TRIGGER_RANGE) {
+            // 如果之前没触发过，现在触发
+            if (!isAggroed) {
+                isAggroed = true; // 标记为已触发
+
+                // 生成白色气浪特效
+                if (gm.getCombatEffectManager() != null) {
+                    float ex = (this.x + 0.5f) * GameConstants.CELL_SIZE;
+                    float ey = (this.y + 0.5f) * GameConstants.CELL_SIZE;
+                    gm.getCombatEffectManager().spawnAggroPulse(ex, ey);
+                }
+            }
+        }
+        // 2. 玩家逃得够远 (2.5倍距离 = 12.5格)，重置状态
+        // 这样如果你跑远了再回来，它会再次爆发气浪
+        else if (dist > AGGRO_TRIGGER_RANGE * 2.5f) {
+            isAggroed = false;
+        }
+        // =========== [结束插入] =============================
+
         aoeCooldown -= delta;
 
         boolean canSeeTarget =
