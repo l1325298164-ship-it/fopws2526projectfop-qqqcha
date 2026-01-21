@@ -9,12 +9,14 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -29,11 +31,8 @@ import de.tum.cit.fop.maze.utils.Logger;
 import de.tum.cit.fop.maze.game.save.StorageManager;
 
 /**
- * 结算界面 (Settlement Screen) - 布局优化版
- * <p>
- * 修改：
- * 1. 紧凑布局：大幅减少了评级上下方的空白间距。
- * 2. 按钮加大：底部按钮尺寸调整为 420x90。
+ * 结算界面 (Settlement Screen) - 完整修复版
+ * 包含：UI美化、输入框修复、AutoSave逻辑
  */
 public class SettlementScreen implements Screen {
     // === Auto Scroll 控制 ===
@@ -72,10 +71,11 @@ public class SettlementScreen implements Screen {
         this.leaderboardManager = new LeaderboardManager();
 
         this.displayedTotalScore = saveData.score;
-        this.saveData.score += result.finalScore;
-        this.targetTotalScore = this.saveData.score;
+        // 计算本关结束后的理论总分
+        this.targetTotalScore = this.saveData.score + result.finalScore;
 
-        this.isHighScore = leaderboardManager.isHighScore(this.saveData.score);
+        // 判断是否打破纪录
+        this.isHighScore = leaderboardManager.isHighScore((int) targetTotalScore);
 
         try {
             if (Gdx.files.internal("imgs/menu_bg/bg_front.png").exists()) {
@@ -88,14 +88,51 @@ public class SettlementScreen implements Screen {
 
     @Override
     public void show() {
-        AudioManager.getInstance().stopAll(); //TODO
+        AudioManager.getInstance().stopAll();
 
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+
+        // ✅ 1. 执行自动存档 (逻辑已修正，不会影响当前显示)
+        performAutoSave();
+
+        // ✅ 2. 构建 UI
         setupUI();
+
+        // ✅ 3. 强制清除焦点，防止 WASD 自动输入
+        stage.setKeyboardFocus(null);
+    }
+
+    /**
+     * 自动保存当前进度到 save_auto.json
+     */
+    private void performAutoSave() {
+        try {
+            // 1. 深度拷贝当前存档数据 (使用 Turn 4 中添加的拷贝构造函数)
+            GameSaveData autoSaveData = new GameSaveData(saveData);
+
+            // 2. 应用本关得分 (因为 autoSaveData 代表"下一关开始时的状态")
+            autoSaveData.score += result.finalScore;
+
+            // 3. 推进关卡
+            autoSaveData.currentLevel++;
+
+            // 4. 重置临时状态
+            autoSaveData.resetSessionStats();
+            autoSaveData.maze = null; // 确保下次生成新迷宫
+
+            // 5. 保存到 Auto Slot
+            StorageManager.getInstance().saveAuto(autoSaveData);
+
+            Logger.info("Auto save created: Level " + autoSaveData.currentLevel + ", Score " + autoSaveData.score);
+        } catch (Exception e) {
+            Logger.error("Failed to perform auto save: " + e.getMessage());
+        }
     }
 
     private void setupUI() {
+        stage.clear();
+
         Table mainRoot = new Table();
         mainRoot.setFillParent(true);
         stage.addActor(mainRoot);
@@ -113,10 +150,9 @@ public class SettlementScreen implements Screen {
         titleLabel.setFontScale(1.2f);
         titleLabel.getColor().a = 0f;
         titleLabel.addAction(Actions.fadeIn(1.0f));
-        // 🔥 修改：减小标题下间距 (30 -> 10)
         scrollContent.add(titleLabel).padBottom(10).row();
 
-        // --- 2. Rank 印章 (居中大图标) ---
+        // --- 2. Rank 印章 ---
         Label rankLabel = new Label(result.rank, game.getSkin(), "title");
         rankLabel.setFontScale(6.0f);
         rankLabel.setAlignment(Align.center);
@@ -129,17 +165,14 @@ public class SettlementScreen implements Screen {
                 Actions.delay(0.3f),
                 Actions.parallel(Actions.fadeIn(0.2f), Actions.scaleTo(1f, 1f, 0.5f, Interpolation.bounceOut))
         ));
-        // 🔥 修改：减小 Rank 下间距 (10 -> 0)
         scrollContent.add(rankLabel).padBottom(0).row();
 
         if ("S".equals(result.rank)) {
             Label praise = new Label("PERFECT!", game.getSkin());
             praise.setColor(Color.GOLD);
             praise.setFontScale(1.2f);
-            // 🔥 修改：S级评价间距 (30 -> 20)
             scrollContent.add(praise).padBottom(20).row();
         } else {
-            // 🔥 修改：移除大占位符，仅留微小间隙 (10)
             scrollContent.add(new Label("", game.getSkin())).height(10).row();
         }
 
@@ -154,18 +187,19 @@ public class SettlementScreen implements Screen {
         Label line = new Label("- - - - - - - - - -", game.getSkin());
         line.setColor(Color.GRAY);
         line.setAlignment(Align.center);
-        scoreTable.add(line).colspan(2).pad(10).row(); // pad 15 -> 10
+        scoreTable.add(line).colspan(2).pad(10).row();
 
         addScoreRow(scoreTable, "LEVEL SCORE", String.valueOf(result.finalScore), Color.GOLD);
 
-        scoreTable.add(new Label("TOTAL SCORE", game.getSkin())).align(Align.left).padTop(15); // pad 20 -> 15
-        labelTotalScore = new Label(formatScore((int)displayedTotalScore), game.getSkin());
+        scoreTable.add(new Label("TOTAL SCORE", game.getSkin())).align(Align.left).padTop(15);
+
+        String scoreText = isScoreRolling ? formatScore((int)displayedTotalScore) : formatScore((int)targetTotalScore);
+        labelTotalScore = new Label(scoreText, game.getSkin());
         labelTotalScore.setColor(Color.ORANGE);
         labelTotalScore.setFontScale(1.5f);
         scoreTable.add(labelTotalScore).align(Align.right).padTop(15);
         scoreTable.row();
 
-        // 🔥 修改：表格下间距 (40 -> 30)
         scrollContent.add(scoreTable).width(tableWidth).padBottom(30).row();
 
         // --- 4. 统计与成就 ---
@@ -203,101 +237,128 @@ public class SettlementScreen implements Screen {
         // --- 5. 新纪录输入框 ---
         if (isHighScore && !scoreSubmitted) {
             Table inputContainer = new Table();
-            inputContainer.setBackground(createColorDrawable(new Color(1f, 1f, 1f, 0.1f)));
+            // 使用淡色背景包裹
+            inputContainer.setBackground(createColorDrawable(new Color(0f, 0f, 0f, 0.3f)));
             inputContainer.pad(20);
 
-            Label newRecLabel = new Label("NEW HIGH SCORE!", game.getSkin());
-            newRecLabel.setColor(Color.YELLOW);
-            inputContainer.add(newRecLabel).padBottom(15).row();
+            if (!scoreSubmitted) {
+                // === 状态 A: 还没提交 ===
+                Label newRecLabel = new Label("NEW HIGH SCORE!", game.getSkin());
+                newRecLabel.setColor(Color.YELLOW);
+                inputContainer.add(newRecLabel).padBottom(15).row();
 
-            Table inputRow = new Table();
-            nameInput = new TextField("", createFallbackTextFieldStyle());
-            nameInput.setMessageText("Enter A Name...");
-            nameInput.setMaxLength(100);
-            nameInput.setAlignment(Align.center);
+                Table inputRow = new Table();
 
-            inputRow.add(nameInput)
-                    .width(260)     // 🔥 稍微加宽
-                    .height(50);
+                // ✅ 美化输入框样式
+                nameInput = new TextField("", createModernTextFieldStyle());
+                nameInput.setMessageText("Enter Name");
+                nameInput.setMaxLength(12);
+                nameInput.setAlignment(Align.center);
+                nameInput.setTextFieldFilter((textField, c) ->
+                        Character.isLetterOrDigit(c) || c == '_' || c == ' '
+                );
 
+                // ✅ 添加点击监听：只有点击时才获取焦点
+                nameInput.addListener(new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        stage.setKeyboardFocus(nameInput);
+                    }
+                });
 
-            ButtonFactory bf = new ButtonFactory(game.getSkin());
-            inputRow.add(bf.create("SUBMIT", () -> {
-                String name = nameInput.getText();
-                if (name == null || name.trim().isEmpty()) name = "Traveler";
-                leaderboardManager.addScore(name, saveData.score);
-                scoreSubmitted = true;
-                setupUI();
-            })).width(200).height(50);
+                inputRow.add(nameInput).width(300).height(50).padRight(15);
 
-            inputContainer.add(inputRow);
+                ButtonFactory bf = new ButtonFactory(game.getSkin());
+                // ✅ 增加按钮宽度，防止 Submit 字样溢出
+                inputRow.add(bf.create("SUBMIT", () -> {
+                    String name = nameInput.getText();
+                    if (name == null || name.trim().isEmpty()) name = "Traveler";
+
+                    leaderboardManager.addScore(name, (int) targetTotalScore);
+
+                    scoreSubmitted = true;
+                    if (game.getGameManager() != null) {
+                        game.getGameManager().saveGameProgress();
+                    }
+
+                    Gdx.app.postRunnable(this::setupUI);
+
+                })).width(200).height(50);
+
+                inputContainer.add(inputRow);
+
+            } else {
+                // === 状态 B: 提交成功 (显示反馈) ===
+                Label successLabel = new Label("SCORE SUBMITTED!", game.getSkin());
+                successLabel.setColor(Color.GREEN);
+                successLabel.setFontScale(1.1f);
+                inputContainer.add(successLabel).padBottom(5).row();
+
+                Label infoLabel = new Label("Check the Leaderboard in Menu.", game.getSkin());
+                infoLabel.setColor(Color.GRAY);
+                infoLabel.setFontScale(0.9f);
+                inputContainer.add(infoLabel);
+            }
             scrollContent.add(inputContainer).padBottom(30).row();
         }
 
-        // 底部留白，防止内容被按钮挡住 (留出按钮高度 + 间隙)
+        // 底部留白
         scrollContent.add(new Label("", game.getSkin())).height(150).row();
 
         // 放入 ScrollPane
         scrollPane = new ScrollPane(scrollContent, createScrollPaneStyle());
         scrollPane.setFadeScrollBars(false);
         scrollPane.setScrollingDisabled(true, false);
+        // ✅ 防止 ScrollPane 拦截输入框的点击焦点
+        scrollPane.setCancelTouchFocus(false);
 
         mainRoot.add(scrollPane).expand().fill().row();
-        stage.setKeyboardFocus(scrollPane);
+
+        // 确保 ScrollPane 能接收滚轮
         stage.setScrollFocus(scrollPane);
-        // ===== Scroll down 悬浮提示（固定显示 3 秒）=====
-        scrollHintLabel = new Label("Scroll down ↓", game.getSkin());
-        scrollHintLabel.setColor(1f, 1f, 1f, 0.6f);
-        scrollHintLabel.setAlignment(Align.center);
-
-// 放在屏幕下方居中
-        scrollHintLabel.setPosition(
-                Gdx.graphics.getWidth() / 2f,
-                120f,
-                Align.center
-        );
-
-// Action 组合：
-// 1️⃣ 浮动循环（并行执行）
-// 2️⃣ 3 秒后淡出
-// 3️⃣ 自动移除自己
-        scrollHintLabel.addAction(
-                Actions.sequence(
-                        Actions.parallel(
-                                Actions.forever(
-                                        Actions.sequence(
-                                                Actions.moveBy(0, 10, 0.8f, Interpolation.sine),
-                                                Actions.moveBy(0, -10, 0.8f, Interpolation.sine)
-                                        )
-                                )
-                        ),
-                        Actions.delay(3f),
-                        Actions.fadeOut(0.5f),
-                        Actions.removeActor()
-                )
-        );
-
-        stage.addActor(scrollHintLabel);
-
 
         // ==========================================
-        // 2. 底部按钮 (透明背景)
+        // 6. 闪烁提示 (Scroll Hint)
+        // ==========================================
+        if (!scoreSubmitted) {
+            scrollHintLabel = new Label("Scroll down ↓", game.getSkin());
+            scrollHintLabel.setColor(1f, 1f, 1f, 0.8f);
+            scrollHintLabel.setAlignment(Align.center);
+            scrollHintLabel.setTouchable(com.badlogic.gdx.scenes.scene2d.Touchable.disabled);
+            scrollHintLabel.setPosition(Gdx.graphics.getWidth() / 2f, 130f, Align.center);
+
+            scrollHintLabel.addAction(Actions.sequence(
+                    Actions.parallel(
+                            Actions.repeat(4, Actions.sequence(
+                                    Actions.moveBy(0, -10, 0.5f, Interpolation.sine),
+                                    Actions.moveBy(0, 10, 0.5f, Interpolation.sine)
+                            )),
+                            Actions.sequence(
+                                    Actions.delay(3.0f),
+                                    Actions.fadeOut(0.5f)
+                            )
+                    ),
+                    Actions.removeActor()
+            ));
+
+            stage.addActor(scrollHintLabel);
+        }
+
+        // ==========================================
+        // 7. 底部按钮
         // ==========================================
         Table footer = new Table();
         footer.pad(20);
+        footer.setBackground(createColorDrawable(new Color(0, 0, 0, 0.6f)));
 
         ButtonFactory bf = new ButtonFactory(game.getSkin());
-
-        // 🔥 修改：按钮尺寸加大至 420x90
-        float btnWidth = 420f;
-        float btnHeight = 90f;
+        float btnWidth = 380f;
+        float btnHeight = 80f;
 
         footer.add(bf.create("NEXT LEVEL", () -> performSaveAndExit(true))).width(btnWidth).height(btnHeight).padRight(40);
         footer.add(bf.create("MENU", () -> performSaveAndExit(false))).width(btnWidth).height(btnHeight);
 
         mainRoot.add(footer).fillX().bottom();
-
-
     }
 
     // --- Helpers ---
@@ -308,16 +369,58 @@ public class SettlementScreen implements Screen {
         return style;
     }
 
-    private TextField.TextFieldStyle createFallbackTextFieldStyle() {
+    /**
+     * ✅ 新增：创建更现代、带有边框的输入框样式
+     */
+    private TextField.TextFieldStyle createModernTextFieldStyle() {
         TextField.TextFieldStyle style = new TextField.TextFieldStyle();
         style.font = game.getSkin().getFont("default-font");
         if (style.font == null) style.font = new BitmapFont();
         style.fontColor = Color.WHITE;
+
+        // 光标
         style.cursor = createColorDrawable(Color.WHITE);
         style.cursor.setMinWidth(2);
-        style.selection = createColorDrawable(new Color(0, 0, 1, 0.5f));
-        style.background = createColorDrawable(new Color(0.2f, 0.2f, 0.2f, 1f));
+
+        // 选区
+        style.selection = createColorDrawable(new Color(0, 0.5f, 1f, 0.5f));
+
+        // 背景：深灰底色 + 浅灰边框
+        style.background = createBorderedDrawable(
+                new Color(0.15f, 0.15f, 0.18f, 1f), // Bg
+                new Color(0.5f, 0.5f, 0.5f, 1f)     // Border
+        );
+
+        // 聚焦时背景：稍微亮一点
+        style.focusedBackground = createBorderedDrawable(
+                new Color(0.2f, 0.2f, 0.25f, 1f),
+                new Color(0.9f, 0.8f, 0.2f, 1f)     // Gold Border
+        );
+
         return style;
+    }
+
+    /**
+     * ✅ 新增：用代码生成带边框的 Drawable
+     */
+    private TextureRegionDrawable createBorderedDrawable(Color bgColor, Color borderColor) {
+        int w = 64;
+        int h = 64;
+        int border = 2;
+
+        Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
+
+        // 填充边框色
+        pixmap.setColor(borderColor);
+        pixmap.fill();
+
+        // 填充内部背景色
+        pixmap.setColor(bgColor);
+        pixmap.fillRectangle(border, border, w - 2*border, h - 2*border);
+
+        Texture texture = new Texture(pixmap);
+        pixmap.dispose();
+        return new TextureRegionDrawable(new TextureRegion(texture));
     }
 
     private TextureRegionDrawable createColorDrawable(Color color) {
@@ -333,11 +436,18 @@ public class SettlementScreen implements Screen {
         clearNewAchievements();
         StorageManager storage = StorageManager.getInstance();
 
-        if (toNextLevel) {
-            saveData.currentLevel++;
-            saveData.levelBaseScore = 0;
-            saveData.levelPenalty = 0;
+        // 1. 应用分数
+        saveData.score += result.finalScore;
 
+        // 2. 推进关卡
+        saveData.currentLevel++;
+        saveData.levelBaseScore = 0;
+        saveData.levelPenalty = 0;
+
+        // 3. 置空 Maze 数据
+        saveData.maze = null;
+
+        if (toNextLevel) {
             if (game.getGameManager() != null && game.getGameManager().getScoreManager() != null) {
                 GameSaveData tempData = new GameSaveData();
                 tempData.score = saveData.score;
@@ -345,10 +455,13 @@ public class SettlementScreen implements Screen {
                 tempData.levelPenalty = 0;
                 game.getGameManager().getScoreManager().restoreState(tempData);
             }
-            storage.saveGameSync(saveData);
+
+            // 更新 AutoSave 保持一致
+            storage.saveAuto(saveData);
             game.loadGame();
         } else {
-            storage.saveGameSync(saveData);
+            // 更新 AutoSave 保持一致
+            storage.saveAuto(saveData);
             game.goToMenu();
         }
     }
@@ -396,7 +509,6 @@ public class SettlementScreen implements Screen {
         Gdx.gl.glClearColor(0.08f, 0.08f, 0.12f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // 背景
         stage.getBatch().begin();
         if (backgroundTexture != null) {
             stage.getBatch().setColor(0.4f, 0.4f, 0.4f, 1f);
@@ -407,7 +519,6 @@ public class SettlementScreen implements Screen {
         }
         stage.getBatch().end();
 
-        // 分数滚动
         if (isScoreRolling && labelTotalScore != null) {
             float diff = targetTotalScore - displayedTotalScore;
             if (Math.abs(diff) < 5) {
@@ -419,13 +530,9 @@ public class SettlementScreen implements Screen {
             labelTotalScore.setText(formatScore((int) displayedTotalScore));
         }
 
-        // ===== Stage Update =====
         stage.act(delta);
-
-
         stage.draw();
     }
-
 
     @Override public void resize(int w, int h) { stage.getViewport().update(w, h, true); }
     @Override public void pause() {}

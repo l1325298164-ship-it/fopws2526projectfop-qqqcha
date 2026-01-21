@@ -11,40 +11,56 @@ public class FloatingTextEffect extends CombatEffect {
     private String text;
     private Color color;
     private BitmapFont font;
-    // startY 似乎没有用到，如果想做基于 startY 的偏移计算可以保留，这里简化直接修改 y
+
+    // 默认缩放，稍后会被 Manager 覆盖
+    private float targetScale = 1.0f;
 
     public FloatingTextEffect(float x, float y, String text, Color color, BitmapFont font) {
         super(x, y, 1.0f); // 持续1秒
         this.text = text;
         this.color = color;
         this.font = font;
+        // 记录字体当前的缩放值作为默认值
+        this.targetScale = font.getData().scaleX;
+    }
+
+    // ✅ 新增：允许外部设置统一的缩放大小
+    public void setTargetScale(float scale) {
+        this.targetScale = scale;
     }
 
     @Override
     protected void onUpdate(float delta, CombatParticleSystem ps) {
-        // 修正：将飘动逻辑从 update(delta) 移到这里
-        y += delta * 30f;
+        // 向上飘动
+        y += delta * 50f;
     }
 
     @Override
     public void renderShape(ShapeRenderer sr) {
-        // 文字不需要几何渲染，留空实现抽象方法
     }
 
     @Override
-    public void renderSprite(SpriteBatch batch) { // 修正：重命名为 renderSprite
-        // 保存旧颜色
+    public void renderSprite(SpriteBatch batch) {
+        if (font == null) return;
+
+        // 1. 保存旧状态
         Color oldColor = font.getColor();
+        float oldScaleX = font.getData().scaleX;
+        float oldScaleY = font.getData().scaleY;
 
-        // 设置颜色和透明度 (随时间淡出)
-        // 注意：timer 和 maxDuration 是父类字段
+        // 2. 计算透明度
+        // 🔥 [调整] 乘以 0.8f，让它整体稍微透明一点
         float alpha = Math.max(0, 1f - (timer / maxDuration));
-        font.setColor(color.r, color.g, color.b, alpha);
+        font.setColor(color.r, color.g, color.b, alpha * 0.8f);
 
-        // 绘制文字 (居中)
+        // 3. 设置统一的“缩小版”尺寸
+        font.getData().setScale(targetScale);
+
+        // 4. 绘制 (无阴影)
         font.draw(batch, text, x, y);
 
-        // 恢复
+        // 5. 恢复旧状态 (关键！防止影响全局字体)
         font.setColor(oldColor);
+        font.getData().setScale(oldScaleX, oldScaleY);
     }
 }

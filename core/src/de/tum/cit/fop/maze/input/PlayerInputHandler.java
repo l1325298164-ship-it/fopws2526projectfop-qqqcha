@@ -36,6 +36,8 @@ public class PlayerInputHandler {
         // 🔒 UI 吃输入 → 本帧彻底不处理任何 Gameplay Input
         // ===============================
         if (callback.isUIConsumingMouse()) {
+        // 如果 UI 正在通过 HUD 吃鼠标（例如点击升级按钮），则屏蔽游戏内输入
+        if (callback.isUIConsumingMouse())
             return;
         }
 
@@ -45,8 +47,10 @@ public class PlayerInputHandler {
         // ===== 技能 / Dash =====
         handleAbilityInput(delta, callback, index);
 
-        // ===== 交互 =====
+        // ===== 交互 & 菜单 =====
         handleActionInput(callback, index);
+
+
     }
 
     /* ================= 移动 ================= */
@@ -108,6 +112,10 @@ public class PlayerInputHandler {
             InputHandlerCallback callback,
             Player.PlayerIndex index
     ){
+        // 🔒 UI 吃鼠标 → 本帧不允许任何技能
+        if (callback.isUIConsumingMouse()) {
+            return;
+        }
         float cd = (index == Player.PlayerIndex.P1)
                 ? abilityCooldownP1
                 : abilityCooldownP2;
@@ -126,20 +134,24 @@ public class PlayerInputHandler {
 
         if (index == Player.PlayerIndex.P1) {
 
+            // P1：Space = 技能 / 近战
             if (km.isJustPressed(KeyBindingManager.GameAction.P1_USE_ABILITY)) {
                 used = callback.onAbilityInput(index, 0);
             }
 
+            // P1：Shift = Dash
             if (km.isJustPressed(KeyBindingManager.GameAction.P1_DASH)) {
                 used = callback.onAbilityInput(index, 1);
             }
 
         } else { // ===== P2 =====
 
+            // P2：鼠标左键 = 魔法技能
             if (km.isJustPressed(KeyBindingManager.GameAction.P2_USE_ABILITY)) {
                 used = callback.onAbilityInput(index, 0);
             }
 
+            // P2：鼠标右键 = Dash
             if (km.isJustPressed(KeyBindingManager.GameAction.P2_DASH)) {
                 used = callback.onAbilityInput(index, 1);
             }
@@ -154,13 +166,21 @@ public class PlayerInputHandler {
         }
     }
 
-    /* ================= 交互 ================= */
+    /* ================= 交互 & 菜单 ================= */
 
     private void handleActionInput(
             InputHandlerCallback callback,
             Player.PlayerIndex index
     ) {
         var km = KeyBindingManager.getInstance();
+
+        // 🔥 新增：菜单/暂停检测
+        // 如果是 P1，且按下了 ESC，触发菜单回调
+        if (index == Player.PlayerIndex.P1) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                callback.onMenuInput();
+            }
+        }
 
         if (index == Player.PlayerIndex.P1) {
             if (km.isJustPressed(KeyBindingManager.GameAction.P1_INTERACT)) {
@@ -180,6 +200,10 @@ public class PlayerInputHandler {
         float getMoveDelayMultiplier();
         boolean onAbilityInput(Player.PlayerIndex index, int slot);
         void onInteractInput(Player.PlayerIndex index);
+
+        // 🔥 FIX: 增加这个方法定义，解决 GameScreen 中的 Override 错误
+        void onMenuInput();
+
         boolean isUIConsumingMouse();
     }
 

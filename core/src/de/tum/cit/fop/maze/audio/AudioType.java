@@ -40,6 +40,25 @@ public enum AudioType {
     UI_THROW_ATTACK("sounds_file/SFX/btn_2.mp3", AudioCategory.UI, false, 1.0f, false, true),
 //revision |||| sword
 
+    // === ✨ 新增：技能与动作 ===
+    // 冲刺音效 (Whoosh声)
+    SKILL_DASH("sounds_file/SFX/dash_01.ogg", AudioCategory.PLAYER, false, 0.9f, false, false),
+    // 挥剑音效 (Slash声)
+    SKILL_SLASH("sounds_file/SFX/sword_swing.wav", AudioCategory.PLAYER, false, 0.8f, false, false),
+    // Buff获取音效 (强化声)
+    BUFF_GAIN("sounds_file/SFX/buff_01.wav", AudioCategory.UI, false, 0.9f, false, false),
+
+    // === 💀 新增：战斗反馈 ===
+    ENEMY_DEATH("sounds_file/SFX/enemy_death.wav", AudioCategory.ENEMY, false, 0.9f, false, false),
+    // 敌人发现玩家的音效
+    ENEMY_ALERT("sounds_file/SFX/alert.wav", AudioCategory.ENEMY, false, 1.0f, false, false),
+    // 蓄力音效
+    ENEMY_CHARGE("sounds_file/SFX/charge.wav", AudioCategory.ENEMY, false, 0.8f, false, false),
+
+    // === 物品拾取 ===
+    ITEM_HEAL("sounds_file/SFX/item_heart.wav", AudioCategory.UI, false, 0.9f, false, false),     // 拾取红心
+    ITEM_TREASURE("sounds_file/SFX/item_treasure.wav", AudioCategory.UI, false, 0.9f, false, false), // 拾取宝箱
+    ITEM_POWERUP("sounds_file/SFX/item_powerup.wav", AudioCategory.UI, false, 1.0f, false, false),   // 无尽模式强化道具
 
     //Tutorial
     TUTORIAL_MAIN_BGM(
@@ -52,7 +71,7 @@ public enum AudioType {
     ),
     BOSS_BGM("sounds_file/BGM/boss_bgm.mp3",AudioCategory.MUSIC, true, 0.7f, false, false),
     MUSIC_MENU_END("sounds_file/BGM/menu_bgm2.mp3",AudioCategory.MUSIC, true, 0.7f, true, false),
-    BOSS_LOADING("sounds_file/BGM/BOSS_loading.wav",AudioCategory.MUSIC, true, 0.7f, true, false);
+    BOSS_LOADING("sounds_file/BGM/BOSS_loading.mp3",AudioCategory.MUSIC, true, 0.7f, true, false);
 
 
 

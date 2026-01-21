@@ -13,6 +13,7 @@ import de.tum.cit.fop.maze.entities.chapter.Chapter1Relic;
 import de.tum.cit.fop.maze.game.GameConstants;
 import de.tum.cit.fop.maze.game.GameManager;
 import de.tum.cit.fop.maze.utils.Logger;
+import de.tum.cit.fop.maze.utils.TextureManager; // 确保包含这个
 
 public class Player extends GameObject {
 
@@ -420,6 +421,10 @@ public class Player extends GameObject {
     }
 
     public boolean onPushedBy(PushSource source, int dx, int dy, GameManager gm) {
+        if (source == null || gm == null) {
+            Logger.warning("onPushedBy called with null parameters");
+            return false;
+        }
         int strength = source.getPushStrength();
         int targetX = x + dx * strength;
         int targetY = y + dy * strength;
@@ -473,18 +478,33 @@ public class Player extends GameObject {
     public float getWorldY() { return worldY; }
     public float getMaxMana() { return maxMana; }
 
+    // 🔥 [修改] 冲刺方法：加入残影特效
     public void startDash(float duration, float invincibleBonus) {
-        // 开启状态
         dashInvincible = true;
         dashSpeedBoost = true;
-
-        // 重置计时器
         dashInvincibleTimer = 0f;
         dashSpeedTimer = 0f;
-
-        // ⭐ 设定“本次 Dash”的持续时间
         dashSpeedDuration = duration;
         dashInvincibleDuration = duration + invincibleBonus;
+
+        // ✅ 实装：冲刺音效
+        AudioManager.getInstance().play(AudioType.SKILL_DASH);
+
+        // ✅ 实装：冲刺残影特效 (使用 worldX/worldY + CELL_SIZE)
+        if (gameManager != null && gameManager.getCombatEffectManager() != null) {
+            float angle = 0f;
+            switch (direction) {
+                case RIGHT -> angle = 0f;
+                case UP    -> angle = 90f;
+                case LEFT  -> angle = 180f;
+                case DOWN  -> angle = 270f;
+            }
+            gameManager.getCombatEffectManager().spawnDash(
+                    this.worldX * GameConstants.CELL_SIZE,
+                    this.worldY * GameConstants.CELL_SIZE,
+                    angle
+            );
+        }
     }
 
 
@@ -533,19 +553,32 @@ public class Player extends GameObject {
         slowTimer = Math.max(slowTimer, duration);
     }
 
+    // 🔥 [修改] 受击方法：加入震动与反馈
     public void takeDamage(int damage) {
         if (isDead || damageInvincible || dashInvincible) return;
         if (damage <= 0) return;
 
+        // 全局伤害系数
+        if (gameManager != null) {
+            damage = (int)(damage * gameManager.getVariable("dmg_taken"));
+        }
+
         lives -= damage;
+
+        // ✅ 音效
         AudioManager.getInstance().play(AudioType.PLAYER_ATTACKED);
 
+        // ✅ 屏幕震动
+        if (gameManager != null) {
+            gameManager.triggerHitFeedback(1.5f);
+        }
+
+        // ✅ 飘字
         if (gameManager != null && gameManager.getCombatEffectManager() != null) {
-            gameManager.getCombatEffectManager().spawnStatusText(
+            gameManager.getCombatEffectManager().spawnScoreText(
                     this.worldX * GameConstants.CELL_SIZE,
                     this.worldY * GameConstants.CELL_SIZE + 40,
-                    "HP -" + damage,
-                    Color.RED
+                    -damage // 红色负数
             );
         }
 
@@ -561,9 +594,7 @@ public class Player extends GameObject {
         }
     }
 
-    // ==========================================
-    // 回血 -> 逻辑保留，但注释掉飘字，防止和 Treasure 飘字冲突
-    // ==========================================
+    // 🔥 [修改] 治疗方法：加入特效
     public void heal(int amount) {
         if (isDead) return;
 
@@ -573,19 +604,13 @@ public class Player extends GameObject {
             this.lives = this.maxLives;
         }
 
-        // int actualHeal = this.lives - oldLives;
-
-        // 🔥🔥🔥 注释掉了这里！防止重复飘字！ 🔥🔥🔥
-        /*
-        if (actualHeal > 0 && gameManager != null && gameManager.getCombatEffectManager() != null) {
-            gameManager.getCombatEffectManager().spawnStatusText(
-                    this.worldX * GameConstants.CELL_SIZE,
-                    this.worldY * GameConstants.CELL_SIZE + 40,
-                    "HP +" + actualHeal,
-                    Color.GREEN
-            );
+        // ✅ 治疗特效
+        if (amount > 0 && gameManager != null && gameManager.getCombatEffectManager() != null) {
+            float px = worldX * GameConstants.CELL_SIZE;
+            float py = worldY * GameConstants.CELL_SIZE;
+            gameManager.getCombatEffectManager().spawnHeal(px, py);
+            gameManager.getCombatEffectManager().spawnStatusText(px, py + 30, "+" + amount, Color.GREEN);
         }
-        */
 
         Logger.gameEvent("Player healed by " + amount + ". Current HP: " + lives + "/" + maxLives);
     }
@@ -725,28 +750,43 @@ public class Player extends GameObject {
         return dashInvincible;
     }
 
+    // 🔥 [修改] 攻击 Buff 加入图标
     public void activateAttackBuff() {
         if (!buffAttack) {
             buffAttack = true;
             Logger.gameEvent("acquire ATK Buff");
+
+            // ✅ 音效
+            AudioManager.getInstance().play(AudioType.BUFF_GAIN);
+
         }
         if (gameManager != null) {
             gameManager.setVariable("dmg_taken", 0.7f);
         }
     }
 
+    // 🔥 [修改] 回血 Buff 加入图标
     public void activateRegenBuff() {
         if (!buffRegen) {
             buffRegen = true;
             regenTimer = 0f;
             Logger.gameEvent("acquire REGEN Buff");
+
+            // ✅ 音效
+            AudioManager.getInstance().play(AudioType.BUFF_GAIN);
+
         }
     }
 
+    // 🔥 [修改] 回蓝 Buff 加入图标
     public void activateManaBuff() {
         if (!buffManaEfficiency) {
             buffManaEfficiency = true;
             Logger.gameEvent("acquire MANA Buff");
+
+            // ✅ 音效
+            AudioManager.getInstance().play(AudioType.BUFF_GAIN);
+
         }
     }
 
@@ -816,5 +856,50 @@ public class Player extends GameObject {
 
     public float getDashDuration() {
         return DASH_DURATION + dashDurationBonus;
+    }
+
+    /**
+     * 获取玩家当前时刻的动画帧
+     * 用于残影系统 (PlayerTrailManager) 获取图像数据
+     */
+    public TextureRegion getCurrentFrame() {
+        if (isDead) return null;
+
+        Animation<TextureRegion> anim;
+
+        // 1. 确定使用哪个动画集 (和 drawSprite 逻辑保持一致)
+        if (isCasting && playerIndex == PlayerIndex.P2) {
+            anim = switch (direction) {
+                case UP -> backCastAnim;
+                case LEFT -> leftCastAnim;
+                case RIGHT -> rightCastAnim;
+                default -> frontCastAnim;
+            };
+        } else if (isAttacking) {
+            anim = switch (direction) {
+                case UP -> backAtkAnim;
+                case LEFT -> leftAtkAnim;
+                case RIGHT -> rightAtkAnim;
+                default -> frontAtkAnim;
+            };
+        } else {
+            anim = switch (direction) {
+                case UP -> backAnim;
+                case LEFT -> leftAnim;
+                case RIGHT -> rightAnim;
+                default -> frontAnim;
+            };
+        }
+
+        // 2. 确定时间状态
+        float timeState = isCasting ? castAnimTimer :
+                isAttacking ? attackAnimTimer :
+                        stateTime;
+
+        // 3. 确定是否循环播放 (施法和攻击通常不循环)
+        boolean looping = !isCasting && !isAttacking;
+
+        // 4. 返回当前帧
+        return anim.getKeyFrame(timeState, looping);
     }
 }

@@ -4,6 +4,9 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
+import de.tum.cit.fop.maze.game.GameConstants;
 
 import java.util.Map;
 
@@ -48,9 +51,40 @@ public class DashAbility extends Ability {
 
     /* ================= Activate ================= */
 
+//    @Override
+//    protected void onActivate(Player player, GameManager gameManager) {
+//        charges--;
+//        player.startDash(dashDuration, invincibleBonus);
+//    }
+
     @Override
     protected void onActivate(Player player, GameManager gameManager) {
         charges--;
+
+        // ✅ 1. 播放音效
+        AudioManager.getInstance().play(AudioType.SKILL_DASH);
+
+        // ✅ 2. 播放冲刺特效
+        // 根据玩家朝向计算特效角度 (0=右, 90=上, 180=左, 270=下)
+        float angle = 0f;
+        switch (player.getDirection()) {
+            case RIGHT -> angle = 0f;
+            case UP    -> angle = 90f;
+            case LEFT  -> angle = 180f;
+            case DOWN  -> angle = 270f;
+        }
+
+        if (gameManager.getCombatEffectManager() != null) {
+            // 修改：传入 this.level 以触发分级特效
+            gameManager.getCombatEffectManager().spawnDash(
+                    player.getWorldX() * GameConstants.CELL_SIZE,
+                    player.getWorldY() * GameConstants.CELL_SIZE,
+                    angle,
+                    this.level // <--- 新增参数
+            );
+        }
+
+        // 3. 执行原有逻辑
         player.startDash(dashDuration, invincibleBonus);
     }
     /* ================= Active ================= */

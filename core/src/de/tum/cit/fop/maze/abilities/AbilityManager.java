@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import de.tum.cit.fop.maze.entities.Player;
 import de.tum.cit.fop.maze.game.GameManager;
+import de.tum.cit.fop.maze.utils.Logger;
 
 import java.util.*;
 
@@ -17,6 +18,12 @@ public class AbilityManager {
     private final GameManager gameManager;
 
     public AbilityManager(Player player, GameManager gameManager) {
+        if (player == null) {
+            throw new IllegalArgumentException("Player cannot be null");
+        }
+        if (gameManager == null) {
+            throw new IllegalArgumentException("GameManager cannot be null");
+        }
         this.player = player;
         this.gameManager = gameManager;
         initializeAbilities();
@@ -75,7 +82,12 @@ public class AbilityManager {
 
     public void equipAbility(String abilityId, int slot) {
         if (slot < 0 || slot >= abilitySlots.length) return;
-        abilitySlots[slot] = abilities.get(abilityId);
+        Ability ability = abilities.get(abilityId);
+        if (ability == null) {
+            Logger.warning("Cannot equip ability: " + abilityId + " not found");
+            return;
+        }
+        abilitySlots[slot] = ability;
     }
 
     public void reset() {
@@ -86,6 +98,10 @@ public class AbilityManager {
     }
 
     public void drawAbilities(SpriteBatch batch, ShapeRenderer sr, Player player) {
+        if (batch == null || sr == null || player == null) {
+            Logger.warning("drawAbilities called with null parameters");
+            return;
+        }
         for (Ability ability : abilities.values()) {
             ability.draw(batch, sr, player);
         }

@@ -8,6 +8,8 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import de.tum.cit.fop.maze.MazeRunnerGame;
+import de.tum.cit.fop.maze.audio.AudioManager;
+import de.tum.cit.fop.maze.audio.AudioType;
 import de.tum.cit.fop.maze.game.story.StoryProgress;
 
 public class BossStoryScreen implements Screen {
@@ -45,6 +47,7 @@ public class BossStoryScreen implements Screen {
             StoryProgress sp = StoryProgress.load();
             sp.markBossDefeated(1);
             sp.save();
+            AudioManager.getInstance().playMusic(AudioType.BOSS_BGM);
             game.setScreen(new CreditsScreen(game));
             return;
         }

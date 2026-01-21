@@ -58,7 +58,7 @@ public class DifficultyConfig {
         this.enemyDamageMultiplier = enemyDamageMultiplier;
         this.keyCount = keyCount;
 
-        // 【新增】 赋值
+
         this.scoreMultiplier = scoreMultiplier;
         this.penaltyMultiplier = penaltyMultiplier;
     }
@@ -68,37 +68,37 @@ public class DifficultyConfig {
         return switch (d) {
 
             case EASY -> new DifficultyConfig(
-                    Difficulty.EASY, 40, 40, 1,
-                    0, 0, 0, 10,  // 敌人
-                    0, 0, 0, 0,  // 陷阱
-                    200, 0.7f, 0.6f, 2, // 战斗
-                    1.0f, 0.5f // 【新增】 scoreMultiplier, penaltyMultiplier
+                    Difficulty.EASY, 50, 50, 3,
+                    5, 10, 3, 0,  // 敌人
+                    2, 0, 0, 0,  // 陷阱
+                    100, 0.7f, 0.6f, 5, // 战斗
+                    1.0f, 0.5f //  scoreMultiplier, penaltyMultiplier
 
             );
 
             case NORMAL -> new DifficultyConfig(
-                    Difficulty.NORMAL, 50, 50, 3,
+                    Difficulty.NORMAL, 80, 80, 3,
                     8, 6, 2, 0,
 
                     /* 敌人 */
                     8, 6, 2,0,
 
                     /* 陷阱 */
-                    2, 1, 1, 10,
-                    200, 1.0f
+                    50, 1, 1, 2,
+                    1f, 1.0f
             );
 
             case HARD -> new DifficultyConfig(
                     /* 地图 */
-                    Difficulty.HARD, 100, 100, 4,
-                    12, 10, 6, 1,
+                    Difficulty.HARD, 130, 130, 1,
+                    12, 10, 6, 2,
 
                     /* 敌人 */
                     12, 10, 6,1,
 
                     /* 陷阱 */
-                    4, 3, 3, 20,
-                    200, 1.4f
+                    25, 3, 1.4f, 1,
+                    2f, 1.4f
             );
 
             case TUTORIAL -> new DifficultyConfig(
@@ -111,14 +111,14 @@ public class DifficultyConfig {
 
                     /* 陷阱 */
                     0, 0, 0, 0,
-                    5, 1.4f
+                    1f, 1.4f
             );
             case ENDLESS -> new DifficultyConfig(
-                    Difficulty.ENDLESS, 40, 40, 0,
+                    Difficulty.ENDLESS, 140, 140, 0,
                     7, 5, 4, 4,
-                    10, 5, 3, 2, // 修正了这里原本的语法错误 (原代码有一堆奇怪的逗号)
-                    400, 1.3f, 1.3f, 0, // 修正了原本缺少的参数
-                    2.0f, 1.2f
+                    10, 5, 3, 2,
+                    100, 1.3f, 1.3f, 0,
+                    1.0f, 1.2f
             );
             case BOSS -> new DifficultyConfig(
                     Difficulty.BOSS, 40, 40, 0,
@@ -126,10 +126,10 @@ public class DifficultyConfig {
                     5, 3, 0, 0,   // enemies
                     0, 0, 0, 0,   // traps
 
-                    200,
-                    1.0f,
-                    1.0f,
-                    0,1,1
+                    50,
+                    2.0f,
+                    1.3f,
+                    0,0.4f,1
             );
 
 
