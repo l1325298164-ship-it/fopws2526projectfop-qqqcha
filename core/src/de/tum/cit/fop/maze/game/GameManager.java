@@ -3,7 +3,7 @@ package de.tum.cit.fop.maze.game;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.graphics.Color;
 import de.tum.cit.fop.maze.abilities.Ability;
-import de.tum.cit.fop.maze.effects.Enemy.boba.BobaBulletManager;
+import de.tum.cit.fop.maze.effects.boba.BobaBulletManager;
 import de.tum.cit.fop.maze.effects.environment.items.ItemEffectManager;
 import de.tum.cit.fop.maze.effects.environment.items.traps.TrapEffectManager;
 import de.tum.cit.fop.maze.effects.environment.portal.PortalEffectManager;
