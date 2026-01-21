@@ -479,6 +479,13 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
 
                     GameEventSource.getInstance().onEnemyKilled(tier, e.isHitByDash());
 
+                    // =========== 敌人死亡粒子特效  ===========
+                    if (combatEffectManager != null) {
+                        float ex = (e.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                        float ey = (e.getY() + 0.5f) * GameConstants.CELL_SIZE;
+                        combatEffectManager.spawnEnemyDeathEffect(ex, ey);
+                    }
+
                     if (e instanceof EnemyE04_CrystallizedCaramelShell) {
                         handleEnemyDrop(e);
                     }
@@ -734,6 +741,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
                 if (hit) {
                     enemy.markHitByDash();
                     enemy.takeDamage(2);
+
+                    // =========== 冲刺撞击反馈 ===========
+                    if (combatEffectManager != null) {
+                        // 1. 生成打击火花
+                        float ex = (enemy.getX() + 0.5f) * GameConstants.CELL_SIZE;
+                        float ey = (enemy.getY() + 0.5f) * GameConstants.CELL_SIZE;
+                        combatEffectManager.spawnHitSpark(ex, ey);
+                    }
+                    // 2. 触发轻微顿帧和震动 (强度 1.5f, 比普攻轻一点)
+                    triggerHitFeedback(1.5f);
                 }
             }
         }

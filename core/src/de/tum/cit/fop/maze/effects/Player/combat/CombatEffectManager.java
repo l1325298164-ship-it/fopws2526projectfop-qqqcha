@@ -141,10 +141,6 @@ public class CombatEffectManager {
         safeAddEffect(new DashEffect(x, y, directionAngle, level));
     }
 
-    public void spawnFireMagic(float x, float y) {
-        safeAddEffect(new FireMagicEffect(x, y));
-    }
-
     public void spawnHeal(float x, float y) {
         safeAddEffect(new HealEffect(x, y));
     }
