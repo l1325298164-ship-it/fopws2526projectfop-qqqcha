@@ -136,7 +136,7 @@ public class CombatEffectManager {
         safeAddEffect(new DashEffect(x, y, directionAngle));
     }
 
-    // 🔥 [修复] 新增重载方法，解决 DashAbility 报错
+    // [修复] 新增重载方法，解决 DashAbility 报错
     public void spawnDash(float x, float y, float directionAngle, int level) {
         safeAddEffect(new DashEffect(x, y, directionAngle, level));
     }
@@ -145,9 +145,6 @@ public class CombatEffectManager {
         safeAddEffect(new HealEffect(x, y));
     }
 
-    public void spawnLaser(float startX, float startY, float endX, float endY) {
-        safeAddEffect(new LaserEffect(startX, startY, endX, endY));
-    }
 
 
     // 🔥 [核心修改] 统一的分数飘字方法
