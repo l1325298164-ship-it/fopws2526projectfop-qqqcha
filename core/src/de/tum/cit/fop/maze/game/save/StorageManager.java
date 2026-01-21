@@ -90,7 +90,9 @@ public class StorageManager {
     // 异步保存配置
     // ==========================================
     private final ExecutorService saveExecutor;
-    private final Json json;
+
+    // 🔥 [修复] 移除全局共享的 Json 对象，因为它不是线程安全的
+    // private final Json json;
 
     // 用于跟踪异步任务
     private final ConcurrentLinkedQueue<Future<?>> pendingSaves = new ConcurrentLinkedQueue<>();
@@ -102,9 +104,8 @@ public class StorageManager {
     private boolean asyncEnabled = true;
 
     private StorageManager() {
-        this.json = new Json();
-        this.json.setOutputType(JsonWriter.OutputType.json);
-        this.json.setUsePrototypes(false);
+        // 🔥 [修复] 不再在构造函数初始化全局 Json
+        // this.json = new Json(); ...
 
         this.saveExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "StorageManager-SaveThread");
@@ -119,6 +120,15 @@ public class StorageManager {
                 Logger.warning("Error during shutdown save: " + e.getMessage());
             }
         }));
+    }
+
+    // 🔥 [新增] 辅助方法：创建一个配置好的新 Json 实例
+    // 每次读写都创建一个新的实例，确保线程安全
+    private Json createJson() {
+        Json json = new Json();
+        json.setOutputType(JsonWriter.OutputType.json);
+        json.setUsePrototypes(false);
+        return json;
     }
 
     private String getSlotFileName(int slot) {
@@ -272,6 +282,8 @@ public class StorageManager {
 
             if (jsonStr == null || jsonStr.isBlank()) return null;
 
+            // 🔥 [修复] 使用局部 Json 实例
+            Json json = createJson();
             GameSaveData data = json.fromJson(GameSaveData.class, jsonStr);
 
             // 验证数据有效性
@@ -358,6 +370,8 @@ public class StorageManager {
                 }
             }
 
+            // 🔥 [修复] 使用局部 Json 实例
+            Json json = createJson();
             String jsonStr = json.toJson(data);
 
             tmpFile = getFile(fileName + ".tmp");
@@ -390,8 +404,10 @@ public class StorageManager {
     private void writeJsonSafelyAsync(String fileName, Object data, boolean useCompression) {
         if (data == null) return;
 
+        // 在主线程执行深拷贝
         Object dataCopy = deepCopy(data);
 
+        // 在后台线程执行文件写入
         Future<?> future = saveExecutor.submit(() -> {
             writeJsonSafelySync(fileName, dataCopy, useCompression);
         });
@@ -411,6 +427,8 @@ public class StorageManager {
     @SuppressWarnings("unchecked")
     private <T> T deepCopy(T obj) {
         try {
+            // 🔥 [修复] 使用局部 Json 实例，避免多线程下的 writer 重用冲突
+            Json json = createJson();
             String jsonStr = json.toJson(obj);
             return (T) json.fromJson(obj.getClass(), jsonStr);
         } catch (Exception e) {
@@ -507,6 +525,8 @@ public class StorageManager {
                 return new CareerData();
             }
 
+            // 🔥 [修复] 使用局部 Json 实例
+            Json json = createJson();
             CareerData data = json.fromJson(CareerData.class, jsonStr);
 
             if (data == null) {
