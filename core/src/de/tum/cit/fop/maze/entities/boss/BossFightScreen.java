@@ -322,13 +322,7 @@ public class BossFightScreen implements Screen {
             hud.updateBossHp(bossHp);
         }
 
-        if (mazeStarted && mazeViewport != null) {
-            Gdx.app.log(
-                    "MAZE_VIEWPORT",
-                    "screen = " + mazeViewport.getScreenWidth()
-                            + " x " + mazeViewport.getScreenHeight()
-            );
-        }
+
         boolean isMergingOrAfter =
                 bossDeathState == BossDeathState.TRIGGERED
                         || bossDeathState == BossDeathState.MERGING_SCREEN
@@ -339,14 +333,6 @@ public class BossFightScreen implements Screen {
             enterVictoryMode();
         }
 
-
-//        // ===== 测试期：ESC 直接回主菜单 =====
-//        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-//            bossDeathState = BossDeathState.NONE;
-//            mergeProgress = 0f;
-//            game.setScreen(new MenuScreen(game));
-//            return;
-//        }
 
         update(delta);
 

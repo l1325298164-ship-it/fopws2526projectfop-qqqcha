@@ -123,7 +123,7 @@ public class MazeGameTutorialScreen implements Screen {
 
 
         mazeTexture = new Texture(
-                Gdx.files.internal("story_file/tutorial_bg.wpng")
+                Gdx.files.internal("story_file/tutorial_bg.png")
         );
 
         mazeMask = new Pixmap(

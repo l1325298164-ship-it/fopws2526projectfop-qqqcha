@@ -16,7 +16,7 @@ public class MazeGenerator {
     // 新的单元格配置
     private static final int WALL_WIDTH = 1;      // 墙宽度：1格
     private static final int WALL_HEIGHT = 1;     // 墙高度：1格
-    private static final int PATH_WIDTH = 1;      // 道路宽度：3格
+    private static final int PATH_WIDTH = 2;      // 道路宽度：2格
     private static final int PATH_HEIGHT = 3;     // 道路高度：3格
     public static final int BORDER_THICKNESS = 12;
     private final Random random = new Random();
