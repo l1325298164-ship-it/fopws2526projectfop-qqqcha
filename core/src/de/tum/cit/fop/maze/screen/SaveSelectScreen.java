@@ -108,7 +108,7 @@ public class SaveSelectScreen implements Screen {
         ScrollPane scrollPane = new ScrollPane(listContent, createInvisibleScrollPaneStyle());
         scrollPane.setFadeScrollBars(false);
         scrollPane.setScrollingDisabled(true, false);
-
+        stage.setScrollFocus(scrollPane);
         root.add(scrollPane).expand().fill().padBottom(20).row();
 
         // ================= FOOTER =================
@@ -204,26 +204,54 @@ public class SaveSelectScreen implements Screen {
     private void showDeleteConfirm(int slotId) {
         Dialog d = new Dialog("", game.getSkin()) {
             @Override protected void result(Object object) {
-                if ((Boolean)object) {
+                if (Boolean.TRUE.equals(object)) {
                     storage.deleteSaveSlot(slotId);
                     setupUI();
                 }
             }
         };
-        // 弹窗背景稍微加深一点
+
         d.setBackground(createBorderedBackground(
                 new Color(0.1f, 0.1f, 0.15f, 0.9f),
-                Color.GRAY)
-        );
+                Color.GRAY
+        ));
 
-        Label l = new Label("\nDelete this record?\n", game.getSkin());
+        Label l = new Label("Delete this record?", game.getSkin());
         l.setAlignment(Align.center);
-        d.getContentTable().add(l).pad(40);
+        l.setFontScale(1.2f);
+        d.getContentTable().add(l).pad(40).row();
 
-        d.button("DELETE", true).button("CANCEL", false);
-        d.getButtonTable().getCells().forEach(c -> c.width(140).height(55).pad(15));
+        // ✅ 仍然用 Dialog 自带 button() 来传结果（兼容你版本）
+        d.button("DELETE", true);
+        d.button("CANCEL", false);
+
+        // ===== 关键：把自动生成的按钮“整理”成你想要的样子 =====
+        Table bt = d.getButtonTable();
+
+        // 1) 先清掉默认的 layout 影响
+        bt.defaults().pad(15).width(180).height(65);
+
+        // 2) 强制按钮之间有间距 + 居中
+        bt.center();
+
+        // 3) 修复字体/对齐（防止你 skin 的 fontScale 导致挤爆）
+        for (com.badlogic.gdx.scenes.scene2d.Actor a : bt.getChildren()) {
+            if (a instanceof TextButton tb) {
+                tb.getLabel().setFontScale(1.0f);     // ✅ 关键：别让字体把按钮挤爆
+                tb.getLabel().setAlignment(Align.center);
+
+                // 给 DELETE 染红（注意：setColor 会影响整按钮的 batch tint）
+                if ("DELETE".equals(tb.getText().toString())) {
+                    tb.setColor(new Color(0.85f, 0.3f, 0.3f, 1f));
+                }
+            }
+        }
+
         d.show(stage);
     }
+
+
+
 
     private ScrollPane.ScrollPaneStyle createInvisibleScrollPaneStyle() {
         return new ScrollPane.ScrollPaneStyle();

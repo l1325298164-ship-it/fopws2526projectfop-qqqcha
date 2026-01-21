@@ -246,12 +246,16 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
         if (!restoringFromSave) {
             int[] spawn1 = randomEmptyCell();
             Player p1 = new Player(spawn1[0], spawn1[1], this, Player.PlayerIndex.P1);
+            p1.setMaxLives(difficultyConfig.initialLives);
+            p1.setLives(difficultyConfig.initialLives);
             players.add(p1);
 
             if (twoPlayerMode) {
                 int[] spawn2 = findNearbySpawn(p1);
                 if (spawn2 == null) spawn2 = spawn1;
                 Player p2 = new Player(spawn2[0], spawn2[1], this, Player.PlayerIndex.P2);
+                p2.setMaxLives(difficultyConfig.initialLives);
+                p2.setLives(difficultyConfig.initialLives);
                 players.add(p2);
             }
             revivePending = false;
