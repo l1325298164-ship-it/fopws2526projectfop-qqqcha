@@ -6,6 +6,9 @@ This project is a **top-down maze-based action game** developed for course submi
 
 The core gameplay loop focuses on **navigating procedurally generated mazes**, **real-time combat**, and **progressing through multiple floors (levels)**. Players defeat enemies, collect keys, unlock exits, and advance deeper into the maze.
 
+Assets:
+https://drive.google.com/file/d/1aTkC9S728PHj1ZJoVVJ8T8qPqRoMW8YO/view?usp=sharing
+
 ---
 
 ## Project Structure
