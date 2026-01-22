@@ -162,9 +162,6 @@ public class PortalEffectManager {
                 0, 0, glowTexture.getWidth(), glowTexture.getHeight(), false, false
         );
 
-        // 恢复
-        //batch.setColor(oldColor);
-        // 🟢 改为强制重置为纯白色：
         batch.setColor(Color.WHITE);
 
         batch.setBlendFunction(srcFunc, dstFunc);
@@ -252,7 +249,6 @@ public class PortalEffectManager {
         this.currentState = State.IDLE;
         this.timer = 0f;
         this.playerHidden = false;
-        //particlePool.clear();
     }
     public void setCenter(float x, float y) {
         this.targetX = x;

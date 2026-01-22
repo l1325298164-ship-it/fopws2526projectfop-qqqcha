@@ -141,7 +141,5 @@ public class GameSaveData {
         sessionDamageTaken = 0;
         levelBaseScore = 0;
         levelPenalty = 0;
-
-        // score = 0; // ❌ 修正：绝对不能在这里重置总分，否则过关就白打了
     }
 }

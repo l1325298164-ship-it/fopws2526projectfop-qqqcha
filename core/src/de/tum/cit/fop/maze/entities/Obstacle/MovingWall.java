@@ -311,18 +311,7 @@ public class MovingWall extends DynamicObstacle implements PushSource {
 
     }
 
-//    private void debugState(String tag) {
-//        if (!Logger.isDebugEnabled()) return;
-//
-//        Logger.debug("[MovingWall] " + tag +
-//                " | pos=(" + x + "," + y + ")" +
-//                " world=(" + String.format("%.2f", worldX) + "," + String.format("%.2f", worldY) + ")" +
-//                " target=(" + targetX + "," + targetY + ")" +
-//                " forward=" + forward +
-//                " dir=(" + dirX + "," + dirY + ")" +
-//                " cooldown=" + String.format("%.2f", moveCooldown)
-//        );
-//    }
+
 
     @Override
     public RenderType getRenderType() {

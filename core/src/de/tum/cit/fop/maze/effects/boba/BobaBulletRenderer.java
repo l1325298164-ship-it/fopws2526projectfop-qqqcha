@@ -48,17 +48,7 @@ public class BobaBulletRenderer {
         }
     }
 
-    /*private void loadTexture() {
-        try {
-            Texture tex = new Texture(Gdx.files.internal("effects/boba-bullet.png"));
-            tex.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-            this.bulletTexture = new TextureRegion(tex);
-        } catch (Exception e) {
-            System.err.println("Boba texture load failed: " + e.getMessage());
-            this.bulletTexture = null;
-        }
-    }
-*/
+
 
     public void render(BobaBullet bullet, SpriteBatch batch) {
         if (bullet == null || !bullet.isActive()) return;

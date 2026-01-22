@@ -54,11 +54,7 @@ public class EnemyE01_CorruptedPearl extends Enemy {
         super.takeDamage(dmg);
         AudioManager.getInstance().play(AudioType.ENEMY_ATTACKED_E01);
 
-        // 如果有特殊逻辑，可以在这里添加
-        // 例如：受到伤害时有一定概率反击
-//        if (active && MathUtils.random() < 0.3f) { // 30%概率
-//            retaliate();
-//        }
+
     }
 
 

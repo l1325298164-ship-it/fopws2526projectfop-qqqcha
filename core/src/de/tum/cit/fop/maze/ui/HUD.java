@@ -1556,7 +1556,6 @@ public class HUD {
                         my >= by && my <= by + BTN_SIZE;
         if (hover) {
             uiHoverThisFrame = true;
-            // Logger.error("UI CONSUME MOUSE");
         }
 
 
@@ -1631,7 +1630,6 @@ public class HUD {
             long now = TimeUtils.millis();
             if (now - lastUpgradeTime > UPGRADE_COOLDOWN_MS) {
                 lastUpgradeTime = now;
-//                gameManager.setUIConsumesMouse(true);
                 boolean success =  gameManager
                         .getScoreManager()
                         .spendUpgradeScore(UpgradeCost.SCORE_PER_UPGRADE);
