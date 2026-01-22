@@ -1,14 +1,14 @@
 # QQCHA reset to Origin 
 # Maze Action Game
 
-## 📌 Project Overview
+## Project Overview
 This project is a **top-down maze-based action game** developed for course submission.
 
 The core gameplay loop focuses on **navigating procedurally generated mazes**, **real-time combat**, and **progressing through multiple floors (levels)**. Players defeat enemies, collect keys, unlock exits, and advance deeper into the maze.
 
 ---
 
-## 🗂 Project Structure
+## Project Structure
 
 ```
 core/
@@ -60,7 +60,7 @@ core/
 
 ---
 
-## 🧩 UML Design Overview
+## UML Design Overview
 
 UML class diagrams were generated using **IntelliJ IDEA** to illustrate the overall architecture.
 
@@ -121,19 +121,22 @@ cd project-root
 
 ---
 
-## 🎮 Controls
+## Controls
 
-| Key | Action |
-|----|-------|
-| W A S D | Move |
-| Mouse | Aim(for 2-player mode) |
-| Space | Attack |
-| Shift | Dash |
-| Esc | Pause |
+| Key        | Action                           |
+|------------|----------------------------------|
+| W A S D    | Move                             |
+| Space      | Attack                           |
+| Shift      | Dash                             |
+| E          | Interact                         |
+| Esc        | Pause                            |
+| Arrow Keys | Move(2-player mode)           |
+| Left Mouse Button      | Aim and Attack(2-player mode) |
+| Right Mouse Button        | Dash(2-player mode)    |
 
 ---
 
-## 🧠 Core Game Mechanics
+## Core Game Mechanics
 
 ### 1. Maze Progression & Exploration
 - Each level generates a **new maze layout** using procedural generation, consisting of walls, walkable paths, and interactive objects.
@@ -197,7 +200,7 @@ cd project-root
 ---
 
 
-## 🚀 Features Beyond Minimum Requirements
+## Features Beyond Minimum Requirements
 - Procedural maze generation with validation
 - Data-driven boss timelines
 - Dynamic maze rebuilding during boss fights
@@ -207,7 +210,7 @@ cd project-root
 
 ---
 
-## 📄 Notes for Reviewers
+## Notes for Reviewers
 
 - UML diagrams focus on the core gameplay architecture rather than the complete class set, as the full diagram would be excessively large and reduce readability.
 - Supporting systems (including story flow, audio, visual effects, save/load logic, and achievement tracking) are intentionally omitted from the UML diagrams to maintain clarity and focus.
