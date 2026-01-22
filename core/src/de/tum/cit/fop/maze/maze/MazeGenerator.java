@@ -56,8 +56,6 @@ public class MazeGenerator {
         // 使用新的DFS生成迷宫（基于3x3道路和1x2墙）
         generate3x3PathDFS(maze);
 
-        // 确保起点和终点区域是通路（3x3区域）
-//        ensureStartEnd3x3Areas(maze);
 
         // 添加更多通路（防止死胡同）
         add3x3AdditionalPaths(maze, 0.19f);
@@ -69,9 +67,7 @@ public class MazeGenerator {
         cleanupSmallWalls(maze);
 
         long endTime = System.currentTimeMillis();
-//        Logger.debug("Maze generation completed - Size: " + adjustedWidth + "x" + adjustedHeight);
-//        Logger.debug("Configuration - Path: " + PATH_WIDTH + "x" + PATH_HEIGHT +
-//            ", Wall: " + WALL_WIDTH + "x" + WALL_HEIGHT);
+
         addOuterBorderWalls(maze);
         return maze;
     }

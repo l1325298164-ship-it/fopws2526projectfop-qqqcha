@@ -154,8 +154,6 @@ public class StoryLoadingScreen implements Screen {
             // 1. 开启发光混合模式
             batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
 
-            // ❌ 删掉这一行：TextureRegion starRegion = game.getSkin().getRegion("white");
-            // ✅ 直接使用类成员变量 starRegion (它已经在 show 里被赋值为 stars.atlas 里的图了)
 
             for (int i = sparkles.size - 1; i >= 0; i--) {
                 Sparkle s = sparkles.get(i);

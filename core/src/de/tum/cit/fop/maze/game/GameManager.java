@@ -1342,8 +1342,6 @@ public class GameManager implements PlayerInputHandler.InputHandlerCallback {
     @Override
     public void onMenuInput() {
         Logger.info("Menu input received");
-        // 这里可以调用事件通知来切换到菜单屏幕，例如:
-        // GameEventSource.getInstance().onMenuRequested();
     }
 
     private Player getPlayerByIndex(Player.PlayerIndex index) {

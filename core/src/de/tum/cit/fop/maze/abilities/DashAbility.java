@@ -51,11 +51,6 @@ public class DashAbility extends Ability {
 
     /* ================= Activate ================= */
 
-//    @Override
-//    protected void onActivate(Player player, GameManager gameManager) {
-//        charges--;
-//        player.startDash(dashDuration, invincibleBonus);
-//    }
 
     @Override
     protected void onActivate(Player player, GameManager gameManager) {

@@ -32,7 +32,6 @@ public class ChapterTextDialog extends Group {
         setSize(stage.getWidth(), stage.getHeight());
         setPosition(0, 0);
 
-//        createBackgroundMask();
         createDialog();
 
         stage.addActor(this);
