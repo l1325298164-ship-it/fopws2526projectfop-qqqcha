@@ -1,8 +1,9 @@
+apply plugin: "java"
 sourceCompatibility = 17
 sourceSets.main.java.srcDirs = [ "src/" ]
 sourceSets.main.resources.srcDirs = ["../assets"]
 
-project.ext.mainClassName = "de.tum.cit.ase.maze.DesktopLauncher"
+project.ext.mainClassName = "de.tum.cit.fop.maze.DesktopLauncher"
 project.ext.assetsDir = new File("../assets")
 
 import org.gradle.internal.os.OperatingSystem
@@ -47,3 +48,13 @@ tasks.register('dist', Jar) {
 dist.dependsOn classes
 
 eclipse.project.name = appName + "-desktop"
+
+dependencies {
+    implementation "com.badlogicgames.gdx:gdx-tools:1.12.1"
+}
+
+tasks.withType(JavaExec).configureEach {
+    if (OperatingSystem.current() == OperatingSystem.MAC_OS) {
+        jvmArgs "-XstartOnFirstThread"
+    }
+}

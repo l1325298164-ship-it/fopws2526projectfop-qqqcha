@@ -9,6 +9,19 @@ target/
 # Compiled class file
 *.class
 
+# =========================
+# Block image assets by default
+# =========================
+
+*.png
+*.jpg
+*.jpeg
+
+# 如果你还有音频
+*.mp3
+*.wav
+*.ogg
+
 # Log file
 *.log
 
@@ -23,7 +36,7 @@ target/
 *.zip
 *.tar.gz
 *.rar
-
+assets/pv/
 ### Eclipse
 .metadata
 bin/
@@ -199,3 +212,5 @@ $RECYCLE.BIN/
 
 ### Include gradle-wrapper
 !gradle/wrapper/gradle-wrapper.jar
+assets
+assets_raw
